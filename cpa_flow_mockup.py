@@ -36,9 +36,9 @@ st.markdown("""
 FILE_A_ID = "1bwdj-rAAp6I1SbO27BTFD2eLiv6V5vsB"
 FILE_B_ID = "1QpQhZhXFFpQWm_xhVGDjdpgRM3VMv57L"
 
-# Fix API key loading - Using OpenAI
+# Fix API key loading - Using FastRouter
 try:
-    API_KEY = st.secrets.get("OPENAI_API_KEY", st.secrets.get("ANTHROPIC_API_KEY", "")).strip()
+    API_KEY = st.secrets.get("FASTROUTER_API_KEY", st.secrets.get("OPENAI_API_KEY", "")).strip()
     if API_KEY:
         st.sidebar.success("✅ API Key loaded")
     else:
@@ -126,23 +126,24 @@ def call_similarity_api(prompt):
         st.sidebar.warning("⚠️ No API key - skipping analysis")
         return None
     try:
-        # Using OpenAI API
+        # Using FastRouter with Claude Sonnet 4
         response = requests.post(
-            "https://api.openai.com/v1/chat/completions",
+            "https://go.fastrouter.ai/api/v1/chat/completions",
             headers={
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {API_KEY}"
             },
             json={
-                "model": "gpt-4o-mini",
+                "model": "anthropic/claude-sonnet-4-20250514",
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.3,
-                "max_tokens": 1000
+                "max_tokens": 1000,
+                "extra_body": {"request_tags": ["BT1/cpa_flow_analysis"]}
             },
             timeout=30
         )
         if response.status_code != 200:
-            st.sidebar.error(f"API Error: {response.status_code} - {response.text[:100]}")
+            st.sidebar.error(f"API Error: {response.status_code} - {response.text[:200]}")
             return None
         data = response.json()
         text = data['choices'][0]['message']['content']
