@@ -496,6 +496,10 @@ if st.session_state.data_a is not None:
                     """
                     
                     st.components.v1.html(render_html, height=scaled_h + 50, scrolling=False)
+                    
+                    # Add fullscreen link
+                    serp_data_url = f"data:text/html;charset=utf-8,{serp_html.replace('#', '%23')}"
+                    st.markdown(f'<a href="{serp_data_url}" target="_blank" class="fullscreen-link">🔍 Open Fullscreen</a>', unsafe_allow_html=True)
                 
                 with card1_right:
                     st.markdown("**Keyword → Ad**")
@@ -543,11 +547,18 @@ if st.session_state.data_a is not None:
                         """
                         st.components.v1.html(iframe_html, height=scaled_h + 50, scrolling=False)
                         
-                        st.info(f"If blocked: [Open in new tab]({dest_url})")
+                        st.markdown(f'<a href="{dest_url}" target="_blank" class="fullscreen-link">🔗 Open in New Tab</a>', unsafe_allow_html=True)
                     else:
                         st.warning("⚠️ No URL")
                 
                 with card2_right:
+                    # Display Landing Page URL
+                    dest_url = current_flow.get('reporting_destination_url', 'N/A')
+                    st.markdown("**Landing Page URL**")
+                    st.markdown(f'<div class="url-display">{dest_url}</div>', unsafe_allow_html=True)
+                    
+                    st.markdown("---")
+                    
                     st.markdown("**Keyword → Page**")
                     if st.session_state.similarities:
                         render_similarity_card("Match Score", st.session_state.similarities.get('kwd_to_page'))
