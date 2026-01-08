@@ -242,14 +242,35 @@ def generate_serp_mockup(flow_data, serp_templates):
     if serp_templates and len(serp_templates) > 0:
         try:
             html = serp_templates[0].get('code', '')
+            
+            # Clean up the HTML - remove scripts and extra content
+            # Extract only the visible ad content
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(html, 'html.parser')
+            
+            # Remove script tags
+            for script in soup.find_all('script'):
+                script.decompose()
+            
+            # Try to find the main content
+            main_content = soup.find('li', class_='annot1')
+            if main_content:
+                html = str(main_content)
+            else:
+                html = str(soup)
+            
+            # Replace placeholders with actual data
             html = re.sub(r'Sponsored results for: "[^"]*"', f'Sponsored results for: "{keyword}"', html)
             html = re.sub(r'<div class="url">[^<]*</div>', f'<div class="url">{ad_url}</div>', html, count=1)
             html = re.sub(r'<div class="title">[^<]*</div>', f'<div class="title">{ad_title}</div>', html, count=1)
             html = re.sub(r'<div class="desc">[^<]*</div>', f'<div class="desc">{ad_desc}</div>', html, count=1)
-            return html
+            
+            # Wrap in proper container
+            return f'<div style="background: white; padding: 20px; border-radius: 8px; width: 100%; box-sizing: border-box;">{html}</div>'
         except:
             pass
     
+    # Fallback simple template
     return f"""<div style="background: white; padding: 20px; border-radius: 8px; width: 100%; box-sizing: border-box;">
         <div style="color: #666; font-size: 12px; margin-bottom: 16px;">Sponsored: "{keyword}"</div>
         <div style="color: #006621; font-size: 12px; margin-bottom: 8px;">{ad_url}</div>
@@ -498,9 +519,8 @@ if st.session_state.data_a is not None:
                     
                     st.components.v1.html(render_html, height=scaled_h + 50, scrolling=False)
                     
-                    # Add fullscreen link
-                    serp_data_url = f"data:text/html;charset=utf-8,{serp_html.replace('#', '%23')}"
-                    st.markdown(f'<a href="{serp_data_url}" target="_blank" class="fullscreen-link">🔍 Open Fullscreen</a>', unsafe_allow_html=True)
+                    # Add fullscreen link (use simple HTML instead of data URL)
+                    st.markdown('<a href="#" onclick="window.open(\'\',\'_blank\',\'width=800,height=900\').document.write(document.querySelector(\'iframe\').contentDocument.documentElement.outerHTML)" class="fullscreen-link">🔍 View Fullscreen</a>', unsafe_allow_html=True)
                 
                 with card1_right:
                     st.markdown("**Keyword → Ad**")
@@ -538,19 +558,28 @@ if st.session_state.data_a is not None:
                         scaled_w = int(device_w * scale)
                         scaled_h = int(device_h * scale)
                         
+                        # Many sites block iframes, so show a message
                         iframe_html = f"""
                         <div style="display: flex; justify-content: center; align-items: flex-start; padding: 20px; background: #1f2937; border-radius: 8px;">
-                            <div style="box-shadow:0 4px 20px rgba(0,0,0,0.5);">
+                            <div style="position: relative; box-shadow:0 4px 20px rgba(0,0,0,0.5);">
                                 <iframe src="{dest_url}" width="{scaled_w}" height="{scaled_h}" 
-                                        style="border:none; background:white;"></iframe>
+                                        style="border:none; background:white;"
+                                        sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                                        onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                </iframe>
+                                <div style="display:none; width:{scaled_w}px; height:{scaled_h}px; background:white; padding:40px; text-align:center;">
+                                    <h3 style="color:#ef4444;">⚠️ Site Blocked Iframe</h3>
+                                    <p style="color:#666;">This website doesn't allow embedding. Click the button below to open it.</p>
+                                </div>
                             </div>
                         </div>
                         """
                         st.components.v1.html(iframe_html, height=scaled_h + 50, scrolling=False)
                         
-                        st.markdown(f'<a href="{dest_url}" target="_blank" class="fullscreen-link">🔗 Open in New Tab</a>', unsafe_allow_html=True)
+                        st.info("⚠️ If the page is blank above, the site blocks embedding. Click below:")
+                        st.markdown(f'<a href="{dest_url}" target="_blank" class="fullscreen-link">🔗 Open Landing Page in New Tab</a>', unsafe_allow_html=True)
                     else:
-                        st.warning("⚠️ No URL")
+                        st.warning("⚠️ No URL available")
                 
                 with card2_right:
                     # Display Landing Page URL
