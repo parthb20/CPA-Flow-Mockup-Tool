@@ -27,12 +27,7 @@ st.markdown("""
     .similarity-poor { border-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
     .render-container {
         display: flex; justify-content: center; align-items: flex-start;
-        padding: 20px; background: #1f2937; border-radius: 8px; position: relative;
-    }
-    .zoom-controls {
-        position: absolute; top: 10px; left: 10px; z-index: 1000;
-        background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 5px;
-        display: flex; gap: 10px; align-items: center;
+        padding: 20px; background: #1f2937; border-radius: 8px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -41,10 +36,13 @@ st.markdown("""
 FILE_A_ID = "1bwdj-rAAp6I1SbO27BTFD2eLiv6V5vsB"
 FILE_B_ID = "1QpQhZhXFFpQWm_xhVGDjdpgRM3VMv57L"
 
+# Fix API key loading
 try:
-    API_KEY = st.secrets.get("ANTHROPIC_API_KEY", "")
-except:
+    API_KEY = st.secrets["ANTHROPIC_API_KEY"]
+    st.sidebar.success("✅ API Key loaded")
+except Exception as e:
     API_KEY = ""
+    st.sidebar.error(f"❌ API Key error: {str(e)}")
 
 # Session state
 for key in ['data_a', 'data_b', 'selected_keyword', 'selected_url', 'flows', 
@@ -122,6 +120,7 @@ def get_quadrant(ctr, cvr, avg_ctr, avg_cvr):
 
 def call_similarity_api(prompt):
     if not API_KEY:
+        st.sidebar.warning("⚠️ No API key - skipping analysis")
         return None
     try:
         response = requests.post(
@@ -139,12 +138,14 @@ def call_similarity_api(prompt):
             timeout=30
         )
         if response.status_code != 200:
+            st.sidebar.error(f"API Error: {response.status_code} - {response.text[:100]}")
             return None
         data = response.json()
         text = data['content'][0]['text']
         clean_text = text.replace('```json', '').replace('```', '').strip()
         return json.loads(clean_text)
     except Exception as e:
+        st.sidebar.error(f"API Exception: {str(e)}")
         return None
 
 def fetch_page_content(url):
@@ -202,7 +203,7 @@ Return JSON: {{"intent":"","topic_match":0.0,"answer_quality":0.0,"final_score":
 
 def render_similarity_card(title, data):
     if not data:
-        st.error(f"{title}: Check API key in secrets")
+        st.error(f"{title}: API unavailable")
         return
     
     score = data.get('final_score', 0)
@@ -244,7 +245,7 @@ def generate_serp_mockup(flow_data, serp_templates):
         except:
             pass
     
-    return f"""<div style="background: white; padding: 20px; border-radius: 8px;">
+    return f"""<div style="background: white; padding: 20px; border-radius: 8px; width: 100%; box-sizing: border-box;">
         <div style="color: #666; font-size: 12px; margin-bottom: 16px;">Sponsored: "{keyword}"</div>
         <div style="color: #006621; font-size: 12px; margin-bottom: 8px;">{ad_url}</div>
         <div style="margin-bottom: 8px;"><a href="#" style="color: #1a0dab; font-size: 18px; font-weight: 500; text-decoration: none;">{ad_title}</a></div>
@@ -308,8 +309,11 @@ if st.session_state.data_a is not None:
                     marker=dict(size=max(20, min(70, row['clicks']/10)), color=color, 
                                line=dict(width=2, color='white')),
                     name=row['keyword_term'],
-                    text=f"{row['keyword_term']}<br>CTR: {row['ctr']:.2f}%<br>CVR: {row['cvr']:.2f}%<br>Clicks: {int(row['clicks'])}",
-                    hovertemplate='%{text}<extra></extra>',
+                    hovertemplate='<b>%{fullData.name}</b><br>' +
+                                 'CTR: %{x:.2f}%<br>' +
+                                 'CVR: %{y:.2f}%<br>' +
+                                 f"Clicks: {int(row['clicks'])}" +
+                                 '<extra></extra>',
                     customdata=[[row['keyword_term']]]
                 ))
             
@@ -349,24 +353,37 @@ if st.session_state.data_a is not None:
             
             filtered_keywords = filtered_keywords.sort_values(keyword_sort, ascending=False).head(keyword_limit)
             
-            # Color coded table
-            def color_metric(val, avg, col_name):
-                val_float = float(val.replace('%', ''))
-                color = 'green' if val_float >= avg else 'red'
-                return f'<span style="color: {color};">{val}</span>'
-            
+            # Single clickable table
             display_df = filtered_keywords[['keyword_term', 'clicks', 'ctr', 'cvr']].copy()
-            display_df['ctr_display'] = display_df['ctr'].apply(lambda x: f"{x:.2f}%")
-            display_df['cvr_display'] = display_df['cvr'].apply(lambda x: f"{x:.2f}%")
-            display_df['ctr_colored'] = display_df.apply(lambda row: color_metric(row['ctr_display'], avg_ctr, 'ctr'), axis=1)
-            display_df['cvr_colored'] = display_df.apply(lambda row: color_metric(row['cvr_display'], avg_cvr, 'cvr'), axis=1)
+            display_df['Keyword'] = display_df['keyword_term']
+            display_df['Clicks'] = display_df['clicks'].apply(lambda x: f"{int(x):,}")
+            display_df['CTR %'] = display_df.apply(
+                lambda row: f"<span style='color: {'green' if row['ctr'] >= avg_ctr else 'red'}'>{row['ctr']:.2f}%</span>", 
+                axis=1
+            )
+            display_df['CVR %'] = display_df.apply(
+                lambda row: f"<span style='color: {'green' if row['cvr'] >= avg_cvr else 'red'}'>{row['cvr']:.2f}%</span>", 
+                axis=1
+            )
             
-            st.markdown(display_df[['keyword_term', 'clicks', 'ctr_colored', 'cvr_colored']].to_html(escape=False, index=False, 
-                       header=['Keyword', 'Clicks', 'CTR %', 'CVR %']), unsafe_allow_html=True)
+            # Show colored table
+            st.markdown(
+                display_df[['Keyword', 'Clicks', 'CTR %', 'CVR %']].to_html(escape=False, index=False), 
+                unsafe_allow_html=True
+            )
             
-            selected_kwd = st.dataframe(filtered_keywords[['keyword_term', 'clicks']].reset_index(drop=True), 
-                                       use_container_width=True, hide_index=True, 
-                                       on_select="rerun", selection_mode="single-row", key="kwd_table")
+            st.write("")  # Spacing
+            
+            # Interactive selection table
+            selected_kwd = st.dataframe(
+                filtered_keywords[['keyword_term', 'clicks']].reset_index(drop=True), 
+                use_container_width=True, hide_index=True, 
+                on_select="rerun", selection_mode="single-row", key="kwd_table",
+                column_config={
+                    "keyword_term": "Select Keyword",
+                    "clicks": st.column_config.NumberColumn("Clicks", format="%d")
+                }
+            )
             
             if selected_kwd and len(selected_kwd['selection']['rows']) > 0:
                 idx = selected_kwd['selection']['rows'][0]
@@ -434,8 +451,22 @@ if st.session_state.data_a is not None:
                 
                 st.divider()
                 
-                # Card 1
+                # Card 1: SERP
                 st.subheader("📄 Card 1: Search Results")
+                
+                # Zoom controls at top
+                z1_col1, z1_col2, z1_col3 = st.columns([1, 1, 8])
+                with z1_col1:
+                    if st.button("➖", key="z1m", help="Zoom Out"):
+                        st.session_state.zoom1 = max(50, st.session_state.zoom1 - 10)
+                        st.rerun()
+                with z1_col2:
+                    if st.button("➕", key="z1p", help="Zoom In"):
+                        st.session_state.zoom1 = min(150, st.session_state.zoom1 + 10)
+                        st.rerun()
+                with z1_col3:
+                    st.caption(f"Zoom: {st.session_state.zoom1}%")
+                
                 card1_left, card1_right = st.columns([7, 3])
                 
                 with card1_left:
@@ -446,36 +477,21 @@ if st.session_state.data_a is not None:
                     dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
                     device_w, device_h = dims[device1]
                     
-                    # Container for centering
                     scale = st.session_state.zoom1 / 100
                     scaled_w = int(device_w * scale)
                     scaled_h = int(device_h * scale)
                     
-                    zoom_html = f"""
-                    <div class="render-container" style="min-height: {scaled_h + 50}px;">
-                        <div class="zoom-controls">
-                            <button onclick="window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'zoom1_minus'}}, '*')" 
-                                    style="background:#444; color:white; border:none; padding:5px 15px; cursor:pointer; border-radius:3px;">➖</button>
-                            <span style="color:white; margin:0 10px;">Zoom: {st.session_state.zoom1}%</span>
-                            <button onclick="window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'zoom1_plus'}}, '*')" 
-                                    style="background:#444; color:white; border:none; padding:5px 15px; cursor:pointer; border-radius:3px;">➕</button>
-                        </div>
-                        <div style="width:{device_w}px; height:{device_h}px; transform:scale({scale}); transform-origin:center top; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.5);">
-                            {serp_html}
+                    render_html = f"""
+                    <div style="display: flex; justify-content: center; align-items: flex-start; padding: 20px; background: #1f2937; border-radius: 8px;">
+                        <div style="width:{scaled_w}px; height:{scaled_h}px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.5);">
+                            <div style="transform:scale({scale}); transform-origin:top left; width:{device_w}px; height:{device_h}px;">
+                                {serp_html}
+                            </div>
                         </div>
                     </div>
                     """
                     
-                    st.components.v1.html(zoom_html, height=scaled_h + 60, scrolling=False)
-                    
-                    # Handle zoom
-                    col_z1, col_z2 = st.columns(2)
-                    if col_z1.button("➖ Zoom Out", key="z1m"):
-                        st.session_state.zoom1 = max(50, st.session_state.zoom1 - 10)
-                        st.rerun()
-                    if col_z2.button("➕ Zoom In", key="z1p"):
-                        st.session_state.zoom1 = min(150, st.session_state.zoom1 + 10)
-                        st.rerun()
+                    st.components.v1.html(render_html, height=scaled_h + 50, scrolling=False)
                 
                 with card1_right:
                     st.markdown("**Keyword → Ad**")
@@ -484,8 +500,22 @@ if st.session_state.data_a is not None:
                 
                 st.divider()
                 
-                # Card 2
+                # Card 2: Landing Page
                 st.subheader("🌐 Card 2: Landing Page")
+                
+                # Zoom controls at top
+                z2_col1, z2_col2, z2_col3 = st.columns([1, 1, 8])
+                with z2_col1:
+                    if st.button("➖", key="z2m", help="Zoom Out"):
+                        st.session_state.zoom2 = max(50, st.session_state.zoom2 - 10)
+                        st.rerun()
+                with z2_col2:
+                    if st.button("➕", key="z2p", help="Zoom In"):
+                        st.session_state.zoom2 = min(150, st.session_state.zoom2 + 10)
+                        st.rerun()
+                with z2_col3:
+                    st.caption(f"Zoom: {st.session_state.zoom2}%")
+                
                 card2_left, card2_right = st.columns([7, 3])
                 
                 with card2_left:
@@ -496,27 +526,18 @@ if st.session_state.data_a is not None:
                         dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
                         device_w, device_h = dims[device2]
                         scale = st.session_state.zoom2 / 100
+                        scaled_w = int(device_w * scale)
+                        scaled_h = int(device_h * scale)
                         
                         iframe_html = f"""
-                        <div class="render-container" style="min-height: {int(device_h * scale) + 50}px;">
-                            <div class="zoom-controls">
-                                <span style="color:white;">Zoom: {st.session_state.zoom2}%</span>
-                            </div>
+                        <div style="display: flex; justify-content: center; align-items: flex-start; padding: 20px; background: #1f2937; border-radius: 8px;">
                             <div style="box-shadow:0 4px 20px rgba(0,0,0,0.5);">
-                                <iframe src="{dest_url}" width="{int(device_w * scale)}" height="{int(device_h * scale)}" 
+                                <iframe src="{dest_url}" width="{scaled_w}" height="{scaled_h}" 
                                         style="border:none; background:white;"></iframe>
                             </div>
                         </div>
                         """
-                        st.components.v1.html(iframe_html, height=int(device_h * scale) + 60, scrolling=False)
-                        
-                        col_z1, col_z2 = st.columns(2)
-                        if col_z1.button("➖ Zoom Out", key="z2m"):
-                            st.session_state.zoom2 = max(50, st.session_state.zoom2 - 10)
-                            st.rerun()
-                        if col_z2.button("➕ Zoom In", key="z2p"):
-                            st.session_state.zoom2 = min(150, st.session_state.zoom2 + 10)
-                            st.rerun()
+                        st.components.v1.html(iframe_html, height=scaled_h + 50, scrolling=False)
                         
                         st.info(f"If blocked: [Open in new tab]({dest_url})")
                     else:
