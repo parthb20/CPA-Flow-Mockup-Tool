@@ -36,10 +36,13 @@ st.markdown("""
 FILE_A_ID = "1bwdj-rAAp6I1SbO27BTFD2eLiv6V5vsB"
 FILE_B_ID = "1QpQhZhXFFpQWm_xhVGDjdpgRM3VMv57L"
 
-# Fix API key loading
+# Fix API key loading - Using OpenAI
 try:
-    API_KEY = st.secrets["ANTHROPIC_API_KEY"]
-    st.sidebar.success("✅ API Key loaded")
+    API_KEY = st.secrets.get("OPENAI_API_KEY", st.secrets.get("ANTHROPIC_API_KEY", "")).strip()
+    if API_KEY:
+        st.sidebar.success("✅ API Key loaded")
+    else:
+        st.sidebar.warning("⚠️ No API key found")
 except Exception as e:
     API_KEY = ""
     st.sidebar.error(f"❌ API Key error: {str(e)}")
@@ -123,17 +126,18 @@ def call_similarity_api(prompt):
         st.sidebar.warning("⚠️ No API key - skipping analysis")
         return None
     try:
+        # Using OpenAI API
         response = requests.post(
-            "https://api.anthropic.com/v1/messages",
+            "https://api.openai.com/v1/chat/completions",
             headers={
                 "Content-Type": "application/json",
-                "x-api-key": API_KEY,
-                "anthropic-version": "2023-06-01"
+                "Authorization": f"Bearer {API_KEY}"
             },
             json={
-                "model": "claude-sonnet-4-20250514",
-                "max_tokens": 1000,
-                "messages": [{"role": "user", "content": prompt}]
+                "model": "gpt-4o-mini",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.3,
+                "max_tokens": 1000
             },
             timeout=30
         )
@@ -141,7 +145,7 @@ def call_similarity_api(prompt):
             st.sidebar.error(f"API Error: {response.status_code} - {response.text[:100]}")
             return None
         data = response.json()
-        text = data['content'][0]['text']
+        text = data['choices'][0]['message']['content']
         clean_text = text.replace('```json', '').replace('```', '').strip()
         return json.loads(clean_text)
     except Exception as e:
