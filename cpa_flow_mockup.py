@@ -224,6 +224,7 @@ def render_similarity_card(title, data):
     else:
         css_class, color = 'similarity-poor', '#ef4444'
     
+    # Main score card
     st.markdown(f"""
     <div class="metric-card {css_class}">
         <h4 style="margin:0; color: #d1d5db; font-size: 12px;">{title}</h4>
@@ -232,6 +233,14 @@ def render_similarity_card(title, data):
         <p style="margin:8px 0 0 0; color: #d1d5db; font-size: 10px;">{reason[:80]}</p>
     </div>
     """, unsafe_allow_html=True)
+    
+    # Show detailed breakdown in expander
+    with st.expander("📊 View Score Breakdown"):
+        for key, value in data.items():
+            if key not in ['final_score', 'band', 'reason'] and isinstance(value, (int, float)):
+                st.metric(key.replace('_', ' ').title(), f"{value:.1%}")
+            elif key not in ['final_score', 'band', 'reason']:
+                st.caption(f"**{key.replace('_', ' ').title()}:** {value}")
 
 def generate_serp_mockup(flow_data, serp_templates):
     keyword = flow_data.get('keyword_term', 'N/A')
@@ -239,43 +248,31 @@ def generate_serp_mockup(flow_data, serp_templates):
     ad_desc = flow_data.get('ad_description', 'N/A')
     ad_url = flow_data.get('ad_display_url', 'N/A')
     
-    if serp_templates and len(serp_templates) > 0:
-        try:
-            html = serp_templates[0].get('code', '')
-            
-            # Clean up the HTML - remove scripts and extra content
-            # Extract only the visible ad content
-            from bs4 import BeautifulSoup
-            soup = BeautifulSoup(html, 'html.parser')
-            
-            # Remove script tags
-            for script in soup.find_all('script'):
-                script.decompose()
-            
-            # Try to find the main content
-            main_content = soup.find('li', class_='annot1')
-            if main_content:
-                html = str(main_content)
-            else:
-                html = str(soup)
-            
-            # Replace placeholders with actual data
-            html = re.sub(r'Sponsored results for: "[^"]*"', f'Sponsored results for: "{keyword}"', html)
-            html = re.sub(r'<div class="url">[^<]*</div>', f'<div class="url">{ad_url}</div>', html, count=1)
-            html = re.sub(r'<div class="title">[^<]*</div>', f'<div class="title">{ad_title}</div>', html, count=1)
-            html = re.sub(r'<div class="desc">[^<]*</div>', f'<div class="desc">{ad_desc}</div>', html, count=1)
-            
-            # Wrap in proper container
-            return f'<div style="background: white; padding: 20px; border-radius: 8px; width: 100%; box-sizing: border-box;">{html}</div>'
-        except:
-            pass
-    
-    # Fallback simple template
-    return f"""<div style="background: white; padding: 20px; border-radius: 8px; width: 100%; box-sizing: border-box;">
-        <div style="color: #666; font-size: 12px; margin-bottom: 16px;">Sponsored: "{keyword}"</div>
-        <div style="color: #006621; font-size: 12px; margin-bottom: 8px;">{ad_url}</div>
-        <div style="margin-bottom: 8px;"><a href="#" style="color: #1a0dab; font-size: 18px; font-weight: 500; text-decoration: none;">{ad_title}</a></div>
-        <div style="color: #545454; font-size: 14px;">{ad_desc}</div></div>"""
+    # Always use simple fallback template for consistent rendering
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; background: white; }}
+            .search-result {{ max-width: 600px; }}
+            .sponsored {{ color: #666; font-size: 13px; margin-bottom: 8px; }}
+            .url {{ color: #006621; font-size: 14px; margin-bottom: 4px; }}
+            .title {{ color: #1a0dab; font-size: 20px; font-weight: normal; margin: 0 0 4px 0; text-decoration: none; }}
+            .title:hover {{ text-decoration: underline; }}
+            .desc {{ color: #545454; font-size: 14px; line-height: 1.4; }}
+        </style>
+    </head>
+    <body>
+        <div class="search-result">
+            <div class="sponsored">Sponsored • "{keyword}"</div>
+            <div class="url">{ad_url}</div>
+            <h3 class="title">{ad_title}</h3>
+            <div class="desc">{ad_desc}</div>
+        </div>
+    </body>
+    </html>
+    """
 
 # Auto-load
 if not st.session_state.loading_done:
@@ -425,15 +422,46 @@ if st.session_state.data_a is not None:
             st.subheader(f"🔗 URLs for: {st.session_state.selected_keyword}")
             
             keyword_urls = campaign_df[campaign_df['keyword_term'] == st.session_state.selected_keyword]
-            url_agg = keyword_urls.groupby('publisher_url').agg({'clicks': 'sum', 'conversions': 'sum'}).reset_index()
+            url_agg = keyword_urls.groupby('publisher_url').agg({
+                'clicks': 'sum', 
+                'conversions': 'sum',
+                'impressions': 'sum'
+            }).reset_index()
+            
+            # Calculate CTR and CVR for URLs
+            url_agg['ctr'] = url_agg.apply(lambda x: (x['clicks']/x['impressions']*100) if x['impressions']>0 else 0, axis=1)
+            url_agg['cvr'] = url_agg.apply(lambda x: (x['conversions']/x['clicks']*100) if x['clicks']>0 else 0, axis=1)
             url_agg = url_agg.sort_values('clicks', ascending=False).head(25)
-            url_agg['display'] = url_agg['publisher_url'].apply(lambda x: x[:70] + '...' if len(str(x)) > 70 else x)
             
-            display_url_df = url_agg[['display', 'clicks']].copy()
-            display_url_df.columns = ['Publisher URL', 'Clicks']
+            # Display with colors
+            display_url_df = url_agg.copy()
+            display_url_df['Publisher URL'] = display_url_df['publisher_url'].apply(lambda x: x[:60] + '...' if len(str(x)) > 60 else x)
+            display_url_df['Clicks'] = display_url_df['clicks'].apply(lambda x: f"{int(x):,}")
+            display_url_df['CTR %'] = display_url_df.apply(
+                lambda row: f"<span style='color: {'green' if row['ctr'] >= avg_ctr else 'red'}'>{row['ctr']:.2f}%</span>", 
+                axis=1
+            )
+            display_url_df['CVR %'] = display_url_df.apply(
+                lambda row: f"<span style='color: {'green' if row['cvr'] >= avg_cvr else 'red'}'>{row['cvr']:.2f}%</span>", 
+                axis=1
+            )
             
-            selected_url_idx = st.dataframe(display_url_df, use_container_width=True, hide_index=True,
-                                           on_select="rerun", selection_mode="single-row", key="url_table")
+            st.markdown(
+                display_url_df[['Publisher URL', 'Clicks', 'CTR %', 'CVR %']].to_html(escape=False, index=False), 
+                unsafe_allow_html=True
+            )
+            
+            st.write("")
+            
+            selected_url_idx = st.dataframe(
+                url_agg[['publisher_url', 'clicks']].reset_index(drop=True), 
+                use_container_width=True, hide_index=True,
+                on_select="rerun", selection_mode="single-row", key="url_table",
+                column_config={
+                    "publisher_url": "Select Publisher URL",
+                    "clicks": st.column_config.NumberColumn("Clicks", format="%d")
+                }
+            )
             
             if selected_url_idx and len(selected_url_idx['selection']['rows']) > 0:
                 idx = selected_url_idx['selection']['rows'][0]
@@ -519,8 +547,7 @@ if st.session_state.data_a is not None:
                     
                     st.components.v1.html(render_html, height=scaled_h + 50, scrolling=False)
                     
-                    # Add fullscreen link (use simple HTML instead of data URL)
-                    st.markdown('<a href="#" onclick="window.open(\'\',\'_blank\',\'width=800,height=900\').document.write(document.querySelector(\'iframe\').contentDocument.documentElement.outerHTML)" class="fullscreen-link">🔍 View Fullscreen</a>', unsafe_allow_html=True)
+                    # Removed - using button below card instead
                 
                 with card1_right:
                     st.markdown("**Keyword → Ad**")
@@ -558,28 +585,28 @@ if st.session_state.data_a is not None:
                         scaled_w = int(device_w * scale)
                         scaled_h = int(device_h * scale)
                         
-                        # Many sites block iframes, so show a message
-                        iframe_html = f"""
+                        # Try to take screenshot using an external service
+                        screenshot_url = f"https://api.screenshotone.com/take?url={dest_url}&viewport_width={device_w}&viewport_height={device_h}&format=jpg&block_cookie_banners=true&block_chats=true"
+                        
+                        # Show iframe with fallback to screenshot
+                        render_html = f"""
                         <div style="display: flex; justify-content: center; align-items: flex-start; padding: 20px; background: #1f2937; border-radius: 8px;">
-                            <div style="position: relative; box-shadow:0 4px 20px rgba(0,0,0,0.5);">
-                                <iframe src="{dest_url}" width="{scaled_w}" height="{scaled_h}" 
+                            <div style="box-shadow:0 4px 20px rgba(0,0,0,0.5); background: white;">
+                                <iframe src="{dest_url}" 
+                                        width="{scaled_w}" 
+                                        height="{scaled_h}" 
                                         style="border:none; background:white;"
-                                        sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-                                        onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                        sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
                                 </iframe>
-                                <div style="display:none; width:{scaled_w}px; height:{scaled_h}px; background:white; padding:40px; text-align:center;">
-                                    <h3 style="color:#ef4444;">⚠️ Site Blocked Iframe</h3>
-                                    <p style="color:#666;">This website doesn't allow embedding. Click the button below to open it.</p>
-                                </div>
                             </div>
                         </div>
                         """
-                        st.components.v1.html(iframe_html, height=scaled_h + 50, scrolling=False)
+                        st.components.v1.html(render_html, height=scaled_h + 50, scrolling=False)
                         
-                        st.info("⚠️ If the page is blank above, the site blocks embedding. Click below:")
+                        st.info("💡 If blank, site blocks embedding")
                         st.markdown(f'<a href="{dest_url}" target="_blank" class="fullscreen-link">🔗 Open Landing Page in New Tab</a>', unsafe_allow_html=True)
                     else:
-                        st.warning("⚠️ No URL available")
+                        st.warning("⚠️ No landing page URL available")
                 
                 with card2_right:
                     # Display Landing Page URL
