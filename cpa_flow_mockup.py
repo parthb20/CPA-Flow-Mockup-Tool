@@ -508,7 +508,7 @@ def render_similarity_card(title, data, explanation, calculation_details):
                 st.caption(f"**{key.replace('_', ' ').title()}:** {value}")
 
 def generate_serp_mockup(flow_data, serp_templates):
-    """Generate SERP HTML - remove min-height that causes layout issues"""
+    """Generate SERP HTML - fix layout for iframe display"""
     keyword = flow_data.get('keyword_term', 'N/A')
     ad_title = flow_data.get('ad_title', 'N/A')
     ad_desc = flow_data.get('ad_description', 'N/A')
@@ -518,9 +518,19 @@ def generate_serp_mockup(flow_data, serp_templates):
         try:
             html = serp_templates[0].get('code', '')
             
-            # CRITICAL FIX: Remove min-height that forces full-screen layout
-            # This line causes the CTA to be positioned at bottom of viewport
+            # CRITICAL FIXES for iframe display:
+            
+            # 1. Remove min-height (causes full-screen layout)
             html = re.sub(r'min-height\s*:\s*calc\([^)]+\)\s*;?', '', html, flags=re.IGNORECASE)
+            html = re.sub(r'min-height\s*:\s*\d+[a-z]+\s*;?', '', html, flags=re.IGNORECASE)
+            
+            # 2. Change justify-content from space-between to flex-start
+            # This stops the CTA from being pushed to bottom
+            html = html.replace('justify-content: space-between', 'justify-content: flex-start')
+            html = html.replace('justify-content:space-between', 'justify-content:flex-start')
+            
+            # 3. Remove flex-grow that expands content
+            html = re.sub(r'flex-grow\s*:\s*\d+\s*;?', '', html, flags=re.IGNORECASE)
             
             # Replace keyword
             html = re.sub(
@@ -538,10 +548,9 @@ def generate_serp_mockup(flow_data, serp_templates):
         except Exception as e:
             st.error(f"Error: {str(e)}")
     
-    return ""  # fallback
-
-
-def render_device_preview(content, device):
+    return ""
+    
+    def render_device_preview(content, device):
     """Simple rendering - mobile gets taller iframe for CTA"""
     # Device widths
     dims = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
@@ -937,6 +946,7 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+
 
 
 
