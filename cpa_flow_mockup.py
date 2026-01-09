@@ -289,7 +289,7 @@ def render_similarity_card(title, data):
     <div class="metric-card {css_class}">
         <h4 style="margin:0; color: #d1d5db; font-size: 12px;">{title}</h4>
         <h2 style="margin: 8px 0; color: {color};">{score:.1%}</h2>
-        <p style="margin:0; color: #9ca3af; font-size: 11px;">{band.UPPER()}</p>
+        <p style="margin:0; color: #9ca3af; font-size: 11px;">{band.upper()}</p>
         <p style="margin:8px 0 0 0; color: #d1d5db; font-size: 10px;">{reason[:80]}</p>
     </div>
     """, unsafe_allow_html=True)
@@ -751,3 +751,4 @@ if st.session_state.data_a is not None:
                     st.warning("No flows found")
 else:
     st.error("❌ Failed to load data")
+
