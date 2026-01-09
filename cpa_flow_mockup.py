@@ -28,21 +28,21 @@ st.markdown("""
     .similarity-moderate { border-color: #eab308; background: rgba(234, 179, 8, 0.1); }
     .similarity-poor { border-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
     .render-container {
-        display: flex; justify-content: center; align-items: center;
-        padding: 20px; background: #1f2937; border-radius: 8px;
-        height: 500px; overflow: hidden; position: relative;
-    }
-    .render-container-expanded {
-        display: flex; justify-content: center; align-items: center;
-        padding: 20px; background: #1f2937; border-radius: 8px;
-        height: 90vh; overflow: auto; position: relative;
+        display: flex; 
+        justify-content: center; 
+        align-items: center;
+        padding: 20px; 
+        background: #1f2937; 
+        border-radius: 8px;
+        height: 600px; 
+        overflow: hidden; 
+        position: relative;
     }
     .device-frame {
         box-shadow: 0 8px 32px rgba(0,0,0,0.6);
         border-radius: 8px;
         overflow: hidden;
         background: white;
-        transform-origin: center center;
     }
     .info-box {
         background: #1f2937; padding: 12px; border-radius: 5px; 
@@ -67,7 +67,7 @@ except Exception as e:
 # Session state
 for key in ['data_a', 'data_b', 'selected_keyword', 'selected_url', 'flows', 
             'flow_index', 'similarities', 'loading_done', 'zoom1', 'zoom2', 'screenshot_cache',
-            'expanded_serp', 'expanded_landing']:
+            'show_serp_modal', 'show_landing_modal']:
     if key not in st.session_state:
         if key == 'flows':
             st.session_state[key] = []
@@ -79,7 +79,7 @@ for key in ['data_a', 'data_b', 'selected_keyword', 'selected_url', 'flows',
             st.session_state[key] = False
         elif key == 'screenshot_cache':
             st.session_state[key] = {}
-        elif key in ['expanded_serp', 'expanded_landing']:
+        elif key in ['show_serp_modal', 'show_landing_modal']:
             st.session_state[key] = False
         else:
             st.session_state[key] = None
@@ -289,7 +289,7 @@ def render_similarity_card(title, data):
     <div class="metric-card {css_class}">
         <h4 style="margin:0; color: #d1d5db; font-size: 12px;">{title}</h4>
         <h2 style="margin: 8px 0; color: {color};">{score:.1%}</h2>
-        <p style="margin:0; color: #9ca3af; font-size: 11px;">{band.upper()}</p>
+        <p style="margin:0; color: #9ca3af; font-size: 11px;">{band.UPPER()}</p>
         <p style="margin:8px 0 0 0; color: #d1d5db; font-size: 10px;">{reason[:80]}</p>
     </div>
     """, unsafe_allow_html=True)
@@ -336,19 +336,18 @@ body {{ margin: 0; padding: 40px 20px; font-family: Arial, sans-serif; backgroun
 </div>
 </body></html>"""
 
-def render_device_preview(content, device, zoom, is_iframe=False, url="", is_expanded=False):
-    """Render with proper fit-to-container scaling"""
+def render_device_preview(content, device, zoom, is_iframe=False, url=""):
+    """Render with proper centered scaling based on device"""
     dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
     device_w, device_h = dims[device]
     
-    # Container dimensions
-    container_h = 850 if is_expanded else 460
-    max_container_w = 900
-    
-    # Calculate scale to fit container
-    scale_w = max_container_w / device_w
-    scale_h = container_h / device_h
-    base_scale = min(scale_w, scale_h) * 0.9  # 90% of max to add padding
+    # Device-specific scaling for better UX
+    if device == 'mobile':
+        base_scale = 0.55  # Smaller for mobile so it fits completely
+    elif device == 'tablet':
+        base_scale = 0.75  # Medium size for tablet
+    else:  # laptop
+        base_scale = 0.65  # Larger for laptop for readability
     
     # Apply user zoom on top of base scale
     final_scale = base_scale * (zoom / 100)
@@ -362,18 +361,16 @@ def render_device_preview(content, device, zoom, is_iframe=False, url="", is_exp
     else:
         inner_content = content
     
-    container_class = "render-container-expanded" if is_expanded else "render-container"
-    
     html = f"""
-    <div class="{container_class}">
-        <div class="device-frame" style="width:{final_w}px; height:{final_h}px;">
+    <div class="render-container">
+        <div class="device-frame" style="width:{final_w}px; height:{final_h}px; margin:auto;">
             <div style="width:{device_w}px; height:{device_h}px; transform:scale({final_scale}); transform-origin:top left;">
                 {inner_content}
             </div>
         </div>
     </div>
     """
-    return html, container_h + 40
+    return html, 640
 
 # Auto-load data
 if not st.session_state.loading_done:
@@ -563,84 +560,100 @@ if st.session_state.data_a is not None:
                     
                     # Card 1: SERP
                     st.subheader("📄 Card 1: Search Results")
+                    card1_left, card1_right = st.columns([7, 3])
                     
-                    # Check if expanded view
-                    if st.session_state.expanded_serp:
-                        if st.button("✕ Close Expanded View", key="close_serp"):
-                            st.session_state.expanded_serp = False
-                            st.rerun()
-                        
-                        st.markdown("---")
-                        ctrl_cols = st.columns([1, 1, 1, 5])
-                        if ctrl_cols[0].button("➖", key="z1m_exp"):
+                    with card1_left:
+                        ctrl_cols = st.columns([1, 1, 1, 4, 1])
+                        if ctrl_cols[0].button("➖", key="z1m"):
                             st.session_state.zoom1 = max(30, st.session_state.zoom1 - 10)
                             st.rerun()
-                        if ctrl_cols[1].button("➕", key="z1p_exp"):
+                        if ctrl_cols[1].button("➕", key="z1p"):
                             st.session_state.zoom1 = min(200, st.session_state.zoom1 + 10)
                             st.rerun()
                         ctrl_cols[2].caption(f"{st.session_state.zoom1}%")
+                        if ctrl_cols[4].button("⛶ Expand", key="exp_serp"):
+                            st.session_state.show_serp_modal = True
+                            st.rerun()
                         
-                        device1 = st.radio("Device", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev1_exp', index=0)
+                        device1 = st.radio("Device", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev1', index=0)
                         serp_html = generate_serp_mockup(current_flow, st.session_state.data_b)
-                        preview_html, height = render_device_preview(serp_html, device1, st.session_state.zoom1, is_expanded=True)
+                        preview_html, height = render_device_preview(serp_html, device1, st.session_state.zoom1)
                         st.components.v1.html(preview_html, height=height, scrolling=False)
-                    else:
-                        card1_left, card1_right = st.columns([7, 3])
+                    
+                    with card1_right:
+                        st.markdown(f"""
+                        <div class="info-box">
+                            <div class="info-label">Keyword:</div> {current_flow.get('keyword_term', 'N/A')}<br><br>
+                            <div class="info-label">Ad Title:</div> {current_flow.get('ad_title', 'N/A')}<br><br>
+                            <div class="info-label">Description:</div> {current_flow.get('ad_description', 'N/A')[:100]}<br><br>
+                            <div class="info-label">Display URL:</div> {current_flow.get('ad_display_url', 'N/A')}
+                        </div>
+                        """, unsafe_allow_html=True)
                         
-                        with card1_left:
-                            ctrl_cols = st.columns([1, 1, 1, 4, 1])
-                            if ctrl_cols[0].button("➖", key="z1m"):
+                        st.markdown("**Keyword → Ad Match**")
+                        if st.session_state.similarities:
+                            render_similarity_card("Match Score", st.session_state.similarities.get('kwd_to_ad'))
+                    
+                    # SERP Modal
+                    if st.session_state.show_serp_modal:
+                        @st.dialog("Search Results Preview", width="large")
+                        def show_serp_popup():
+                            ctrl_cols = st.columns([1, 1, 1, 6])
+                            if ctrl_cols[0].button("➖", key="z1m_modal"):
                                 st.session_state.zoom1 = max(30, st.session_state.zoom1 - 10)
                                 st.rerun()
-                            if ctrl_cols[1].button("➕", key="z1p"):
+                            if ctrl_cols[1].button("➕", key="z1p_modal"):
                                 st.session_state.zoom1 = min(200, st.session_state.zoom1 + 10)
                                 st.rerun()
                             ctrl_cols[2].caption(f"{st.session_state.zoom1}%")
-                            if ctrl_cols[4].button("⛶ Expand", key="exp_serp"):
-                                st.session_state.expanded_serp = True
-                                st.rerun()
                             
-                            device1 = st.radio("Device", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev1', index=0)
-                            serp_html = generate_serp_mockup(current_flow, st.session_state.data_b)
-                            preview_html, height = render_device_preview(serp_html, device1, st.session_state.zoom1)
-                            st.components.v1.html(preview_html, height=height, scrolling=False)
-                        
-                        with card1_right:
-                            st.markdown(f"""
-                            <div class="info-box">
-                                <div class="info-label">Keyword:</div> {current_flow.get('keyword_term', 'N/A')}<br><br>
-                                <div class="info-label">Ad Title:</div> {current_flow.get('ad_title', 'N/A')}<br><br>
-                                <div class="info-label">Description:</div> {current_flow.get('ad_description', 'N/A')[:100]}<br><br>
-                                <div class="info-label">Display URL:</div> {current_flow.get('ad_display_url', 'N/A')}
+                            device_modal = st.radio("Device", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev1_modal', index=0)
+                            serp_html_modal = generate_serp_mockup(current_flow, st.session_state.data_b)
+                            
+                            # Larger scale for modal
+                            dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
+                            device_w, device_h = dims[device_modal]
+                            modal_scale = 0.9 * (st.session_state.zoom1 / 100)
+                            final_w = int(device_w * modal_scale)
+                            final_h = int(device_h * modal_scale)
+                            
+                            modal_html = f"""
+                            <div style="display:flex; justify-content:center; align-items:center; padding:20px; background:#1f2937; border-radius:8px; min-height:700px;">
+                                <div style="box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius:8px; overflow:hidden; background:white; width:{final_w}px; height:{final_h}px;">
+                                    <div style="width:{device_w}px; height:{device_h}px; transform:scale({modal_scale}); transform-origin:top left;">
+                                        {serp_html_modal}
+                                    </div>
+                                </div>
                             </div>
-                            """, unsafe_allow_html=True)
+                            """
+                            st.components.v1.html(modal_html, height=final_h + 100, scrolling=True)
                             
-                            st.markdown("**Keyword → Ad Match**")
-                            if st.session_state.similarities:
-                                render_similarity_card("Match Score", st.session_state.similarities.get('kwd_to_ad'))
+                            if st.button("Close", key="close_serp_modal"):
+                                st.session_state.show_serp_modal = False
+                                st.rerun()
+                        
+                        show_serp_popup()
                     
                     st.divider()
                     
                     # Card 2: Landing Page
                     st.subheader("🌐 Card 2: Landing Page")
+                    card2_left, card2_right = st.columns([7, 3])
                     
-                    # Check if expanded view
-                    if st.session_state.expanded_landing:
-                        if st.button("✕ Close Expanded View", key="close_landing"):
-                            st.session_state.expanded_landing = False
-                            st.rerun()
-                        
-                        st.markdown("---")
-                        ctrl_cols = st.columns([1, 1, 1, 5])
-                        if ctrl_cols[0].button("➖", key="z2m_exp"):
+                    with card2_left:
+                        ctrl_cols = st.columns([1, 1, 1, 4, 1])
+                        if ctrl_cols[0].button("➖", key="z2m"):
                             st.session_state.zoom2 = max(30, st.session_state.zoom2 - 10)
                             st.rerun()
-                        if ctrl_cols[1].button("➕", key="z2p_exp"):
+                        if ctrl_cols[1].button("➕", key="z2p"):
                             st.session_state.zoom2 = min(200, st.session_state.zoom2 + 10)
                             st.rerun()
                         ctrl_cols[2].caption(f"{st.session_state.zoom2}%")
+                        if ctrl_cols[4].button("⛶ Expand", key="exp_landing"):
+                            st.session_state.show_landing_modal = True
+                            st.rerun()
                         
-                        device2 = st.radio("Device", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev2_exp', index=0)
+                        device2 = st.radio("Device", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev2', index=0)
                         dest_url = current_flow.get('reporting_destination_url', '')
                         
                         if dest_url and pd.notna(dest_url) and str(dest_url).lower() != 'null':
@@ -651,88 +664,89 @@ if st.session_state.data_a is not None:
                                 dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
                                 device_w, device_h = dims[device2]
                                 
-                                container_h = 850
-                                scale = (container_h / device_h) * 0.9 * (st.session_state.zoom2 / 100)
-                                final_w = int(device_w * scale)
-                                final_h = int(device_h * scale)
+                                if device2 == 'mobile':
+                                    base_scale = 0.55
+                                elif device2 == 'tablet':
+                                    base_scale = 0.75
+                                else:
+                                    base_scale = 0.65
+                                
+                                final_scale = base_scale * (st.session_state.zoom2 / 100)
+                                final_w = int(device_w * final_scale)
+                                final_h = int(device_h * final_scale)
                                 
                                 img_html = f"""
-                                <div class="render-container-expanded">
-                                    <div class="device-frame" style="width:{final_w}px; height:{final_h}px;">
+                                <div class="render-container">
+                                    <div class="device-frame" style="width:{final_w}px; height:{final_h}px; margin:auto;">
                                         <img src="data:image/jpeg;base64,{screenshot}" 
                                              style="width:100%; height:100%; object-fit:contain;">
                                     </div>
                                 </div>
                                 """
-                                st.components.v1.html(img_html, height=890, scrolling=False)
+                                st.components.v1.html(img_html, height=640, scrolling=False)
                             else:
-                                preview_html, height = render_device_preview("", device2, st.session_state.zoom2, is_iframe=True, url=dest_url, is_expanded=True)
+                                preview_html, height = render_device_preview("", device2, st.session_state.zoom2, is_iframe=True, url=dest_url)
                                 st.components.v1.html(preview_html, height=height, scrolling=False)
                         else:
                             st.warning("⚠️ No landing page URL available")
-                    else:
-                        card2_left, card2_right = st.columns([7, 3])
+                    
+                    with card2_right:
+                        dest_url = current_flow.get('reporting_destination_url', 'N/A')
+                        st.markdown(f"""
+                        <div class="info-box">
+                            <div class="info-label">Landing Page:</div><br>
+                            {dest_url[:80]}...
+                        </div>
+                        """, unsafe_allow_html=True)
                         
-                        with card2_left:
-                            ctrl_cols = st.columns([1, 1, 1, 4, 1])
-                            if ctrl_cols[0].button("➖", key="z2m"):
+                        st.markdown("**Keyword → Page Match**")
+                        if st.session_state.similarities:
+                            render_similarity_card("Match Score", st.session_state.similarities.get('kwd_to_page'))
+                        
+                        st.markdown("**Ad → Page Match**")
+                        if st.session_state.similarities:
+                            render_similarity_card("Match Score", st.session_state.similarities.get('ad_to_page'))
+                    
+                    # Landing Page Modal
+                    if st.session_state.show_landing_modal:
+                        @st.dialog("Landing Page Preview", width="large")
+                        def show_landing_popup():
+                            ctrl_cols = st.columns([1, 1, 1, 6])
+                            if ctrl_cols[0].button("➖", key="z2m_modal"):
                                 st.session_state.zoom2 = max(30, st.session_state.zoom2 - 10)
                                 st.rerun()
-                            if ctrl_cols[1].button("➕", key="z2p"):
+                            if ctrl_cols[1].button("➕", key="z2p_modal"):
                                 st.session_state.zoom2 = min(200, st.session_state.zoom2 + 10)
                                 st.rerun()
                             ctrl_cols[2].caption(f"{st.session_state.zoom2}%")
-                            if ctrl_cols[4].button("⛶ Expand", key="exp_landing"):
-                                st.session_state.expanded_landing = True
-                                st.rerun()
                             
-                            device2 = st.radio("Device", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev2', index=0)
-                            dest_url = current_flow.get('reporting_destination_url', '')
+                            device_modal = st.radio("Device", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev2_modal', index=0)
+                            dest_url_modal = current_flow.get('reporting_destination_url', '')
                             
-                            if dest_url and pd.notna(dest_url) and str(dest_url).lower() != 'null':
-                                with st.spinner("Loading page..."):
-                                    screenshot = get_screenshot(dest_url)
+                            if dest_url_modal and pd.notna(dest_url_modal) and str(dest_url_modal).lower() != 'null':
+                                screenshot_modal = get_screenshot(dest_url_modal)
                                 
-                                if screenshot:
+                                if screenshot_modal:
                                     dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
-                                    device_w, device_h = dims[device2]
+                                    device_w, device_h = dims[device_modal]
+                                    modal_scale = 0.9 * (st.session_state.zoom2 / 100)
+                                    final_w = int(device_w * modal_scale)
+                                    final_h = int(device_h * modal_scale)
                                     
-                                    container_h = 460
-                                    scale = (container_h / device_h) * 0.9 * (st.session_state.zoom2 / 100)
-                                    final_w = int(device_w * scale)
-                                    final_h = int(device_h * scale)
-                                    
-                                    img_html = f"""
-                                    <div class="render-container">
-                                        <div class="device-frame" style="width:{final_w}px; height:{final_h}px;">
-                                            <img src="data:image/jpeg;base64,{screenshot}" 
-                                                 style="width:100%; height:100%; object-fit:contain;">
+                                    modal_html = f"""
+                                    <div style="display:flex; justify-content:center; align-items:center; padding:20px; background:#1f2937; border-radius:8px; min-height:700px;">
+                                        <div style="box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius:8px; overflow:hidden; background:white; width:{final_w}px; height:{final_h}px;">
+                                            <img src="data:image/jpeg;base64,{screenshot_modal}" style="width:100%; height:100%; object-fit:contain;">
                                         </div>
                                     </div>
                                     """
-                                    st.components.v1.html(img_html, height=500, scrolling=False)
-                                else:
-                                    preview_html, height = render_device_preview("", device2, st.session_state.zoom2, is_iframe=True, url=dest_url)
-                                    st.components.v1.html(preview_html, height=height, scrolling=False)
-                            else:
-                                st.warning("⚠️ No landing page URL available")
+                                    st.components.v1.html(modal_html, height=final_h + 100, scrolling=True)
+                            
+                            if st.button("Close", key="close_landing_modal"):
+                                st.session_state.show_landing_modal = False
+                                st.rerun()
                         
-                        with card2_right:
-                            dest_url = current_flow.get('reporting_destination_url', 'N/A')
-                            st.markdown(f"""
-                            <div class="info-box">
-                                <div class="info-label">Landing Page:</div><br>
-                                {dest_url[:80]}...
-                            </div>
-                            """, unsafe_allow_html=True)
-                            
-                            st.markdown("**Keyword → Page Match**")
-                            if st.session_state.similarities:
-                                render_similarity_card("Match Score", st.session_state.similarities.get('kwd_to_page'))
-                            
-                            st.markdown("**Ad → Page Match**")
-                            if st.session_state.similarities:
-                                render_similarity_card("Match Score", st.session_state.similarities.get('ad_to_page'))
+                        show_landing_popup()
                 else:
                     st.warning("No flows found")
 else:
