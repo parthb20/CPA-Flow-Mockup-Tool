@@ -146,6 +146,12 @@ def get_quadrant(ctr, cvr, avg_ctr, avg_cvr):
 import json, re
 
 def call_similarity_api(prompt):
+    if not API_KEY:
+        return {
+            "error": True,
+            "status_code": "no_api_key",
+            "body": "FASTROUTER_API_KEY not found in Streamlit secrets"
+        }
     response = requests.post(
         "https://go.fastrouter.ai/api/v1/chat/completions",
         headers={
@@ -259,11 +265,16 @@ def render_similarity_card(title, data):
     
     # Check for API errors
     if "error" in data:
-        if data["error"] == "no_api_key":
-            st.error(f"{title}: Add FASTROUTER_API_KEY or ANTHROPIC_API_KEY to secrets")
+        if data.get("status_code") == "no_api_key":
+            st.error(f"{title}: Add FASTROUTER_API_KEY to secrets")
         else:
-            st.error(f"{title}: API failed - {data.get('message', 'Unknown')}")
-        return
+            st.error(f"{title}: API failed")
+            st.code({
+                "status_code": data.get("status_code"),
+                "body": data.get("body")
+            })
+            return
+
     
     score = data.get('final_score', 0)
     band = data.get('band', 'unknown')
@@ -532,10 +543,13 @@ if st.session_state.data_a is not None:
                     
                     current_flow = st.session_state.flows[st.session_state.flow_index]
                     
-                    if not st.session_state.similarities and API_KEY:
-                        with st.spinner("Analyzing..."):
-                            st.session_state.similarities = calculate_similarities(current_flow)
-                    
+                    if not st.session_state.similarities:
+                        if not API_KEY:
+                            st.warning("⚠️ FASTROUTER_API_KEY not set in secrets.")
+                        else:
+                            with st.spinner("Analyzing..."):
+                                st.session_state.similarities = calculate_similarities(current_flow)
+
                     st.divider()
                     
                     # Card 1: SERP
