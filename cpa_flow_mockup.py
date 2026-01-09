@@ -27,23 +27,6 @@ st.markdown("""
     .similarity-good { border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
     .similarity-moderate { border-color: #eab308; background: rgba(234, 179, 8, 0.1); }
     .similarity-poor { border-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
-    .render-container {
-        display: flex; 
-        justify-content: center; 
-        align-items: center;
-        padding: 20px; 
-        background: #1f2937; 
-        border-radius: 8px;
-        height: 600px; 
-        overflow: hidden; 
-        position: relative;
-    }
-    .device-frame {
-        box-shadow: 0 8px 32px rgba(0,0,0,0.6);
-        border-radius: 8px;
-        overflow: hidden;
-        background: white;
-    }
     .info-box {
         background: #1f2937; padding: 12px; border-radius: 5px; 
         color: #d1d5db; font-size: 12px; margin: 10px 0;
@@ -66,8 +49,7 @@ except Exception as e:
 
 # Session state
 for key in ['data_a', 'data_b', 'selected_keyword', 'selected_url', 'flows', 
-            'flow_index', 'similarities', 'loading_done', 'zoom1', 'zoom2', 'screenshot_cache',
-            'show_serp_modal', 'show_landing_modal']:
+            'flow_index', 'similarities', 'loading_done', 'zoom1', 'zoom2', 'screenshot_cache']:
     if key not in st.session_state:
         if key == 'flows':
             st.session_state[key] = []
@@ -79,8 +61,6 @@ for key in ['data_a', 'data_b', 'selected_keyword', 'selected_url', 'flows',
             st.session_state[key] = False
         elif key == 'screenshot_cache':
             st.session_state[key] = {}
-        elif key in ['show_serp_modal', 'show_landing_modal']:
-            st.session_state[key] = False
         else:
             st.session_state[key] = None
 
@@ -142,8 +122,6 @@ def get_quadrant(ctr, cvr, avg_ctr, avg_cvr):
         return 'Niche', '#3b82f6'
     else:
         return 'Underperforming', '#ef4444'
-
-import json, re
 
 def call_similarity_api(prompt):
     if not API_KEY:
@@ -337,47 +315,33 @@ body {{ margin: 0; padding: 40px 20px; font-family: Arial, sans-serif; backgroun
 </body></html>"""
 
 def render_device_preview(content, device, zoom, is_iframe=False, url=""):
-    """Render with proper centered scaling based on device"""
+    """Simple, clean rendering that actually works"""
     dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
     device_w, device_h = dims[device]
     
-    # Container size
-    container_w = 1200
-    container_h = 550
-    
-    # Calculate scale to fit nicely in container
+    # Simple scale calculation
     if device == 'mobile':
-        target_display_h = 450  # Target display height for mobile
+        scale = 0.60
     elif device == 'tablet':
-        target_display_h = 480
+        scale = 0.50
     else:  # laptop
-        target_display_h = 500
+        scale = 0.45
     
-    base_scale = target_display_h / device_h
-    
-    # Apply user zoom
-    final_scale = base_scale * (zoom / 100)
-    
-    # Calculate final display dimensions
-    display_w = int(device_w * final_scale)
-    display_h = int(device_h * final_scale)
+    scale = scale * (zoom / 100)
     
     if is_iframe:
-        inner_content = f'<iframe src="{url}" width="{device_w}" height="{device_h}" style="border:none; background:white;" sandbox="allow-same-origin allow-scripts allow-popups allow-forms"></iframe>'
-    else:
-        inner_content = content
+        content = f'<iframe src="{url}" width="100%" height="100%" style="border:none;" sandbox="allow-same-origin allow-scripts allow-popups allow-forms"></iframe>'
     
     html = f"""
-    <div style="display: flex; justify-content: center; align-items: center; padding: 20px; background: #1f2937; border-radius: 8px; height: {container_h}px; overflow: hidden;">
-        <div style="box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius: 8px; overflow: hidden; background: white;">
-            <div style="width: {device_w}px; height: {device_h}px; transform: scale({final_scale}); transform-origin: top left;">
-                {inner_content}
-            </div>
+    <div style="display: flex; justify-content: center; align-items: center; background: #1f2937; border-radius: 8px; padding: 20px; min-height: 500px;">
+        <div style="width: {device_w}px; height: {device_h}px; transform: scale({scale}); box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius: 8px; overflow: auto; background: white;">
+            {content}
         </div>
     </div>
     """
-    return html, container_h + 40
-    # Auto-load data
+    return html, 580
+
+# Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
         st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
@@ -568,7 +532,7 @@ if st.session_state.data_a is not None:
                     card1_left, card1_right = st.columns([7, 3])
                     
                     with card1_left:
-                        ctrl_cols = st.columns([1, 1, 1, 4, 1])
+                        ctrl_cols = st.columns([1, 1, 1, 6])
                         if ctrl_cols[0].button("➖", key="z1m"):
                             st.session_state.zoom1 = max(30, st.session_state.zoom1 - 10)
                             st.rerun()
@@ -576,9 +540,6 @@ if st.session_state.data_a is not None:
                             st.session_state.zoom1 = min(200, st.session_state.zoom1 + 10)
                             st.rerun()
                         ctrl_cols[2].caption(f"{st.session_state.zoom1}%")
-                        if ctrl_cols[4].button("⛶ Expand", key="exp_serp"):
-                            st.session_state.show_serp_modal = True
-                            st.rerun()
                         
                         device1 = st.radio("Device", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev1', index=0)
                         serp_html = generate_serp_mockup(current_flow, st.session_state.data_b)
@@ -599,46 +560,6 @@ if st.session_state.data_a is not None:
                         if st.session_state.similarities:
                             render_similarity_card("Match Score", st.session_state.similarities.get('kwd_to_ad'))
                     
-                    # SERP Modal
-                    if st.session_state.show_serp_modal:
-                        @st.dialog("Search Results Preview", width="large")
-                        def show_serp_popup():
-                            ctrl_cols = st.columns([1, 1, 1, 6])
-                            if ctrl_cols[0].button("➖", key="z1m_modal"):
-                                st.session_state.zoom1 = max(30, st.session_state.zoom1 - 10)
-                                st.rerun()
-                            if ctrl_cols[1].button("➕", key="z1p_modal"):
-                                st.session_state.zoom1 = min(200, st.session_state.zoom1 + 10)
-                                st.rerun()
-                            ctrl_cols[2].caption(f"{st.session_state.zoom1}%")
-                            
-                            device_modal = st.radio("Device", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev1_modal', index=0)
-                            serp_html_modal = generate_serp_mockup(current_flow, st.session_state.data_b)
-                            
-                            # Larger scale for modal
-                            dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
-                            device_w, device_h = dims[device_modal]
-                            modal_scale = 0.9 * (st.session_state.zoom1 / 100)
-                            final_w = int(device_w * modal_scale)
-                            final_h = int(device_h * modal_scale)
-                            
-                            modal_html = f"""
-                            <div style="display:flex; justify-content:center; align-items:center; padding:20px; background:#1f2937; border-radius:8px; min-height:700px;">
-                                <div style="box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius:8px; overflow:hidden; background:white; width:{final_w}px; height:{final_h}px;">
-                                    <div style="width:{device_w}px; height:{device_h}px; transform:scale({modal_scale}); transform-origin:top left;">
-                                        {serp_html_modal}
-                                    </div>
-                                </div>
-                            </div>
-                            """
-                            st.components.v1.html(modal_html, height=final_h + 100, scrolling=True)
-                            
-                            if st.button("Close", key="close_serp_modal"):
-                                st.session_state.show_serp_modal = False
-                                st.rerun()
-                        
-                        show_serp_popup()
-                    
                     st.divider()
                     
                     # Card 2: Landing Page
@@ -646,7 +567,7 @@ if st.session_state.data_a is not None:
                     card2_left, card2_right = st.columns([7, 3])
                     
                     with card2_left:
-                        ctrl_cols = st.columns([1, 1, 1, 4, 1])
+                        ctrl_cols = st.columns([1, 1, 1, 6])
                         if ctrl_cols[0].button("➖", key="z2m"):
                             st.session_state.zoom2 = max(30, st.session_state.zoom2 - 10)
                             st.rerun()
@@ -654,9 +575,6 @@ if st.session_state.data_a is not None:
                             st.session_state.zoom2 = min(200, st.session_state.zoom2 + 10)
                             st.rerun()
                         ctrl_cols[2].caption(f"{st.session_state.zoom2}%")
-                        if ctrl_cols[4].button("⛶ Expand", key="exp_landing"):
-                            st.session_state.show_landing_modal = True
-                            st.rerun()
                         
                         device2 = st.radio("Device", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev2', index=0)
                         dest_url = current_flow.get('reporting_destination_url', '')
@@ -670,25 +588,22 @@ if st.session_state.data_a is not None:
                                 device_w, device_h = dims[device2]
                                 
                                 if device2 == 'mobile':
-                                    base_scale = 0.55
+                                    scale = 0.60
                                 elif device2 == 'tablet':
-                                    base_scale = 0.75
+                                    scale = 0.50
                                 else:
-                                    base_scale = 0.65
+                                    scale = 0.45
                                 
-                                final_scale = base_scale * (st.session_state.zoom2 / 100)
-                                final_w = int(device_w * final_scale)
-                                final_h = int(device_h * final_scale)
+                                scale = scale * (st.session_state.zoom2 / 100)
                                 
                                 img_html = f"""
-                                <div class="render-container">
-                                    <div class="device-frame" style="width:{final_w}px; height:{final_h}px; margin:auto;">
-                                        <img src="data:image/jpeg;base64,{screenshot}" 
-                                             style="width:100%; height:100%; object-fit:contain;">
+                                <div style="display: flex; justify-content: center; align-items: center; background: #1f2937; border-radius: 8px; padding: 20px; min-height: 500px;">
+                                    <div style="width: {device_w}px; height: {device_h}px; transform: scale({scale}); box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius: 8px; overflow: auto; background: white;">
+                                        <img src="data:image/jpeg;base64,{screenshot}" style="width: 100%; height: 100%; object-fit: contain;">
                                     </div>
                                 </div>
                                 """
-                                st.components.v1.html(img_html, height=640, scrolling=False)
+                                st.components.v1.html(img_html, height=580, scrolling=False)
                             else:
                                 preview_html, height = render_device_preview("", device2, st.session_state.zoom2, is_iframe=True, url=dest_url)
                                 st.components.v1.html(preview_html, height=height, scrolling=False)
@@ -711,51 +626,7 @@ if st.session_state.data_a is not None:
                         st.markdown("**Ad → Page Match**")
                         if st.session_state.similarities:
                             render_similarity_card("Match Score", st.session_state.similarities.get('ad_to_page'))
-                    
-                    # Landing Page Modal
-                    if st.session_state.show_landing_modal:
-                        @st.dialog("Landing Page Preview", width="large")
-                        def show_landing_popup():
-                            ctrl_cols = st.columns([1, 1, 1, 6])
-                            if ctrl_cols[0].button("➖", key="z2m_modal"):
-                                st.session_state.zoom2 = max(30, st.session_state.zoom2 - 10)
-                                st.rerun()
-                            if ctrl_cols[1].button("➕", key="z2p_modal"):
-                                st.session_state.zoom2 = min(200, st.session_state.zoom2 + 10)
-                                st.rerun()
-                            ctrl_cols[2].caption(f"{st.session_state.zoom2}%")
-                            
-                            device_modal = st.radio("Device", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev2_modal', index=0)
-                            dest_url_modal = current_flow.get('reporting_destination_url', '')
-                            
-                            if dest_url_modal and pd.notna(dest_url_modal) and str(dest_url_modal).lower() != 'null':
-                                screenshot_modal = get_screenshot(dest_url_modal)
-                                
-                                if screenshot_modal:
-                                    dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
-                                    device_w, device_h = dims[device_modal]
-                                    modal_scale = 0.9 * (st.session_state.zoom2 / 100)
-                                    final_w = int(device_w * modal_scale)
-                                    final_h = int(device_h * modal_scale)
-                                    
-                                    modal_html = f"""
-                                    <div style="display:flex; justify-content:center; align-items:center; padding:20px; background:#1f2937; border-radius:8px; min-height:700px;">
-                                        <div style="box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius:8px; overflow:hidden; background:white; width:{final_w}px; height:{final_h}px;">
-                                            <img src="data:image/jpeg;base64,{screenshot_modal}" style="width:100%; height:100%; object-fit:contain;">
-                                        </div>
-                                    </div>
-                                    """
-                                    st.components.v1.html(modal_html, height=final_h + 100, scrolling=True)
-                            
-                            if st.button("Close", key="close_landing_modal"):
-                                st.session_state.show_landing_modal = False
-                                st.rerun()
-                        
-                        show_landing_popup()
                 else:
                     st.warning("No flows found")
 else:
     st.error("❌ Failed to load data")
-
-
-
