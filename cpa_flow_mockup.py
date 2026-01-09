@@ -148,14 +148,20 @@ st.markdown("""
         font-size: 16px !important;
     }
     .streamlit-expanderContent {
-        background-color: white !important;
+        background-color: #f8fafc !important;
         color: #0f172a !important;
         border: 1px solid #e2e8f0 !important;
         border-top: none !important;
+        padding: 12px !important;
     }
     .streamlit-expanderContent * {
         color: #0f172a !important;
-        background-color: white !important;
+    }
+    .streamlit-expanderContent [data-testid="stMetricLabel"] {
+        color: #475569 !important;
+    }
+    .streamlit-expanderContent [data-testid="stMetricValue"] {
+        color: #0f172a !important;
     }
     
     /* Radio buttons */
@@ -210,6 +216,14 @@ st.markdown("""
         box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         font-weight: 500;
     }
+    .info-box a {
+        color: #3b82f6;
+        text-decoration: underline;
+        font-weight: 600;
+    }
+    .info-box a:hover {
+        color: #2563eb;
+    }
     .info-label { 
         font-weight: 700; 
         color: #3b82f6;
@@ -242,6 +256,35 @@ st.markdown("""
         color: #0f172a;
         box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         font-weight: 500;
+    }
+    
+    .flow-diagram {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        border: 2px solid #cbd5e1;
+        margin: 15px 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .flow-step {
+        background: #f1f5f9;
+        padding: 12px 16px;
+        border-radius: 6px;
+        border: 2px solid #cbd5e1;
+        font-weight: 600;
+        color: #0f172a;
+        text-align: center;
+        flex: 1;
+        min-width: 120px;
+    }
+    .flow-arrow {
+        font-size: 24px;
+        color: #3b82f6;
+        font-weight: 700;
     }
     
     /* Spinner */
@@ -312,15 +355,13 @@ def load_json_from_gdrive(file_id):
         response = requests.get(url, timeout=30)
         response.raise_for_status()
         data = response.json()
-        
-        # Ensure it's a list (array)
         if isinstance(data, dict):
             data = [data]
-        
         return data
     except Exception as e:
         st.error(f"Error loading SERP templates: {str(e)}")
         return None
+
 def safe_float(value, default=0.0):
     try:
         return float(value) if pd.notna(value) else default
@@ -412,6 +453,13 @@ def fetch_page_content(url):
     except:
         return ""
 
+def get_screenshot_url(url, device):
+    """Generate screenshot URL using a free API"""
+    widths = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
+    width = widths[device]
+    screenshot_url = f"https://shot.screenshotapi.net/screenshot?url={quote(url)}&width={width}&height=800&output=image&file_type=png&wait_for_event=load"
+    return screenshot_url
+
 def calculate_similarities(flow_data):
     keyword = flow_data.get('keyword_term', '')
     ad_title = flow_data.get('ad_title', '')
@@ -453,6 +501,17 @@ Return JSON: {{"intent":"","topic_match":0.0,"answer_quality":0.0,"final_score":
     
     return results
 
+def get_similarity_label(score):
+    """Convert score to simple label"""
+    if score >= 0.8:
+        return "Very High Similarity", "#22c55e"
+    elif score >= 0.6:
+        return "High Similarity", "#3b82f6"
+    elif score >= 0.4:
+        return "Medium Similarity", "#eab308"
+    else:
+        return "Low Similarity", "#ef4444"
+
 def render_similarity_card(title, data, explanation, calculation_details):
     if not data:
         st.error(f"{title}: API Error")
@@ -470,19 +529,11 @@ def render_similarity_card(title, data, explanation, calculation_details):
             return
     
     score = data.get('final_score', 0)
-    band = data.get('band', 'unknown')
     reason = data.get('reason', 'N/A')
     
-    if score >= 0.8:
-        css_class, color = 'similarity-excellent', '#22c55e'
-    elif score >= 0.6:
-        css_class, color = 'similarity-good', '#3b82f6'
-    elif score >= 0.4:
-        css_class, color = 'similarity-moderate', '#eab308'
-    else:
-        css_class, color = 'similarity-poor', '#ef4444'
+    label, color = get_similarity_label(score)
+    css_class = 'similarity-excellent' if score >= 0.8 else 'similarity-good' if score >= 0.6 else 'similarity-moderate' if score >= 0.4 else 'similarity-poor'
     
-    # Show calculation explanation first
     st.markdown(f"""
     <div class="explanation-box">
         <strong>📊 How This Score Is Calculated:</strong><br>
@@ -494,9 +545,8 @@ def render_similarity_card(title, data, explanation, calculation_details):
     <div class="metric-card {css_class}">
         <h4 style="margin:0; color: #475569; font-size: 14px; font-weight: 700;">{title}</h4>
         <h2 style="margin: 8px 0; color: {color}; font-weight: 700; font-size: 32px;">{score:.1%}</h2>
-        <p style="margin:0; color: #475569; font-size: 13px; font-weight: 600;">{band.upper()}</p>
-        <p style="margin:8px 0 4px 0; color: #334155; font-size: 12px; font-weight: 500;">{reason[:80]}</p>
-        <p style="margin:8px 0 0 0; color: #64748b; font-size: 11px; font-style: italic; font-weight: 500;">{explanation}</p>
+        <p style="margin:0; color: {color}; font-size: 16px; font-weight: 700;">{label}</p>
+        <p style="margin:12px 0 0 0; color: #334155; font-size: 14px; font-weight: 500;">{reason}</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -518,14 +568,13 @@ def generate_serp_mockup(flow_data, serp_templates):
         try:
             html = serp_templates[0].get('code', '')
             
-            # CRITICAL FIX: Change device-based media queries to viewport-based
-            # This makes them work in iframes!
+            # Change device-based media queries to viewport-based
             html = html.replace('min-device-width', 'min-width')
             html = html.replace('max-device-width', 'max-width')
             html = html.replace('min-device-height', 'min-height')
             html = html.replace('max-device-height', 'max-height')
             
-            # Remove problematic min-height with viewport units
+            # Remove min-height with viewport units
             html = re.sub(r'min-height\s*:\s*calc\(100[sv][vh]h?[^)]*\)\s*;?', '', html, flags=re.IGNORECASE)
             
             # Replace keyword
@@ -545,16 +594,13 @@ def generate_serp_mockup(flow_data, serp_templates):
             st.error(f"Error: {str(e)}")
     
     return ""
-    
-    
+
 def render_device_preview(content, device):
-    """Simple rendering - mobile gets taller iframe for CTA"""
-    # Device widths
+    """Simple rendering for SERP"""
     dims = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
     device_w = dims[device]
     container_height = 700
     
-    # Device frames
     if device == 'mobile':
         frame_style = "border-radius: 30px; border: 12px solid #94a3b8;"
     elif device == 'tablet':
@@ -562,16 +608,13 @@ def render_device_preview(content, device):
     else:
         frame_style = "border-radius: 8px; border: 8px solid #94a3b8;"
     
-    # Minimal viewport injection
     if '<meta name="viewport"' not in content:
         viewport = f'<meta name="viewport" content="width={device_w}, initial-scale=1.0">'
         if '<head>' in content:
             content = content.replace('<head>', f'<head>{viewport}', 1)
     
-    # Escape for srcdoc
     escaped = content.replace("'", "&apos;").replace('"', '&quot;')
     
-    # SIMPLE: Iframe at 100% height, scrolls naturally
     html = f"""
     <div style="display: flex; justify-content: center; padding: 30px; 
                 background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%); 
@@ -588,7 +631,42 @@ def render_device_preview(content, device):
     """
     
     return html, container_height + 110
+
+def render_screenshot_preview(screenshot_url, device):
+    """Render screenshot in device frame"""
+    dims = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
+    device_w = dims[device]
+    container_height = 700
     
+    if device == 'mobile':
+        frame_style = "border-radius: 30px; border: 12px solid #94a3b8;"
+    elif device == 'tablet':
+        frame_style = "border-radius: 20px; border: 14px solid #94a3b8;"
+    else:
+        frame_style = "border-radius: 8px; border: 8px solid #94a3b8;"
+    
+    html = f"""
+    <div style="display: flex; justify-content: center; padding: 30px; 
+                background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%); 
+                border-radius: 12px; min-height: {container_height + 80}px;">
+        <div style="width: {device_w}px; height: {container_height}px; 
+                    {frame_style} overflow: auto; background: white;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.2);">
+            <img src="{screenshot_url}" 
+                 style="width: 100%; height: auto; display: block;"
+                 alt="Landing page screenshot">
+        </div>
+    </div>
+    """
+    
+    return html, container_height + 110
+
+def make_url_clickable(url):
+    """Convert URL string to clickable hyperlink"""
+    if not url or pd.isna(url) or str(url).lower() == 'null':
+        return 'N/A'
+    return f'<a href="{url}" target="_blank" style="color:#3b82f6; text-decoration:underline; font-weight:600;">{url[:60]}{"..." if len(str(url)) > 60 else ""}</a>'
+
 # Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
@@ -813,8 +891,10 @@ if st.session_state.data_a is not None:
                     <div class="info-box">
                         💡 <strong>Understanding Similarity Scores:</strong><br>
                         We calculate 3 similarity scores to check if everything in your flow matches properly:<br>
-                        • <span style="color:#16a34a">■</span> <strong>80-100%</strong> = Excellent | <span style="color:#3b82f6">■</span> <strong>60-80%</strong> = Good<br>
-                        • <span style="color:#eab308">■</span> <strong>40-60%</strong> = Needs improvement | <span style="color:#dc2626">■</span> <strong>Below 40%</strong> = Fix immediately
+                        • <span style="color:#22c55e">■</span> <strong>Very High Similarity</strong> = Great match, keep doing this!<br>
+                        • <span style="color:#3b82f6">■</span> <strong>High Similarity</strong> = Good match, working well<br>
+                        • <span style="color:#eab308">■</span> <strong>Medium Similarity</strong> = Could be better, review content<br>
+                        • <span style="color:#dc2626">■</span> <strong>Low Similarity</strong> = Needs attention, fix immediately
                     </div>
                     """, unsafe_allow_html=True)
                     
@@ -830,6 +910,19 @@ if st.session_state.data_a is not None:
                                 st.rerun()
                     
                     current_flow = st.session_state.flows[st.session_state.flow_index]
+                    
+                    # Visual Flow Diagram
+                    st.markdown(f"""
+                    <div class="flow-diagram">
+                        <div class="flow-step">🔍 Keyword<br><small>{current_flow.get('keyword_term', 'N/A')[:30]}</small></div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-step">📰 Publisher<br><small>{current_flow.get('publisher_url', 'N/A')[:30]}</small></div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-step">📄 SERP<br><small>Ad Display</small></div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-step">🎯 Landing<br><small>{current_flow.get('reporting_destination_url', 'N/A')[:30]}</small></div>
+                    </div>
+                    """, unsafe_allow_html=True)
                     
                     if not st.session_state.similarities:
                         if not API_KEY:
@@ -858,7 +951,7 @@ if st.session_state.data_a is not None:
                             <div class="info-label">Search Term:</div> {current_flow.get('keyword_term', 'N/A')}<br><br>
                             <div class="info-label">Ad Headline:</div> {current_flow.get('ad_title', 'N/A')}<br><br>
                             <div class="info-label">Ad Text:</div> {current_flow.get('ad_description', 'N/A')[:100]}<br><br>
-                            <div class="info-label">Display URL:</div> {current_flow.get('ad_display_url', 'N/A')}
+                            <div class="info-label">Display URL:</div> {make_url_clickable(current_flow.get('ad_display_url', 'N/A'))}
                         </div>
                         """, unsafe_allow_html=True)
                         
@@ -874,7 +967,7 @@ if st.session_state.data_a is not None:
                     
                     st.divider()
                     
-                    # Card 2: Landing Page
+                    # Card 2: Landing Page (SCREENSHOT VERSION)
                     st.subheader("🎯 Landing Page")
                     st.caption("Where users go after clicking")
                     
@@ -885,29 +978,38 @@ if st.session_state.data_a is not None:
                         dest_url = current_flow.get('reporting_destination_url', '')
                         
                         if dest_url and pd.notna(dest_url) and str(dest_url).lower() != 'null':
-                            # Show the actual URL being loaded
-                            st.info(f"📍 **Loading URL:** `{dest_url}`")
-                            st.markdown(f"🔗 [Open in New Tab]({dest_url})")
-                            
-                            with st.spinner("Loading page..."):
+                            with st.spinner("Getting screenshot..."):
                                 try:
+                                    # Get redirect URL first
                                     response = requests.get(dest_url, timeout=15, headers={
                                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                                     }, allow_redirects=True)
                                     
-                                    if response.status_code == 200:
-                                        # Show if URL redirected
-                                        if response.url != dest_url:
-                                            st.warning(f"⚠️ **URL redirected to:** `{response.url}`")
-                                        
-                                        landing_html = response.text
-                                        preview_html, height = render_device_preview(landing_html, device2)
-                                        st.components.v1.html(preview_html, height=height, scrolling=False)
+                                    final_url = response.url
+                                    
+                                    # Show URLs
+                                    if final_url != dest_url:
+                                        st.markdown(f"""
+                                        <div class="info-box">
+                                            📍 <strong>Original URL:</strong> {make_url_clickable(dest_url)}<br>
+                                            ⚠️ <strong>Redirected to:</strong> {make_url_clickable(final_url)}
+                                        </div>
+                                        """, unsafe_allow_html=True)
                                     else:
-                                        st.error(f"⚠️ Could not load page (Error: {response.status_code})")
+                                        st.markdown(f"""
+                                        <div class="info-box">
+                                            📍 <strong>Landing Page:</strong> {make_url_clickable(final_url)}
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                                    
+                                    # Get screenshot
+                                    screenshot_url = get_screenshot_url(final_url, device2)
+                                    screenshot_html, height = render_screenshot_preview(screenshot_url, device2)
+                                    st.components.v1.html(screenshot_html, height=height, scrolling=False)
+                                    
                                 except Exception as e:
                                     st.error(f"⚠️ Could not load page: {str(e)}")
-                                    st.caption("Try the 'Open in New Tab' link above")
+                                    st.markdown(f"Try opening: {make_url_clickable(dest_url)}", unsafe_allow_html=True)
                         else:
                             st.warning("⚠️ No landing page URL found")
                     
@@ -935,16 +1037,3 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
-
-
-
-
-
-
-
-
-
-
-
-
-
