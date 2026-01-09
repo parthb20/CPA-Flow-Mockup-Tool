@@ -143,6 +143,8 @@ def get_quadrant(ctr, cvr, avg_ctr, avg_cvr):
     else:
         return 'Underperforming', '#ef4444'
 
+import json, re
+
 def call_similarity_api(prompt):
     response = requests.post(
         "https://go.fastrouter.ai/api/v1/chat/completions",
@@ -159,10 +161,25 @@ def call_similarity_api(prompt):
         timeout=30
     )
 
+    # 👇 CRITICAL: log full failure instead of killing app
     if response.status_code != 200:
-        raise Exception(response.text)
+        return {
+            "error": True,
+            "status_code": response.status_code,
+            "body": response.text
+        }
 
-    return response.json()['choices'][0]['message']['content']
+    raw = response.json()['choices'][0]['message']['content']
+
+    try:
+        match = re.search(r'\{[\s\S]*\}', raw)
+        return json.loads(match.group())
+    except:
+        return {
+            "error": True,
+            "status_code": "bad_json",
+            "body": raw[:500]
+        }
 
 def fetch_page_content(url):
     if not url or pd.isna(url) or str(url).lower() == 'null':
