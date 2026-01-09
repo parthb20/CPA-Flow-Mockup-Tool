@@ -512,7 +512,7 @@ body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #f
 </body></html>"""
 
 def render_device_preview(content, device):
-    """Render with proper viewport injection for accurate mobile display"""
+    """Render with proper dimensions - make iframe tall enough for all content"""
     # Real device widths
     dims = {
         'mobile': 393,
@@ -522,6 +522,10 @@ def render_device_preview(content, device):
     device_w = dims[device]
     container_height = 700
     
+    # Make iframe MUCH taller so all content (including CTA) renders
+    # Then container scrolls to show it all
+    iframe_height = 2000  # Tall enough for any SERP/landing page
+    
     # Device frames
     if device == 'mobile':
         frame_style = "border-radius: 30px; border: 12px solid #94a3b8;"
@@ -530,36 +534,15 @@ def render_device_preview(content, device):
     else:
         frame_style = "border-radius: 8px; border: 8px solid #94a3b8;"
     
-    # CRITICAL: Inject viewport meta to ensure proper mobile rendering
-    viewport_meta = f'<meta name="viewport" content="width={device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">'
+    # Inject viewport meta
+    viewport_meta = f'<meta name="viewport" content="width={device_w}, initial-scale=1.0">'
     
-    # Find and replace or add viewport meta
     if '<meta name="viewport"' in content:
-        # Replace existing viewport
         content = re.sub(r'<meta\s+name="viewport"[^>]*>', viewport_meta, content)
     elif '<head>' in content:
-        # Add after <head>
         content = content.replace('<head>', f'<head>{viewport_meta}', 1)
     elif '<head ' in content:
-        # Add after <head with attributes
         content = re.sub(r'(<head[^>]*>)', rf'\1{viewport_meta}', content, count=1)
-    
-    # Ensure body width is constrained
-    body_style = f'''
-    <style>
-    html, body {{
-        width: {device_w}px !important;
-        max-width: {device_w}px !important;
-        min-width: {device_w}px !important;
-        overflow-x: hidden !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }}
-    </style>
-    '''
-    
-    if '</head>' in content:
-        content = content.replace('</head>', f'{body_style}</head>', 1)
     
     html = f"""
     <div style="display: flex; justify-content: center; align-items: center; 
@@ -572,7 +555,7 @@ def render_device_preview(content, device):
                     background: white; position: relative;
                     -webkit-overflow-scrolling: touch;">
             <iframe srcdoc='{content.replace("'", "&apos;").replace('"', "&quot;")}' 
-                    style="width: {device_w}px; min-height: {container_height}px; border: none; display: block;"
+                    style="width: {device_w}px; height: {iframe_height}px; border: none; display: block;"
                     sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
             </iframe>
         </div>
@@ -920,6 +903,7 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+
 
 
 
