@@ -662,7 +662,7 @@ body {{
 </body></html>"""
 
 def render_device_preview(content, device):
-    """Render with proper viewport and SCROLLING ENABLED"""
+    """Render with proper viewport and NO EXTRA SPACE"""
     # Device widths
     dims = {
         'mobile': 390,
@@ -671,6 +671,15 @@ def render_device_preview(content, device):
     }
     device_w = dims[device]
     container_height = 700
+    
+    # CRITICAL FIX: Device-specific iframe heights to avoid white space
+    # These match typical content heights for each device
+    iframe_heights = {
+        'mobile': 1100,    # Mobile SERP/pages are typically ~900-1000px
+        'tablet': 1500,    # Tablets need a bit more
+        'laptop': 2000     # Desktop can be taller
+    }
+    iframe_height = iframe_heights[device]
     
     # Device frames
     if device == 'mobile':
@@ -683,7 +692,7 @@ def render_device_preview(content, device):
     # Proper viewport
     viewport_meta = f'<meta name="viewport" content="width={device_w}, initial-scale=1.0, user-scalable=no">'
     
-    # CSS to ensure content starts at top
+    # CSS to ensure content starts at top AND remove bottom padding
     fix_css = f'''
     <style id="preview-fix">
     html, body {{ 
@@ -692,8 +701,16 @@ def render_device_preview(content, device):
         width: {device_w}px !important;
         max-width: {device_w}px !important;
         overflow-x: hidden !important;
+        min-height: 0 !important;
+        height: auto !important;
     }}
     * {{ box-sizing: border-box !important; }}
+    
+    /* Remove any bottom padding/margin from all elements */
+    body > *:last-child {{
+        margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
+    }}
     </style>
     '''
     
@@ -704,16 +721,19 @@ def render_device_preview(content, device):
         content = content.replace('<head>', f'<head>{viewport_meta}', 1)
     elif '<head ' in content:
         content = re.sub(r'(<head[^>]*>)', rf'\1{viewport_meta}', content, count=1)
+    else:
+        content = f'<head>{viewport_meta}</head>' + content
     
     # Inject fix CSS
     if '</head>' in content:
         content = content.replace('</head>', f'{fix_css}</head>', 1)
     elif '<body' in content:
         content = re.sub(r'(<body[^>]*>)', rf'\1{fix_css}', content, count=1)
+    else:
+        content = f'{fix_css}' + content
     
-    # CRITICAL: Make iframe tall (2500px) and enable scrolling
-    # Container has fixed height (700px) with overflow-y: auto for scrolling
-    iframe_height = 2500
+    # Escape for srcdoc
+    escaped_content = content.replace('\\', '\\\\').replace("'", "\\'").replace('"', '&quot;')
     
     html = f"""
     <div style="display: flex; justify-content: center; align-items: center; 
@@ -726,7 +746,7 @@ def render_device_preview(content, device):
                     overflow-y: auto; overflow-x: hidden; 
                     background: white; position: relative;
                     -webkit-overflow-scrolling: touch;">
-            <iframe srcdoc='{content.replace("'", "&apos;").replace('"', "&quot;")}' 
+            <iframe srcdoc='{escaped_content}' 
                     style="width: {device_w}px; height: {iframe_height}px; border: none; 
                            display: block; margin: 0; padding: 0;"
                     sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
@@ -737,7 +757,6 @@ def render_device_preview(content, device):
     """
     
     return html, container_height + 110
-
 # Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
@@ -1084,3 +1103,4 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+
