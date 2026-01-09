@@ -585,7 +585,7 @@ body {{ margin: 0; padding: 15px 18px; font-family: Arial, sans-serif; backgroun
 
 
 def render_device_preview(content, device):
-    """Render with NO blank space - iframe auto-sizes to content"""
+    """Render with proper viewport and auto-height detection"""
     # Device widths
     dims = {
         'mobile': 390,
@@ -593,7 +593,17 @@ def render_device_preview(content, device):
         'laptop': 1440
     }
     device_w = dims[device]
-    container_height = 700
+    
+    # Adaptive container heights based on device
+    container_heights = {
+        'mobile': 844,      # iPhone 14 Pro height
+        'tablet': 1180,     # iPad height
+        'laptop': 900       # Standard laptop viewport
+    }
+    container_height = container_heights[device]
+    
+    # Much larger iframe to prevent any cutoff
+    iframe_height = 3500
     
     # Device frames
     if device == 'mobile':
@@ -603,8 +613,8 @@ def render_device_preview(content, device):
     else:
         frame_style = "border-radius: 8px; border: 8px solid #94a3b8;"
     
-    # Inject viewport
-    viewport_meta = f'<meta name="viewport" content="width={device_w}, initial-scale=1.0">'
+    # MINIMAL viewport injection (don't override existing viewport)
+    viewport_meta = f'<meta name="viewport" content="width={device_w}, initial-scale=1.0, maximum-scale=1.0">'
     
     if '<meta name="viewport"' not in content:
         if '<head>' in content:
@@ -612,15 +622,9 @@ def render_device_preview(content, device):
         elif '<head ' in content:
             content = re.sub(r'(<head[^>]*>)', rf'\1{viewport_meta}', content, count=1)
     
-    # Remove min-height from SERP HTML that causes blank space
-    content = re.sub(r'min-height\s*:\s*calc\([^)]+\)[^;]*;', '', content)
-    content = re.sub(r'min-height\s*:\s*[0-9]+[a-z%]+\s*;', '', content)
-    
     # Escape for srcdoc
     escaped_content = content.replace("'", "&apos;").replace('"', '&quot;')
     
-    # KEY FIX: Use onload to auto-resize iframe to content height
-    # This eliminates ALL blank space
     html = f"""
     <div style="display: flex; justify-content: center; align-items: flex-start; 
                 background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%); 
@@ -632,40 +636,18 @@ def render_device_preview(content, device):
                     overflow-y: auto; overflow-x: hidden; 
                     background: white; position: relative;
                     -webkit-overflow-scrolling: touch;">
-            <iframe id="preview-{device}" srcdoc='{escaped_content}' 
-                    style="width: {device_w}px; 
-                           min-height: 100%; 
-                           border: none; 
-                           display: block; 
-                           margin: 0; 
-                           padding: 0;"
+            <iframe srcdoc='{escaped_content}' 
+                    style="width: {device_w}px; height: {iframe_height}px; border: none; 
+                           display: block; margin: 0; padding: 0; overflow: visible;"
                     sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-                    scrolling="no"
-                    onload="
-                        try {{
-                            var iframe = this;
-                            var body = iframe.contentWindow.document.body;
-                            var html = iframe.contentWindow.document.documentElement;
-                            var height = Math.max(
-                                body.scrollHeight, 
-                                body.offsetHeight, 
-                                html.clientHeight, 
-                                html.scrollHeight, 
-                                html.offsetHeight
-                            );
-                            iframe.style.height = height + 'px';
-                        }} catch(e) {{
-                            console.log('Auto-resize failed:', e);
-                        }}
-                    ">
+                    scrolling="yes">
             </iframe>
         </div>
     </div>
     """
     
     return html, container_height + 110
-    
-    # Auto-load data
+# Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
         st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
@@ -1011,8 +993,6 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
-
-
 
 
 
