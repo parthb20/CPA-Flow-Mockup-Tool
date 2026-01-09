@@ -60,12 +60,26 @@ st.markdown("""
 FILE_A_ID = "1bwdj-rAAp6I1SbO27BTFD2eLiv6V5vsB"
 FILE_B_ID = "1QpQhZhXFFpQWm_xhVGDjdpgRM3VMv57L"
 
-# Fix API key loading - Using FastRouter
 try:
-    API_KEY = st.secrets.get("FASTROUTER_API_KEY", st.secrets.get("ANTHROPIC_API_KEY", "")).strip()
-except:
+    API_KEY = st.secrets.get("FASTROUTER_API_KEY", "").strip()
+    if not API_KEY:
+        API_KEY = st.secrets.get("ANTHROPIC_API_KEY", "").strip()
+    if not API_KEY:
+        # Try any key with API in name
+        for key in st.secrets:
+            if "API" in key.upper():
+                API_KEY = str(st.secrets[key]).strip()
+                if API_KEY:
+                    break
+except Exception as e:
+    st.error(f"Secrets error: {e}")
     API_KEY = ""
 
+# Debug
+if API_KEY:
+    st.sidebar.success(f"✓ API Key loaded ({len(API_KEY)} chars)")
+else:
+    st.sidebar.error("⚠️ No API key found in secrets")
 # Session state
 for key in ['data_a', 'data_b', 'selected_keyword', 'selected_url', 'flows', 
             'flow_index', 'similarities', 'loading_done', 'zoom1', 'zoom2', 'screenshot_cache']:
@@ -328,17 +342,21 @@ def generate_serp_mockup(flow_data, serp_templates):
             pass
     
     return f"""<!DOCTYPE html><html><head><style>
-body {{ margin: 0; padding: 20px; font-family: Arial; background: #f8f9fa; }}
-.sponsored {{ color: #70757a; font-size: 12px; margin-bottom: 12px; }}
-.url {{ color: #006621; font-size: 14px; margin-bottom: 4px; }}
-.title {{ color: #1a0dab; font-size: 20px; margin: 0 0 8px; cursor: pointer; }}
+body {{ margin: 0; padding: 40px 20px; font-family: Arial, sans-serif; background: #fff; }}
+.ad-container {{ max-width: 600px; margin: 0 auto; }}
+.sponsored {{ color: #5f6368; font-size: 13px; margin-bottom: 8px; font-weight: 500; }}
+.url {{ color: #1a73e8; font-size: 14px; margin-bottom: 2px; }}
+.title {{ color: #1a0dab; font-size: 20px; margin: 4px 0 8px; line-height: 1.3; cursor: pointer; font-weight: 400; }}
 .title:hover {{ text-decoration: underline; }}
 .desc {{ color: #4d5156; font-size: 14px; line-height: 1.58; }}
+.ad-badge {{ display: inline-block; padding: 2px 6px; background: #f1f3f4; border-radius: 3px; font-size: 11px; color: #5f6368; margin-bottom: 8px; }}
 </style></head><body>
-<div class="sponsored">Sponsored: "{keyword}"</div>
+<div class="ad-container">
+<div class="ad-badge">Ad</div>
 <div class="url">{ad_url}</div>
 <div class="title">{ad_title}</div>
 <div class="desc">{ad_desc}</div>
+</div>
 </body></html>"""
 
 def render_device_preview(content, device, zoom, is_iframe=False, url=""):
@@ -464,7 +482,8 @@ if st.session_state.data_a is not None:
                 for idx, row in filtered_keywords.iterrows():
                     cols = st.columns([0.5, 4, 1.5, 1.5, 1.5])
                     is_selected = (row['keyword_term'] == st.session_state.selected_keyword)
-                    if cols[0].checkbox("", key=f"kw_{idx}", value=is_selected):
+                    if cols[0].button("✓" if is_selected else "○", key=f"kw_{idx}", use_container_width=True):
+                        
                         if not is_selected:
                             st.session_state.selected_keyword = row['keyword_term']
                             st.session_state.selected_url = None
@@ -504,7 +523,7 @@ if st.session_state.data_a is not None:
                 for idx, row in filtered_urls.iterrows():
                     cols = st.columns([0.5, 4, 1.5, 1.5, 1.5])
                     is_selected = (row['publisher_url'] == st.session_state.selected_url)
-                    if cols[0].checkbox("", key=f"url_{idx}", value=is_selected):
+                    if cols[0].button("✓" if is_selected else "○", key=f"url_{idx}", use_container_width=True):
                         if not is_selected:
                             st.session_state.selected_url = row['publisher_url']
                             st.session_state.similarities = {}
@@ -561,9 +580,8 @@ if st.session_state.data_a is not None:
                             st.session_state.zoom1 = min(200, st.session_state.zoom1 + 10)
                             st.rerun()
                         ctrl_cols[2].caption(f"{st.session_state.zoom1}%")
-                        if ctrl_cols[4].button("⛶ Fullscreen", key="fs1"):
-                            js = f"window.open('{st.session_state.flows[st.session_state.flow_index].get('reporting_destination_url', '#')}', '_blank')"
-                            st.markdown(f'<script>{js}</script>', unsafe_allow_html=True)
+                        dest = current_flow.get('reporting_destination_url', '#')
+                        ctrl_cols[4].markdown(f'<a href="{dest}" target="_blank" style="display:inline-block;background:#3b82f6;color:white;padding:8px 12px;border-radius:5px;text-decoration:none;font-size:14px;text-align:center;">⛶ Open</a>', unsafe_allow_html=True)
                         
                         device1 = st.radio("Device", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev1', index=0)
                         serp_html = generate_serp_mockup(current_flow, st.session_state.data_b)
@@ -599,8 +617,9 @@ if st.session_state.data_a is not None:
                             st.session_state.zoom2 = min(200, st.session_state.zoom2 + 10)
                             st.rerun()
                         ctrl_cols[2].caption(f"{st.session_state.zoom2}%")
-                        if ctrl_cols[4].button("⛶ Fullscreen", key="fs2"):
-                            st.info("Open in new tab to view fullscreen")
+                        
+                        dest = current_flow.get('reporting_destination_url', '#')
+                        ctrl_cols[4].markdown(f'<a href="{dest}" target="_blank" style="display:inline-block;background:#3b82f6;color:white;padding:8px 12px;border-radius:5px;text-decoration:none;font-size:14px;text-align:center;">⛶ Open</a>', unsafe_allow_html=True)
                         
                         device2 = st.radio("Device", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev2', index=0)
                         dest_url = current_flow.get('reporting_destination_url', '')
