@@ -306,14 +306,21 @@ def load_csv_from_gdrive(file_id):
         return None
 
 def load_json_from_gdrive(file_id):
+    """Load JSON file from Google Drive - returns array of SERP templates"""
     try:
         url = f"https://drive.google.com/uc?export=download&id={file_id}"
         response = requests.get(url, timeout=30)
         response.raise_for_status()
-        return response.json()
-    except:
+        data = response.json()
+        
+        # Ensure it's a list (array)
+        if isinstance(data, dict):
+            data = [data]
+        
+        return data
+    except Exception as e:
+        st.error(f"Error loading SERP templates: {str(e)}")
         return None
-
 def safe_float(value, default=0.0):
     try:
         return float(value) if pd.notna(value) else default
@@ -501,168 +508,78 @@ def render_similarity_card(title, data, explanation, calculation_details):
                 st.caption(f"**{key.replace('_', ' ').title()}:** {value}")
 
 def generate_serp_mockup(flow_data, serp_templates):
-    """Generate clean SERP HTML matching the actual design"""
+    """Generate SERP HTML using actual template"""
     keyword = flow_data.get('keyword_term', 'N/A')
     ad_title = flow_data.get('ad_title', 'N/A')
     ad_desc = flow_data.get('ad_description', 'N/A')
     ad_url = flow_data.get('ad_display_url', 'N/A')
     
-    # Try to use actual SERP template if available
+    # Use actual SERP template from data_b
     if serp_templates and len(serp_templates) > 0:
         try:
             html = serp_templates[0].get('code', '')
             
-            # Replace keyword in header
+            # Replace keyword in the header text
             html = re.sub(
-                r'(Sponsored results for:\s*["\'])([^"\']*?)(["\'])', 
-                f'\\1{keyword}\\3', 
+                r'Sponsored results for:\s*"[^"]*"', 
+                f'Sponsored results for: "{keyword}"', 
                 html
             )
             
-            # Replace ad details
-            html = re.sub(r'(<div class="url">)[^<]*(</div>)', f'\\1{ad_url}\\2', html, count=1)
-            html = re.sub(r'(<div class="title">)[^<]*(</div>)', f'\\1{ad_title}\\2', html, count=1)
-            html = re.sub(r'(<div class="desc">)[^<]*(</div>)', f'\\1{ad_desc}\\2', html, count=1)
+            # Replace URL (inside <div class="url">)
+            html = re.sub(
+                r'(<div class="url">)[^<]*(</div>)', 
+                f'\\1{ad_url}\\2', 
+                html, 
+                count=1
+            )
+            
+            # Replace title (inside <div class="title">)
+            html = re.sub(
+                r'(<div class="title">)[^<]*(</div>)', 
+                f'\\1{ad_title}\\2', 
+                html, 
+                count=1
+            )
+            
+            # Replace description (inside <div class="desc">)
+            html = re.sub(
+                r'(<div class="desc">)[^<]*(</div>)', 
+                f'\\1{ad_desc}\\2', 
+                html, 
+                count=1
+            )
             
             return html
-        except:
-            pass
+        except Exception as e:
+            st.error(f"Error using SERP template: {str(e)}")
     
-    # Clean fallback template matching the actual SERP design
+    # Fallback - should rarely be used
     return f"""<!DOCTYPE html>
 <html><head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-body {{ 
-    margin: 0; 
-    padding: 15px 18px; 
-    font-family: 'Raleway', Arial, sans-serif; 
-    background: #ECECEC;
-    -webkit-text-size-adjust: none;
-    min-height: 100vh;
-}}
+body {{ margin: 0; padding: 15px 18px; font-family: Arial, sans-serif; background: #ECECEC; }}
 .wrapper {{ margin: 15px 0; }}
-.header-text {{ 
-    color: #BEBEBE; 
-    font-size: 16px; 
-    margin-bottom: 10px;
-    font-weight: 400;
-}}
-.ad-card {{
-    background: #fff;
-    border: 1px solid #BCBCBC;
-    min-height: calc(100vh - 120px);
-    display: flex;
-    flex-direction: column;
-    padding: 0 24px 39px;
-}}
-.content-wrap {{
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    width: 100%;
-    flex: 1;
-}}
-.main-content {{
-    padding: 40px 0 0;
-}}
-.url {{ 
-    color: #307137; 
-    font-size: 16px; 
-    line-height: 22px;
-    word-wrap: break-word;
-    font-weight: 400;
-}}
-.title {{ 
-    color: #4761C2; 
-    font-size: 28px; 
-    line-height: 34px;
-    font-weight: 700;
-    margin: 30px 0 20px;
-    word-wrap: break-word;
-}}
-.desc {{ 
-    color: #828282; 
-    font-size: 16px; 
-    line-height: 22px;
-    margin-bottom: 40px;
-    word-wrap: break-word;
-    font-weight: 400;
-}}
-.cta {{
-    padding: 30px 0 0;
-    display: flex;
-    width: 100%;
-    align-items: flex-end;
-    justify-content: flex-end;
-    flex-grow: 1;
-}}
-.arrow-wrap {{
-    min-width: 195px;
-    height: 67px;
-    padding: 0 10px;
-    border: 4px solid #1F4A24;
-    border-radius: 4px;
-    background: #307137;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}}
-.arrow-wrap:hover {{
-    background: #3d8842;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-}}
-.arrow-text {{
-    color: #fff;
-    font-size: 29px;
-    font-weight: 700;
-}}
-
-@media only screen and (min-device-height: 700px) and (max-device-width: 599px) {{ 
-    .main-content {{ padding: 50px 0 0; }}
-    .title {{ margin: 40px 0 30px; }}
-}}
-
-@media only screen and (min-device-height: 750px) and (max-device-width: 599px) {{ 
-    .wrapper {{ margin: 15px 0 40px; }}
-    .main-content {{ padding: 50px 0 0; }}
-    .url {{ font-size: 16px; line-height: 22px; }}
-    .desc {{ font-size: 18px; line-height: 24px; }}
-    .title {{ margin: 50px 0 40px; font-size: 30px; line-height: 36px; }}
-}}
-
-@media only screen and (min-device-height: 860px) and (max-device-width: 599px) {{ 
-    .url {{ font-size: 16px; line-height: 22px; }}
-    .desc {{ font-size: 20px; line-height: 26px; }}
-    .title {{ font-size: 36px; line-height: 42px; }}
-}}
+.header-text {{ color: #BEBEBE; font-size: 16px; margin-bottom: 10px; }}
+.ad-card {{ background: #fff; border: 1px solid #BCBCBC; padding: 40px 24px 39px; }}
+.url {{ color: #307137; font-size: 16px; margin-bottom: 30px; }}
+.title {{ color: #4761C2; font-size: 28px; font-weight: 700; margin-bottom: 20px; }}
+.desc {{ color: #828282; font-size: 16px; line-height: 22px; }}
 </style>
 </head><body>
 <div class="wrapper">
     <div class="header-text">Sponsored results for: "{keyword}"</div>
     <div class="ad-card">
-        <div class="content-wrap">
-            <div class="main-content">
-                <div class="url">{ad_url}</div>
-                <div class="title">{ad_title}</div>
-                <div class="desc">{ad_desc}</div>
-            </div>
-            <div class="cta">
-                <div class="arrow-wrap">
-                    <div class="arrow-text">Continue</div>
-                </div>
-            </div>
-        </div>
+        <div class="url">{ad_url}</div>
+        <div class="title">{ad_title}</div>
+        <div class="desc">{ad_desc}</div>
     </div>
 </div>
 </body></html>"""
-
 def render_device_preview(content, device):
-    """Render with proper viewport - MINIMAL interference"""
+    """Render with proper viewport and auto-height detection"""
     # Device widths
     dims = {
         'mobile': 390,
@@ -670,15 +587,17 @@ def render_device_preview(content, device):
         'laptop': 1440
     }
     device_w = dims[device]
-    container_height = 700
     
-    # Device-specific iframe heights
-    iframe_heights = {
-        'mobile': 1200,     # Enough for mobile SERP/pages
-        'tablet': 1800,     # Tablet needs more
-        'laptop': 3000      # Laptop pages can be very long
+    # Adaptive container heights based on device
+    container_heights = {
+        'mobile': 844,      # iPhone 14 Pro height
+        'tablet': 1180,     # iPad height
+        'laptop': 900       # Standard laptop viewport
     }
-    iframe_height = iframe_heights[device]
+    container_height = container_heights[device]
+    
+    # Much larger iframe to prevent any cutoff
+    iframe_height = 3500
     
     # Device frames
     if device == 'mobile':
@@ -688,21 +607,20 @@ def render_device_preview(content, device):
     else:
         frame_style = "border-radius: 8px; border: 8px solid #94a3b8;"
     
-    # MINIMAL viewport injection (don't break existing styles)
-    viewport_meta = f'<meta name="viewport" content="width={device_w}, initial-scale=1.0">'
+    # MINIMAL viewport injection (don't override existing viewport)
+    viewport_meta = f'<meta name="viewport" content="width={device_w}, initial-scale=1.0, maximum-scale=1.0">'
     
-    # ONLY inject viewport if missing (don't override existing)
     if '<meta name="viewport"' not in content:
         if '<head>' in content:
             content = content.replace('<head>', f'<head>{viewport_meta}', 1)
         elif '<head ' in content:
             content = re.sub(r'(<head[^>]*>)', rf'\1{viewport_meta}', content, count=1)
     
-    # Simple escaping for srcdoc
+    # Escape for srcdoc
     escaped_content = content.replace("'", "&apos;").replace('"', '&quot;')
     
     html = f"""
-    <div style="display: flex; justify-content: center; align-items: center; 
+    <div style="display: flex; justify-content: center; align-items: flex-start; 
                 background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%); 
                 border-radius: 12px; padding: 30px; 
                 min-height: {container_height + 80}px;">
@@ -714,7 +632,7 @@ def render_device_preview(content, device):
                     -webkit-overflow-scrolling: touch;">
             <iframe srcdoc='{escaped_content}' 
                     style="width: {device_w}px; height: {iframe_height}px; border: none; 
-                           display: block; margin: 0; padding: 0;"
+                           display: block; margin: 0; padding: 0; overflow: visible;"
                     sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
                     scrolling="yes">
             </iframe>
@@ -723,7 +641,6 @@ def render_device_preview(content, device):
     """
     
     return html, container_height + 110
-    
 # Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
@@ -1070,6 +987,7 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+
 
 
 
