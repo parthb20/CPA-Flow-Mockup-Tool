@@ -512,19 +512,16 @@ body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #f
 </body></html>"""
 
 def render_device_preview(content, device):
-    """Render at EXACT device width - let the SERP's responsive CSS work"""
-    # Real device widths that match the SERP's media query breakpoints
+    """Render with sandbox container approach"""
     dims = {
-        'mobile': 393,      # Below 600px triggers mobile CSS
-        'tablet': 820,      # Above 600px triggers desktop CSS  
+        'mobile': 393,
+        'tablet': 820,
         'laptop': 1440
     }
     device_w = dims[device]
-    
-    # Container height - fixed for scrolling
     container_height = 700
     
-    # Device-specific frame styling
+    # Device frame styling
     if device == 'mobile':
         frame_style = "border-radius: 30px; border: 12px solid #94a3b8;"
     elif device == 'tablet':
@@ -532,8 +529,44 @@ def render_device_preview(content, device):
     else:
         frame_style = "border-radius: 8px; border: 8px solid #94a3b8;"
     
-    # CRITICAL: Render iframe at exact device width so media queries trigger correctly
-    # The SERP HTML has @media (min-device-width: 600px) that switches mobile/desktop layouts
+    # Create a complete HTML document that forces the width
+    wrapped_html = f"""<!DOCTYPE html>
+<html style="width: {device_w}px; max-width: {device_w}px; overflow-x: hidden;">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width={device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+* {{
+    box-sizing: border-box;
+}}
+html {{
+    width: {device_w}px !important;
+    max-width: {device_w}px !important;
+    min-width: {device_w}px !important;
+    overflow-x: hidden !important;
+}}
+body {{
+    width: {device_w}px !important;
+    max-width: {device_w}px !important;
+    min-width: {device_w}px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-x: hidden !important;
+}}
+img {{
+    max-width: 100% !important;
+    height: auto !important;
+}}
+</style>
+</head>
+<body>
+{content}
+</body>
+</html>"""
+    
+    # Base64 encode
+    encoded = base64.b64encode(wrapped_html.encode('utf-8')).decode('utf-8')
+    
     html = f"""
     <div style="display: flex; justify-content: center; align-items: center; 
                 background: #e2e8f0; border-radius: 12px; padding: 30px; 
@@ -541,20 +574,19 @@ def render_device_preview(content, device):
         <div style="width: {device_w}px; height: {container_height}px; 
                     {frame_style}
                     box-shadow: 0 20px 60px rgba(0,0,0,0.2); 
-                    overflow-y: auto; overflow-x: hidden; 
-                    background: white; position: relative;
-                    -webkit-overflow-scrolling: touch;">
-            <iframe srcdoc='{content.replace("'", "&apos;").replace('"', "&quot;")}' 
-                    style="width: {device_w}px; min-height: {container_height}px; 
-                           border: none; display: block;"
-                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
+                    overflow: auto;
+                    background: white;">
+            <iframe src="data:text/html;base64,{encoded}"
+                    style="width: {device_w}px; height: 100%; border: none; display: block; margin: 0; padding: 0; overflow: hidden;"
+                    sandbox="allow-same-origin allow-scripts"
+                    scrolling="no">
             </iframe>
         </div>
     </div>
     """
     
     return html, container_height + 110
-# Auto-load data
+    # Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
         st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
@@ -893,6 +925,7 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+
 
 
 
