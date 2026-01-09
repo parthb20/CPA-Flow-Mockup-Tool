@@ -508,7 +508,7 @@ def render_similarity_card(title, data, explanation, calculation_details):
                 st.caption(f"**{key.replace('_', ' ').title()}:** {value}")
 
 def generate_serp_mockup(flow_data, serp_templates):
-    """Generate SERP HTML - surgical fixes for iframe display"""
+    """Generate SERP HTML with injected fix CSS"""
     keyword = flow_data.get('keyword_term', 'N/A')
     ad_title = flow_data.get('ad_title', 'N/A')
     ad_desc = flow_data.get('ad_description', 'N/A')
@@ -517,18 +517,6 @@ def generate_serp_mockup(flow_data, serp_templates):
     if serp_templates and len(serp_templates) > 0:
         try:
             html = serp_templates[0].get('code', '')
-            
-            # FIX 1: Remove min-height from ul li (forces full screen)
-            html = re.sub(r'ul li\{[^}]*min-height\s*:\s*calc\([^)]+\)\s*;?([^}]*)\}', 
-                         r'ul li{\1}', html, flags=re.IGNORECASE)
-            
-            # FIX 2: Remove justify-content: space-between ONLY from .content-wrap
-            html = re.sub(r'(\.content-wrap\{[^}]*)justify-content\s*:\s*space-between\s*;?([^}]*\})', 
-                         r'\1\2', html, flags=re.IGNORECASE)
-            
-            # FIX 3: Remove flex-grow from .cta (but keep justify-content: end!)
-            html = re.sub(r'(\.cta\{[^}]*)flex-grow\s*:\s*\d+\s*;?([^}]*\})', 
-                         r'\1\2', html, flags=re.IGNORECASE)
             
             # Replace keyword
             html = re.sub(
@@ -542,12 +530,40 @@ def generate_serp_mockup(flow_data, serp_templates):
             html = re.sub(r'(<div class="title">)[^<]*(</div>)', f'\\1{ad_title}\\2', html, count=1)
             html = re.sub(r'(<div class="desc">)[^<]*(</div>)', f'\\1{ad_desc}\\2', html, count=1)
             
+            # INJECT FIX CSS to override problematic styles
+            fix_css = """
+            <style id="iframe-fix">
+            /* Remove min-height that forces full screen */
+            ul li { min-height: auto !important; }
+            
+            /* Keep background color */
+            body { background: #ECECEC !important; }
+            
+            /* Make content flow naturally, not space-between */
+            ul li .content-wrap { 
+                justify-content: flex-start !important; 
+            }
+            
+            /* Fix CTA positioning - remove flex-grow, keep right alignment */
+            ul li a.cta { 
+                flex-grow: 0 !important;
+                justify-content: flex-end !important;
+                margin-top: 40px !important;
+            }
+            </style>
+            """
+            
+            # Inject before </head>
+            if '</head>' in html:
+                html = html.replace('</head>', f'{fix_css}</head>')
+            elif '<body' in html:
+                html = re.sub(r'(<body[^>]*>)', rf'\1{fix_css}', html, count=1)
+            
             return html
         except Exception as e:
             st.error(f"Error: {str(e)}")
     
-    return ""
-    
+    return ""    
 def render_device_preview(content, device):
     """Simple rendering - mobile gets taller iframe for CTA"""
     # Device widths
@@ -936,6 +952,7 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+
 
 
 
