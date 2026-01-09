@@ -508,20 +508,19 @@ def render_similarity_card(title, data, explanation, calculation_details):
                 st.caption(f"**{key.replace('_', ' ').title()}:** {value}")
 
 def generate_serp_mockup(flow_data, serp_templates):
-    """Generate SERP HTML using actual template"""
+    """Generate SERP HTML - remove min-height that causes layout issues"""
     keyword = flow_data.get('keyword_term', 'N/A')
     ad_title = flow_data.get('ad_title', 'N/A')
     ad_desc = flow_data.get('ad_description', 'N/A')
     ad_url = flow_data.get('ad_display_url', 'N/A')
     
-    # Use actual SERP template from data_b
     if serp_templates and len(serp_templates) > 0:
         try:
             html = serp_templates[0].get('code', '')
             
-            # CRITICAL: Remove min-height from ad-card (causes CTA cutoff)
+            # CRITICAL FIX: Remove min-height that forces full-screen layout
+            # This line causes the CTA to be positioned at bottom of viewport
             html = re.sub(r'min-height\s*:\s*calc\([^)]+\)\s*;?', '', html, flags=re.IGNORECASE)
-            html = re.sub(r'min-height\s*:\s*[0-9]+[a-z%]+\s*;?', '', html, flags=re.IGNORECASE)
             
             # Replace keyword
             html = re.sub(
@@ -530,48 +529,17 @@ def generate_serp_mockup(flow_data, serp_templates):
                 html
             )
             
-            # Replace URL
+            # Replace ad details
             html = re.sub(r'(<div class="url">)[^<]*(</div>)', f'\\1{ad_url}\\2', html, count=1)
-            
-            # Replace title
             html = re.sub(r'(<div class="title">)[^<]*(</div>)', f'\\1{ad_title}\\2', html, count=1)
-            
-            # Replace description
             html = re.sub(r'(<div class="desc">)[^<]*(</div>)', f'\\1{ad_desc}\\2', html, count=1)
             
             return html
         except Exception as e:
-            st.error(f"Error using SERP template: {str(e)}")
+            st.error(f"Error: {str(e)}")
     
-    # Fallback
-    return f"""<!DOCTYPE html>
-<html><head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-* {{ margin: 0; padding: 0; box-sizing: border-box; }}
-body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #ECECEC; }}
-.wrapper {{ margin: 15px 0; }}
-.header-text {{ color: #BEBEBE; font-size: 16px; margin-bottom: 10px; }}
-.ad-card {{ background: #fff; border: 1px solid #BCBCBC; padding: 40px 24px; }}
-.url {{ color: #307137; font-size: 16px; margin-bottom: 30px; }}
-.title {{ color: #4761C2; font-size: 28px; font-weight: 700; margin-bottom: 20px; }}
-.desc {{ color: #828282; font-size: 16px; margin-bottom: 40px; }}
-.cta {{ text-align: right; }}
-.cta-btn {{ background: #307137; color: white; padding: 20px 40px; 
-             border: 4px solid #1F4A24; border-radius: 4px; 
-             font-size: 24px; font-weight: 700; display: inline-block; }}
-</style>
-</head><body>
-<div class="wrapper">
-    <div class="header-text">Sponsored results for: "{keyword}"</div>
-    <div class="ad-card">
-        <div class="url">{ad_url}</div>
-        <div class="title">{ad_title}</div>
-        <div class="desc">{ad_desc}</div>
-        <div class="cta"><div class="cta-btn">Continue</div></div>
-    </div>
-</div>
-</body></html>"""
+    return ""  # fallback
+
 
 def render_device_preview(content, device):
     """Simple rendering - mobile gets taller iframe for CTA"""
@@ -969,6 +937,7 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+
 
 
 
