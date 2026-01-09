@@ -13,7 +13,7 @@ import base64
 # Page config
 st.set_page_config(page_title="CPA Flow Analysis", page_icon="📊", layout="wide")
 
-# Custom CSS - COMPLETE LIGHT MODE
+# Custom CSS - COMPLETE LIGHT MODE with DARKER FONTS
 st.markdown("""
     <style>
     /* Background */
@@ -21,9 +21,15 @@ st.markdown("""
     .stApp { background-color: #f8fafc; }
     [data-testid="stSidebar"] { display: none; }
     
-    /* All text elements */
+    /* All text elements - DARKER for better visibility */
     h1, h2, h3, h4, h5, h6, p, span, div, label, .stMarkdown {
-        color: #1e293b !important;
+        color: #0f172a !important;
+        font-weight: 500 !important;
+    }
+    
+    /* Headings even bolder */
+    h1, h2, h3 {
+        font-weight: 700 !important;
     }
     
     /* Dropdowns and select boxes */
@@ -35,21 +41,24 @@ st.markdown("""
         border-color: #cbd5e1 !important;
     }
     [data-baseweb="select"] * {
-        color: #1e293b !important;
+        color: #0f172a !important;
+        font-weight: 500 !important;
     }
     
     /* Input fields */
     input, textarea, select {
         background-color: white !important;
-        color: #1e293b !important;
+        color: #0f172a !important;
         border-color: #cbd5e1 !important;
+        font-weight: 500 !important;
     }
     
     /* ALL Buttons - Light Mode */
     .stButton > button {
         background-color: white !important;
-        color: #1e293b !important;
+        color: #0f172a !important;
         border: 1px solid #cbd5e1 !important;
+        font-weight: 600 !important;
     }
     .stButton > button:hover {
         background-color: #f1f5f9 !important;
@@ -60,6 +69,7 @@ st.markdown("""
         background-color: #3b82f6 !important;
         color: white !important;
         border: none !important;
+        font-weight: 600 !important;
     }
     .stButton > button[kind="primary"]:hover,
     .stButton > button[data-testid="baseButton-primary"]:hover {
@@ -68,8 +78,9 @@ st.markdown("""
     .stButton > button[kind="secondary"],
     .stButton > button[data-testid="baseButton-secondary"] {
         background-color: white !important;
-        color: #1e293b !important;
+        color: #0f172a !important;
         border: 1px solid #cbd5e1 !important;
+        font-weight: 600 !important;
     }
     .stButton > button[kind="secondary"]:hover,
     .stButton > button[data-testid="baseButton-secondary"]:hover {
@@ -83,27 +94,32 @@ st.markdown("""
         border-bottom: 2px solid #e2e8f0 !important;
     }
     .stTabs [data-baseweb="tab"] {
-        color: #64748b !important;
+        color: #475569 !important;
         background-color: white !important;
+        font-weight: 600 !important;
     }
     .stTabs [aria-selected="true"] {
         color: #3b82f6 !important;
         border-bottom-color: #3b82f6 !important;
+        font-weight: 700 !important;
     }
     
     /* Metrics */
     [data-testid="stMetricValue"] {
-        color: #1e293b !important;
+        color: #0f172a !important;
+        font-weight: 700 !important;
     }
     [data-testid="stMetricLabel"] {
-        color: #64748b !important;
+        color: #475569 !important;
+        font-weight: 600 !important;
     }
     
     /* Expander */
     .streamlit-expanderHeader {
         background-color: white !important;
-        color: #1e293b !important;
+        color: #0f172a !important;
         border: 1px solid #e2e8f0 !important;
+        font-weight: 600 !important;
     }
     .streamlit-expanderContent {
         background-color: white !important;
@@ -113,14 +129,16 @@ st.markdown("""
     
     /* Radio buttons */
     .stRadio > label {
-        color: #1e293b !important;
+        color: #0f172a !important;
+        font-weight: 600 !important;
     }
     .stRadio [role="radiogroup"] label {
-        color: #1e293b !important;
+        color: #0f172a !important;
         background-color: white !important;
         border: 1px solid #cbd5e1 !important;
         padding: 8px 16px;
         border-radius: 6px;
+        font-weight: 600 !important;
     }
     .stRadio [role="radiogroup"] label:hover {
         background-color: #f1f5f9 !important;
@@ -155,11 +173,12 @@ st.markdown("""
         margin: 15px 0;
         line-height: 1.8;
         font-size: 15px;
-        color: #1e293b;
+        color: #0f172a;
         box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        font-weight: 500;
     }
     .info-label { 
-        font-weight: bold; 
+        font-weight: 700; 
         color: #3b82f6;
     }
     
@@ -168,9 +187,9 @@ st.markdown("""
         padding: 12px 8px;
         border-bottom: 2px solid #cbd5e1;
         margin-bottom: 10px;
-        font-weight: bold;
+        font-weight: 700;
         font-size: 13px;
-        color: #475569;
+        color: #334155;
         background: white;
         border-radius: 6px 6px 0 0;
         border: 1px solid #e2e8f0;
@@ -186,8 +205,9 @@ st.markdown("""
         margin: 10px 0;
         font-size: 13px;
         line-height: 1.6;
-        color: #1e293b;
+        color: #0f172a;
         box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        font-weight: 500;
     }
     
     /* Spinner */
@@ -197,7 +217,8 @@ st.markdown("""
     
     /* Caption */
     .stCaptionContainer {
-        color: #64748b !important;
+        color: #475569 !important;
+        font-weight: 500 !important;
     }
     
     /* Code blocks */
@@ -206,7 +227,7 @@ st.markdown("""
         border: 1px solid #cbd5e1 !important;
     }
     code {
-        color: #1e293b !important;
+        color: #0f172a !important;
         background-color: #f1f5f9 !important;
     }
     </style>
@@ -428,11 +449,11 @@ def render_similarity_card(title, data, explanation, calculation_details):
     
     st.markdown(f"""
     <div class="metric-card {css_class}">
-        <h4 style="margin:0; color: #64748b; font-size: 12px;">{title}</h4>
-        <h2 style="margin: 8px 0; color: {color};">{score:.1%}</h2>
-        <p style="margin:0; color: #64748b; font-size: 11px;">{band.upper()}</p>
-        <p style="margin:8px 0 4px 0; color: #475569; font-size: 10px;">{reason[:80]}</p>
-        <p style="margin:8px 0 0 0; color: #64748b; font-size: 9px; font-style: italic;">{explanation}</p>
+        <h4 style="margin:0; color: #475569; font-size: 12px; font-weight: 700;">{title}</h4>
+        <h2 style="margin: 8px 0; color: {color}; font-weight: 700;">{score:.1%}</h2>
+        <p style="margin:0; color: #475569; font-size: 11px; font-weight: 600;">{band.upper()}</p>
+        <p style="margin:8px 0 4px 0; color: #334155; font-size: 10px; font-weight: 500;">{reason[:80]}</p>
+        <p style="margin:8px 0 0 0; color: #64748b; font-size: 9px; font-style: italic; font-weight: 500;">{explanation}</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -491,12 +512,12 @@ body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #f
 </body></html>"""
 
 def render_device_preview(content, device):
-    """Render properly - let content flow naturally at device width"""
-    # Actual device widths - INCREASED mobile width more
+    """Render at ACTUAL device width - no scaling, let responsive design work"""
+    # Real device widths - matching actual devices
     dims = {
-        'mobile': 430,      # Increased from 400 to 430px for wider CTA
-        'tablet': 768,
-        'laptop': 1366
+        'mobile': 393,      # iPhone 14 Pro actual width - perfect for responsive design
+        'tablet': 820,      # iPad Air width
+        'laptop': 1440      # MacBook Pro width
     }
     device_w = dims[device]
     
@@ -511,7 +532,7 @@ def render_device_preview(content, device):
     else:
         frame_style = "border-radius: 8px; border: 8px solid #94a3b8;"
     
-    # Simple: render at device width, make it scrollable
+    # Render at ACTUAL width - this lets the website's responsive CSS work properly
     html = f"""
     <div style="display: flex; justify-content: center; align-items: center; 
                 background: #e2e8f0; border-radius: 12px; padding: 30px; 
@@ -523,7 +544,7 @@ def render_device_preview(content, device):
                     background: white; position: relative;
                     -webkit-overflow-scrolling: touch;">
             <iframe srcdoc='{content.replace("'", "&apos;").replace('"', "&quot;")}' 
-                    style="width: 100%; min-height: 100%; border: none; display: block;"
+                    style="width: {device_w}px; height: 100%; border: none; display: block;"
                     sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
             </iframe>
         </div>
@@ -606,8 +627,9 @@ if st.session_state.data_a is not None:
                 fig.add_vline(x=avg_ctr, line_dash="dash", line_color="gray", opacity=0.5)
                 fig.update_layout(xaxis_title="CTR (%)", yaxis_title="CVR (%)", height=400,
                     showlegend=False, plot_bgcolor='white', paper_bgcolor='white',
-                    font=dict(color='#1e293b'), hovermode='closest',
-                    xaxis=dict(gridcolor='#e2e8f0'), yaxis=dict(gridcolor='#e2e8f0'))
+                    font=dict(color='#0f172a', size=12, family="Arial, sans-serif"), hovermode='closest',
+                    xaxis=dict(gridcolor='#e2e8f0', title_font=dict(size=14, color='#0f172a')), 
+                    yaxis=dict(gridcolor='#e2e8f0', title_font=dict(size=14, color='#0f172a')))
                 
                 event = st.plotly_chart(fig, use_container_width=True, key="bubble", on_select="rerun")
                 
@@ -657,13 +679,13 @@ if st.session_state.data_a is not None:
                             st.session_state.similarities = {}
                             st.rerun()
                     cols[1].write(row['keyword_term'])
-                    cols[2].markdown(f"<div style='text-align:center; color:#1e293b;'>{int(row['impressions']):,}</div>", unsafe_allow_html=True)
-                    cols[3].markdown(f"<div style='text-align:center; color:#1e293b;'>{int(row['clicks']):,}</div>", unsafe_allow_html=True)
-                    cols[4].markdown(f"<div style='text-align:center; color:#1e293b;'>{int(row['conversions']):,}</div>", unsafe_allow_html=True)
-                    ctr_color = '#22c55e' if row['ctr'] >= avg_ctr else '#ef4444'
-                    cols[5].markdown(f"<div style='text-align:center;color:{ctr_color};font-weight:600;'>{row['ctr']:.2f}%</div>", unsafe_allow_html=True)
-                    cvr_color = '#22c55e' if row['cvr'] >= avg_cvr else '#ef4444'
-                    cols[6].markdown(f"<div style='text-align:center;color:{cvr_color};font-weight:600;'>{row['cvr']:.2f}%</div>", unsafe_allow_html=True)
+                    cols[2].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500;'>{int(row['impressions']):,}</div>", unsafe_allow_html=True)
+                    cols[3].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500;'>{int(row['clicks']):,}</div>", unsafe_allow_html=True)
+                    cols[4].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500;'>{int(row['conversions']):,}</div>", unsafe_allow_html=True)
+                    ctr_color = '#16a34a' if row['ctr'] >= avg_ctr else '#dc2626'
+                    cols[5].markdown(f"<div style='text-align:center;color:{ctr_color};font-weight:700;'>{row['ctr']:.2f}%</div>", unsafe_allow_html=True)
+                    cvr_color = '#16a34a' if row['cvr'] >= avg_cvr else '#dc2626'
+                    cols[6].markdown(f"<div style='text-align:center;color:{cvr_color};font-weight:700;'>{row['cvr']:.2f}%</div>", unsafe_allow_html=True)
             
             if st.session_state.selected_keyword:
                 st.divider()
@@ -672,7 +694,7 @@ if st.session_state.data_a is not None:
                 <div class="info-box">
                     👉 <strong>What you need to do:</strong> Now pick which website your ad appeared on. 
                     Different websites can give different results. <br><br>
-                    💡 <strong>Colors explained:</strong> <span style="color:#22c55e">●</span> Green = Above average performance | <span style="color:#ef4444">●</span> Red = Below average performance
+                    💡 <strong>Colors explained:</strong> <span style="color:#16a34a">●</span> Green = Above average performance | <span style="color:#dc2626">●</span> Red = Below average performance
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -718,13 +740,13 @@ if st.session_state.data_a is not None:
                             st.rerun()
                     display_url = row['publisher_url'][:45] + '...' if len(str(row['publisher_url'])) > 45 else row['publisher_url']
                     cols[1].write(display_url)
-                    cols[2].markdown(f"<div style='text-align:center; color:#1e293b;'>{int(row['impressions']):,}</div>", unsafe_allow_html=True)
-                    cols[3].markdown(f"<div style='text-align:center; color:#1e293b;'>{int(row['clicks']):,}</div>", unsafe_allow_html=True)
-                    cols[4].markdown(f"<div style='text-align:center; color:#1e293b;'>{int(row['conversions']):,}</div>", unsafe_allow_html=True)
-                    ctr_color = '#22c55e' if row['ctr'] >= avg_ctr else '#ef4444'
-                    cols[5].markdown(f"<div style='text-align:center;color:{ctr_color};font-weight:600;'>{row['ctr']:.2f}%</div>", unsafe_allow_html=True)
-                    cvr_color = '#22c55e' if row['cvr'] >= avg_cvr else '#ef4444'
-                    cols[6].markdown(f"<div style='text-align:center;color:{cvr_color};font-weight:600;'>{row['cvr']:.2f}%</div>", unsafe_allow_html=True)
+                    cols[2].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500;'>{int(row['impressions']):,}</div>", unsafe_allow_html=True)
+                    cols[3].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500;'>{int(row['clicks']):,}</div>", unsafe_allow_html=True)
+                    cols[4].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500;'>{int(row['conversions']):,}</div>", unsafe_allow_html=True)
+                    ctr_color = '#16a34a' if row['ctr'] >= avg_ctr else '#dc2626'
+                    cols[5].markdown(f"<div style='text-align:center;color:{ctr_color};font-weight:700;'>{row['ctr']:.2f}%</div>", unsafe_allow_html=True)
+                    cvr_color = '#16a34a' if row['cvr'] >= avg_cvr else '#dc2626'
+                    cols[6].markdown(f"<div style='text-align:center;color:{cvr_color};font-weight:700;'>{row['cvr']:.2f}%</div>", unsafe_allow_html=True)
             
             if st.session_state.selected_keyword and st.session_state.selected_url:
                 st.divider()
@@ -756,8 +778,8 @@ if st.session_state.data_a is not None:
                     <div class="info-box">
                         💡 <strong>Understanding Similarity Scores:</strong><br>
                         We calculate 3 similarity scores to check if everything in your flow matches properly:<br>
-                        • <span style="color:#22c55e">■</span> <strong>80-100%</strong> = Excellent | <span style="color:#3b82f6">■</span> <strong>60-80%</strong> = Good<br>
-                        • <span style="color:#eab308">■</span> <strong>40-60%</strong> = Needs improvement | <span style="color:#ef4444">■</span> <strong>Below 40%</strong> = Fix immediately
+                        • <span style="color:#16a34a">■</span> <strong>80-100%</strong> = Excellent | <span style="color:#3b82f6">■</span> <strong>60-80%</strong> = Good<br>
+                        • <span style="color:#eab308">■</span> <strong>40-60%</strong> = Needs improvement | <span style="color:#dc2626">■</span> <strong>Below 40%</strong> = Fix immediately
                     </div>
                     """, unsafe_allow_html=True)
                     
