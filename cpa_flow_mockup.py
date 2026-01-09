@@ -315,29 +315,37 @@ body {{ margin: 0; padding: 40px 20px; font-family: Arial, sans-serif; backgroun
 </body></html>"""
 
 def render_device_preview(content, device, zoom, is_iframe=False, url=""):
-    """Simple rendering that preserves the actual layout"""
+    """Render HTML content at device width with proper scrolling"""
     dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
     device_w, device_h = dims[device]
     
-    # Apply zoom to dimensions directly
+    # Apply zoom to width only
     display_w = int(device_w * (zoom / 100))
-    display_h = int(device_h * (zoom / 100))
+    container_h = 650  # Fixed container height with scroll
     
     if is_iframe:
-        inner = f'<iframe src="{url}" style="width:100%; height:100%; border:none;" sandbox="allow-same-origin allow-scripts allow-popups allow-forms"></iframe>'
-    else:
-        # Render at actual size, zoom is applied via iframe scaling below
-        inner = content
-    
-    html = f"""
-    <div style="display: flex; justify-content: center; align-items: center; background: #1f2937; border-radius: 8px; padding: 20px; min-height: 600px;">
-        <div style="box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius: 8px; overflow: hidden; background:white;">
-            <iframe srcdoc='{inner.replace("'", "&apos;")}' style="width:{display_w}px; height:{display_h}px; border:none; background:white;"></iframe>
+        # For external URLs
+        html = f"""
+        <div style="display: flex; justify-content: center; align-items: center; background: #1f2937; border-radius: 8px; padding: 20px; min-height: {container_h}px;">
+            <div style="width:{display_w}px; height:{container_h - 40}px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius: 8px; overflow: hidden; background:white;">
+                <iframe src="{url}" style="width:100%; height:100%; border:none;" sandbox="allow-same-origin allow-scripts allow-popups allow-forms"></iframe>
+            </div>
         </div>
-    </div>
-    """
+        """
+    else:
+        # For SERP HTML content - render directly at device width
+        html = f"""
+        <div style="display: flex; justify-content: center; align-items: center; background: #1f2937; border-radius: 8px; padding: 20px; min-height: {container_h}px;">
+            <div style="width:{display_w}px; max-height:{container_h - 40}px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius: 8px; overflow-y: auto; overflow-x: hidden; background:white;">
+                <div style="width:{device_w}px;">
+                    {content}
+                </div>
+            </div>
+        </div>
+        """
     
-    return html, max(display_h + 80, 600)    
+    return html, container_h + 40
+
 # Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
@@ -583,29 +591,21 @@ if st.session_state.data_a is not None:
                             if screenshot:
                                 dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
                                 device_w, device_h = dims[device2]
-
-                                if device2 == 'mobile':
-                                    display_w = int(375 * (st.session_state.zoom2 / 100))
-                                    display_h = int(667 * (st.session_state.zoom2 / 100))
-                                elif device2 == 'tablet':
-                                    display_w = int(600 * (st.session_state.zoom2 / 100))
-                                    display_h = int(800 * (st.session_state.zoom2 / 100))
-                                else:
-                                    display_w = int(900 * (st.session_state.zoom2 / 100))
-                                    display_h = int(600 * (st.session_state.zoom2 / 100))
                                 
-                        
-                                
-                                scale = scale * (st.session_state.zoom2 / 100)
+                                # Apply zoom
+                                display_w = int(device_w * (st.session_state.zoom2 / 100))
+                                container_h = 650
                                 
                                 img_html = f"""
-                                <div style="display: flex; justify-content: center; align-items: center; background: #1f2937; border-radius: 8px; padding: 20px; min-height: 500px;">
-                                    <div style="width: {device_w}px; height: {device_h}px; transform: scale({scale}); box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius: 8px; overflow: auto; background: white;">
-                                        <img src="data:image/jpeg;base64,{screenshot}" style="width: 100%; height: 100%; object-fit: contain;">
+                                <div style="display: flex; justify-content: center; align-items: center; background: #1f2937; border-radius: 8px; padding: 20px; min-height: {container_h}px;">
+                                    <div style="width:{display_w}px; max-height:{container_h - 40}px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius: 8px; overflow-y: auto; overflow-x: hidden; background:white;">
+                                        <div style="width:{device_w}px;">
+                                            <img src="data:image/jpeg;base64,{screenshot}" style="width:100%; height:auto; display:block;">
+                                        </div>
                                     </div>
                                 </div>
                                 """
-                                st.components.v1.html(img_html, height=580, scrolling=False)
+                                st.components.v1.html(img_html, height=container_h + 40, scrolling=False)
                             else:
                                 preview_html, height = render_device_preview("", device2, st.session_state.zoom2, is_iframe=True, url=dest_url)
                                 st.components.v1.html(preview_html, height=height, scrolling=False)
@@ -632,6 +632,3 @@ if st.session_state.data_a is not None:
                     st.warning("No flows found")
 else:
     st.error("❌ Failed to load data")
-
-
-
