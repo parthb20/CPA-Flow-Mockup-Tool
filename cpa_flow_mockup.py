@@ -144,8 +144,7 @@ def get_quadrant(ctr, cvr, avg_ctr, avg_cvr):
 
 def call_similarity_api(prompt):
     if not API_KEY:
-        return None
-    
+        return {"error": "no_api_key"}
     # Try FastRouter first
     try:
         response = requests.post(
@@ -270,7 +269,15 @@ Return JSON: {{"intent":"","topic_match":0.0,"answer_quality":0.0,"final_score":
 
 def render_similarity_card(title, data):
     if not data:
-        st.error(f"{title}: Add API key to secrets")
+        st.error(f"{title}: API Error")
+        return
+    
+    # Check for API errors
+    if "error" in data:
+        if data["error"] == "no_api_key":
+            st.error(f"{title}: Add FASTROUTER_API_KEY or ANTHROPIC_API_KEY to secrets")
+        else:
+            st.error(f"{title}: API failed - {data.get('message', 'Unknown')}")
         return
     
     score = data.get('final_score', 0)
@@ -335,22 +342,13 @@ body {{ margin: 0; padding: 20px; font-family: Arial; background: #f8f9fa; }}
 </body></html>"""
 
 def render_device_preview(content, device, zoom, is_iframe=False, url=""):
-    """Render with proper aspect ratio - fits content maintaining ratio"""
+    """Render with proper centered aspect ratio"""
     dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
     device_w, device_h = dims[device]
     
-    # Container dimensions
-    container_w, container_h = 900, 600
-    
-    # Calculate scale to fit
-    scale_w = container_w / device_w
-    scale_h = container_h / device_h
-    fit_scale = min(scale_w, scale_h) * 0.85  # 85% for padding
-    
-    # Apply zoom
-    final_scale = fit_scale * (zoom / 100)
-    scaled_w = int(device_w * final_scale)
-    scaled_h = int(device_h * final_scale)
+    # Apply zoom directly
+    scaled_w = int(device_w * (zoom / 100))
+    scaled_h = int(device_h * (zoom / 100))
     
     if is_iframe:
         inner_content = f'<iframe src="{url}" width="{device_w}" height="{device_h}" style="border:none; background:white;" sandbox="allow-same-origin allow-scripts allow-popups allow-forms"></iframe>'
@@ -359,14 +357,14 @@ def render_device_preview(content, device, zoom, is_iframe=False, url=""):
     
     html = f"""
     <div class="render-container">
-        <div style="box-shadow: 0 4px 20px rgba(0,0,0,0.5); overflow: hidden; border-radius: 5px;">
-            <div style="width: {device_w}px; height: {device_h}px; transform: scale({final_scale}); transform-origin: top left;">
+        <div style="box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius: 8px; overflow:hidden;">
+            <div style="width:{device_w}px; height:{device_h}px; transform:scale({zoom/100}); transform-origin:center;">
                 {inner_content}
             </div>
         </div>
     </div>
     """
-    return html, container_h + 50
+    return html, 700  # Fixed container height
 
 # Auto-load data
 if not st.session_state.loading_done:
@@ -564,7 +562,8 @@ if st.session_state.data_a is not None:
                             st.rerun()
                         ctrl_cols[2].caption(f"{st.session_state.zoom1}%")
                         if ctrl_cols[4].button("⛶ Fullscreen", key="fs1"):
-                            st.info("Open in new tab to view fullscreen")
+                            js = f"window.open('{st.session_state.flows[st.session_state.flow_index].get('reporting_destination_url', '#')}', '_blank')"
+                            st.markdown(f'<script>{js}</script>', unsafe_allow_html=True)
                         
                         device1 = st.radio("Device", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev1', index=0)
                         serp_html = generate_serp_mockup(current_flow, st.session_state.data_b)
