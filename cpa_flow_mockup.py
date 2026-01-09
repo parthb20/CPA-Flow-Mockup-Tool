@@ -29,30 +29,63 @@ st.markdown("""
     .similarity-poor { border-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
     .render-container {
         display: flex; justify-content: center; align-items: center;
-        padding: 20px; background: #1f2937; border-radius: 8px; position: relative;
-        min-height: 600px;
+        padding: 20px; background: #1f2937; border-radius: 8px;
+        min-height: 500px; overflow: auto; position: relative;
     }
-    .zoom-controls {
-        position: absolute; top: 10px; right: 10px; z-index: 1000;
-        background: rgba(0,0,0,0.8); padding: 8px 12px; border-radius: 5px;
-        display: flex; gap: 10px; align-items: center;
+    .render-wrapper {
+        display: flex; justify-content: center; align-items: center;
+        width: 100%; height: 100%;
     }
-    .zoom-btn {
-        background: #444; color: white; border: none; padding: 6px 12px; 
-        cursor: pointer; border-radius: 3px; font-size: 14px;
+    .device-frame {
+        box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+        border-radius: 8px;
+        overflow: hidden;
+        background: white;
     }
-    .zoom-btn:hover { background: #555; }
-    .fullscreen-btn {
-        background: #3b82f6; color: white; padding: 6px 12px;
-        cursor: pointer; border-radius: 3px; font-size: 14px; border: none;
-    }
-    .fullscreen-btn:hover { background: #2563eb; }
     .info-box {
         background: #1f2937; padding: 12px; border-radius: 5px; 
         color: #d1d5db; font-size: 12px; margin: 10px 0;
         border: 1px solid #374151; line-height: 1.6;
     }
     .info-label { color: #9ca3af; font-weight: bold; }
+    
+    /* Modal styles */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.95);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+    }
+    .modal-overlay.active {
+        display: flex;
+    }
+    .modal-content {
+        width: 90vw; height: 90vh;
+        background: white;
+        border-radius: 8px;
+        overflow: auto;
+        position: relative;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+    }
+    .modal-close {
+        position: absolute;
+        top: 10px; right: 10px;
+        background: rgba(0,0,0,0.8);
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        z-index: 10000;
+        font-size: 18px;
+    }
+    .modal-close:hover {
+        background: rgba(0,0,0,0.9);
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -341,30 +374,58 @@ body {{ margin: 0; padding: 40px 20px; font-family: Arial, sans-serif; backgroun
 </div>
 </body></html>"""
 
-def render_device_preview(content, device, zoom, is_iframe=False, url=""):
-    """Render with proper centered aspect ratio"""
+def render_device_preview(content, device, zoom, is_iframe=False, url="", show_expand=True):
+    """Render with proper centered aspect ratio and expand option"""
     dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
     device_w, device_h = dims[device]
     
-    # Apply zoom directly
+    # Calculate scaled dimensions
     scaled_w = int(device_w * (zoom / 100))
     scaled_h = int(device_h * (zoom / 100))
     
+    # Modal ID
+    modal_id = f"modal_{abs(hash(url))}" if url else "modal_serp"
+    
     if is_iframe:
         inner_content = f'<iframe src="{url}" width="{device_w}" height="{device_h}" style="border:none; background:white;" sandbox="allow-same-origin allow-scripts allow-popups allow-forms"></iframe>'
+        modal_inner = f'<iframe src="{url}" width="100%" height="100%" style="border:none;" sandbox="allow-same-origin allow-scripts allow-popups allow-forms"></iframe>'
     else:
         inner_content = content
+        modal_inner = content
+    
+    expand_btn = ''
+    modal_html = ''
+    if show_expand:
+        expand_btn = f'''
+        <button onclick="document.getElementById('{modal_id}').classList.add('active')" 
+                style="position:absolute; top:10px; right:10px; background:#3b82f6; color:white; 
+                       border:none; padding:8px 12px; border-radius:5px; cursor:pointer; z-index:100; font-size:14px;">
+            ⛶ Expand
+        </button>
+        '''
+        modal_html = f'''
+        <div id="{modal_id}" class="modal-overlay">
+            <button class="modal-close" onclick="document.getElementById('{modal_id}').classList.remove('active')">✕ Close</button>
+            <div class="modal-content">
+                {modal_inner}
+            </div>
+        </div>
+        '''
     
     html = f"""
     <div class="render-container">
-        <div style="box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius: 8px; overflow:hidden;">
-            <div style="width:{device_w}px; height:{device_h}px; transform:scale({zoom/100}); transform-origin:center;">
-                {inner_content}
+        {expand_btn}
+        <div class="render-wrapper">
+            <div class="device-frame" style="width:{scaled_w}px; height:{scaled_h}px;">
+                <div style="width:{device_w}px; height:{device_h}px; transform:scale({zoom/100}); transform-origin:top left;">
+                    {inner_content}
+                </div>
             </div>
         </div>
     </div>
+    {modal_html}
     """
-    return html, 700  # Fixed container height
+    return html, scaled_h + 80
 
 # Auto-load data
 if not st.session_state.loading_done:
@@ -557,21 +618,19 @@ if st.session_state.data_a is not None:
                     card1_left, card1_right = st.columns([7, 3])
                     
                     with card1_left:
-                        ctrl_cols = st.columns([1, 1, 1, 2, 1])
+                        ctrl_cols = st.columns([1, 1, 1, 5])
                         if ctrl_cols[0].button("➖", key="z1m"):
-                            st.session_state.zoom1 = max(50, st.session_state.zoom1 - 10)
+                            st.session_state.zoom1 = max(30, st.session_state.zoom1 - 10)
                             st.rerun()
                         if ctrl_cols[1].button("➕", key="z1p"):
-                            st.session_state.zoom1 = min(200, st.session_state.zoom1 + 10)
+                            st.session_state.zoom1 = min(150, st.session_state.zoom1 + 10)
                             st.rerun()
                         ctrl_cols[2].caption(f"{st.session_state.zoom1}%")
-                        dest = current_flow.get('reporting_destination_url', '#')
-                        ctrl_cols[4].markdown(f'<a href="{dest}" target="_blank" style="display:inline-block;background:#3b82f6;color:white;padding:8px 12px;border-radius:5px;text-decoration:none;font-size:14px;text-align:center;">⛶ Open</a>', unsafe_allow_html=True)
                         
                         device1 = st.radio("Device", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev1', index=0)
                         serp_html = generate_serp_mockup(current_flow, st.session_state.data_b)
-                        preview_html, height = render_device_preview(serp_html, device1, st.session_state.zoom1)
-                        st.components.v1.html(preview_html, height=height, scrolling=False)
+                        preview_html, height = render_device_preview(serp_html, device1, st.session_state.zoom1, show_expand=True)
+                        st.components.v1.html(preview_html, height=height, scrolling=True)
                     
                     with card1_right:
                         st.markdown(f"""
@@ -594,52 +653,56 @@ if st.session_state.data_a is not None:
                     card2_left, card2_right = st.columns([7, 3])
                     
                     with card2_left:
-                        ctrl_cols = st.columns([1, 1, 1, 2, 1])
+                        ctrl_cols = st.columns([1, 1, 1, 5])
                         if ctrl_cols[0].button("➖", key="z2m"):
-                            st.session_state.zoom2 = max(50, st.session_state.zoom2 - 10)
+                            st.session_state.zoom2 = max(30, st.session_state.zoom2 - 10)
                             st.rerun()
                         if ctrl_cols[1].button("➕", key="z2p"):
-                            st.session_state.zoom2 = min(200, st.session_state.zoom2 + 10)
+                            st.session_state.zoom2 = min(150, st.session_state.zoom2 + 10)
                             st.rerun()
                         ctrl_cols[2].caption(f"{st.session_state.zoom2}%")
-                        
-                        dest = current_flow.get('reporting_destination_url', '#')
-                        ctrl_cols[4].markdown(f'<a href="{dest}" target="_blank" style="display:inline-block;background:#3b82f6;color:white;padding:8px 12px;border-radius:5px;text-decoration:none;font-size:14px;text-align:center;">⛶ Open</a>', unsafe_allow_html=True)
                         
                         device2 = st.radio("Device", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev2', index=0)
                         dest_url = current_flow.get('reporting_destination_url', '')
                         
                         if dest_url and pd.notna(dest_url) and str(dest_url).lower() != 'null':
-                            # Try screenshot first
                             with st.spinner("Loading page..."):
                                 screenshot = get_screenshot(dest_url)
                             
                             if screenshot:
                                 dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
                                 device_w, device_h = dims[device2]
-                                container_w, container_h = 900, 600
-                                scale_w = container_w / device_w
-                                scale_h = container_h / device_h
-                                fit_scale = min(scale_w, scale_h) * 0.85
-                                final_scale = fit_scale * (st.session_state.zoom2 / 100)
-                                scaled_w = int(device_w * final_scale)
-                                scaled_h = int(device_h * final_scale)
+                                scaled_w = int(device_w * (st.session_state.zoom2 / 100))
+                                scaled_h = int(device_h * (st.session_state.zoom2 / 100))
+                                
+                                modal_id = f"modal_lp_{abs(hash(dest_url))}"
                                 
                                 img_html = f"""
                                 <div class="render-container">
-                                    <div style="box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
-                                        <img src="data:image/jpeg;base64,{screenshot}" 
-                                             style="width:{scaled_w}px; height:{scaled_h}px; object-fit:contain; background:white;">
+                                    <button onclick="document.getElementById('{modal_id}').classList.add('active')" 
+                                            style="position:absolute; top:10px; right:10px; background:#3b82f6; color:white; 
+                                                   border:none; padding:8px 12px; border-radius:5px; cursor:pointer; z-index:100; font-size:14px;">
+                                        ⛶ Expand
+                                    </button>
+                                    <div class="render-wrapper">
+                                        <div class="device-frame" style="width:{scaled_w}px; height:{scaled_h}px;">
+                                            <img src="data:image/jpeg;base64,{screenshot}" 
+                                                 style="width:100%; height:100%; object-fit:contain;">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="{modal_id}" class="modal-overlay">
+                                    <button class="modal-close" onclick="document.getElementById('{modal_id}').classList.remove('active')">✕ Close</button>
+                                    <div class="modal-content">
+                                        <img src="data:image/jpeg;base64,{screenshot}" style="width:100%; height:100%; object-fit:contain;">
                                     </div>
                                 </div>
                                 """
-                                st.components.v1.html(img_html, height=container_h + 50, scrolling=False)
+                                st.components.v1.html(img_html, height=scaled_h + 80, scrolling=True)
                             else:
                                 # Fallback to iframe
-                                preview_html, height = render_device_preview("", device2, st.session_state.zoom2, is_iframe=True, url=dest_url)
-                                st.components.v1.html(preview_html, height=height, scrolling=False)
-                            
-                            st.markdown(f'<a href="{dest_url}" target="_blank" style="display:inline-block; background:#3b82f6; color:white; padding:8px 16px; border-radius:5px; text-decoration:none; margin-top:10px;">🔗 Open in New Tab</a>', unsafe_allow_html=True)
+                                preview_html, height = render_device_preview("", device2, st.session_state.zoom2, is_iframe=True, url=dest_url, show_expand=True)
+                                st.components.v1.html(preview_html, height=height, scrolling=True)
                         else:
                             st.warning("⚠️ No landing page URL available")
                     
