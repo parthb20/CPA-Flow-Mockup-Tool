@@ -55,6 +55,16 @@ st.markdown("""
         font-size: 13px;
         color: rgba(255, 255, 255, 0.9);
     }
+    
+    .explanation-box {
+        background: rgba(139, 92, 246, 0.1);
+        padding: 12px;
+        border-radius: 6px;
+        border-left: 3px solid #8b5cf6;
+        margin: 10px 0;
+        font-size: 13px;
+        line-height: 1.6;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -235,7 +245,7 @@ Return JSON: {{"intent":"","topic_match":0.0,"answer_quality":0.0,"final_score":
     
     return results
 
-def render_similarity_card(title, data, explanation):
+def render_similarity_card(title, data, explanation, calculation_details):
     if not data:
         st.error(f"{title}: API Error")
         return
@@ -264,6 +274,14 @@ def render_similarity_card(title, data, explanation):
     else:
         css_class, color = 'similarity-poor', '#ef4444'
     
+    # Show calculation explanation first
+    st.markdown(f"""
+    <div class="explanation-box">
+        <strong>📊 How This Score Is Calculated:</strong><br>
+        {calculation_details}
+    </div>
+    """, unsafe_allow_html=True)
+    
     st.markdown(f"""
     <div class="metric-card {css_class}">
         <h4 style="margin:0; color: #d1d5db; font-size: 12px;">{title}</h4>
@@ -274,7 +292,7 @@ def render_similarity_card(title, data, explanation):
     </div>
     """, unsafe_allow_html=True)
     
-    with st.expander("📊 View Score Breakdown"):
+    with st.expander("📊 View Detailed Score Breakdown"):
         for key, value in data.items():
             if key not in ['final_score', 'band', 'reason'] and isinstance(value, (int, float)):
                 st.metric(key.replace('_', ' ').title(), f"{value:.1%}")
@@ -329,49 +347,59 @@ body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #f
 </body></html>"""
 
 def render_device_preview(content, device):
-    """Render at optimal scale to fit available space while maintaining proportions"""
+    """Render with realistic device frame and proper scaling"""
     # Actual device dimensions
     dims = {
-        'mobile': (412, 915),
-        'tablet': (820, 1180),
-        'laptop': (1440, 900)
+        'mobile': (375, 667),   # iPhone-like
+        'tablet': (768, 1024),  # iPad-like
+        'laptop': (1366, 768)   # Standard laptop
     }
     device_w, device_h = dims[device]
     
-    # Available container space (wider column = more space)
-    available_width = 900  # Approximate available width in the column
-    available_height = 700  # Target height for good visibility
+    # Calculate scale to fit nicely (larger for better visibility)
+    if device == 'mobile':
+        scale = 1.0  # Show at actual size
+        display_w = device_w
+        display_h = 600  # Fixed height with scroll
+    elif device == 'tablet':
+        scale = 0.65
+        display_w = int(device_w * scale)
+        display_h = int(device_h * scale)
+    else:  # laptop
+        scale = 0.55
+        display_w = int(device_w * scale)
+        display_h = int(device_h * scale)
     
-    # Calculate optimal scale to fit the space while maintaining aspect ratio
-    scale_w = available_width / device_w
-    scale_h = available_height / device_h
+    container_h = display_h + 80
     
-    # Use the smaller scale to ensure it fits, add 0.9 multiplier for padding
-    optimal_scale = min(scale_w, scale_h) * 0.9
-    
-    # Calculate final display dimensions
-    scaled_w = int(device_w * optimal_scale)
-    scaled_h = int(device_h * optimal_scale)
-    container_h = scaled_h + 80
+    # Device-specific styling
+    if device == 'mobile':
+        frame_style = "border-radius: 30px; border: 12px solid #2d3748;"
+    elif device == 'tablet':
+        frame_style = "border-radius: 20px; border: 16px solid #2d3748;"
+    else:
+        frame_style = "border-radius: 8px; border: 8px solid #2d3748;"
     
     html = f"""
-    <div style="display: flex; justify-content: center; align-items: flex-start; 
-                background: #1a1d24; border-radius: 12px; padding: 20px; 
+    <div style="display: flex; justify-content: center; align-items: center; 
+                background: #1a1d24; border-radius: 12px; padding: 30px; 
                 min-height: {container_h}px;">
-        <div style="width: {scaled_w}px; height: {scaled_h}px; 
-                    box-shadow: 0 25px 70px rgba(0,0,0,0.8); 
-                    border-radius: 10px; overflow: auto; 
-                    border: 4px solid #2d3748; background: white;">
-            <iframe srcdoc='{content.replace("'", "&apos;").replace('"', "&quot;")}' 
-                    style="width: {device_w}px; height: {device_h}px; border: none;
-                           transform: scale({optimal_scale}); transform-origin: 0 0;"
-                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
-            </iframe>
+        <div style="width: {display_w}px; height: {display_h}px; 
+                    {frame_style}
+                    box-shadow: 0 30px 80px rgba(0,0,0,0.9); 
+                    overflow: auto; background: white; position: relative;">
+            <div style="width: 100%; height: 100%; overflow: auto;">
+                <iframe srcdoc='{content.replace("'", "&apos;").replace('"', "&quot;")}' 
+                        style="width: {device_w}px; height: {device_h}px; border: none;
+                               transform: scale({scale}); transform-origin: 0 0; display: block;"
+                        sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
+                </iframe>
+            </div>
         </div>
     </div>
     """
     
-    return html, container_h + 40
+    return html, container_h + 60
 
 # Auto-load data
 if not st.session_state.loading_done:
@@ -578,16 +606,27 @@ if st.session_state.data_a is not None:
                 st.session_state.flows = flows.to_dict('records')
                 
                 if len(st.session_state.flows) > 0:
-                    st.subheader("📊 Step 3: See The Full Picture")
+                    st.subheader("📊 Step 3: Analyze The Flow")
+                    
+                    # Explain what a flow is
                     st.markdown("""
                     <div class="info-box">
-                        👉 <strong>What you're seeing:</strong> This shows the complete user journey from keyword search → ad click → landing page. 
-                        We calculate <strong>similarity scores</strong> to check if everything matches properly. <br><br>
-                        💡 <strong>Understanding Similarity Scores (0-100%):</strong><br>
-                        • <span style="color:#22c55e">■</span> <strong>80-100%</strong> = Excellent match - Everything aligns perfectly<br>
-                        • <span style="color:#3b82f6">■</span> <strong>60-80%</strong> = Good match - Working well<br>
-                        • <span style="color:#eab308">■</span> <strong>40-60%</strong> = Okay match - Could be improved<br>
-                        • <span style="color:#ef4444">■</span> <strong>Below 40%</strong> = Poor match - Needs immediate attention
+                        <strong>🔄 What is a "Flow"?</strong><br>
+                        A <strong>Flow</strong> represents one complete user journey, which includes:<br>
+                        • <strong>1 Keyword</strong> (what the user searched for)<br>
+                        • <strong>1 Publisher URL</strong> (the website where the ad appeared)<br>
+                        • <strong>1 SERP Template</strong> (how the ad looked in search results)<br>
+                        • <strong>1 Advertiser Landing Page</strong> (where the user went after clicking)<br><br>
+                        Each flow represents a unique combination of these 4 elements. Different combinations can perform differently!
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown("""
+                    <div class="info-box">
+                        💡 <strong>Understanding Similarity Scores:</strong><br>
+                        We calculate 3 similarity scores to check if everything in your flow matches properly:<br>
+                        • <span style="color:#22c55e">■</span> <strong>80-100%</strong> = Excellent | <span style="color:#3b82f6">■</span> <strong>60-80%</strong> = Good<br>
+                        • <span style="color:#eab308">■</span> <strong>40-60%</strong> = Needs improvement | <span style="color:#ef4444">■</span> <strong>Below 40%</strong> = Fix immediately
                     </div>
                     """, unsafe_allow_html=True)
                     
@@ -596,7 +635,7 @@ if st.session_state.data_a is not None:
                     for i, flow in enumerate(st.session_state.flows[:5]):
                         with nav_cols[i]:
                             is_selected = i == st.session_state.flow_index
-                            if st.button(f"Option {i+1}\n{safe_int(flow.get('clicks',0))} clicks\n{safe_float(flow.get('cvr',0)):.1f}% converted", 
+                            if st.button(f"Flow {i+1}\n{safe_int(flow.get('clicks',0))} clicks\n{safe_float(flow.get('cvr',0)):.1f}% CVR", 
                                         key=f"flow_{i}", type="primary" if is_selected else "secondary"):
                                 st.session_state.flow_index = i
                                 st.session_state.similarities = {}
@@ -615,7 +654,7 @@ if st.session_state.data_a is not None:
                     
                     # Card 1: SERP
                     st.subheader("🔍 Search Results Page")
-                    st.caption("This is how your ad appears in search results")
+                    st.caption("How your ad appears in search results")
                     
                     card1_left, card1_right = st.columns([7, 3])
                     
@@ -624,8 +663,6 @@ if st.session_state.data_a is not None:
                         serp_html = generate_serp_mockup(current_flow, st.session_state.data_b)
                         preview_html, height = render_device_preview(serp_html, device1)
                         st.components.v1.html(preview_html, height=height, scrolling=False)
-                        
-                        st.caption("💡 **Why we show HTML instead of screenshots:** Screenshot services get blocked by websites' security policies. Instead, we fetch the raw HTML code and render it in your browser - like building a replica from blueprints instead of taking a photo.")
                     
                     with card1_right:
                         st.markdown(f"""
@@ -637,20 +674,21 @@ if st.session_state.data_a is not None:
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        st.markdown("**Keyword → Ad Similarity**")
-                        st.caption("Compares search term with ad copy")
+                        st.markdown("**Keyword → Ad Similarity Score**")
                         if st.session_state.similarities:
                             render_similarity_card(
                                 "Match Score", 
                                 st.session_state.similarities.get('kwd_to_ad'),
-                                "Measures if your ad copy matches what users searched for"
+                                "Compares the user's search term with your ad copy",
+                                "We compare the <strong>keyword</strong> with <strong>ad title + description</strong>.<br>" +
+                                "Formula: 15% keyword match + 35% topic match + 50% intent match = Final Score"
                             )
                     
                     st.divider()
                     
                     # Card 2: Landing Page
                     st.subheader("🎯 Landing Page")
-                    st.caption("This is where users go after clicking your ad")
+                    st.caption("Where users go after clicking")
                     
                     card2_left, card2_right = st.columns([7, 3])
                     
@@ -659,9 +697,9 @@ if st.session_state.data_a is not None:
                         dest_url = current_flow.get('reporting_destination_url', '')
                         
                         if dest_url and pd.notna(dest_url) and str(dest_url).lower() != 'null':
-                            st.markdown(f"🔗 [Open Landing Page in New Tab]({dest_url})")
+                            st.markdown(f"🔗 [Open in New Tab]({dest_url})")
                             
-                            with st.spinner("Loading the page..."):
+                            with st.spinner("Loading page..."):
                                 try:
                                     response = requests.get(dest_url, timeout=10, headers={
                                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -671,39 +709,33 @@ if st.session_state.data_a is not None:
                                         preview_html, height = render_device_preview(landing_html, device2)
                                         st.components.v1.html(preview_html, height=height, scrolling=False)
                                     else:
-                                        st.error(f"⚠️ Could not load page (Error code: {response.status_code})")
+                                        st.error(f"⚠️ Could not load page (Error: {response.status_code})")
                                 except Exception as e:
-                                    st.error(f"⚠️ Could not load the page. Try opening the link above.")
+                                    st.error(f"⚠️ Could not load page. Try the link above.")
                         else:
-                            st.warning("⚠️ No landing page URL found in data")
+                            st.warning("⚠️ No landing page URL found")
                     
                     with card2_right:
-                        dest_url = current_flow.get('reporting_destination_url', 'N/A')
-                        st.markdown(f"""
-                        <div class="info-box">
-                            <div class="info-label">Landing Page URL:</div><br>
-                            <small>{dest_url[:100]}{"..." if len(str(dest_url)) > 100 else ""}</small>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        st.markdown("**Keyword → Page Similarity**")
-                        st.caption("Compares search term with landing page content")
+                        st.markdown("**Keyword → Page Similarity Score**")
                         if st.session_state.similarities:
                             render_similarity_card(
                                 "Match Score", 
                                 st.session_state.similarities.get('kwd_to_page'),
-                                "Measures if landing page content matches user's search intent"
+                                "Compares the user's search term with landing page content",
+                                "We compare the <strong>keyword</strong> with <strong>landing page text</strong>.<br>" +
+                                "Formula: 40% topic match + 60% answer quality = Final Score"
                             )
                         
-                        st.markdown("**Ad → Page Similarity**")
-                        st.caption("Compares ad copy with landing page content")
+                        st.markdown("**Ad → Page Similarity Score**")
                         if st.session_state.similarities:
                             render_similarity_card(
                                 "Match Score", 
                                 st.session_state.similarities.get('ad_to_page'),
-                                "Measures if landing page delivers what the ad promised"
+                                "Compares ad promises with landing page content",
+                                "We compare <strong>ad copy</strong> with <strong>landing page text</strong>.<br>" +
+                                "Formula: 30% topic match + 20% brand match + 50% promise match = Final Score"
                             )
                 else:
-                    st.warning("No data found for this selection")
+                    st.warning("No data found")
 else:
-    st.error("❌ Could not load data from Google Drive")
+    st.error("❌ Could not load data")
