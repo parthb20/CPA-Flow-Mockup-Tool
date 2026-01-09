@@ -453,16 +453,6 @@ def fetch_page_content(url):
     except:
         return ""
 
-def get_screenshot_url(url, device):
-    """Free screenshot service - no API key needed"""
-    widths = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
-    width = widths[device]
-    
-    # Using S-Shot.ru - FREE and reliable
-    screenshot_url = f"https://mini.s-shot.ru/{width}x800/JPEG/1024/Z100/?{url}"
-    
-    return screenshot_url
-
 def calculate_similarities(flow_data):
     keyword = flow_data.get('keyword_term', '')
     ad_title = flow_data.get('ad_title', '')
@@ -599,7 +589,7 @@ def generate_serp_mockup(flow_data, serp_templates):
     return ""
 
 def render_device_preview(content, device):
-    """Simple rendering for SERP"""
+    """Simple rendering for HTML content"""
     dims = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
     device_w = dims[device]
     container_height = 700
@@ -629,36 +619,6 @@ def render_device_preview(content, device):
                     style="width: {device_w}px; height: 100%; border: none; display: block;"
                     sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
             </iframe>
-        </div>
-    </div>
-    """
-    
-    return html, container_height + 110
-
-def render_screenshot_preview(screenshot_url, device):
-    """Render screenshot in device frame"""
-    dims = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
-    device_w = dims[device]
-    container_height = 700
-    
-    if device == 'mobile':
-        frame_style = "border-radius: 30px; border: 12px solid #94a3b8;"
-    elif device == 'tablet':
-        frame_style = "border-radius: 20px; border: 14px solid #94a3b8;"
-    else:
-        frame_style = "border-radius: 8px; border: 8px solid #94a3b8;"
-    
-    html = f"""
-    <div style="display: flex; justify-content: center; padding: 30px; 
-                background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%); 
-                border-radius: 12px; min-height: {container_height + 80}px;">
-        <div style="width: {device_w}px; height: {container_height}px; 
-                    {frame_style} overflow: auto; background: white;
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.2);">
-            <img src="{screenshot_url}" 
-                 style="width: 100%; height: auto; display: block;"
-                 alt="Landing page screenshot"
-                 onerror="this.parentElement.innerHTML='<div style=padding:20px;color:#ef4444;text-align:center;><strong>⚠️ Screenshot failed to load</strong><br>The website may block automated screenshots.</div>';">
         </div>
     </div>
     """
@@ -976,7 +936,7 @@ if st.session_state.data_a is not None:
                     
                     st.divider()
                     
-                    # Card 2: Landing Page (SCREENSHOT)
+                    # Card 2: Landing Page (HTML VERSION)
                     st.subheader("🎯 Landing Page")
                     st.caption("Where users go after clicking")
                     
@@ -987,9 +947,8 @@ if st.session_state.data_a is not None:
                         dest_url = current_flow.get('reporting_destination_url', '')
                         
                         if dest_url and pd.notna(dest_url) and str(dest_url).lower() != 'null':
-                            with st.spinner("Getting screenshot..."):
+                            with st.spinner("Loading page..."):
                                 try:
-                                    # Get redirect URL
                                     response = requests.get(dest_url, timeout=15, headers={
                                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                                     }, allow_redirects=True)
@@ -1011,11 +970,12 @@ if st.session_state.data_a is not None:
                                         </div>
                                         """, unsafe_allow_html=True)
                                     
-                                    # Get screenshot of FINAL redirected URL
-                                    screenshot_url = get_screenshot_url(final_url, device2)
-                                    screenshot_html, height = render_screenshot_preview(screenshot_url, device2)
-                                    st.components.v1.html(screenshot_html, height=height, scrolling=False)
-                                    
+                                    if response.status_code == 200:
+                                        landing_html = response.text
+                                        preview_html, height = render_device_preview(landing_html, device2)
+                                        st.components.v1.html(preview_html, height=height, scrolling=False)
+                                    else:
+                                        st.error(f"⚠️ Could not load page (Error: {response.status_code})")
                                 except Exception as e:
                                     st.error(f"⚠️ Could not load page: {str(e)}")
                                     st.markdown(f"Try opening: {make_url_clickable(dest_url)}", unsafe_allow_html=True)
