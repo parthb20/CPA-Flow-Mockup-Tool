@@ -722,7 +722,7 @@ def render_device_preview(content, device):
     """
     
     return html, device_h + 120    
-    # Auto-load data
+# Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
         st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
@@ -1060,6 +1060,7 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+
 
 
 
