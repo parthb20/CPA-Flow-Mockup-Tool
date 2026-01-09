@@ -515,7 +515,7 @@ def render_device_preview(content, device):
     """Render at ACTUAL device width - no scaling, let responsive design work"""
     # Real device widths - matching actual devices
     dims = {
-        'mobile': 393,      # iPhone 14 Pro actual width - perfect for responsive design
+        'mobile': 393,      # iPhone 14 Pro actual width
         'tablet': 820,      # iPad Air width
         'laptop': 1440      # MacBook Pro width
     }
@@ -532,27 +532,30 @@ def render_device_preview(content, device):
     else:
         frame_style = "border-radius: 8px; border: 8px solid #94a3b8;"
     
+    # Properly encode content for srcdoc - escape HTML entities
+    import html as html_lib
+    encoded_content = html_lib.escape(content)
+    
     # Render at ACTUAL width - this lets the website's responsive CSS work properly
     html = f"""
     <div style="display: flex; justify-content: center; align-items: center; 
                 background: #e2e8f0; border-radius: 12px; padding: 30px; 
-                min-height: {container_height + 80}px;">
+                min-height: {container_height + 80}px; overflow: hidden;">
         <div style="width: {device_w}px; height: {container_height}px; 
                     {frame_style}
                     box-shadow: 0 20px 60px rgba(0,0,0,0.2); 
-                    overflow-y: auto; overflow-x: hidden; 
-                    background: white; position: relative;
-                    -webkit-overflow-scrolling: touch;">
-            <iframe srcdoc='{content.replace("'", "&apos;").replace('"', "&quot;")}' 
-                    style="width: {device_w}px; height: 100%; border: none; display: block;"
-                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
+                    overflow: hidden; 
+                    background: white; position: relative;">
+            <iframe srcdoc="{encoded_content}" 
+                    style="width: 100%; height: 100%; border: none; display: block; margin: 0; padding: 0;"
+                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                    scrolling="yes">
             </iframe>
         </div>
     </div>
     """
     
     return html, container_height + 110
-
 # Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
@@ -892,3 +895,4 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+
