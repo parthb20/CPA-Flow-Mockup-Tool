@@ -28,8 +28,9 @@ st.markdown("""
     .similarity-moderate { border-color: #eab308; background: rgba(234, 179, 8, 0.1); }
     .similarity-poor { border-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
     .render-container {
-        display: flex; justify-content: center; align-items: flex-start;
+        display: flex; justify-content: center; align-items: center;
         padding: 20px; background: #1f2937; border-radius: 8px; position: relative;
+        min-height: 600px;
     }
     .zoom-controls {
         position: absolute; top: 10px; right: 10px; z-index: 1000;
@@ -61,7 +62,7 @@ FILE_B_ID = "1QpQhZhXFFpQWm_xhVGDjdpgRM3VMv57L"
 
 # Fix API key loading - Using FastRouter
 try:
-    API_KEY = st.secrets.get("FASTROUTER_API_KEY", st.secrets.get("OPENAI_API_KEY", "")).strip()
+    API_KEY = st.secrets.get("FASTROUTER_API_KEY", st.secrets.get("ANTHROPIC_API_KEY", "")).strip()
 except:
     API_KEY = ""
 
@@ -144,6 +145,8 @@ def get_quadrant(ctr, cvr, avg_ctr, avg_cvr):
 def call_similarity_api(prompt):
     if not API_KEY:
         return None
+    
+    # Try FastRouter first
     try:
         response = requests.post(
             "https://go.fastrouter.ai/api/v1/chat/completions",
@@ -160,14 +163,39 @@ def call_similarity_api(prompt):
             },
             timeout=30
         )
-        if response.status_code != 200:
-            return None
-        data = response.json()
-        text = data['choices'][0]['message']['content']
-        clean_text = text.replace('```json', '').replace('```', '').strip()
-        return json.loads(clean_text)
+        if response.status_code == 200:
+            data = response.json()
+            text = data['choices'][0]['message']['content']
+            clean_text = text.replace('```json', '').replace('```', '').strip()
+            return json.loads(clean_text)
     except:
-        return None
+        pass
+    
+    # Fallback to Anthropic direct
+    try:
+        response = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": API_KEY,
+                "anthropic-version": "2023-06-01"
+            },
+            json={
+                "model": "claude-sonnet-4-20250514",
+                "max_tokens": 1000,
+                "messages": [{"role": "user", "content": prompt}]
+            },
+            timeout=30
+        )
+        if response.status_code == 200:
+            data = response.json()
+            text = data['content'][0]['text']
+            clean_text = text.replace('```json', '').replace('```', '').strip()
+            return json.loads(clean_text)
+    except:
+        pass
+    
+    return None
 
 def fetch_page_content(url):
     if not url or pd.isna(url) or str(url).lower() == 'null':
@@ -182,36 +210,14 @@ def fetch_page_content(url):
         return ""
 
 def get_screenshot(url):
-    """Get screenshot using multiple methods"""
+    """Get screenshot using screenshotone.com API"""
     if url in st.session_state.screenshot_cache:
         return st.session_state.screenshot_cache[url]
     
-    # Method 1: Try screenshotmachine.com (free tier)
     try:
-        api_url = f"https://api.screenshotmachine.com?key=demo&url={quote(url)}&dimension=1440x900&format=jpg&cacheLimit=0"
-        response = requests.get(api_url, timeout=20)
-        if response.status_code == 200 and len(response.content) > 5000:
-            img_base64 = base64.b64encode(response.content).decode()
-            st.session_state.screenshot_cache[url] = img_base64
-            return img_base64
-    except:
-        pass
-    
-    # Method 2: Try thum.io
-    try:
-        api_url = f"https://image.thum.io/get/width/1440/crop/900/noanimate/{url}"
-        response = requests.get(api_url, timeout=20)
-        if response.status_code == 200 and len(response.content) > 5000:
-            img_base64 = base64.b64encode(response.content).decode()
-            st.session_state.screenshot_cache[url] = img_base64
-            return img_base64
-    except:
-        pass
-    
-    # Method 3: Try s-shot.ru
-    try:
-        api_url = f"https://mini.s-shot.ru/1440x900/JPEG/1024/Z100/?{url}"
-        response = requests.get(api_url, timeout=20)
+        # Using screenshotone.com free tier
+        api_url = f"https://api.screenshotone.com/take?access_key=XpP0JW6EU5SA&url={quote(url)}&viewport_width=1440&viewport_height=900&device_scale_factor=1&format=jpg&image_quality=80&block_ads=true&block_cookie_banners=true&block_trackers=true&cache=true&cache_ttl=2592000"
+        response = requests.get(api_url, timeout=30)
         if response.status_code == 200 and len(response.content) > 5000:
             img_base64 = base64.b64encode(response.content).decode()
             st.session_state.screenshot_cache[url] = img_base64
@@ -264,7 +270,7 @@ Return JSON: {{"intent":"","topic_match":0.0,"answer_quality":0.0,"final_score":
 
 def render_similarity_card(title, data):
     if not data:
-        st.error(f"{title}: API unavailable")
+        st.error(f"{title}: Add API key to secrets")
         return
     
     score = data.get('final_score', 0)
@@ -302,54 +308,65 @@ def generate_serp_mockup(flow_data, serp_templates):
     ad_desc = flow_data.get('ad_description', 'N/A')
     ad_url = flow_data.get('ad_display_url', 'N/A')
     
-    # Try to use template from JSON
     if serp_templates and len(serp_templates) > 0:
         try:
             html = serp_templates[0].get('code', '')
-            
-            # Replace placeholders in the template
-            # Replace header text (keyword)
             html = re.sub(r'<div class="header_text">Sponsored results for: "[^"]*"</div>', 
                          f'<div class="header_text">Sponsored results for: "{keyword}"</div>', html)
-            
-            # Replace URL
-            html = re.sub(r'<div class="url">[^<]*</div>', 
-                         f'<div class="url">{ad_url}</div>', html, count=1)
-            
-            # Replace title
-            html = re.sub(r'<div class="title">[^<]*</div>', 
-                         f'<div class="title">{ad_title}</div>', html, count=1)
-            
-            # Replace description
-            html = re.sub(r'<div class="desc">[^<]*</div>', 
-                         f'<div class="desc">{ad_desc}</div>', html, count=1)
-            
+            html = re.sub(r'<div class="url">[^<]*</div>', f'<div class="url">{ad_url}</div>', html, count=1)
+            html = re.sub(r'<div class="title">[^<]*</div>', f'<div class="title">{ad_title}</div>', html, count=1)
+            html = re.sub(r'<div class="desc">[^<]*</div>', f'<div class="desc">{ad_desc}</div>', html, count=1)
             return html
-        except Exception as e:
+        except:
             pass
     
-    # Fallback template
-    return f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #f8f9fa; }}
-            .header_text {{ color: #70757a; font-size: 12px; margin-bottom: 12px; }}
-            .url {{ color: #006621; font-size: 14px; margin-bottom: 4px; }}
-            .title {{ color: #1a0dab; font-size: 20px; margin: 0 0 8px 0; cursor: pointer; }}
-            .title:hover {{ text-decoration: underline; }}
-            .desc {{ color: #4d5156; font-size: 14px; line-height: 1.58; }}
-        </style>
-    </head>
-    <body>
-        <div class="header_text">Sponsored results for: "{keyword}"</div>
-        <div class="url">{ad_url}</div>
-        <div class="title">{ad_title}</div>
-        <div class="desc">{ad_desc}</div>
-    </body>
-    </html>
+    return f"""<!DOCTYPE html><html><head><style>
+body {{ margin: 0; padding: 20px; font-family: Arial; background: #f8f9fa; }}
+.sponsored {{ color: #70757a; font-size: 12px; margin-bottom: 12px; }}
+.url {{ color: #006621; font-size: 14px; margin-bottom: 4px; }}
+.title {{ color: #1a0dab; font-size: 20px; margin: 0 0 8px; cursor: pointer; }}
+.title:hover {{ text-decoration: underline; }}
+.desc {{ color: #4d5156; font-size: 14px; line-height: 1.58; }}
+</style></head><body>
+<div class="sponsored">Sponsored: "{keyword}"</div>
+<div class="url">{ad_url}</div>
+<div class="title">{ad_title}</div>
+<div class="desc">{ad_desc}</div>
+</body></html>"""
+
+def render_device_preview(content, device, zoom, is_iframe=False, url=""):
+    """Render with proper aspect ratio - fits content maintaining ratio"""
+    dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
+    device_w, device_h = dims[device]
+    
+    # Container dimensions
+    container_w, container_h = 900, 600
+    
+    # Calculate scale to fit
+    scale_w = container_w / device_w
+    scale_h = container_h / device_h
+    fit_scale = min(scale_w, scale_h) * 0.85  # 85% for padding
+    
+    # Apply zoom
+    final_scale = fit_scale * (zoom / 100)
+    scaled_w = int(device_w * final_scale)
+    scaled_h = int(device_h * final_scale)
+    
+    if is_iframe:
+        inner_content = f'<iframe src="{url}" width="{device_w}" height="{device_h}" style="border:none; background:white;" sandbox="allow-same-origin allow-scripts allow-popups allow-forms"></iframe>'
+    else:
+        inner_content = content
+    
+    html = f"""
+    <div class="render-container">
+        <div style="box-shadow: 0 4px 20px rgba(0,0,0,0.5); overflow: hidden; border-radius: 5px;">
+            <div style="width: {device_w}px; height: {device_h}px; transform: scale({final_scale}); transform-origin: top left;">
+                {inner_content}
+            </div>
+        </div>
+    </div>
     """
+    return html, container_h + 50
 
 # Auto-load data
 if not st.session_state.loading_done:
@@ -363,7 +380,6 @@ st.title("📊 CPA Flow Analysis")
 if st.session_state.data_a is not None:
     df = st.session_state.data_a
     
-    # Advertiser and Campaign Selection (no default)
     col1, col2 = st.columns(2)
     with col1:
         advertisers = ['-- Select Advertiser --'] + sorted(df['Advertiser_Name'].dropna().unique().tolist())
@@ -388,8 +404,6 @@ if st.session_state.data_a is not None:
             c4.metric("Conversions", f"{safe_int(campaign_df['conversions'].sum()):,}")
             
             st.divider()
-            
-            # Keyword Section
             st.subheader("🔑 Keyword Selection")
             
             tab1, tab2 = st.tabs(["📊 Bubble Chart", "📋 Table View"])
@@ -407,28 +421,21 @@ if st.session_state.data_a is not None:
                 for idx, row in bubble_data.iterrows():
                     quadrant, color = get_quadrant(row['ctr'], row['cvr'], avg_ctr, avg_cvr)
                     fig.add_trace(go.Scatter(
-                        x=[row['ctr']], y=[row['cvr']],
-                        mode='markers',
+                        x=[row['ctr']], y=[row['cvr']], mode='markers',
                         marker=dict(size=max(20, min(70, row['clicks']/10)), color=color, 
                                    line=dict(width=2, color='white')),
                         name=row['keyword_term'],
-                        hovertemplate='<b>%{fullData.name}</b><br>' +
-                                     'CTR: %{x:.2f}%<br>' +
-                                     'CVR: %{y:.2f}%<br>' +
-                                     f"Clicks: {int(row['clicks'])}" +
-                                     '<extra></extra>',
+                        hovertemplate='<b>%{fullData.name}</b><br>CTR: %{x:.2f}%<br>CVR: %{y:.2f}%<br>' + 
+                                     f"Clicks: {int(row['clicks'])}<extra></extra>",
                         customdata=[[row['keyword_term']]]
                     ))
                 
                 fig.add_hline(y=avg_cvr, line_dash="dash", line_color="gray", opacity=0.5)
                 fig.add_vline(x=avg_ctr, line_dash="dash", line_color="gray", opacity=0.5)
-                
-                fig.update_layout(
-                    xaxis_title="CTR (%)", yaxis_title="CVR (%)", height=400,
+                fig.update_layout(xaxis_title="CTR (%)", yaxis_title="CVR (%)", height=400,
                     showlegend=False, plot_bgcolor='#1f2937', paper_bgcolor='#1f2937',
                     font=dict(color='white'), hovermode='closest',
-                    xaxis=dict(gridcolor='#374151'), yaxis=dict(gridcolor='#374151')
-                )
+                    xaxis=dict(gridcolor='#374151'), yaxis=dict(gridcolor='#374151'))
                 
                 event = st.plotly_chart(fig, use_container_width=True, key="bubble", on_select="rerun")
                 
@@ -454,57 +461,35 @@ if st.session_state.data_a is not None:
                 elif keyword_filter == 'worst':
                     filtered_keywords = filtered_keywords[(filtered_keywords['ctr'] < avg_ctr) & (filtered_keywords['cvr'] < avg_cvr)]
                 
-                filtered_keywords = filtered_keywords.sort_values(keyword_sort, ascending=False).head(keyword_limit)
-                filtered_keywords = filtered_keywords.reset_index(drop=True)
+                filtered_keywords = filtered_keywords.sort_values(keyword_sort, ascending=False).head(keyword_limit).reset_index(drop=True)
                 
-                # Header row
-                col_h1, col_h2, col_h3, col_h4, col_h5 = st.columns([0.5, 4, 1.5, 1.5, 1.5])
-                col_h1.write("**Select**")
-                col_h2.write("**Keyword**")
-                col_h3.write("**Clicks**")
-                col_h4.write("**CTR %**")
-                col_h5.write("**CVR %**")
-                
-                # Data rows - radio button for single selection
                 for idx, row in filtered_keywords.iterrows():
-                    col_check, col_kw, col_clicks, col_ctr, col_cvr = st.columns([0.5, 4, 1.5, 1.5, 1.5])
-                    
-                    with col_check:
-                        is_selected = (row['keyword_term'] == st.session_state.selected_keyword)
-                        if st.radio("", [True, False], index=0 if is_selected else 1, key=f"kw_radio_{idx}", label_visibility="collapsed"):
-                            if not is_selected:
-                                st.session_state.selected_keyword = row['keyword_term']
-                                st.session_state.selected_url = None
-                                st.session_state.similarities = {}
-                                st.rerun()
-                    
-                    with col_kw:
-                        st.write(row['keyword_term'])
-                    with col_clicks:
-                        st.write(f"{int(row['clicks']):,}")
-                    with col_ctr:
-                        ctr_color = '#00ff00' if row['ctr'] >= avg_ctr else '#ff4444'
-                        st.markdown(f"<span style='color: {ctr_color}'>{row['ctr']:.2f}%</span>", unsafe_allow_html=True)
-                    with col_cvr:
-                        cvr_color = '#00ff00' if row['cvr'] >= avg_cvr else '#ff4444'
-                        st.markdown(f"<span style='color: {cvr_color}'>{row['cvr']:.2f}%</span>", unsafe_allow_html=True)
+                    cols = st.columns([0.5, 4, 1.5, 1.5, 1.5])
+                    is_selected = (row['keyword_term'] == st.session_state.selected_keyword)
+                    if cols[0].checkbox("", key=f"kw_{idx}", value=is_selected):
+                        if not is_selected:
+                            st.session_state.selected_keyword = row['keyword_term']
+                            st.session_state.selected_url = None
+                            st.session_state.similarities = {}
+                            st.rerun()
+                    cols[1].write(row['keyword_term'])
+                    cols[2].write(f"{int(row['clicks']):,}")
+                    ctr_color = '#00ff00' if row['ctr'] >= avg_ctr else '#ff4444'
+                    cols[3].markdown(f"<span style='color:{ctr_color}'>{row['ctr']:.2f}%</span>", unsafe_allow_html=True)
+                    cvr_color = '#00ff00' if row['cvr'] >= avg_cvr else '#ff4444'
+                    cols[4].markdown(f"<span style='color:{cvr_color}'>{row['cvr']:.2f}%</span>", unsafe_allow_html=True)
             
-            # URL Selection - only show after keyword is selected
             if st.session_state.selected_keyword:
                 st.divider()
                 st.subheader(f"🔗 URLs for: {st.session_state.selected_keyword}")
                 
                 keyword_urls = campaign_df[campaign_df['keyword_term'] == st.session_state.selected_keyword]
                 url_agg = keyword_urls.groupby('publisher_url').agg({
-                    'clicks': 'sum', 
-                    'conversions': 'sum',
-                    'impressions': 'sum'
+                    'clicks': 'sum', 'conversions': 'sum', 'impressions': 'sum'
                 }).reset_index()
-                
                 url_agg['ctr'] = url_agg.apply(lambda x: (x['clicks']/x['impressions']*100) if x['impressions']>0 else 0, axis=1)
                 url_agg['cvr'] = url_agg.apply(lambda x: (x['conversions']/x['clicks']*100) if x['clicks']>0 else 0, axis=1)
                 
-                # Add filters for URL table
                 f1, f2, f3 = st.columns(3)
                 url_filter = f1.selectbox("Filter", ['all', 'best', 'worst'], key='url_filter')
                 url_limit = f2.selectbox("Show", [5, 10, 25, 50], key='url_limit')
@@ -518,39 +503,22 @@ if st.session_state.data_a is not None:
                 
                 filtered_urls = filtered_urls.sort_values(url_sort, ascending=False).head(url_limit).reset_index(drop=True)
                 
-                # Header row
-                col_h1, col_h2, col_h3, col_h4, col_h5 = st.columns([0.5, 4, 1.5, 1.5, 1.5])
-                col_h1.write("**Select**")
-                col_h2.write("**Publisher URL**")
-                col_h3.write("**Clicks**")
-                col_h4.write("**CTR %**")
-                col_h5.write("**CVR %**")
-                
-                # Data rows - radio button for single selection
                 for idx, row in filtered_urls.iterrows():
-                    col_check, col_url, col_clicks, col_ctr, col_cvr = st.columns([0.5, 4, 1.5, 1.5, 1.5])
-                    
-                    with col_check:
-                        is_selected = (row['publisher_url'] == st.session_state.selected_url)
-                        if st.radio("", [True, False], index=0 if is_selected else 1, key=f"url_radio_{idx}", label_visibility="collapsed"):
-                            if not is_selected:
-                                st.session_state.selected_url = row['publisher_url']
-                                st.session_state.similarities = {}
-                                st.rerun()
-                    
-                    with col_url:
-                        display_url = row['publisher_url'][:60] + '...' if len(str(row['publisher_url'])) > 60 else row['publisher_url']
-                        st.write(display_url)
-                    with col_clicks:
-                        st.write(f"{int(row['clicks']):,}")
-                    with col_ctr:
-                        ctr_color = '#00ff00' if row['ctr'] >= avg_ctr else '#ff4444'
-                        st.markdown(f"<span style='color: {ctr_color}'>{row['ctr']:.2f}%</span>", unsafe_allow_html=True)
-                    with col_cvr:
-                        cvr_color = '#00ff00' if row['cvr'] >= avg_cvr else '#ff4444'
-                        st.markdown(f"<span style='color: {cvr_color}'>{row['cvr']:.2f}%</span>", unsafe_allow_html=True)
+                    cols = st.columns([0.5, 4, 1.5, 1.5, 1.5])
+                    is_selected = (row['publisher_url'] == st.session_state.selected_url)
+                    if cols[0].checkbox("", key=f"url_{idx}", value=is_selected):
+                        if not is_selected:
+                            st.session_state.selected_url = row['publisher_url']
+                            st.session_state.similarities = {}
+                            st.rerun()
+                    display_url = row['publisher_url'][:60] + '...' if len(str(row['publisher_url'])) > 60 else row['publisher_url']
+                    cols[1].write(display_url)
+                    cols[2].write(f"{int(row['clicks']):,}")
+                    ctr_color = '#00ff00' if row['ctr'] >= avg_ctr else '#ff4444'
+                    cols[3].markdown(f"<span style='color:{ctr_color}'>{row['ctr']:.2f}%</span>", unsafe_allow_html=True)
+                    cvr_color = '#00ff00' if row['cvr'] >= avg_cvr else '#ff4444'
+                    cols[4].markdown(f"<span style='color:{cvr_color}'>{row['cvr']:.2f}%</span>", unsafe_allow_html=True)
             
-            # Flow Analysis
             if st.session_state.selected_keyword and st.session_state.selected_url:
                 st.divider()
                 
@@ -568,9 +536,8 @@ if st.session_state.data_a is not None:
                     for i, flow in enumerate(st.session_state.flows):
                         with nav_cols[i]:
                             is_selected = i == st.session_state.flow_index
-                            button_type = "primary" if is_selected else "secondary"
                             if st.button(f"Flow {i+1}\n{safe_int(flow.get('clicks',0))} clicks\nCTR: {safe_float(flow.get('ctr',0)):.1f}%\nCVR: {safe_float(flow.get('cvr',0)):.1f}%", 
-                                        key=f"flow_{i}", type=button_type):
+                                        key=f"flow_{i}", type="primary" if is_selected else "secondary"):
                                 st.session_state.flow_index = i
                                 st.session_state.similarities = {}
                                 st.rerun()
@@ -585,56 +552,31 @@ if st.session_state.data_a is not None:
                     
                     # Card 1: SERP
                     st.subheader("📄 Card 1: Search Results")
-                    
                     card1_left, card1_right = st.columns([7, 3])
                     
                     with card1_left:
-                        # Zoom and device controls in one row
-                        ctrl_col1, ctrl_col2, ctrl_col3, ctrl_col4, ctrl_col5 = st.columns([1, 1, 1, 1, 6])
-                        with ctrl_col1:
-                            if st.button("➖", key="z1m", help="Zoom Out"):
-                                st.session_state.zoom1 = max(50, st.session_state.zoom1 - 10)
-                                st.rerun()
-                        with ctrl_col2:
-                            if st.button("➕", key="z1p", help="Zoom In"):
-                                st.session_state.zoom1 = min(150, st.session_state.zoom1 + 10)
-                                st.rerun()
-                        with ctrl_col3:
-                            st.caption(f"{st.session_state.zoom1}%")
+                        ctrl_cols = st.columns([1, 1, 1, 2, 1])
+                        if ctrl_cols[0].button("➖", key="z1m"):
+                            st.session_state.zoom1 = max(50, st.session_state.zoom1 - 10)
+                            st.rerun()
+                        if ctrl_cols[1].button("➕", key="z1p"):
+                            st.session_state.zoom1 = min(200, st.session_state.zoom1 + 10)
+                            st.rerun()
+                        ctrl_cols[2].caption(f"{st.session_state.zoom1}%")
+                        if ctrl_cols[4].button("⛶ Fullscreen", key="fs1"):
+                            st.info("Open in new tab to view fullscreen")
                         
                         device1 = st.radio("Device", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev1', index=0)
-                        
                         serp_html = generate_serp_mockup(current_flow, st.session_state.data_b)
-                        
-                        dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
-                        device_w, device_h = dims[device1]
-                        
-                        scale = st.session_state.zoom1 / 100
-                        scaled_w = int(device_w * scale)
-                        scaled_h = int(device_h * scale)
-                        
-                        render_html = f"""
-                        <div style="display: flex; justify-content: center; align-items: flex-start; padding: 20px; background: #1f2937; border-radius: 8px; position: relative;">
-                            <div class="zoom-controls">
-                                <span style="color: white; font-size: 12px;">Zoom: {st.session_state.zoom1}%</span>
-                            </div>
-                            <div style="width:{scaled_w}px; height:{scaled_h}px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.5);">
-                                <div style="transform:scale({scale}); transform-origin:top left; width:{device_w}px; height:{device_h}px;">
-                                    {serp_html}
-                                </div>
-                            </div>
-                        </div>
-                        """
-                        
-                        st.components.v1.html(render_html, height=scaled_h + 50, scrolling=False)
+                        preview_html, height = render_device_preview(serp_html, device1, st.session_state.zoom1)
+                        st.components.v1.html(preview_html, height=height, scrolling=False)
                     
                     with card1_right:
-                        # Flow details
                         st.markdown(f"""
                         <div class="info-box">
                             <div class="info-label">Keyword:</div> {current_flow.get('keyword_term', 'N/A')}<br><br>
                             <div class="info-label">Ad Title:</div> {current_flow.get('ad_title', 'N/A')}<br><br>
-                            <div class="info-label">Description:</div> {current_flow.get('ad_description', 'N/A')}<br><br>
+                            <div class="info-label">Description:</div> {current_flow.get('ad_description', 'N/A')[:100]}<br><br>
                             <div class="info-label">Display URL:</div> {current_flow.get('ad_display_url', 'N/A')}
                         </div>
                         """, unsafe_allow_html=True)
@@ -647,62 +589,52 @@ if st.session_state.data_a is not None:
                     
                     # Card 2: Landing Page
                     st.subheader("🌐 Card 2: Landing Page")
-                    
                     card2_left, card2_right = st.columns([7, 3])
                     
                     with card2_left:
-                        # Zoom and device controls
-                        ctrl_col1, ctrl_col2, ctrl_col3, ctrl_col4, ctrl_col5 = st.columns([1, 1, 1, 1, 6])
-                        with ctrl_col1:
-                            if st.button("➖", key="z2m", help="Zoom Out"):
-                                st.session_state.zoom2 = max(50, st.session_state.zoom2 - 10)
-                                st.rerun()
-                        with ctrl_col2:
-                            if st.button("➕", key="z2p", help="Zoom In"):
-                                st.session_state.zoom2 = min(150, st.session_state.zoom2 + 10)
-                                st.rerun()
-                        with ctrl_col3:
-                            st.caption(f"{st.session_state.zoom2}%")
+                        ctrl_cols = st.columns([1, 1, 1, 2, 1])
+                        if ctrl_cols[0].button("➖", key="z2m"):
+                            st.session_state.zoom2 = max(50, st.session_state.zoom2 - 10)
+                            st.rerun()
+                        if ctrl_cols[1].button("➕", key="z2p"):
+                            st.session_state.zoom2 = min(200, st.session_state.zoom2 + 10)
+                            st.rerun()
+                        ctrl_cols[2].caption(f"{st.session_state.zoom2}%")
+                        if ctrl_cols[4].button("⛶ Fullscreen", key="fs2"):
+                            st.info("Open in new tab to view fullscreen")
                         
-                        device2 = st.radio("Device", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev2', index=2)
+                        device2 = st.radio("Device", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev2', index=0)
                         dest_url = current_flow.get('reporting_destination_url', '')
                         
                         if dest_url and pd.notna(dest_url) and str(dest_url).lower() != 'null':
-                            dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
-                            device_w, device_h = dims[device2]
-                            scale = st.session_state.zoom2 / 100
-                            scaled_w = int(device_w * scale)
-                            scaled_h = int(device_h * scale)
-                            
-                            # Try to get screenshot
-                            with st.spinner("Loading page preview..."):
+                            # Try screenshot first
+                            with st.spinner("Loading page..."):
                                 screenshot = get_screenshot(dest_url)
                             
                             if screenshot:
-                                render_html = f"""
-                                <div style="display: flex; justify-content: center; align-items: flex-start; padding: 20px; background: #1f2937; border-radius: 8px;">
-                                    <div style="box-shadow:0 4px 20px rgba(0,0,0,0.5);">
-                                        <img src="data:image/png;base64,{screenshot}" 
-                                             style="width:{scaled_w}px; height:{scaled_h}px; object-fit: contain; background: white;">
+                                dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
+                                device_w, device_h = dims[device2]
+                                container_w, container_h = 900, 600
+                                scale_w = container_w / device_w
+                                scale_h = container_h / device_h
+                                fit_scale = min(scale_w, scale_h) * 0.85
+                                final_scale = fit_scale * (st.session_state.zoom2 / 100)
+                                scaled_w = int(device_w * final_scale)
+                                scaled_h = int(device_h * final_scale)
+                                
+                                img_html = f"""
+                                <div class="render-container">
+                                    <div style="box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+                                        <img src="data:image/jpeg;base64,{screenshot}" 
+                                             style="width:{scaled_w}px; height:{scaled_h}px; object-fit:contain; background:white;">
                                     </div>
                                 </div>
                                 """
+                                st.components.v1.html(img_html, height=container_h + 50, scrolling=False)
                             else:
                                 # Fallback to iframe
-                                render_html = f"""
-                                <div style="display: flex; justify-content: center; align-items: flex-start; padding: 20px; background: #1f2937; border-radius: 8px;">
-                                    <div style="box-shadow:0 4px 20px rgba(0,0,0,0.5); background: white;">
-                                        <iframe src="{dest_url}" 
-                                                width="{scaled_w}" 
-                                                height="{scaled_h}" 
-                                                style="border:none; background:white;"
-                                                sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
-                                        </iframe>
-                                    </div>
-                                </div>
-                                """
-                            
-                            st.components.v1.html(render_html, height=scaled_h + 50, scrolling=False)
+                                preview_html, height = render_device_preview("", device2, st.session_state.zoom2, is_iframe=True, url=dest_url)
+                                st.components.v1.html(preview_html, height=height, scrolling=False)
                             
                             st.markdown(f'<a href="{dest_url}" target="_blank" style="display:inline-block; background:#3b82f6; color:white; padding:8px 16px; border-radius:5px; text-decoration:none; margin-top:10px;">🔗 Open in New Tab</a>', unsafe_allow_html=True)
                         else:
@@ -712,8 +644,8 @@ if st.session_state.data_a is not None:
                         dest_url = current_flow.get('reporting_destination_url', 'N/A')
                         st.markdown(f"""
                         <div class="info-box">
-                            <div class="info-label">Landing Page URL:</div><br>
-                            {dest_url}
+                            <div class="info-label">Landing Page:</div><br>
+                            {dest_url[:80]}...
                         </div>
                         """, unsafe_allow_html=True)
                         
