@@ -549,20 +549,12 @@ def generate_serp_mockup(flow_data, serp_templates):
             st.error(f"Error: {str(e)}")
     
     return ""
-    
     def render_device_preview(content, device):
     """Simple rendering - mobile gets taller iframe for CTA"""
     # Device widths
     dims = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
     device_w = dims[device]
-    
-    # Mobile needs taller container to show CTA properly
-    container_heights = {
-        'mobile': 844,   # Full mobile screen height
-        'tablet': 700,
-        'laptop': 700
-    }
-    container_height = container_heights[device]
+    container_height = 700
     
     # Device frames
     if device == 'mobile':
@@ -588,8 +580,7 @@ def generate_serp_mockup(flow_data, serp_templates):
                 border-radius: 12px; min-height: {container_height + 80}px;">
         <div style="width: {device_w}px; height: {container_height}px; 
                     {frame_style} overflow: auto; background: white;
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-                    -webkit-overflow-scrolling: touch;">
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.2);">
             <iframe srcdoc='{escaped}' 
                     style="width: {device_w}px; height: 100%; border: none; display: block;"
                     sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
@@ -599,7 +590,6 @@ def generate_serp_mockup(flow_data, serp_templates):
     """
     
     return html, container_height + 110
-    
     # Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
@@ -946,6 +936,7 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+
 
 
 
