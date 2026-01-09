@@ -512,7 +512,7 @@ body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #f
 </body></html>"""
 
 def render_device_preview(content, device):
-    """Render with sandbox container approach"""
+    """Render with CSS transform scaling approach"""
     dims = {
         'mobile': 393,
         'tablet': 820,
@@ -529,43 +529,49 @@ def render_device_preview(content, device):
     else:
         frame_style = "border-radius: 8px; border: 8px solid #94a3b8;"
     
-    # Create a complete HTML document that forces the width
-    wrapped_html = f"""<!DOCTYPE html>
-<html style="width: {device_w}px; max-width: {device_w}px; overflow-x: hidden;">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width={device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<style>
-* {{
-    box-sizing: border-box;
-}}
-html {{
-    width: {device_w}px !important;
-    max-width: {device_w}px !important;
-    min-width: {device_w}px !important;
+    # For mobile, we'll render at a larger width then scale down
+    # This prevents the content from being cut off
+    if device == 'mobile':
+        render_width = 600  # Render at tablet-like width
+        scale = device_w / render_width  # Scale down to mobile
+    else:
+        render_width = device_w
+        scale = 1.0
+    
+    # Calculate scaled height for iframe
+    scaled_height = int(container_height / scale) if scale != 1.0 else container_height
+    
+    # Inject critical CSS to control layout
+    style_injection = f"""
+<style id="preview-override">
+html, body {{
+    width: {render_width}px !important;
+    max-width: {render_width}px !important;
     overflow-x: hidden !important;
-}}
-body {{
-    width: {device_w}px !important;
-    max-width: {device_w}px !important;
-    min-width: {device_w}px !important;
     margin: 0 !important;
     padding: 0 !important;
-    overflow-x: hidden !important;
 }}
-img {{
-    max-width: 100% !important;
-    height: auto !important;
+* {{
+    box-sizing: border-box !important;
+}}
+.wrapper {{
+    max-width: {render_width}px !important;
 }}
 </style>
-</head>
-<body>
-{content}
-</body>
-</html>"""
+"""
+    
+    # Insert style after <head> tag
+    if '<head>' in content:
+        content = content.replace('<head>', '<head>' + style_injection, 1)
+    elif '<head ' in content:
+        import re
+        content = re.sub(r'(<head[^>]*>)', r'\1' + style_injection, content, count=1)
     
     # Base64 encode
-    encoded = base64.b64encode(wrapped_html.encode('utf-8')).decode('utf-8')
+    encoded = base64.b64encode(content.encode('utf-8')).decode('utf-8')
+    
+    # Apply transform scaling if needed
+    transform_style = f"transform: scale({scale}); transform-origin: 0 0;" if scale != 1.0 else ""
     
     html = f"""
     <div style="display: flex; justify-content: center; align-items: center; 
@@ -575,17 +581,20 @@ img {{
                     {frame_style}
                     box-shadow: 0 20px 60px rgba(0,0,0,0.2); 
                     overflow: auto;
-                    background: white;">
-            <iframe src="data:text/html;base64,{encoded}"
-                    style="width: {device_w}px; height: 100%; border: none; display: block; margin: 0; padding: 0; overflow: hidden;"
-                    sandbox="allow-same-origin allow-scripts"
-                    scrolling="no">
-            </iframe>
+                    background: white;
+                    position: relative;">
+            <div style="width: {render_width}px; height: {scaled_height}px; {transform_style}">
+                <iframe src="data:text/html;base64,{encoded}"
+                        style="width: {render_width}px; height: {scaled_height}px; border: none; display: block; margin: 0; padding: 0;"
+                        sandbox="allow-same-origin allow-scripts">
+                </iframe>
+            </div>
         </div>
     </div>
     """
     
     return html, container_height + 110
+    
     # Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
@@ -925,6 +934,7 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+
 
 
 
