@@ -512,14 +512,16 @@ body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #f
 </body></html>"""
 
 def render_device_preview(content, device):
-    """Render at ACTUAL device width with proper scaling"""
-    # Real device widths
+    """Render at EXACT device width - let the SERP's responsive CSS work"""
+    # Real device widths that match the SERP's media query breakpoints
     dims = {
-        'mobile': 393,
-        'tablet': 820,
+        'mobile': 393,      # Below 600px triggers mobile CSS
+        'tablet': 820,      # Above 600px triggers desktop CSS  
         'laptop': 1440
     }
     device_w = dims[device]
+    
+    # Container height - fixed for scrolling
     container_height = 700
     
     # Device-specific frame styling
@@ -530,49 +532,8 @@ def render_device_preview(content, device):
     else:
         frame_style = "border-radius: 8px; border: 8px solid #94a3b8;"
     
-    # Fix viewport in content if present, otherwise add it
-    if '<meta name="viewport"' in content:
-        # Replace existing viewport
-        import re
-        content = re.sub(
-            r'<meta\s+name="viewport"[^>]*>',
-            f'<meta name="viewport" content="width={device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">',
-            content,
-            flags=re.IGNORECASE
-        )
-    elif '<head>' in content or '<head ' in content:
-        # Insert viewport after <head>
-        content = re.sub(
-            r'(<head[^>]*>)',
-            f'\\1\n<meta name="viewport" content="width={device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">',
-            content,
-            count=1,
-            flags=re.IGNORECASE
-        )
-    
-    # Add overflow control CSS
-    if '</head>' in content:
-        overflow_css = """
-<style>
-html, body { 
-    max-width: 100%; 
-    overflow-x: hidden !important; 
-}
-body { 
-    margin: 0 !important; 
-    padding: 0 !important; 
-}
-* { 
-    box-sizing: border-box; 
-}
-</style>"""
-        content = content.replace('</head>', overflow_css + '</head>', 1)
-    
-    # Properly escape for srcdoc
-    import html as html_lib
-    escaped = html_lib.escape(content, quote=True)
-    
-    # Render
+    # CRITICAL: Render iframe at exact device width so media queries trigger correctly
+    # The SERP HTML has @media (min-device-width: 600px) that switches mobile/desktop layouts
     html = f"""
     <div style="display: flex; justify-content: center; align-items: center; 
                 background: #e2e8f0; border-radius: 12px; padding: 30px; 
@@ -580,18 +541,19 @@ body {
         <div style="width: {device_w}px; height: {container_height}px; 
                     {frame_style}
                     box-shadow: 0 20px 60px rgba(0,0,0,0.2); 
-                    overflow-y: scroll; overflow-x: hidden;
-                    background: white;">
-            <iframe srcdoc="{escaped}" 
-                    style="width: {device_w}px; height: 100%; border: none; display: block;"
-                    sandbox="allow-same-origin allow-scripts">
+                    overflow-y: auto; overflow-x: hidden; 
+                    background: white; position: relative;
+                    -webkit-overflow-scrolling: touch;">
+            <iframe srcdoc='{content.replace("'", "&apos;").replace('"', "&quot;")}' 
+                    style="width: {device_w}px; min-height: {container_height}px; 
+                           border: none; display: block;"
+                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
             </iframe>
         </div>
     </div>
     """
     
     return html, container_height + 110
-
 # Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
@@ -931,6 +893,7 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+
 
 
 
