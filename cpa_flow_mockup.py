@@ -144,58 +144,25 @@ def get_quadrant(ctr, cvr, avg_ctr, avg_cvr):
         return 'Underperforming', '#ef4444'
 
 def call_similarity_api(prompt):
-    if not API_KEY:
-        return {"error": "no_api_key"}
-    # Try FastRouter first
-    try:
-        response = requests.post(
-            "https://go.fastrouter.ai/api/v1/chat/completions",
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {API_KEY}"
-            },
-            json={
-                "model": "anthropic/claude-sonnet-4-20250514",
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.3,
-                "max_tokens": 1000,
-                "extra_body": {"request_tags": ["BT1/cpa_flow_analysis"]}
-            },
-            timeout=30
-        )
-        if response.status_code == 200:
-            data = response.json()
-            text = data['choices'][0]['message']['content']
-            clean_text = text.replace('```json', '').replace('```', '').strip()
-            return json.loads(clean_text)
-    except:
-        pass
-    
-    # Fallback to Anthropic direct
-    try:
-        response = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "Content-Type": "application/json",
-                "x-api-key": API_KEY,
-                "anthropic-version": "2023-06-01"
-            },
-            json={
-                "model": "claude-sonnet-4-20250514",
-                "max_tokens": 1000,
-                "messages": [{"role": "user", "content": prompt}]
-            },
-            timeout=30
-        )
-        if response.status_code == 200:
-            data = response.json()
-            text = data['content'][0]['text']
-            clean_text = text.replace('```json', '').replace('```', '').strip()
-            return json.loads(clean_text)
-    except:
-        pass
-    
-    return None
+    response = requests.post(
+        "https://go.fastrouter.ai/api/v1/chat/completions",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {API_KEY}"
+        },
+        json={
+            "model": "anthropic/claude-sonnet-4-20250514",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.3,
+            "max_tokens": 1000
+        },
+        timeout=30
+    )
+
+    if response.status_code != 200:
+        raise Exception(response.text)
+
+    return response.json()['choices'][0]['message']['content']
 
 def fetch_page_content(url):
     if not url or pd.isna(url) or str(url).lower() == 'null':
