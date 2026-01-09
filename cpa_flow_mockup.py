@@ -241,25 +241,6 @@ st.markdown("""
         font-weight: 700;
     }
     
-    /* Checkbox styling */
-    .checkbox-btn {
-        width: 32px;
-        height: 32px;
-        border-radius: 6px;
-        border: 2px solid #cbd5e1;
-        background: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    .checkbox-selected {
-        background: #3b82f6 !important;
-        border-color: #3b82f6 !important;
-        color: white !important;
-    }
-    
     .stSpinner > div { border-top-color: #3b82f6 !important; }
     .stCaptionContainer { color: #475569 !important; font-weight: 500 !important; }
     </style>
@@ -694,14 +675,6 @@ if st.session_state.data_a is not None:
                     cols = st.columns([0.4, 3.5, 1.2, 1.2, 1.2, 1.2, 1.2])
                     is_selected = (row['keyword_term'] == st.session_state.selected_keyword)
                     
-                    # Better checkbox
-                    checkbox_html = f"""
-                    <div class="checkbox-btn {'checkbox-selected' if is_selected else ''}" 
-                         style="{'background:#3b82f6; border-color:#3b82f6;' if is_selected else ''}">
-                        {'✓' if is_selected else ''}
-                    </div>
-                    """
-                    
                     if cols[0].button("✓" if is_selected else "○", key=f"kw_{idx}", use_container_width=True):
                         if not is_selected:
                             st.session_state.selected_keyword = row['keyword_term']
@@ -709,13 +682,11 @@ if st.session_state.data_a is not None:
                             st.session_state.similarities = {}
                             st.rerun()
                     
-                    # Wrap row in table-row div for borders
                     cols[1].markdown(f"<div class='table-row' style='padding:8px;'>{row['keyword_term']}</div>", unsafe_allow_html=True)
                     cols[2].markdown(f"<div class='table-row' style='text-align:center;'>{int(row['impressions']):,}</div>", unsafe_allow_html=True)
                     cols[3].markdown(f"<div class='table-row' style='text-align:center;'>{int(row['clicks']):,}</div>", unsafe_allow_html=True)
                     cols[4].markdown(f"<div class='table-row' style='text-align:center;'>{int(row['conversions']):,}</div>", unsafe_allow_html=True)
                     
-                    # Highlight CTR/CVR with background color
                     ctr_bg = 'rgba(22, 163, 74, 0.15)' if row['ctr'] >= avg_ctr else 'rgba(220, 38, 38, 0.15)'
                     ctr_color = '#16a34a' if row['ctr'] >= avg_ctr else '#dc2626'
                     cols[5].markdown(f"<div class='table-row' style='text-align:center; background:{ctr_bg}; color:{ctr_color}; font-weight:700;'>{row['ctr']:.2f}%</div>", unsafe_allow_html=True)
@@ -869,18 +840,19 @@ if st.session_state.data_a is not None:
 
                     st.divider()
                     
-                    # Card 1: SERP and Card 2: Landing Page - SIDE BY SIDE
-                    col_left, col_right = st.columns(2)
+                    # Card 1: SERP
+                    st.subheader("🔍 Search Results Page")
+                    st.caption("How your ad appears in search results")
                     
-                    with col_left:
-                        st.subheader("🔍 Search Results Page")
-                        st.caption("How your ad appears in search results")
-                        
+                    card1_left, card1_right = st.columns([7, 3])
+                    
+                    with card1_left:
                         device1 = st.radio("Device:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev1', index=0)
                         serp_html = generate_serp_mockup(current_flow, st.session_state.data_b)
                         preview_html, height = render_device_preview(serp_html, device1)
                         st.components.v1.html(preview_html, height=height, scrolling=False)
-                        
+                    
+                    with card1_right:
                         st.markdown(f"""
                         <div class="info-box">
                             <div class="info-label">Search Term:</div> {current_flow.get('keyword_term', 'N/A')}<br><br>
@@ -900,10 +872,15 @@ if st.session_state.data_a is not None:
                                 "Formula: 15% keyword match + 35% topic match + 50% intent match"
                             )
                     
-                    with col_right:
-                        st.subheader("🎯 Landing Page")
-                        st.caption("Where users go after clicking")
-                        
+                    st.divider()
+                    
+                    # Card 2: Landing Page
+                    st.subheader("🎯 Landing Page")
+                    st.caption("Where users go after clicking")
+                    
+                    card2_left, card2_right = st.columns([7, 3])
+                    
+                    with card2_left:
                         device2 = st.radio("Device:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev2', index=0)
                         dest_url = current_flow.get('reporting_destination_url', '')
                         
@@ -941,7 +918,8 @@ if st.session_state.data_a is not None:
                                     st.markdown(f"Try: {make_url_clickable(dest_url)}", unsafe_allow_html=True)
                         else:
                             st.warning("⚠️ No landing page URL found")
-                        
+                    
+                    with card2_right:
                         st.markdown("**Keyword → Page Similarity Score**")
                         if st.session_state.similarities:
                             render_similarity_card(
