@@ -519,58 +519,47 @@ def generate_serp_mockup(flow_data, serp_templates):
         try:
             html = serp_templates[0].get('code', '')
             
-            # Remove min-height constraints that cause blank space
-            html = re.sub(r'min-height:\s*calc\([^;]+\);?', '', html)
-            html = re.sub(r'min-height:\s*\d+[a-z]+;?', '', html)
+            # CRITICAL: Remove min-height from ad-card (causes CTA cutoff)
+            html = re.sub(r'min-height\s*:\s*calc\([^)]+\)\s*;?', '', html, flags=re.IGNORECASE)
+            html = re.sub(r'min-height\s*:\s*[0-9]+[a-z%]+\s*;?', '', html, flags=re.IGNORECASE)
             
-            # Replace keyword in the header text
+            # Replace keyword
             html = re.sub(
                 r'Sponsored results for:\s*"[^"]*"', 
                 f'Sponsored results for: "{keyword}"', 
                 html
             )
             
-            # Replace URL (inside <div class="url">)
-            html = re.sub(
-                r'(<div class="url">)[^<]*(</div>)', 
-                f'\\1{ad_url}\\2', 
-                html, 
-                count=1
-            )
+            # Replace URL
+            html = re.sub(r'(<div class="url">)[^<]*(</div>)', f'\\1{ad_url}\\2', html, count=1)
             
-            # Replace title (inside <div class="title">)
-            html = re.sub(
-                r'(<div class="title">)[^<]*(</div>)', 
-                f'\\1{ad_title}\\2', 
-                html, 
-                count=1
-            )
+            # Replace title
+            html = re.sub(r'(<div class="title">)[^<]*(</div>)', f'\\1{ad_title}\\2', html, count=1)
             
-            # Replace description (inside <div class="desc">)
-            html = re.sub(
-                r'(<div class="desc">)[^<]*(</div>)', 
-                f'\\1{ad_desc}\\2', 
-                html, 
-                count=1
-            )
+            # Replace description
+            html = re.sub(r'(<div class="desc">)[^<]*(</div>)', f'\\1{ad_desc}\\2', html, count=1)
             
             return html
         except Exception as e:
             st.error(f"Error using SERP template: {str(e)}")
     
-    # Fallback - clean compact template
+    # Fallback
     return f"""<!DOCTYPE html>
 <html><head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-body {{ margin: 0; padding: 15px 18px; font-family: Arial, sans-serif; background: #ECECEC; }}
+body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #ECECEC; }}
 .wrapper {{ margin: 15px 0; }}
 .header-text {{ color: #BEBEBE; font-size: 16px; margin-bottom: 10px; }}
 .ad-card {{ background: #fff; border: 1px solid #BCBCBC; padding: 40px 24px; }}
 .url {{ color: #307137; font-size: 16px; margin-bottom: 30px; }}
 .title {{ color: #4761C2; font-size: 28px; font-weight: 700; margin-bottom: 20px; }}
-.desc {{ color: #828282; font-size: 16px; line-height: 22px; }}
+.desc {{ color: #828282; font-size: 16px; margin-bottom: 40px; }}
+.cta {{ text-align: right; }}
+.cta-btn {{ background: #307137; color: white; padding: 20px 40px; 
+             border: 4px solid #1F4A24; border-radius: 4px; 
+             font-size: 24px; font-weight: 700; display: inline-block; }}
 </style>
 </head><body>
 <div class="wrapper">
@@ -579,17 +568,24 @@ body {{ margin: 0; padding: 15px 18px; font-family: Arial, sans-serif; backgroun
         <div class="url">{ad_url}</div>
         <div class="title">{ad_title}</div>
         <div class="desc">{ad_desc}</div>
+        <div class="cta"><div class="cta-btn">Continue</div></div>
     </div>
 </div>
 </body></html>"""
 
-
 def render_device_preview(content, device):
-    """Simple rendering - let browser handle it naturally"""
+    """Simple rendering - mobile gets taller iframe for CTA"""
     # Device widths
     dims = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
     device_w = dims[device]
-    container_height = 700
+    
+    # Mobile needs taller container to show CTA properly
+    container_heights = {
+        'mobile': 844,   # Full mobile screen height
+        'tablet': 700,
+        'laptop': 700
+    }
+    container_height = container_heights[device]
     
     # Device frames
     if device == 'mobile':
@@ -615,7 +611,8 @@ def render_device_preview(content, device):
                 border-radius: 12px; min-height: {container_height + 80}px;">
         <div style="width: {device_w}px; height: {container_height}px; 
                     {frame_style} overflow: auto; background: white;
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.2);">
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+                    -webkit-overflow-scrolling: touch;">
             <iframe srcdoc='{escaped}' 
                     style="width: {device_w}px; height: 100%; border: none; display: block;"
                     sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
@@ -972,6 +969,7 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+
 
 
 
