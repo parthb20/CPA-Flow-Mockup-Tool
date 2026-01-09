@@ -527,24 +527,33 @@ def render_device_preview(content, device):
     # Device-specific frame styling
     if device == 'mobile':
         frame_style = "border-radius: 30px; border: 12px solid #94a3b8;"
+        inner_padding = "padding: 0;"
     elif device == 'tablet':
         frame_style = "border-radius: 20px; border: 14px solid #94a3b8;"
+        inner_padding = "padding: 0;"
     else:
         frame_style = "border-radius: 8px; border: 8px solid #94a3b8;"
+        inner_padding = "padding: 0;"
     
-    # Wrap content with proper viewport meta tag if it doesn't have one
-    if '<head>' in content:
-        # Insert viewport meta tag if not present
-        if 'viewport' not in content.lower():
-            content = content.replace('<head>', f'<head><meta name="viewport" content="width={device_w}, initial-scale=1.0, maximum-scale=1.0">')
-    else:
-        # Add complete HTML structure with viewport
-        content = f"""<!DOCTYPE html>
+    # Wrap content with proper viewport and constraints
+    wrapped_content = f"""<!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width={device_w}, initial-scale=1.0, maximum-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
-body {{ margin: 0; padding: 0; width: {device_w}px; overflow-x: hidden; }}
+* {{ box-sizing: border-box; }}
+html, body {{ 
+    margin: 0; 
+    padding: 0; 
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+}}
+body {{
+    {inner_padding}
+}}
+img {{ max-width: 100%; height: auto; }}
 </style>
 </head>
 <body>
@@ -552,9 +561,9 @@ body {{ margin: 0; padding: 0; width: {device_w}px; overflow-x: hidden; }}
 </body>
 </html>"""
     
-    # Properly encode content for srcdoc
-    import html as html_lib
-    encoded_content = html_lib.escape(content)
+    # Encode to base64 for cleaner rendering
+    encoded_bytes = base64.b64encode(wrapped_content.encode('utf-8')).decode('utf-8')
+    data_uri = f"data:text/html;base64,{encoded_bytes}"
     
     # Render with scrollable container
     html = f"""
@@ -564,11 +573,11 @@ body {{ margin: 0; padding: 0; width: {device_w}px; overflow-x: hidden; }}
         <div style="width: {device_w}px; height: {container_height}px; 
                     {frame_style}
                     box-shadow: 0 20px 60px rgba(0,0,0,0.2); 
-                    overflow-y: auto; overflow-x: hidden;
+                    overflow-y: scroll; overflow-x: hidden;
                     background: white; position: relative;
                     -webkit-overflow-scrolling: touch;">
-            <iframe srcdoc="{encoded_content}" 
-                    style="width: {device_w}px; height: 100%; min-height: 100%; border: none; display: block; margin: 0; padding: 0;"
+            <iframe src="{data_uri}" 
+                    style="width: 100%; height: 100%; border: none; display: block; margin: 0; padding: 0;"
                     sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
             </iframe>
         </div>
@@ -576,7 +585,6 @@ body {{ margin: 0; padding: 0; width: {device_w}px; overflow-x: hidden; }}
     """
     
     return html, container_height + 110
-
 # Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
@@ -916,5 +924,6 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+
 
 
