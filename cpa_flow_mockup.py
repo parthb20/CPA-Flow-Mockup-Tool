@@ -42,10 +42,8 @@ FILE_B_ID = "1QpQhZhXFFpQWm_xhVGDjdpgRM3VMv57L"
 
 try:
     API_KEY = st.secrets.get("FASTROUTER_API_KEY", st.secrets.get("OPENAI_API_KEY", "")).strip()
-  
 except Exception as e:
     API_KEY = ""
-    st.sidebar.error(f"❌ API Key error: {str(e)}")
 
 # Session state
 for key in ['data_a', 'data_b', 'selected_keyword', 'selected_url', 'flows', 
@@ -85,154 +83,78 @@ def load_json_from_gdrive(file_id):
     except:
         return None
 
-def safe_float(value, default=0.0):
-    try:
-        return float(value) if pd.notna(value) else default
-    except:
-        return default
+def load_data():
+    if st.session_state.data_a is None or st.session_state.data_b is None:
+        with st.spinner("📥 Loading data..."):
+            data_a = load_csv_from_gdrive(FILE_A_ID)
+            data_b = load_json_from_gdrive(FILE_B_ID)
+            
+            if data_a is None or data_b is None:
+                st.error("❌ Failed to load data from Google Drive")
+                return False
+                
+            st.session_state.data_a = data_a
+            st.session_state.data_b = data_b
+            st.session_state.loading_done = True
+    return True
 
-def safe_int(value, default=0):
-    try:
-        return int(float(value)) if pd.notna(value) else default
-    except:
-        return default
-
-def calculate_metrics(df):
-    df['impressions'] = df['impressions'].apply(safe_float)
-    df['clicks'] = df['clicks'].apply(safe_float)
-    df['conversions'] = df['conversions'].apply(safe_float)
-    df['ctr'] = df.apply(lambda x: (x['clicks'] / x['impressions'] * 100) if x['impressions'] > 0 else 0, axis=1)
-    df['cvr'] = df.apply(lambda x: (x['conversions'] / x['clicks'] * 100) if x['clicks'] > 0 else 0, axis=1)
-    return df
-
-def calculate_campaign_averages(df):
-    total_impressions = df['impressions'].sum()
-    total_clicks = df['clicks'].sum()
-    total_conversions = df['conversions'].sum()
-    avg_ctr = (total_clicks / total_impressions * 100) if total_impressions > 0 else 0
-    avg_cvr = (total_conversions / total_clicks * 100) if total_clicks > 0 else 0
-    return avg_ctr, avg_cvr
-
-def get_quadrant(ctr, cvr, avg_ctr, avg_cvr):
-    if ctr >= avg_ctr and cvr >= avg_cvr:
-        return 'High Performing', '#22c55e'
-    elif ctr >= avg_ctr and cvr < avg_cvr:
-        return 'Low CVR', '#eab308'
-    elif ctr < avg_ctr and cvr >= avg_cvr:
-        return 'Niche', '#3b82f6'
+def render_device_preview(content, device, zoom, is_iframe=False, url=""):
+    """Render HTML properly at device dimensions with centered scaling"""
+    dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
+    device_w, device_h = dims[device]
+    
+    # Container dimensions
+    container_w = 1000
+    container_h = 600
+    
+    # Calculate scale to fit in container
+    scale_w = container_w / device_w
+    scale_h = container_h / device_h
+    scale = min(scale_w, scale_h) * 0.85  # 85% to add padding
+    
+    # Apply zoom
+    scale = scale * (zoom / 100)
+    
+    # Calculate display dimensions
+    display_w = int(device_w * scale)
+    display_h = int(device_h * scale)
+    
+    if is_iframe:
+        # For external URLs
+        html = f"""
+        <div style="display: flex; justify-content: center; align-items: center; background: #1f2937; border-radius: 8px; padding: 20px; min-height: {container_h}px;">
+            <div style="width: {display_w}px; height: {display_h}px; overflow: auto; border: 2px solid #444; border-radius: 8px; background: white; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+                <iframe src="{url}" style="width: {device_w}px; height: {device_h}px; border: none; transform: scale({scale}); transform-origin: 0 0;" sandbox="allow-same-origin allow-scripts allow-popups allow-forms"></iframe>
+            </div>
+        </div>
+        """
     else:
-        return 'Underperforming', '#ef4444'
-
-def call_similarity_api(prompt):
-    if not API_KEY:
-        return {
-            "error": True,
-            "status_code": "no_api_key",
-            "body": "FASTROUTER_API_KEY not found in Streamlit secrets"
-        }
-    response = requests.post(
-        "https://go.fastrouter.ai/api/v1/chat/completions",
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {API_KEY}"
-        },
-        json={
-            "model": "anthropic/claude-sonnet-4-20250514",
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.3,
-            "max_tokens": 1000
-        },
-        timeout=30
-    )
-
-    if response.status_code != 200:
-        return {
-            "error": True,
-            "status_code": response.status_code,
-            "body": response.text
-        }
-
-    raw = response.json()['choices'][0]['message']['content']
-
-    try:
-        match = re.search(r'\{[\s\S]*\}', raw)
-        return json.loads(match.group())
-    except:
-        return {
-            "error": True,
-            "status_code": "bad_json",
-            "body": raw[:500]
-        }
-
-def fetch_page_content(url):
-    if not url or pd.isna(url) or str(url).lower() == 'null':
-        return ""
-    try:
-        response = requests.get(url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
-        soup = BeautifulSoup(response.text, 'html.parser')
-        for element in soup(['script', 'style', 'nav', 'footer', 'header', 'iframe', 'noscript']):
-            element.decompose()
-        return soup.get_text(separator=' ', strip=True)[:3000]
-    except:
-        return ""
-
-def get_screenshot(url):
-    """Get screenshot using screenshotone.com API"""
-    if url in st.session_state.screenshot_cache:
-        return st.session_state.screenshot_cache[url]
+        # For HTML content - render at actual size then scale
+        html = f"""
+        <div style="display: flex; justify-content: center; align-items: center; background: #1f2937; border-radius: 8px; padding: 20px; min-height: {container_h}px; overflow: hidden;">
+            <div style="width: {display_w}px; height: {display_h}px; overflow: auto; border: 2px solid #444; border-radius: 8px; background: white; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+                <div style="width: {device_w}px; height: {device_h}px; transform: scale({scale}); transform-origin: 0 0; overflow: auto;">
+                    {content}
+                </div>
+            </div>
+        </div>
+        """
     
-    try:
-        api_url = f"https://api.screenshotone.com/take?access_key=XpP0JW6EU5SA&url={quote(url)}&viewport_width=1440&viewport_height=900&device_scale_factor=1&format=jpg&image_quality=80&block_ads=true&block_cookie_banners=true&block_trackers=true&cache=true&cache_ttl=2592000"
-        response = requests.get(api_url, timeout=30)
-        if response.status_code == 200 and len(response.content) > 5000:
-            img_base64 = base64.b64encode(response.content).decode()
-            st.session_state.screenshot_cache[url] = img_base64
-            return img_base64
-    except:
-        pass
-    
-    return None
+    return html
 
-def calculate_similarities(flow_data):
-    keyword = flow_data.get('keyword_term', '')
-    ad_title = flow_data.get('ad_title', '')
-    ad_desc = flow_data.get('ad_description', '')
-    ad_text = f"{ad_title} {ad_desc}"
-    adv_url = flow_data.get('reporting_destination_url', '')
+def extract_serp_html(serp_data):
+    """Extract clean SERP HTML from data"""
+    if not serp_data or len(serp_data) == 0:
+        return "<div style='padding: 20px; color: #666;'>No SERP data available</div>"
     
-    results = {}
+    # Get the HTML code
+    html_code = serp_data[0].get('code', '')
     
-    kwd_to_ad_prompt = f"""Evaluate keyword-to-ad match.
-KEYWORD: "{keyword}"
-AD: "{ad_text}"
-Score (0.0-1.0): KEYWORD_MATCH (15%), TOPIC_MATCH (35%), INTENT_MATCH (50%)
-Return JSON: {{"intent":"","keyword_match":0.0,"topic_match":0.0,"intent_match":0.0,"final_score":0.0,"band":"excellent/good/moderate/weak/poor","reason":"brief"}}"""
+    if not html_code:
+        return "<div style='padding: 20px; color: #666;'>No HTML code found</div>"
     
-    results['kwd_to_ad'] = call_similarity_api(kwd_to_ad_prompt)
-    time.sleep(1)
-    
-    if adv_url and pd.notna(adv_url) and str(adv_url).lower() != 'null' and str(adv_url).strip():
-        page_text = fetch_page_content(adv_url)
-        
-        if page_text:
-            ad_to_page_prompt = f"""Evaluate ad-to-page match.
-AD: "{ad_text}"
-PAGE: "{page_text}"
-Score (0.0-1.0): TOPIC_MATCH (30%), BRAND_MATCH (20%), PROMISE_MATCH (50%)
-Return JSON: {{"topic_match":0.0,"brand_match":0.0,"promise_match":0.0,"final_score":0.0,"band":"excellent/good/moderate/weak/poor","reason":"brief"}}"""
-            
-            results['ad_to_page'] = call_similarity_api(ad_to_page_prompt)
-            time.sleep(1)
-            
-            kwd_to_page_prompt = f"""Evaluate keyword-to-page match.
-KEYWORD: "{keyword}"
-PAGE: "{page_text}"
-Score (0.0-1.0): TOPIC_MATCH (40%), ANSWER_QUALITY (60%)
-Return JSON: {{"intent":"","topic_match":0.0,"answer_quality":0.0,"final_score":0.0,"band":"excellent/good/moderate/weak/poor","reason":"brief"}}"""
-            
-            results['kwd_to_page'] = call_similarity_api(kwd_to_page_prompt)
-    
-    return results
+    # Return the HTML as-is - it's already complete with styles
+    return html_code
 
 def render_similarity_card(title, data):
     if not data:
@@ -244,394 +166,250 @@ def render_similarity_card(title, data):
             st.error(f"{title}: Add FASTROUTER_API_KEY to secrets")
         else:
             st.error(f"{title}: API failed")
-            st.code({
-                "status_code": data.get("status_code"),
-                "body": data.get("body")
-            })
-            return
+        return
     
-    score = data.get('final_score', 0)
-    band = data.get('band', 'unknown')
-    reason = data.get('reason', 'N/A')
+    score = data.get("score", 0)
+    reasoning = data.get("reasoning", "")
     
     if score >= 0.8:
-        css_class, color = 'similarity-excellent', '#22c55e'
+        band, color = "excellent", "#22c55e"
     elif score >= 0.6:
-        css_class, color = 'similarity-good', '#3b82f6'
+        band, color = "good", "#3b82f6"
     elif score >= 0.4:
-        css_class, color = 'similarity-moderate', '#eab308'
+        band, color = "moderate", "#eab308"
     else:
-        css_class, color = 'similarity-poor', '#ef4444'
+        band, color = "poor", "#ef4444"
     
-    st.markdown(f"""
-    <div class="metric-card {css_class}">
-        <h4 style="margin:0; color: #d1d5db; font-size: 12px;">{title}</h4>
-        <h2 style="margin: 8px 0; color: {color};">{score:.1%}</h2>
+    card_html = f"""
+    <div class="metric-card similarity-{band}">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h4 style="margin: 0; color: #f3f4f6; font-size: 14px;">{title}</h4>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 24px; font-weight: bold; color: {color};">{score:.0%}</span>
+            </div>
+        </div>
         <p style="margin:0; color: #9ca3af; font-size: 11px;">{band.upper()}</p>
-        <p style="margin:8px 0 0 0; color: #d1d5db; font-size: 10px;">{reason[:80]}</p>
+        <p style="margin:8px 0 0 0; color: #d1d5db; font-size: 11px; line-height: 1.4;">{reasoning}</p>
     </div>
-    """, unsafe_allow_html=True)
-    
-    with st.expander("📊 View Score Breakdown"):
-        for key, value in data.items():
-            if key not in ['final_score', 'band', 'reason'] and isinstance(value, (int, float)):
-                st.metric(key.replace('_', ' ').title(), f"{value:.1%}")
-            elif key not in ['final_score', 'band', 'reason']:
-                st.caption(f"**{key.replace('_', ' ').title()}:** {value}")
+    """
+    st.markdown(card_html, unsafe_allow_html=True)
 
-def generate_serp_mockup(flow_data, serp_templates):
-    keyword = flow_data.get('keyword_term', 'N/A')
-    ad_title = flow_data.get('ad_title', 'N/A')
-    ad_desc = flow_data.get('ad_description', 'N/A')
-    ad_url = flow_data.get('ad_display_url', 'N/A')
+def calculate_similarity(text1, text2, metric_name):
+    if not API_KEY:
+        return {"error": "API key missing", "status_code": "no_api_key"}
     
-    if serp_templates and len(serp_templates) > 0:
-        try:
-            html = serp_templates[0].get('code', '')
-            html = re.sub(r'<div class="header_text">Sponsored results for: "[^"]*"</div>', 
-                         f'<div class="header_text">Sponsored results for: "{keyword}"</div>', html)
-            html = re.sub(r'<div class="url">[^<]*</div>', f'<div class="url">{ad_url}</div>', html, count=1)
-            html = re.sub(r'<div class="title">[^<]*</div>', f'<div class="title">{ad_title}</div>', html, count=1)
-            html = re.sub(r'<div class="desc">[^<]*</div>', f'<div class="desc">{ad_desc}</div>', html, count=1)
-            return html
-        except:
-            pass
-    
-    return f"""<!DOCTYPE html><html><head><style>
-body {{ margin: 0; padding: 40px 20px; font-family: Arial, sans-serif; background: #fff; }}
-.ad-container {{ max-width: 600px; margin: 0 auto; }}
-.url {{ color: #1a73e8; font-size: 14px; margin-bottom: 2px; }}
-.title {{ color: #1a0dab; font-size: 20px; margin: 4px 0 8px; line-height: 1.3; cursor: pointer; font-weight: 400; }}
-.title:hover {{ text-decoration: underline; }}
-.desc {{ color: #4d5156; font-size: 14px; line-height: 1.58; }}
-.ad-badge {{ display: inline-block; padding: 2px 6px; background: #f1f3f4; border-radius: 3px; font-size: 11px; color: #5f6368; margin-bottom: 8px; }}
-</style></head><body>
-<div class="ad-container">
-<div class="ad-badge">Ad</div>
-<div class="url">{ad_url}</div>
-<div class="title">{ad_title}</div>
-<div class="desc">{ad_desc}</div>
-</div>
-</body></html>"""
+    try:
+        response = requests.post(
+            "https://orchestrator.fast-router.com/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "anthropic/claude-3.5-sonnet",
+                "messages": [{
+                    "role": "user",
+                    "content": f"""Compare these two texts and return ONLY a JSON object with 'score' (0-1) and 'reasoning':
 
-def render_device_preview(content, device, zoom, is_iframe=False, url=""):
-    """Render HTML content properly at actual device width"""
-    dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
-    device_w, device_h = dims[device]
-    
-    # Container height
-    container_h = 650
-    
-    # Calculate display width with zoom
-    display_w = int(device_w * (zoom / 100))
-    
-    if is_iframe:
-        # For external URLs (landing pages)
-        html = f"""
-        <div style="display: flex; justify-content: center; align-items: center; background: #1f2937; border-radius: 8px; padding: 20px; min-height: {container_h}px;">
-            <div style="width:{display_w}px; height:{container_h - 40}px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius: 8px; overflow: hidden; background:white;">
-                <iframe src="{url}" style="width:100%; height:100%; border:none;" sandbox="allow-same-origin allow-scripts allow-popups allow-forms"></iframe>
-            </div>
-        </div>
-        """
-    else:
-        # For SERP HTML - render at actual device width with scaling applied via CSS zoom
-        html = f"""
-        <div style="display: flex; justify-content: center; align-items: center; background: #1f2937; border-radius: 8px; padding: 20px; min-height: {container_h}px;">
-            <div style="width:{display_w}px; max-height:{container_h - 40}px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius: 8px; overflow-y: auto; overflow-x: hidden; background:white;">
-                <div style="width:{device_w}px; zoom:{zoom}%;">
-                    {content}
-                </div>
-            </div>
-        </div>
-        """
-    
-    return html, container_h + 40
+Text 1: {text1[:500]}
+Text 2: {text2[:500]}
 
-# Auto-load data
-if not st.session_state.loading_done:
-    with st.spinner("Loading data..."):
-        st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
-        st.session_state.data_b = load_json_from_gdrive(FILE_B_ID)
-        st.session_state.loading_done = True
+Return format: {{"score": 0.85, "reasoning": "explanation"}}"""
+                }],
+                "response_format": {"type": "json_object"}
+            },
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            content = result['choices'][0]['message']['content']
+            return json.loads(content)
+        return {"error": f"API returned {response.status_code}", "status_code": response.status_code}
+    except Exception as e:
+        return {"error": str(e), "status_code": "exception"}
 
+def analyze_flow():
+    flow = st.session_state.flows[st.session_state.flow_index]
+    
+    similarities = {
+        'kwd_to_ad': calculate_similarity(
+            flow['keyword'],
+            f"{flow['ad_title']} {flow['ad_description']}",
+            "Keyword to Ad"
+        ),
+        'ad_to_landing': calculate_similarity(
+            f"{flow['ad_title']} {flow['ad_description']}",
+            flow['landing_text'][:1000],
+            "Ad to Landing"
+        ),
+        'overall': calculate_similarity(
+            flow['keyword'],
+            flow['landing_text'][:1000],
+            "Overall"
+        )
+    }
+    
+    st.session_state.similarities = similarities
+
+def get_flow_name(flow):
+    return f"{flow['keyword'][:30]} → {flow['landing_domain']}"
+
+def create_sankey():
+    flow = st.session_state.flows[st.session_state.flow_index]
+    
+    fig = go.Figure(data=[go.Sankey(
+        node=dict(
+            pad=20,
+            thickness=25,
+            line=dict(color="#1f2937", width=2),
+            label=["🔍 Keyword", "📢 SERP Ad", "🌐 Landing Page"],
+            color=["#3b82f6", "#8b5cf6", "#10b981"],
+            customdata=[flow['keyword'][:40], flow['ad_title'][:40], flow['landing_domain']],
+            hovertemplate='%{label}<br>%{customdata}<extra></extra>'
+        ),
+        link=dict(
+            source=[0, 1],
+            target=[1, 2],
+            value=[1, 1],
+            color=["rgba(59, 130, 246, 0.3)", "rgba(139, 92, 246, 0.3)"],
+            hovertemplate='Flow<extra></extra>'
+        )
+    )])
+    
+    fig.update_layout(
+        font=dict(size=14, color='#f3f4f6', family='Arial'),
+        plot_bgcolor='#111827',
+        paper_bgcolor='#111827',
+        height=250,
+        margin=dict(l=10, r=10, t=30, b=10)
+    )
+    
+    return fig
+
+# Main UI
 st.title("📊 CPA Flow Analysis")
 
-if st.session_state.data_a is not None:
-    df = st.session_state.data_a
+if not load_data():
+    st.stop()
+
+data_a = st.session_state.data_a
+data_b = st.session_state.data_b
+
+# Keyword selector
+col1, col2, col3 = st.columns([2, 2, 1])
+
+with col1:
+    keywords = sorted(data_a['Keyword'].dropna().unique())
+    selected_kw = st.selectbox(
+        "🔍 Select Keyword",
+        keywords,
+        index=keywords.index(st.session_state.selected_keyword) if st.session_state.selected_keyword in keywords else 0
+    )
+
+if selected_kw != st.session_state.selected_keyword:
+    st.session_state.selected_keyword = selected_kw
+    st.session_state.selected_url = None
+    st.session_state.flows = []
+    st.session_state.flow_index = 0
+    st.session_state.similarities = None
+
+kw_data = data_a[data_a['Keyword'] == selected_kw]
+
+with col2:
+    urls = sorted(kw_data['URL'].dropna().unique())
+    if urls:
+        selected_url = st.selectbox("🌐 Select URL", urls)
+        
+        if selected_url != st.session_state.selected_url:
+            st.session_state.selected_url = selected_url
+            st.session_state.flows = []
+            st.session_state.flow_index = 0
+            st.session_state.similarities = None
+
+with col3:
+    st.markdown("<div style='height: 28px'></div>", unsafe_allow_html=True)
+    if st.button("🔄 Analyze", use_container_width=True, type="primary"):
+        if st.session_state.selected_url:
+            url_data = kw_data[kw_data['URL'] == st.session_state.selected_url].iloc[0]
+            
+            serp_data = [item for item in data_b if item.get('url') == st.session_state.selected_url]
+            
+            if serp_data:
+                serp_html = extract_serp_html(serp_data)
+                
+                try:
+                    soup = BeautifulSoup(serp_html, 'html.parser')
+                    ad_titles = [tag.get_text(strip=True) for tag in soup.find_all(class_='title')]
+                    ad_descs = [tag.get_text(strip=True) for tag in soup.find_all(class_='desc')]
+                    
+                    landing_resp = requests.get(st.session_state.selected_url, timeout=10)
+                    landing_soup = BeautifulSoup(landing_resp.text, 'html.parser')
+                    landing_text = landing_soup.get_text(separator=' ', strip=True)
+                    landing_domain = urlparse(st.session_state.selected_url).netloc
+                    
+                    st.session_state.flows = [{
+                        'keyword': selected_kw,
+                        'serp_html': serp_html,
+                        'serp_url': st.session_state.selected_url,
+                        'ad_title': ad_titles[0] if ad_titles else "No title",
+                        'ad_description': ad_descs[0] if ad_descs else "No description",
+                        'landing_url': st.session_state.selected_url,
+                        'landing_text': landing_text,
+                        'landing_domain': landing_domain
+                    }]
+                    
+                    st.session_state.flow_index = 0
+                    analyze_flow()
+                    st.rerun()
+                    
+                except Exception as e:
+                    st.error(f"❌ Error: {str(e)}")
+
+# Display flow
+if st.session_state.flows:
+    flow = st.session_state.flows[st.session_state.flow_index]
+    
+    # Flow selector
+    if len(st.session_state.flows) > 1:
+        flow_names = [get_flow_name(f) for f in st.session_state.flows]
+        selected_flow_name = st.selectbox("📋 Select Flow", flow_names, index=st.session_state.flow_index)
+        new_index = flow_names.index(selected_flow_name)
+        if new_index != st.session_state.flow_index:
+            st.session_state.flow_index = new_index
+            analyze_flow()
+            st.rerun()
+    
+    # Sankey
+    st.plotly_chart(create_sankey(), use_container_width=True)
+    
+    # Similarity scores
+    if st.session_state.similarities:
+        cols = st.columns(3)
+        with cols[0]:
+            render_similarity_card("Match Score", st.session_state.similarities.get('kwd_to_ad'))
+        with cols[1]:
+            render_similarity_card("Ad → Landing", st.session_state.similarities.get('ad_to_landing'))
+        with cols[2]:
+            render_similarity_card("Overall Flow", st.session_state.similarities.get('overall'))
+    
+    # Preview section
+    st.markdown("---")
     
     col1, col2 = st.columns(2)
-    with col1:
-        advertisers = ['-- Select Advertiser --'] + sorted(df['Advertiser_Name'].dropna().unique().tolist())
-        selected_advertiser = st.selectbox("Advertiser", advertisers)
     
-    if selected_advertiser and selected_advertiser != '-- Select Advertiser --':
-        with col2:
-            campaigns = ['-- Select Campaign --'] + sorted(df[df['Advertiser_Name'] == selected_advertiser]['Campaign_Name'].dropna().unique().tolist())
-            selected_campaign = st.selectbox("Campaign", campaigns)
+    with col1:
+        st.markdown("### 📢 SERP Preview")
+        device1 = st.radio("Device", ["mobile", "tablet", "laptop"], horizontal=True, key="device1")
+        zoom1 = st.slider("Zoom", 50, 150, st.session_state.zoom1, key="zoom1")
         
-        if selected_campaign and selected_campaign != '-- Select Campaign --':
-            campaign_df = df[(df['Advertiser_Name'] == selected_advertiser) & (df['Campaign_Name'] == selected_campaign)].copy()
-            campaign_df = calculate_metrics(campaign_df)
-            avg_ctr, avg_cvr = calculate_campaign_averages(campaign_df)
-            
-            st.divider()
-            
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("CTR", f"{avg_ctr:.2f}%")
-            c2.metric("CVR", f"{avg_cvr:.2f}%")
-            c3.metric("Clicks", f"{safe_int(campaign_df['clicks'].sum()):,}")
-            c4.metric("Conversions", f"{safe_int(campaign_df['conversions'].sum()):,}")
-            
-            st.divider()
-            st.subheader("🔑 Keyword Selection")
-            
-            tab1, tab2 = st.tabs(["📊 Bubble Chart", "📋 Table View"])
-            
-            keyword_agg = campaign_df.groupby('keyword_term').agg({
-                'impressions': 'sum', 'clicks': 'sum', 'conversions': 'sum'
-            }).reset_index()
-            keyword_agg['ctr'] = keyword_agg.apply(lambda x: (x['clicks']/x['impressions']*100) if x['impressions']>0 else 0, axis=1)
-            keyword_agg['cvr'] = keyword_agg.apply(lambda x: (x['conversions']/x['clicks']*100) if x['clicks']>0 else 0, axis=1)
-            
-            with tab1:
-                bubble_data = keyword_agg.nlargest(20, 'clicks').reset_index(drop=True)
-                
-                fig = go.Figure()
-                for idx, row in bubble_data.iterrows():
-                    quadrant, color = get_quadrant(row['ctr'], row['cvr'], avg_ctr, avg_cvr)
-                    fig.add_trace(go.Scatter(
-                        x=[row['ctr']], y=[row['cvr']], mode='markers',
-                        marker=dict(size=max(20, min(70, row['clicks']/10)), color=color, 
-                                   line=dict(width=2, color='white')),
-                        name=row['keyword_term'],
-                        hovertemplate='<b>%{fullData.name}</b><br>CTR: %{x:.2f}%<br>CVR: %{y:.2f}%<br>' + 
-                                     f"Clicks: {int(row['clicks'])}<extra></extra>",
-                        customdata=[[row['keyword_term']]]
-                    ))
-                
-                fig.add_hline(y=avg_cvr, line_dash="dash", line_color="gray", opacity=0.5)
-                fig.add_vline(x=avg_ctr, line_dash="dash", line_color="gray", opacity=0.5)
-                fig.update_layout(xaxis_title="CTR (%)", yaxis_title="CVR (%)", height=400,
-                    showlegend=False, plot_bgcolor='#1f2937', paper_bgcolor='#1f2937',
-                    font=dict(color='white'), hovermode='closest',
-                    xaxis=dict(gridcolor='#374151'), yaxis=dict(gridcolor='#374151'))
-                
-                event = st.plotly_chart(fig, use_container_width=True, key="bubble", on_select="rerun")
-                
-                if event and 'selection' in event and 'points' in event['selection'] and len(event['selection']['points']) > 0:
-                    point = event['selection']['points'][0]
-                    if 'customdata' in point and point['customdata']:
-                        clicked_keyword = point['customdata'][0]
-                        if clicked_keyword != st.session_state.selected_keyword:
-                            st.session_state.selected_keyword = clicked_keyword
-                            st.session_state.selected_url = None
-                            st.session_state.similarities = {}
-                            st.rerun()
-            
-            with tab2:
-                f1, f2, f3 = st.columns(3)
-                keyword_filter = f1.selectbox("Filter", ['all', 'best', 'worst'], key='kw_filter')
-                keyword_limit = f2.selectbox("Show", [5, 10, 25, 50], key='kw_limit')
-                keyword_sort = f3.selectbox("Sort", ['clicks', 'ctr', 'cvr'], key='kw_sort')
-                
-                filtered_keywords = keyword_agg.copy()
-                if keyword_filter == 'best':
-                    filtered_keywords = filtered_keywords[(filtered_keywords['ctr'] >= avg_ctr) & (filtered_keywords['cvr'] >= avg_cvr)]
-                elif keyword_filter == 'worst':
-                    filtered_keywords = filtered_keywords[(filtered_keywords['ctr'] < avg_ctr) & (filtered_keywords['cvr'] < avg_cvr)]
-                
-                filtered_keywords = filtered_keywords.sort_values(keyword_sort, ascending=False).head(keyword_limit).reset_index(drop=True)
-                
-                for idx, row in filtered_keywords.iterrows():
-                    cols = st.columns([0.5, 4, 1.5, 1.5, 1.5])
-                    is_selected = (row['keyword_term'] == st.session_state.selected_keyword)
-                    if cols[0].button("✓" if is_selected else "○", key=f"kw_{idx}", use_container_width=True):
-                        
-                        if not is_selected:
-                            st.session_state.selected_keyword = row['keyword_term']
-                            st.session_state.selected_url = None
-                            st.session_state.similarities = {}
-                            st.rerun()
-                    cols[1].write(row['keyword_term'])
-                    cols[2].write(f"{int(row['clicks']):,}")
-                    ctr_color = '#00ff00' if row['ctr'] >= avg_ctr else '#ff4444'
-                    cols[3].markdown(f"<span style='color:{ctr_color}'>{row['ctr']:.2f}%</span>", unsafe_allow_html=True)
-                    cvr_color = '#00ff00' if row['cvr'] >= avg_cvr else '#ff4444'
-                    cols[4].markdown(f"<span style='color:{cvr_color}'>{row['cvr']:.2f}%</span>", unsafe_allow_html=True)
-            
-            if st.session_state.selected_keyword:
-                st.divider()
-                st.subheader(f"🔗 URLs for: {st.session_state.selected_keyword}")
-                
-                keyword_urls = campaign_df[campaign_df['keyword_term'] == st.session_state.selected_keyword]
-                url_agg = keyword_urls.groupby('publisher_url').agg({
-                    'clicks': 'sum', 'conversions': 'sum', 'impressions': 'sum'
-                }).reset_index()
-                url_agg['ctr'] = url_agg.apply(lambda x: (x['clicks']/x['impressions']*100) if x['impressions']>0 else 0, axis=1)
-                url_agg['cvr'] = url_agg.apply(lambda x: (x['conversions']/x['clicks']*100) if x['clicks']>0 else 0, axis=1)
-                
-                f1, f2, f3 = st.columns(3)
-                url_filter = f1.selectbox("Filter", ['all', 'best', 'worst'], key='url_filter')
-                url_limit = f2.selectbox("Show", [5, 10, 25, 50], key='url_limit')
-                url_sort = f3.selectbox("Sort", ['clicks', 'ctr', 'cvr'], key='url_sort')
-                
-                filtered_urls = url_agg.copy()
-                if url_filter == 'best':
-                    filtered_urls = filtered_urls[(filtered_urls['ctr'] >= avg_ctr) & (filtered_urls['cvr'] >= avg_cvr)]
-                elif url_filter == 'worst':
-                    filtered_urls = filtered_urls[(filtered_urls['ctr'] < avg_ctr) & (filtered_urls['cvr'] < avg_cvr)]
-                
-                filtered_urls = filtered_urls.sort_values(url_sort, ascending=False).head(url_limit).reset_index(drop=True)
-                
-                for idx, row in filtered_urls.iterrows():
-                    cols = st.columns([0.5, 4, 1.5, 1.5, 1.5])
-                    is_selected = (row['publisher_url'] == st.session_state.selected_url)
-                    if cols[0].button("✓" if is_selected else "○", key=f"url_{idx}", use_container_width=True):
-                        if not is_selected:
-                            st.session_state.selected_url = row['publisher_url']
-                            st.session_state.similarities = {}
-                            st.rerun()
-                    display_url = row['publisher_url'][:60] + '...' if len(str(row['publisher_url'])) > 60 else row['publisher_url']
-                    cols[1].write(display_url)
-                    cols[2].write(f"{int(row['clicks']):,}")
-                    ctr_color = '#00ff00' if row['ctr'] >= avg_ctr else '#ff4444'
-                    cols[3].markdown(f"<span style='color:{ctr_color}'>{row['ctr']:.2f}%</span>", unsafe_allow_html=True)
-                    cvr_color = '#00ff00' if row['cvr'] >= avg_cvr else '#ff4444'
-                    cols[4].markdown(f"<span style='color:{cvr_color}'>{row['cvr']:.2f}%</span>", unsafe_allow_html=True)
-            
-            if st.session_state.selected_keyword and st.session_state.selected_url:
-                st.divider()
-                
-                flows = campaign_df[
-                    (campaign_df['keyword_term'] == st.session_state.selected_keyword) &
-                    (campaign_df['publisher_url'] == st.session_state.selected_url)
-                ].sort_values('clicks', ascending=False).head(5)
-                
-                st.session_state.flows = flows.to_dict('records')
-                
-                if len(st.session_state.flows) > 0:
-                    st.subheader("📈 Flow Statistics")
-                    nav_cols = st.columns(5)
-                    
-                    for i, flow in enumerate(st.session_state.flows):
-                        with nav_cols[i]:
-                            is_selected = i == st.session_state.flow_index
-                            if st.button(f"Flow {i+1}\n{safe_int(flow.get('clicks',0))} clicks\nCTR: {safe_float(flow.get('ctr',0)):.1f}%\nCVR: {safe_float(flow.get('cvr',0)):.1f}%", 
-                                        key=f"flow_{i}", type="primary" if is_selected else "secondary"):
-                                st.session_state.flow_index = i
-                                st.session_state.similarities = {}
-                                st.rerun()
-                    
-                    current_flow = st.session_state.flows[st.session_state.flow_index]
-                    
-                    if not st.session_state.similarities:
-                        if not API_KEY:
-                            st.warning("⚠️ FASTROUTER_API_KEY not set in secrets.")
-                        else:
-                            with st.spinner("Analyzing..."):
-                                st.session_state.similarities = calculate_similarities(current_flow)
-
-                    st.divider()
-                    
-                    # Card 1: SERP
-                    st.subheader("📄 Card 1: Search Results")
-                    card1_left, card1_right = st.columns([7, 3])
-                    
-                    with card1_left:
-                        ctrl_cols = st.columns([1, 1, 1, 6])
-                        if ctrl_cols[0].button("➖", key="z1m"):
-                            st.session_state.zoom1 = max(30, st.session_state.zoom1 - 10)
-                            st.rerun()
-                        if ctrl_cols[1].button("➕", key="z1p"):
-                            st.session_state.zoom1 = min(200, st.session_state.zoom1 + 10)
-                            st.rerun()
-                        ctrl_cols[2].caption(f"{st.session_state.zoom1}%")
-                        
-                        device1 = st.radio("Device", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev1', index=0)
-                        serp_html = generate_serp_mockup(current_flow, st.session_state.data_b)
-                        preview_html, height = render_device_preview(serp_html, device1, st.session_state.zoom1)
-                        st.components.v1.html(preview_html, height=height, scrolling=False)
-                    
-                    with card1_right:
-                        st.markdown(f"""
-                        <div class="info-box">
-                            <div class="info-label">Keyword:</div> {current_flow.get('keyword_term', 'N/A')}<br><br>
-                            <div class="info-label">Ad Title:</div> {current_flow.get('ad_title', 'N/A')}<br><br>
-                            <div class="info-label">Description:</div> {current_flow.get('ad_description', 'N/A')[:100]}<br><br>
-                            <div class="info-label">Display URL:</div> {current_flow.get('ad_display_url', 'N/A')}
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        st.markdown("**Keyword → Ad Match**")
-                        if st.session_state.similarities:
-                            render_similarity_card("Match Score", st.session_state.similarities.get('kwd_to_ad'))
-                    
-                    st.divider()
-                    
-                    # Card 2: Landing Page
-                    st.subheader("🌐 Card 2: Landing Page")
-                    card2_left, card2_right = st.columns([7, 3])
-                    
-                    with card2_left:
-                        ctrl_cols = st.columns([1, 1, 1, 6])
-                        if ctrl_cols[0].button("➖", key="z2m"):
-                            st.session_state.zoom2 = max(30, st.session_state.zoom2 - 10)
-                            st.rerun()
-                        if ctrl_cols[1].button("➕", key="z2p"):
-                            st.session_state.zoom2 = min(200, st.session_state.zoom2 + 10)
-                            st.rerun()
-                        ctrl_cols[2].caption(f"{st.session_state.zoom2}%")
-                        
-                        device2 = st.radio("Device", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev2', index=0)
-                        dest_url = current_flow.get('reporting_destination_url', '')
-                        
-                        if dest_url and pd.notna(dest_url) and str(dest_url).lower() != 'null':
-                            with st.spinner("Loading page..."):
-                                screenshot = get_screenshot(dest_url)
-                            
-                            if screenshot:
-                                dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
-                                device_w, device_h = dims[device2]
-                                
-                                # Apply zoom
-                                display_w = int(device_w * (st.session_state.zoom2 / 100))
-                                container_h = 650
-                                
-                                img_html = f"""
-                                <div style="display: flex; justify-content: center; align-items: center; background: #1f2937; border-radius: 8px; padding: 20px; min-height: {container_h}px;">
-                                    <div style="width:{display_w}px; max-height:{container_h - 40}px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius: 8px; overflow-y: auto; overflow-x: hidden; background:white;">
-                                        <div style="width:{device_w}px;">
-                                            <img src="data:image/jpeg;base64,{screenshot}" style="width:100%; height:auto; display:block;">
-                                        </div>
-                                    </div>
-                                </div>
-                                """
-                                st.components.v1.html(img_html, height=container_h + 40, scrolling=False)
-                            else:
-                                preview_html, height = render_device_preview("", device2, st.session_state.zoom2, is_iframe=True, url=dest_url)
-                                st.components.v1.html(preview_html, height=height, scrolling=False)
-                        else:
-                            st.warning("⚠️ No landing page URL available")
-                    
-                    with card2_right:
-                        dest_url = current_flow.get('reporting_destination_url', 'N/A')
-                        st.markdown(f"""
-                        <div class="info-box">
-                            <div class="info-label">Landing Page:</div><br>
-                            {dest_url[:80]}...
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        st.markdown("**Keyword → Page Match**")
-                        if st.session_state.similarities:
-                            render_similarity_card("Match Score", st.session_state.similarities.get('kwd_to_page'))
-                        
-                        st.markdown("**Ad → Page Match**")
-                        if st.session_state.similarities:
-                            render_similarity_card("Match Score", st.session_state.similarities.get('ad_to_page'))
-                else:
-                    st.warning("No flows found")
-else:
-    st.error("❌ Failed to load data")
-
+        preview_html = render_device_preview(flow['serp_html'], device1, zoom1)
+        st.components.v1.html(preview_html, height=650, scrolling=False)
+    
+    with col2:
+        st.markdown("### 🌐 Landing Page Preview")
+        device2 = st.radio("Device", ["mobile", "tablet", "laptop"], horizontal=True, key="device2")
+        zoom2 = st.slider("Zoom", 50, 150, st.session_state.zoom2, key="zoom2")
+        
+        preview_html = render_device_preview("", device2, zoom2, is_iframe=True, url=flow['landing_url'])
+        st.components.v1.html(preview_html, height=650, scrolling=False)
