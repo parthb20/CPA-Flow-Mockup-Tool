@@ -13,40 +13,150 @@ import base64
 # Page config
 st.set_page_config(page_title="CPA Flow Analysis", page_icon="📊", layout="wide")
 
-# Custom CSS - Light Mode
+# Custom CSS - COMPLETE LIGHT MODE
 st.markdown("""
     <style>
+    /* Background */
     .main { background-color: #f8fafc; }
     .stApp { background-color: #f8fafc; }
     [data-testid="stSidebar"] { display: none; }
     
-    /* Light mode text */
-    h1, h2, h3, h4, h5, h6, p, span, div, label {
+    /* All text elements */
+    h1, h2, h3, h4, h5, h6, p, span, div, label, .stMarkdown {
         color: #1e293b !important;
     }
     
+    /* Dropdowns and select boxes */
+    [data-baseweb="select"] {
+        background-color: white !important;
+    }
+    [data-baseweb="select"] > div {
+        background-color: white !important;
+        border-color: #cbd5e1 !important;
+    }
+    [data-baseweb="select"] * {
+        color: #1e293b !important;
+    }
+    
+    /* Input fields */
+    input, textarea, select {
+        background-color: white !important;
+        color: #1e293b !important;
+        border-color: #cbd5e1 !important;
+    }
+    
+    /* ALL Buttons - Light Mode */
+    .stButton > button {
+        background-color: white !important;
+        color: #1e293b !important;
+        border: 1px solid #cbd5e1 !important;
+    }
+    .stButton > button:hover {
+        background-color: #f1f5f9 !important;
+        border-color: #94a3b8 !important;
+    }
+    .stButton > button[kind="primary"],
+    .stButton > button[data-testid="baseButton-primary"] {
+        background-color: #3b82f6 !important;
+        color: white !important;
+        border: none !important;
+    }
+    .stButton > button[kind="primary"]:hover,
+    .stButton > button[data-testid="baseButton-primary"]:hover {
+        background-color: #2563eb !important;
+    }
+    .stButton > button[kind="secondary"],
+    .stButton > button[data-testid="baseButton-secondary"] {
+        background-color: white !important;
+        color: #1e293b !important;
+        border: 1px solid #cbd5e1 !important;
+    }
+    .stButton > button[kind="secondary"]:hover,
+    .stButton > button[data-testid="baseButton-secondary"]:hover {
+        background-color: #f1f5f9 !important;
+        border-color: #94a3b8 !important;
+    }
+    
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        background-color: white !important;
+        border-bottom: 2px solid #e2e8f0 !important;
+    }
+    .stTabs [data-baseweb="tab"] {
+        color: #64748b !important;
+        background-color: white !important;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #3b82f6 !important;
+        border-bottom-color: #3b82f6 !important;
+    }
+    
+    /* Metrics */
+    [data-testid="stMetricValue"] {
+        color: #1e293b !important;
+    }
+    [data-testid="stMetricLabel"] {
+        color: #64748b !important;
+    }
+    
+    /* Expander */
+    .streamlit-expanderHeader {
+        background-color: white !important;
+        color: #1e293b !important;
+        border: 1px solid #e2e8f0 !important;
+    }
+    .streamlit-expanderContent {
+        background-color: white !important;
+        border: 1px solid #e2e8f0 !important;
+        border-top: none !important;
+    }
+    
+    /* Radio buttons */
+    .stRadio > label {
+        color: #1e293b !important;
+    }
+    .stRadio [role="radiogroup"] label {
+        color: #1e293b !important;
+        background-color: white !important;
+        border: 1px solid #cbd5e1 !important;
+        padding: 8px 16px;
+        border-radius: 6px;
+    }
+    .stRadio [role="radiogroup"] label:hover {
+        background-color: #f1f5f9 !important;
+        border-color: #94a3b8 !important;
+    }
+    
+    /* Divider */
+    hr {
+        border-color: #e2e8f0 !important;
+    }
+    
+    /* Custom cards */
     .metric-card {
         background: white;
         padding: 15px; 
         border-radius: 8px; 
         border: 2px solid #e2e8f0;
         margin: 10px 0;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
     }
-    .similarity-excellent { border-color: #22c55e; background: rgba(34, 197, 94, 0.1); }
-    .similarity-good { border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
-    .similarity-moderate { border-color: #eab308; background: rgba(234, 179, 8, 0.1); }
-    .similarity-poor { border-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+    .similarity-excellent { border-color: #22c55e; background: rgba(34, 197, 94, 0.08); }
+    .similarity-good { border-color: #3b82f6; background: rgba(59, 130, 246, 0.08); }
+    .similarity-moderate { border-color: #eab308; background: rgba(234, 179, 8, 0.08); }
+    .similarity-poor { border-color: #ef4444; background: rgba(239, 68, 68, 0.08); }
     
     .info-box {
-        background: rgba(59, 130, 246, 0.08);
+        background: white;
         padding: 16px; 
         border-radius: 8px; 
+        border: 1px solid #cbd5e1;
         border-left: 4px solid #3b82f6;
         margin: 15px 0;
         line-height: 1.8;
         font-size: 15px;
         color: #1e293b;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
     .info-label { 
         font-weight: bold; 
@@ -63,22 +173,41 @@ st.markdown("""
         color: #475569;
         background: white;
         border-radius: 6px 6px 0 0;
+        border: 1px solid #e2e8f0;
+        border-bottom: 2px solid #cbd5e1;
     }
     
     .explanation-box {
-        background: rgba(139, 92, 246, 0.08);
+        background: white;
         padding: 12px;
         border-radius: 6px;
+        border: 1px solid #c4b5fd;
         border-left: 3px solid #8b5cf6;
         margin: 10px 0;
         font-size: 13px;
         line-height: 1.6;
         color: #1e293b;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
     
-    /* Light mode for plotly charts */
-    .js-plotly-plot {
-        background: white !important;
+    /* Spinner */
+    .stSpinner > div {
+        border-top-color: #3b82f6 !important;
+    }
+    
+    /* Caption */
+    .stCaptionContainer {
+        color: #64748b !important;
+    }
+    
+    /* Code blocks */
+    .stCodeBlock {
+        background-color: #f1f5f9 !important;
+        border: 1px solid #cbd5e1 !important;
+    }
+    code {
+        color: #1e293b !important;
+        background-color: #f1f5f9 !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -363,9 +492,9 @@ body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #f
 
 def render_device_preview(content, device):
     """Render properly - let content flow naturally at device width"""
-    # Actual device widths - INCREASED mobile width for CTA
+    # Actual device widths - INCREASED mobile width more
     dims = {
-        'mobile': 400,      # Increased from 375 to 400px
+        'mobile': 430,      # Increased from 400 to 430px for wider CTA
         'tablet': 768,
         'laptop': 1366
     }
