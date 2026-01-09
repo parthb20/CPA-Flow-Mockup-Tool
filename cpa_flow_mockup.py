@@ -454,10 +454,13 @@ def fetch_page_content(url):
         return ""
 
 def get_screenshot_url(url, device):
-    """Generate screenshot URL using a free API"""
+    """Free screenshot service - no API key needed"""
     widths = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
     width = widths[device]
-    screenshot_url = f"https://shot.screenshotapi.net/screenshot?url={quote(url)}&width={width}&height=800&output=image&file_type=png&wait_for_event=load"
+    
+    # Using S-Shot.ru - FREE and reliable
+    screenshot_url = f"https://mini.s-shot.ru/{width}x800/JPEG/1024/Z100/?{url}"
+    
     return screenshot_url
 
 def calculate_similarities(flow_data):
@@ -654,7 +657,8 @@ def render_screenshot_preview(screenshot_url, device):
                     box-shadow: 0 20px 60px rgba(0,0,0,0.2);">
             <img src="{screenshot_url}" 
                  style="width: 100%; height: auto; display: block;"
-                 alt="Landing page screenshot">
+                 alt="Landing page screenshot"
+                 onerror="this.parentElement.innerHTML='<div style=padding:20px;color:#ef4444;text-align:center;><strong>⚠️ Screenshot failed to load</strong><br>The website may block automated screenshots.</div>';">
         </div>
     </div>
     """
@@ -665,7 +669,8 @@ def make_url_clickable(url):
     """Convert URL string to clickable hyperlink"""
     if not url or pd.isna(url) or str(url).lower() == 'null':
         return 'N/A'
-    return f'<a href="{url}" target="_blank" style="color:#3b82f6; text-decoration:underline; font-weight:600;">{url[:60]}{"..." if len(str(url)) > 60 else ""}</a>'
+    url_display = url[:60] + "..." if len(str(url)) > 60 else url
+    return f'<a href="{url}" target="_blank" style="color:#3b82f6; text-decoration:underline; font-weight:600;">{url_display}</a>'
 
 # Auto-load data
 if not st.session_state.loading_done:
@@ -912,15 +917,19 @@ if st.session_state.data_a is not None:
                     current_flow = st.session_state.flows[st.session_state.flow_index]
                     
                     # Visual Flow Diagram
+                    keyword_short = current_flow.get('keyword_term', 'N/A')[:25] + '...' if len(str(current_flow.get('keyword_term', 'N/A'))) > 25 else current_flow.get('keyword_term', 'N/A')
+                    pub_short = current_flow.get('publisher_url', 'N/A')[:25] + '...' if len(str(current_flow.get('publisher_url', 'N/A'))) > 25 else current_flow.get('publisher_url', 'N/A')
+                    dest_short = current_flow.get('reporting_destination_url', 'N/A')[:25] + '...' if len(str(current_flow.get('reporting_destination_url', 'N/A'))) > 25 else current_flow.get('reporting_destination_url', 'N/A')
+                    
                     st.markdown(f"""
                     <div class="flow-diagram">
-                        <div class="flow-step">🔍 Keyword<br><small>{current_flow.get('keyword_term', 'N/A')[:30]}</small></div>
+                        <div class="flow-step">🔍 Keyword<br><small>{keyword_short}</small></div>
                         <div class="flow-arrow">→</div>
-                        <div class="flow-step">📰 Publisher<br><small>{current_flow.get('publisher_url', 'N/A')[:30]}</small></div>
+                        <div class="flow-step">📰 Publisher<br><small>{pub_short}</small></div>
                         <div class="flow-arrow">→</div>
                         <div class="flow-step">📄 SERP<br><small>Ad Display</small></div>
                         <div class="flow-arrow">→</div>
-                        <div class="flow-step">🎯 Landing<br><small>{current_flow.get('reporting_destination_url', 'N/A')[:30]}</small></div>
+                        <div class="flow-step">🎯 Landing<br><small>{dest_short}</small></div>
                     </div>
                     """, unsafe_allow_html=True)
                     
@@ -967,7 +976,7 @@ if st.session_state.data_a is not None:
                     
                     st.divider()
                     
-                    # Card 2: Landing Page (SCREENSHOT VERSION)
+                    # Card 2: Landing Page (SCREENSHOT)
                     st.subheader("🎯 Landing Page")
                     st.caption("Where users go after clicking")
                     
@@ -980,14 +989,14 @@ if st.session_state.data_a is not None:
                         if dest_url and pd.notna(dest_url) and str(dest_url).lower() != 'null':
                             with st.spinner("Getting screenshot..."):
                                 try:
-                                    # Get redirect URL first
+                                    # Get redirect URL
                                     response = requests.get(dest_url, timeout=15, headers={
                                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                                     }, allow_redirects=True)
                                     
                                     final_url = response.url
                                     
-                                    # Show URLs
+                                    # Show URLs as clickable
                                     if final_url != dest_url:
                                         st.markdown(f"""
                                         <div class="info-box">
@@ -1002,7 +1011,7 @@ if st.session_state.data_a is not None:
                                         </div>
                                         """, unsafe_allow_html=True)
                                     
-                                    # Get screenshot
+                                    # Get screenshot of FINAL redirected URL
                                     screenshot_url = get_screenshot_url(final_url, device2)
                                     screenshot_html, height = render_screenshot_preview(screenshot_url, device2)
                                     st.components.v1.html(screenshot_html, height=height, scrolling=False)
