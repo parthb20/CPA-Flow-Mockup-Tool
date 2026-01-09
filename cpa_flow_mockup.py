@@ -315,32 +315,37 @@ body {{ margin: 0; padding: 40px 20px; font-family: Arial, sans-serif; backgroun
 </body></html>"""
 
 def render_device_preview(content, device, zoom, is_iframe=False, url=""):
-    """Simple, clean rendering that actually works"""
+    """Properly sized rendering without transform issues"""
     dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
-    device_w, device_h = dims[device]
+    original_w, original_h = dims[device]
     
-    # Simple scale calculation
+    # Calculate display size based on device and zoom
     if device == 'mobile':
-        scale = 0.60
+        display_w = int(375 * (zoom / 100))
+        display_h = int(667 * (zoom / 100))
     elif device == 'tablet':
-        scale = 0.50
+        display_w = int(600 * (zoom / 100))
+        display_h = int(800 * (zoom / 100))
     else:  # laptop
-        scale = 0.45
-    
-    scale = scale * (zoom / 100)
+        display_w = int(900 * (zoom / 100))
+        display_h = int(600 * (zoom / 100))
     
     if is_iframe:
-        content = f'<iframe src="{url}" width="100%" height="100%" style="border:none;" sandbox="allow-same-origin allow-scripts allow-popups allow-forms"></iframe>'
+        inner = f'<iframe src="{url}" style="width:100%; height:100%; border:none;" sandbox="allow-same-origin allow-scripts allow-popups allow-forms"></iframe>'
+    else:
+        # Scale content to fit display size
+        scale = display_w / original_w
+        inner = f'<div style="width:{original_w}px; height:{original_h}px; transform:scale({scale}); transform-origin:top left; overflow:hidden;">{content}</div>'
     
     html = f"""
-    <div style="display: flex; justify-content: center; align-items: center; background: #1f2937; border-radius: 8px; padding: 20px; min-height: 500px;">
-        <div style="width: {device_w}px; height: {device_h}px; transform: scale({scale}); box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius: 8px; overflow: auto; background: white;">
-            {content}
+    <div style="display: flex; justify-content: center; align-items: center; background: #1f2937; border-radius: 8px; padding: 20px; min-height: 600px;">
+        <div style="width:{display_w}px; height:{display_h}px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius: 8px; overflow:hidden; background:white;">
+            {inner}
         </div>
     </div>
     """
-    return html, 580
-
+    
+    return html, max(display_h + 80, 600)
 # Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
@@ -586,13 +591,18 @@ if st.session_state.data_a is not None:
                             if screenshot:
                                 dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
                                 device_w, device_h = dims[device2]
-                                
+
                                 if device2 == 'mobile':
-                                    scale = 0.60
+                                    display_w = int(375 * (st.session_state.zoom2 / 100))
+                                    display_h = int(667 * (st.session_state.zoom2 / 100))
                                 elif device2 == 'tablet':
-                                    scale = 0.50
+                                    display_w = int(600 * (st.session_state.zoom2 / 100))
+                                    display_h = int(800 * (st.session_state.zoom2 / 100))
                                 else:
-                                    scale = 0.45
+                                    display_w = int(900 * (st.session_state.zoom2 / 100))
+                                    display_h = int(600 * (st.session_state.zoom2 / 100))
+                                
+                        
                                 
                                 scale = scale * (st.session_state.zoom2 / 100)
                                 
@@ -630,3 +640,4 @@ if st.session_state.data_a is not None:
                     st.warning("No flows found")
 else:
     st.error("❌ Failed to load data")
+
