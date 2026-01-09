@@ -33,7 +33,7 @@ st.markdown("""
     h2 { font-weight: 700 !important; font-size: 26px !important; }
     h3 { font-weight: 700 !important; font-size: 22px !important; }
     
-    /* Dropdowns and select boxes */
+    /* Dropdowns and select boxes - FIXED FOR LIGHT MODE */
     [data-baseweb="select"] {
         background-color: white !important;
     }
@@ -45,6 +45,22 @@ st.markdown("""
         color: #0f172a !important;
         font-weight: 500 !important;
         font-size: 16px !important;
+    }
+    
+    /* Dropdown menu options - CRITICAL FIX */
+    [role="listbox"] {
+        background-color: white !important;
+    }
+    [role="option"] {
+        background-color: white !important;
+        color: #0f172a !important;
+    }
+    [role="option"]:hover {
+        background-color: #f1f5f9 !important;
+    }
+    [role="option"][aria-selected="true"] {
+        background-color: #e0f2fe !important;
+        color: #0369a1 !important;
     }
     
     /* Input fields */
@@ -485,87 +501,107 @@ def render_similarity_card(title, data, explanation, calculation_details):
                 st.caption(f"**{key.replace('_', ' ').title()}:** {value}")
 
 def generate_serp_mockup(flow_data, serp_templates):
-    """Generate clean SERP preview matching actual rendering"""
+    """Generate clean SERP HTML matching the actual design"""
     keyword = flow_data.get('keyword_term', 'N/A')
     ad_title = flow_data.get('ad_title', 'N/A')
     ad_desc = flow_data.get('ad_description', 'N/A')
     ad_url = flow_data.get('ad_display_url', 'N/A')
-    dest_url = flow_data.get('reporting_destination_url', '#')
     
-    # Clean, mobile-first SERP mockup that matches the actual rendering style
+    # Try to use actual SERP template if available
+    if serp_templates and len(serp_templates) > 0:
+        try:
+            html = serp_templates[0].get('code', '')
+            
+            # Replace keyword in header
+            html = re.sub(
+                r'(Sponsored results for:\s*["\'])([^"\']*?)(["\'])', 
+                f'\\1{keyword}\\3', 
+                html
+            )
+            
+            # Replace ad details
+            html = re.sub(r'(<div class="url">)[^<]*(</div>)', f'\\1{ad_url}\\2', html, count=1)
+            html = re.sub(r'(<div class="title">)[^<]*(</div>)', f'\\1{ad_title}\\2', html, count=1)
+            html = re.sub(r'(<div class="desc">)[^<]*(</div>)', f'\\1{ad_desc}\\2', html, count=1)
+            
+            return html
+        except:
+            pass
+    
+    # Clean fallback template matching the actual SERP design
     return f"""<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
+<html><head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
 body {{ 
+    margin: 0; 
+    padding: 15px 18px; 
     font-family: 'Raleway', Arial, sans-serif; 
-    background: #ECECEC; 
-    margin: 0;
-    padding: 0;
+    background: #ECECEC;
     -webkit-text-size-adjust: none;
+    min-height: 100vh;
 }}
-.wrapper {{
-    margin: 15px 18px 20px;
-    position: relative;
-    padding: 0 0 20px;
-}}
-.header-text {{
-    font-size: 16px;
-    color: #BEBEBE;
-    line-height: 18px;
-    margin-bottom: 15px;
+.wrapper {{ margin: 15px 0; }}
+.header-text {{ 
+    color: #BEBEBE; 
+    font-size: 16px; 
+    margin-bottom: 10px;
     font-weight: 400;
 }}
-.ad-container {{
+.ad-card {{
     background: #fff;
     border: 1px solid #BCBCBC;
-    min-height: 400px;
+    min-height: calc(100vh - 120px);
     display: flex;
     flex-direction: column;
+    padding: 0 24px 39px;
 }}
 .content-wrap {{
-    padding: 40px 24px 39px;
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
+    width: 100%;
     flex: 1;
 }}
-.url {{
-    font-size: 16px;
+.main-content {{
+    padding: 40px 0 0;
+}}
+.url {{ 
+    color: #307137; 
+    font-size: 16px; 
     line-height: 22px;
-    color: #307137;
     word-wrap: break-word;
-    margin-bottom: 30px;
     font-weight: 400;
 }}
-.title {{
-    font-size: 28px;
+.title {{ 
+    color: #4761C2; 
+    font-size: 28px; 
     line-height: 34px;
-    color: #4761C2;
     font-weight: 700;
-    margin-bottom: 20px;
+    margin: 30px 0 20px;
     word-wrap: break-word;
 }}
-.desc {{
-    font-size: 16px;
+.desc {{ 
+    color: #828282; 
+    font-size: 16px; 
     line-height: 22px;
-    color: #828282;
     margin-bottom: 40px;
     word-wrap: break-word;
     font-weight: 400;
 }}
-.cta-wrapper {{
-    margin-top: auto;
+.cta {{
+    padding: 30px 0 0;
     display: flex;
-    justify-content: flex-end;
+    width: 100%;
     align-items: flex-end;
-    padding-top: 30px;
+    justify-content: flex-end;
+    flex-grow: 1;
 }}
 .arrow-wrap {{
     min-width: 195px;
     height: 67px;
+    padding: 0 10px;
     border: 4px solid #1F4A24;
     border-radius: 4px;
     background: #307137;
@@ -573,94 +609,60 @@ body {{
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    text-decoration: none;
+    transition: all 0.3s ease;
 }}
 .arrow-wrap:hover {{
-    background: #3d8a45;
+    background: #3d8842;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }}
 .arrow-text {{
-    font-size: 29px;
     color: #fff;
+    font-size: 29px;
     font-weight: 700;
-    margin-right: 17px;
-}}
-.arrow {{
-    display: flex;
-    align-items: center;
-}}
-.arrow svg {{
-    width: 21px;
-    height: 29px;
 }}
 
-/* Tablet & Desktop */
-@media (min-width: 600px) {{
-    .wrapper {{
-        max-width: 820px;
-        margin: 45px auto 0;
-    }}
-    .content-wrap {{
-        padding: 31px 37px;
-    }}
-    .url {{
-        font-size: 27px;
-        line-height: 32px;
-        margin-bottom: 39px;
-    }}
-    .title {{
-        font-size: 41px;
-        line-height: 49px;
-        margin-bottom: 61px;
-    }}
-    .desc {{
-        font-size: 24px;
-        line-height: 29px;
-        margin-bottom: 31px;
-    }}
-    .arrow-wrap {{
-        min-width: 386px;
-        height: 100px;
-        border: 6px solid #1F4A24;
-        border-radius: 6px;
-    }}
-    .arrow-text {{
-        font-size: 46px;
-        margin-right: 50px;
-    }}
-    .arrow svg {{
-        width: 31px;
-        height: 39px;
-    }}
+@media only screen and (min-device-height: 700px) and (max-device-width: 599px) {{ 
+    .main-content {{ padding: 50px 0 0; }}
+    .title {{ margin: 40px 0 30px; }}
+}}
+
+@media only screen and (min-device-height: 750px) and (max-device-width: 599px) {{ 
+    .wrapper {{ margin: 15px 0 40px; }}
+    .main-content {{ padding: 50px 0 0; }}
+    .url {{ font-size: 16px; line-height: 22px; }}
+    .desc {{ font-size: 18px; line-height: 24px; }}
+    .title {{ margin: 50px 0 40px; font-size: 30px; line-height: 36px; }}
+}}
+
+@media only screen and (min-device-height: 860px) and (max-device-width: 599px) {{ 
+    .url {{ font-size: 16px; line-height: 22px; }}
+    .desc {{ font-size: 20px; line-height: 26px; }}
+    .title {{ font-size: 36px; line-height: 42px; }}
 }}
 </style>
-</head>
-<body>
+</head><body>
 <div class="wrapper">
     <div class="header-text">Sponsored results for: "{keyword}"</div>
-    <div class="ad-container">
+    <div class="ad-card">
         <div class="content-wrap">
-            <div class="url">{ad_url}</div>
-            <div class="title">{ad_title}</div>
-            <div class="desc">{ad_desc}</div>
-            <div class="cta-wrapper">
-                <a href="{dest_url}" target="_blank" class="arrow-wrap">
-                    <span class="arrow-text">Continue</span>
-                    <div class="arrow">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 21 29" fill="none">
-                            <path d="M0.727483 28.4269C0.242494 28.0448 0 27.5924 0 27.0697C0 26.5481 0.242494 26.0962 0.727483 25.7141L14.9376 14.5191L0.678984 3.2859C0.226328 2.92929 0 2.48353 0 1.94862C0 1.4137 0.242494 0.955204 0.727483 0.573123C1.21247 0.191041 1.7867 0 2.45016 0C3.11233 0 3.68591 0.191041 4.1709 0.573123L20.4665 13.4493C20.6605 13.6021 20.7982 13.7677 20.8797 13.946C20.9599 14.1243 21 14.3153 21 14.5191C21 14.7229 20.9599 14.9139 20.8797 15.0922C20.7982 15.2705 20.6605 15.4361 20.4665 15.5889L4.1224 28.4651C3.66974 28.8217 3.11233 29 2.45016 29C1.7867 29 1.21247 28.809 0.727483 28.4269Z" fill="white"/>
-                        </svg>
-                    </div>
-                </a>
+            <div class="main-content">
+                <div class="url">{ad_url}</div>
+                <div class="title">{ad_title}</div>
+                <div class="desc">{ad_desc}</div>
+            </div>
+            <div class="cta">
+                <div class="arrow-wrap">
+                    <div class="arrow-text">Continue</div>
+                </div>
             </div>
         </div>
     </div>
 </div>
-</body>
-</html>"""
-
+</body></html>"""
 
 def render_device_preview(content, device):
-    """Render with proper viewport - no extra space"""
+    """Render with proper viewport and SCROLLING ENABLED"""
     # Device widths
     dims = {
         'mobile': 390,
@@ -681,7 +683,7 @@ def render_device_preview(content, device):
     # Proper viewport
     viewport_meta = f'<meta name="viewport" content="width={device_w}, initial-scale=1.0, user-scalable=no">'
     
-    # CSS to ensure content starts at top and fits properly
+    # CSS to ensure content starts at top
     fix_css = f'''
     <style id="preview-fix">
     html, body {{ 
@@ -690,7 +692,6 @@ def render_device_preview(content, device):
         width: {device_w}px !important;
         max-width: {device_w}px !important;
         overflow-x: hidden !important;
-        min-height: 0 !important;
     }}
     * {{ box-sizing: border-box !important; }}
     </style>
@@ -710,29 +711,34 @@ def render_device_preview(content, device):
     elif '<body' in content:
         content = re.sub(r'(<body[^>]*>)', rf'\1{fix_css}', content, count=1)
     
-    # KEY FIX: iframe height = 100% (not fixed), scrolling happens in container
+    # CRITICAL: Make iframe tall (2500px) and enable scrolling
+    # Container has fixed height (700px) with overflow-y: auto for scrolling
+    iframe_height = 2500
+    
     html = f"""
     <div style="display: flex; justify-content: center; align-items: center; 
-                background: #e2e8f0; border-radius: 12px; padding: 30px; 
+                background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%); 
+                border-radius: 12px; padding: 30px; 
                 min-height: {container_height + 80}px;">
         <div style="width: {device_w}px; height: {container_height}px; 
                     {frame_style}
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.2); 
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.2), 0 8px 16px rgba(0,0,0,0.1); 
                     overflow-y: auto; overflow-x: hidden; 
                     background: white; position: relative;
                     -webkit-overflow-scrolling: touch;">
             <iframe srcdoc='{content.replace("'", "&apos;").replace('"', "&quot;")}' 
-                    style="width: {device_w}px; height: 100%; border: none; 
-                           display: block; margin: 0; padding: 0; min-height: 100%;"
+                    style="width: {device_w}px; height: {iframe_height}px; border: none; 
+                           display: block; margin: 0; padding: 0;"
                     sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-                    scrolling="no">
+                    scrolling="yes">
             </iframe>
         </div>
     </div>
     """
     
     return html, container_height + 110
-    # Auto-load data
+
+# Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
         st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
@@ -1028,21 +1034,29 @@ if st.session_state.data_a is not None:
                         dest_url = current_flow.get('reporting_destination_url', '')
                         
                         if dest_url and pd.notna(dest_url) and str(dest_url).lower() != 'null':
+                            # Show the actual URL being loaded
+                            st.info(f"📍 **Loading URL:** `{dest_url}`")
                             st.markdown(f"🔗 [Open in New Tab]({dest_url})")
                             
                             with st.spinner("Loading page..."):
                                 try:
-                                    response = requests.get(dest_url, timeout=10, headers={
+                                    response = requests.get(dest_url, timeout=15, headers={
                                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                                    })
+                                    }, allow_redirects=True)
+                                    
                                     if response.status_code == 200:
+                                        # Show if URL redirected
+                                        if response.url != dest_url:
+                                            st.warning(f"⚠️ **URL redirected to:** `{response.url}`")
+                                        
                                         landing_html = response.text
                                         preview_html, height = render_device_preview(landing_html, device2)
                                         st.components.v1.html(preview_html, height=height, scrolling=False)
                                     else:
                                         st.error(f"⚠️ Could not load page (Error: {response.status_code})")
                                 except Exception as e:
-                                    st.error(f"⚠️ Could not load page. Try the link above.")
+                                    st.error(f"⚠️ Could not load page: {str(e)}")
+                                    st.caption("Try the 'Open in New Tab' link above")
                         else:
                             st.warning("⚠️ No landing page URL found")
                     
