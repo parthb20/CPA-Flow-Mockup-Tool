@@ -343,11 +343,11 @@ def render_device_preview(content, device, zoom, is_iframe=False, url=""):
     
     # Device-specific scaling for better UX
     if device == 'mobile':
-        base_scale = 0.55  # Smaller for mobile so it fits completely
+        base_scale = 0.65  # Increased from 0.55 for better visibility
     elif device == 'tablet':
-        base_scale = 0.75  # Medium size for tablet
+        base_scale = 0.70  # Adjusted for better fit
     else:  # laptop
-        base_scale = 0.65  # Larger for laptop for readability
+        base_scale = 0.60  # Adjusted for better fit
     
     # Apply user zoom on top of base scale
     final_scale = base_scale * (zoom / 100)
@@ -363,15 +363,14 @@ def render_device_preview(content, device, zoom, is_iframe=False, url=""):
     
     html = f"""
     <div class="render-container">
-        <div class="device-frame" style="width:{final_w}px; height:{final_h}px; margin:auto;">
-            <div style="width:{device_w}px; height:{device_h}px; transform:scale({final_scale}); transform-origin:top left;">
+        <div class="device-frame" style="width:{final_w}px; height:{final_h}px;">
+            <div style="width:{device_w}px; height:{device_h}px; transform:scale({final_scale}); transform-origin:center center; margin:0 auto;">
                 {inner_content}
             </div>
         </div>
     </div>
     """
     return html, 640
-
 # Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
@@ -751,4 +750,5 @@ if st.session_state.data_a is not None:
                     st.warning("No flows found")
 else:
     st.error("❌ Failed to load data")
+
 
