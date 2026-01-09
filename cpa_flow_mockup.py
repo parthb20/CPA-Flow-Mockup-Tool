@@ -519,6 +519,10 @@ def generate_serp_mockup(flow_data, serp_templates):
         try:
             html = serp_templates[0].get('code', '')
             
+            # Remove min-height constraints that cause blank space
+            html = re.sub(r'min-height:\s*calc\([^;]+\);?', '', html)
+            html = re.sub(r'min-height:\s*\d+[a-z]+;?', '', html)
+            
             # Replace keyword in the header text
             html = re.sub(
                 r'Sponsored results for:\s*"[^"]*"', 
@@ -554,7 +558,7 @@ def generate_serp_mockup(flow_data, serp_templates):
         except Exception as e:
             st.error(f"Error using SERP template: {str(e)}")
     
-    # Fallback - should rarely be used
+    # Fallback - clean compact template
     return f"""<!DOCTYPE html>
 <html><head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -563,7 +567,7 @@ def generate_serp_mockup(flow_data, serp_templates):
 body {{ margin: 0; padding: 15px 18px; font-family: Arial, sans-serif; background: #ECECEC; }}
 .wrapper {{ margin: 15px 0; }}
 .header-text {{ color: #BEBEBE; font-size: 16px; margin-bottom: 10px; }}
-.ad-card {{ background: #fff; border: 1px solid #BCBCBC; padding: 40px 24px 39px; }}
+.ad-card {{ background: #fff; border: 1px solid #BCBCBC; padding: 40px 24px; }}
 .url {{ color: #307137; font-size: 16px; margin-bottom: 30px; }}
 .title {{ color: #4761C2; font-size: 28px; font-weight: 700; margin-bottom: 20px; }}
 .desc {{ color: #828282; font-size: 16px; line-height: 22px; }}
@@ -578,6 +582,8 @@ body {{ margin: 0; padding: 15px 18px; font-family: Arial, sans-serif; backgroun
     </div>
 </div>
 </body></html>"""
+
+
 def render_device_preview(content, device):
     """Render with proper viewport and auto-height detection"""
     # Device widths
@@ -987,6 +993,7 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+
 
 
 
