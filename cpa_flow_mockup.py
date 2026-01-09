@@ -61,25 +61,12 @@ FILE_A_ID = "1bwdj-rAAp6I1SbO27BTFD2eLiv6V5vsB"
 FILE_B_ID = "1QpQhZhXFFpQWm_xhVGDjdpgRM3VMv57L"
 
 try:
-    API_KEY = st.secrets.get("FASTROUTER_API_KEY", "").strip()
-    if not API_KEY:
-        API_KEY = st.secrets.get("ANTHROPIC_API_KEY", "").strip()
-    if not API_KEY:
-        # Try any key with API in name
-        for key in st.secrets:
-            if "API" in key.upper():
-                API_KEY = str(st.secrets[key]).strip()
-                if API_KEY:
-                    break
+    API_KEY = st.secrets.get("FASTROUTER_API_KEY", st.secrets.get("OPENAI_API_KEY", "")).strip()
+  
 except Exception as e:
-    st.error(f"Secrets error: {e}")
     API_KEY = ""
+    st.sidebar.error(f"❌ API Key error: {str(e)}")
 
-# Debug
-if API_KEY:
-    st.sidebar.success(f"✓ API Key loaded ({len(API_KEY)} chars)")
-else:
-    st.sidebar.error("⚠️ No API key found in secrets")
 # Session state
 for key in ['data_a', 'data_b', 'selected_keyword', 'selected_url', 'flows', 
             'flow_index', 'similarities', 'loading_done', 'zoom1', 'zoom2', 'screenshot_cache']:
