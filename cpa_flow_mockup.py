@@ -485,51 +485,179 @@ def render_similarity_card(title, data, explanation, calculation_details):
                 st.caption(f"**{key.replace('_', ' ').title()}:** {value}")
 
 def generate_serp_mockup(flow_data, serp_templates):
-    """Use actual SERP HTML with keyword/ad replacement"""
+    """Generate clean SERP preview matching actual rendering"""
     keyword = flow_data.get('keyword_term', 'N/A')
     ad_title = flow_data.get('ad_title', 'N/A')
     ad_desc = flow_data.get('ad_description', 'N/A')
     ad_url = flow_data.get('ad_display_url', 'N/A')
+    dest_url = flow_data.get('reporting_destination_url', '#')
     
-    if serp_templates and len(serp_templates) > 0:
-        try:
-            html = serp_templates[0].get('code', '')
-            
-            # Replace keyword in header
-            html = re.sub(
-                r'(Sponsored results for:\s*["\'])([^"\']*?)(["\'])', 
-                f'\\1{keyword}\\3', 
-                html
-            )
-            
-            # Replace ad details
-            html = re.sub(r'(<div class="url">)[^<]*(</div>)', f'\\1{ad_url}\\2', html, count=1)
-            html = re.sub(r'(<div class="title">)[^<]*(</div>)', f'\\1{ad_title}\\2', html, count=1)
-            html = re.sub(r'(<div class="desc">)[^<]*(</div>)', f'\\1{ad_desc}\\2', html, count=1)
-            
-            return html
-        except Exception as e:
-            pass
-    
-    # Fallback
+    # Clean, mobile-first SERP mockup that matches the actual rendering style
     return f"""<!DOCTYPE html>
-<html><head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
-body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #fff; }}
-.header-text {{ color: #70757a; font-size: 13px; margin-bottom: 20px; }}
-.url {{ color: #202124; font-size: 14px; }}
-.title {{ color: #1a0dab; font-size: 20px; margin: 5px 0; line-height: 1.3; }}
-.desc {{ color: #4d5156; font-size: 14px; line-height: 1.58; margin-top: 4px; }}
-.ad-badge {{ display: inline-block; padding: 2px 6px; background: #f1f3f4; border-radius: 3px; font-size: 11px; color: #5f6368; margin-bottom: 8px; }}
+* {{ margin: 0; padding: 0; box-sizing: border-box; }}
+body {{ 
+    font-family: 'Raleway', Arial, sans-serif; 
+    background: #ECECEC; 
+    margin: 0;
+    padding: 0;
+    -webkit-text-size-adjust: none;
+}}
+.wrapper {{
+    margin: 15px 18px 20px;
+    position: relative;
+    padding: 0 0 20px;
+}}
+.header-text {{
+    font-size: 16px;
+    color: #BEBEBE;
+    line-height: 18px;
+    margin-bottom: 15px;
+    font-weight: 400;
+}}
+.ad-container {{
+    background: #fff;
+    border: 1px solid #BCBCBC;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+}}
+.content-wrap {{
+    padding: 40px 24px 39px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}}
+.url {{
+    font-size: 16px;
+    line-height: 22px;
+    color: #307137;
+    word-wrap: break-word;
+    margin-bottom: 30px;
+    font-weight: 400;
+}}
+.title {{
+    font-size: 28px;
+    line-height: 34px;
+    color: #4761C2;
+    font-weight: 700;
+    margin-bottom: 20px;
+    word-wrap: break-word;
+}}
+.desc {{
+    font-size: 16px;
+    line-height: 22px;
+    color: #828282;
+    margin-bottom: 40px;
+    word-wrap: break-word;
+    font-weight: 400;
+}}
+.cta-wrapper {{
+    margin-top: auto;
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-end;
+    padding-top: 30px;
+}}
+.arrow-wrap {{
+    min-width: 195px;
+    height: 67px;
+    border: 4px solid #1F4A24;
+    border-radius: 4px;
+    background: #307137;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    text-decoration: none;
+}}
+.arrow-wrap:hover {{
+    background: #3d8a45;
+}}
+.arrow-text {{
+    font-size: 29px;
+    color: #fff;
+    font-weight: 700;
+    margin-right: 17px;
+}}
+.arrow {{
+    display: flex;
+    align-items: center;
+}}
+.arrow svg {{
+    width: 21px;
+    height: 29px;
+}}
+
+/* Tablet & Desktop */
+@media (min-width: 600px) {{
+    .wrapper {{
+        max-width: 820px;
+        margin: 45px auto 0;
+    }}
+    .content-wrap {{
+        padding: 31px 37px;
+    }}
+    .url {{
+        font-size: 27px;
+        line-height: 32px;
+        margin-bottom: 39px;
+    }}
+    .title {{
+        font-size: 41px;
+        line-height: 49px;
+        margin-bottom: 61px;
+    }}
+    .desc {{
+        font-size: 24px;
+        line-height: 29px;
+        margin-bottom: 31px;
+    }}
+    .arrow-wrap {{
+        min-width: 386px;
+        height: 100px;
+        border: 6px solid #1F4A24;
+        border-radius: 6px;
+    }}
+    .arrow-text {{
+        font-size: 46px;
+        margin-right: 50px;
+    }}
+    .arrow svg {{
+        width: 31px;
+        height: 39px;
+    }}
+}}
 </style>
-</head><body>
-<div class="header-text">Sponsored results for: "{keyword}"</div>
-<div class="ad-badge">Ad</div>
-<div class="url">{ad_url}</div>
-<div class="title">{ad_title}</div>
-<div class="desc">{ad_desc}</div>
-</body></html>"""
+</head>
+<body>
+<div class="wrapper">
+    <div class="header-text">Sponsored results for: "{keyword}"</div>
+    <div class="ad-container">
+        <div class="content-wrap">
+            <div class="url">{ad_url}</div>
+            <div class="title">{ad_title}</div>
+            <div class="desc">{ad_desc}</div>
+            <div class="cta-wrapper">
+                <a href="{dest_url}" target="_blank" class="arrow-wrap">
+                    <span class="arrow-text">Continue</span>
+                    <div class="arrow">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 21 29" fill="none">
+                            <path d="M0.727483 28.4269C0.242494 28.0448 0 27.5924 0 27.0697C0 26.5481 0.242494 26.0962 0.727483 25.7141L14.9376 14.5191L0.678984 3.2859C0.226328 2.92929 0 2.48353 0 1.94862C0 1.4137 0.242494 0.955204 0.727483 0.573123C1.21247 0.191041 1.7867 0 2.45016 0C3.11233 0 3.68591 0.191041 4.1709 0.573123L20.4665 13.4493C20.6605 13.6021 20.7982 13.7677 20.8797 13.946C20.9599 14.1243 21 14.3153 21 14.5191C21 14.7229 20.9599 14.9139 20.8797 15.0922C20.7982 15.2705 20.6605 15.4361 20.4665 15.5889L4.1224 28.4651C3.66974 28.8217 3.11233 29 2.45016 29C1.7867 29 1.21247 28.809 0.727483 28.4269Z" fill="white"/>
+                        </svg>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>"""
+
 
 def render_device_preview(content, device):
     """Render with proper viewport - no extra space"""
