@@ -532,11 +532,11 @@ body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #f
 </body></html>"""
 
 def render_device_preview(content, device):
-    """Render with proper viewport and no extra spacing"""
-    # Device widths matching SERP's media query breakpoints
+    """Render with proper viewport - no extra space"""
+    # Device widths
     dims = {
-        'mobile': 390,      # Below 600px = mobile CSS
-        'tablet': 820,      # Above 600px = desktop CSS
+        'mobile': 390,
+        'tablet': 820,
         'laptop': 1440
     }
     device_w = dims[device]
@@ -550,26 +550,21 @@ def render_device_preview(content, device):
     else:
         frame_style = "border-radius: 8px; border: 8px solid #94a3b8;"
     
-    # Fix viewport and remove any default spacing
+    # Proper viewport
     viewport_meta = f'<meta name="viewport" content="width={device_w}, initial-scale=1.0, user-scalable=no">'
     
-    # Inject CSS to remove spacing and ensure proper layout
+    # CSS to ensure content starts at top and fits properly
     fix_css = f'''
     <style id="preview-fix">
-    * {{ box-sizing: border-box; }}
-    html {{ 
-        margin: 0 !important; 
-        padding: 0 !important; 
-        width: {device_w}px !important;
-        max-width: {device_w}px !important;
-    }}
-    body {{ 
+    html, body {{ 
         margin: 0 !important; 
         padding: 0 !important; 
         width: {device_w}px !important;
         max-width: {device_w}px !important;
         overflow-x: hidden !important;
+        min-height: 0 !important;
     }}
+    * {{ box-sizing: border-box !important; }}
     </style>
     '''
     
@@ -587,6 +582,7 @@ def render_device_preview(content, device):
     elif '<body' in content:
         content = re.sub(r'(<body[^>]*>)', rf'\1{fix_css}', content, count=1)
     
+    # KEY FIX: iframe height = 100% (not fixed), scrolling happens in container
     html = f"""
     <div style="display: flex; justify-content: center; align-items: center; 
                 background: #e2e8f0; border-radius: 12px; padding: 30px; 
@@ -598,16 +594,17 @@ def render_device_preview(content, device):
                     background: white; position: relative;
                     -webkit-overflow-scrolling: touch;">
             <iframe srcdoc='{content.replace("'", "&apos;").replace('"', "&quot;")}' 
-                    style="width: {device_w}px; height: 2500px; border: none; 
-                           display: block; margin: 0; padding: 0;"
-                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
+                    style="width: {device_w}px; height: 100%; border: none; 
+                           display: block; margin: 0; padding: 0; min-height: 100%;"
+                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                    scrolling="no">
             </iframe>
         </div>
     </div>
     """
     
     return html, container_height + 110
-# Auto-load data
+    # Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
         st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
@@ -945,4 +942,5 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+
 
