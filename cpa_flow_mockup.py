@@ -13,7 +13,7 @@ import base64
 # Page config
 st.set_page_config(page_title="CPA Flow Analysis", page_icon="📊", layout="wide")
 
-# Custom CSS - COMPLETE LIGHT MODE with DARKER FONTS
+# Custom CSS - COMPLETE LIGHT MODE with LARGER FONTS
 st.markdown("""
     <style>
     /* Background */
@@ -21,16 +21,17 @@ st.markdown("""
     .stApp { background-color: #f8fafc; }
     [data-testid="stSidebar"] { display: none; }
     
-    /* All text elements - DARKER for better visibility */
+    /* All text elements - LARGER and DARKER */
     h1, h2, h3, h4, h5, h6, p, span, div, label, .stMarkdown {
         color: #0f172a !important;
         font-weight: 500 !important;
+        font-size: 16px !important;
     }
     
-    /* Headings even bolder */
-    h1, h2, h3 {
-        font-weight: 700 !important;
-    }
+    /* Headings even bolder and larger */
+    h1 { font-weight: 700 !important; font-size: 32px !important; }
+    h2 { font-weight: 700 !important; font-size: 26px !important; }
+    h3 { font-weight: 700 !important; font-size: 22px !important; }
     
     /* Dropdowns and select boxes */
     [data-baseweb="select"] {
@@ -43,6 +44,7 @@ st.markdown("""
     [data-baseweb="select"] * {
         color: #0f172a !important;
         font-weight: 500 !important;
+        font-size: 16px !important;
     }
     
     /* Input fields */
@@ -51,14 +53,16 @@ st.markdown("""
         color: #0f172a !important;
         border-color: #cbd5e1 !important;
         font-weight: 500 !important;
+        font-size: 16px !important;
     }
     
-    /* ALL Buttons - Light Mode */
+    /* ALL Buttons - Light Mode with larger text */
     .stButton > button {
         background-color: white !important;
         color: #0f172a !important;
         border: 1px solid #cbd5e1 !important;
         font-weight: 600 !important;
+        font-size: 16px !important;
     }
     .stButton > button:hover {
         background-color: #f1f5f9 !important;
@@ -70,6 +74,7 @@ st.markdown("""
         color: white !important;
         border: none !important;
         font-weight: 600 !important;
+        font-size: 16px !important;
     }
     .stButton > button[kind="primary"]:hover,
     .stButton > button[data-testid="baseButton-primary"]:hover {
@@ -81,6 +86,7 @@ st.markdown("""
         color: #0f172a !important;
         border: 1px solid #cbd5e1 !important;
         font-weight: 600 !important;
+        font-size: 16px !important;
     }
     .stButton > button[kind="secondary"]:hover,
     .stButton > button[data-testid="baseButton-secondary"]:hover {
@@ -97,6 +103,7 @@ st.markdown("""
         color: #475569 !important;
         background-color: white !important;
         font-weight: 600 !important;
+        font-size: 16px !important;
     }
     .stTabs [aria-selected="true"] {
         color: #3b82f6 !important;
@@ -108,37 +115,47 @@ st.markdown("""
     [data-testid="stMetricValue"] {
         color: #0f172a !important;
         font-weight: 700 !important;
+        font-size: 28px !important;
     }
     [data-testid="stMetricLabel"] {
         color: #475569 !important;
         font-weight: 600 !important;
+        font-size: 16px !important;
     }
     
-    /* Expander */
+    /* Expander - LIGHT MODE FIX */
     .streamlit-expanderHeader {
         background-color: white !important;
         color: #0f172a !important;
         border: 1px solid #e2e8f0 !important;
         font-weight: 600 !important;
+        font-size: 16px !important;
     }
     .streamlit-expanderContent {
         background-color: white !important;
+        color: #0f172a !important;
         border: 1px solid #e2e8f0 !important;
         border-top: none !important;
+    }
+    .streamlit-expanderContent * {
+        color: #0f172a !important;
+        background-color: white !important;
     }
     
     /* Radio buttons */
     .stRadio > label {
         color: #0f172a !important;
         font-weight: 600 !important;
+        font-size: 16px !important;
     }
     .stRadio [role="radiogroup"] label {
         color: #0f172a !important;
         background-color: white !important;
         border: 1px solid #cbd5e1 !important;
-        padding: 8px 16px;
+        padding: 10px 18px;
         border-radius: 6px;
         font-weight: 600 !important;
+        font-size: 16px !important;
     }
     .stRadio [role="radiogroup"] label:hover {
         background-color: #f1f5f9 !important;
@@ -153,7 +170,7 @@ st.markdown("""
     /* Custom cards */
     .metric-card {
         background: white;
-        padding: 15px; 
+        padding: 18px; 
         border-radius: 8px; 
         border: 2px solid #e2e8f0;
         margin: 10px 0;
@@ -166,13 +183,13 @@ st.markdown("""
     
     .info-box {
         background: white;
-        padding: 16px; 
+        padding: 18px; 
         border-radius: 8px; 
         border: 1px solid #cbd5e1;
         border-left: 4px solid #3b82f6;
         margin: 15px 0;
         line-height: 1.8;
-        font-size: 15px;
+        font-size: 16px;
         color: #0f172a;
         box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         font-weight: 500;
@@ -180,15 +197,16 @@ st.markdown("""
     .info-label { 
         font-weight: 700; 
         color: #3b82f6;
+        font-size: 16px;
     }
     
     .table-header {
         display: flex;
-        padding: 12px 8px;
+        padding: 14px 8px;
         border-bottom: 2px solid #cbd5e1;
         margin-bottom: 10px;
         font-weight: 700;
-        font-size: 13px;
+        font-size: 15px;
         color: #334155;
         background: white;
         border-radius: 6px 6px 0 0;
@@ -198,12 +216,12 @@ st.markdown("""
     
     .explanation-box {
         background: white;
-        padding: 12px;
+        padding: 14px;
         border-radius: 6px;
         border: 1px solid #c4b5fd;
         border-left: 3px solid #8b5cf6;
         margin: 10px 0;
-        font-size: 13px;
+        font-size: 15px;
         line-height: 1.6;
         color: #0f172a;
         box-shadow: 0 1px 2px rgba(0,0,0,0.05);
@@ -219,6 +237,7 @@ st.markdown("""
     .stCaptionContainer {
         color: #475569 !important;
         font-weight: 500 !important;
+        font-size: 15px !important;
     }
     
     /* Code blocks */
@@ -229,6 +248,7 @@ st.markdown("""
     code {
         color: #0f172a !important;
         background-color: #f1f5f9 !important;
+        font-size: 14px !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -449,11 +469,11 @@ def render_similarity_card(title, data, explanation, calculation_details):
     
     st.markdown(f"""
     <div class="metric-card {css_class}">
-        <h4 style="margin:0; color: #475569; font-size: 12px; font-weight: 700;">{title}</h4>
-        <h2 style="margin: 8px 0; color: {color}; font-weight: 700;">{score:.1%}</h2>
-        <p style="margin:0; color: #475569; font-size: 11px; font-weight: 600;">{band.upper()}</p>
-        <p style="margin:8px 0 4px 0; color: #334155; font-size: 10px; font-weight: 500;">{reason[:80]}</p>
-        <p style="margin:8px 0 0 0; color: #64748b; font-size: 9px; font-style: italic; font-weight: 500;">{explanation}</p>
+        <h4 style="margin:0; color: #475569; font-size: 14px; font-weight: 700;">{title}</h4>
+        <h2 style="margin: 8px 0; color: {color}; font-weight: 700; font-size: 32px;">{score:.1%}</h2>
+        <p style="margin:0; color: #475569; font-size: 13px; font-weight: 600;">{band.upper()}</p>
+        <p style="margin:8px 0 4px 0; color: #334155; font-size: 12px; font-weight: 500;">{reason[:80]}</p>
+        <p style="margin:8px 0 0 0; color: #64748b; font-size: 11px; font-style: italic; font-weight: 500;">{explanation}</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -512,7 +532,7 @@ body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #f
 </body></html>"""
 
 def render_device_preview(content, device):
-    """Render with proper dimensions - make iframe tall enough for all content"""
+    """Render at actual device width with proper viewport"""
     # Real device widths
     dims = {
         'mobile': 393,
@@ -522,10 +542,6 @@ def render_device_preview(content, device):
     device_w = dims[device]
     container_height = 700
     
-    # Make iframe MUCH taller so all content (including CTA) renders
-    # Then container scrolls to show it all
-    iframe_height = 2000  # Tall enough for any SERP/landing page
-    
     # Device frames
     if device == 'mobile':
         frame_style = "border-radius: 30px; border: 12px solid #94a3b8;"
@@ -534,7 +550,7 @@ def render_device_preview(content, device):
     else:
         frame_style = "border-radius: 8px; border: 8px solid #94a3b8;"
     
-    # Inject viewport meta
+    # Force proper viewport and dimensions
     viewport_meta = f'<meta name="viewport" content="width={device_w}, initial-scale=1.0">'
     
     if '<meta name="viewport"' in content:
@@ -555,7 +571,7 @@ def render_device_preview(content, device):
                     background: white; position: relative;
                     -webkit-overflow-scrolling: touch;">
             <iframe srcdoc='{content.replace("'", "&apos;").replace('"', "&quot;")}' 
-                    style="width: {device_w}px; height: {iframe_height}px; border: none; display: block;"
+                    style="width: {device_w}px; height: 2000px; border: none; display: block;"
                     sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
             </iframe>
         </div>
@@ -563,8 +579,8 @@ def render_device_preview(content, device):
     """
     
     return html, container_height + 110
-    
-    # Auto-load data
+
+# Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
         st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
@@ -638,9 +654,9 @@ if st.session_state.data_a is not None:
                 fig.add_vline(x=avg_ctr, line_dash="dash", line_color="gray", opacity=0.5)
                 fig.update_layout(xaxis_title="CTR (%)", yaxis_title="CVR (%)", height=400,
                     showlegend=False, plot_bgcolor='white', paper_bgcolor='white',
-                    font=dict(color='#0f172a', size=12, family="Arial, sans-serif"), hovermode='closest',
-                    xaxis=dict(gridcolor='#e2e8f0', title_font=dict(size=14, color='#0f172a')), 
-                    yaxis=dict(gridcolor='#e2e8f0', title_font=dict(size=14, color='#0f172a')))
+                    font=dict(color='#0f172a', size=14, family="Arial, sans-serif"), hovermode='closest',
+                    xaxis=dict(gridcolor='#e2e8f0', title_font=dict(size=16, color='#0f172a')), 
+                    yaxis=dict(gridcolor='#e2e8f0', title_font=dict(size=16, color='#0f172a')))
                 
                 event = st.plotly_chart(fig, use_container_width=True, key="bubble", on_select="rerun")
                 
@@ -690,13 +706,13 @@ if st.session_state.data_a is not None:
                             st.session_state.similarities = {}
                             st.rerun()
                     cols[1].write(row['keyword_term'])
-                    cols[2].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500;'>{int(row['impressions']):,}</div>", unsafe_allow_html=True)
-                    cols[3].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500;'>{int(row['clicks']):,}</div>", unsafe_allow_html=True)
-                    cols[4].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500;'>{int(row['conversions']):,}</div>", unsafe_allow_html=True)
+                    cols[2].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500; font-size:15px;'>{int(row['impressions']):,}</div>", unsafe_allow_html=True)
+                    cols[3].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500; font-size:15px;'>{int(row['clicks']):,}</div>", unsafe_allow_html=True)
+                    cols[4].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500; font-size:15px;'>{int(row['conversions']):,}</div>", unsafe_allow_html=True)
                     ctr_color = '#16a34a' if row['ctr'] >= avg_ctr else '#dc2626'
-                    cols[5].markdown(f"<div style='text-align:center;color:{ctr_color};font-weight:700;'>{row['ctr']:.2f}%</div>", unsafe_allow_html=True)
+                    cols[5].markdown(f"<div style='text-align:center;color:{ctr_color};font-weight:700; font-size:15px;'>{row['ctr']:.2f}%</div>", unsafe_allow_html=True)
                     cvr_color = '#16a34a' if row['cvr'] >= avg_cvr else '#dc2626'
-                    cols[6].markdown(f"<div style='text-align:center;color:{cvr_color};font-weight:700;'>{row['cvr']:.2f}%</div>", unsafe_allow_html=True)
+                    cols[6].markdown(f"<div style='text-align:center;color:{cvr_color};font-weight:700; font-size:15px;'>{row['cvr']:.2f}%</div>", unsafe_allow_html=True)
             
             if st.session_state.selected_keyword:
                 st.divider()
@@ -751,13 +767,13 @@ if st.session_state.data_a is not None:
                             st.rerun()
                     display_url = row['publisher_url'][:45] + '...' if len(str(row['publisher_url'])) > 45 else row['publisher_url']
                     cols[1].write(display_url)
-                    cols[2].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500;'>{int(row['impressions']):,}</div>", unsafe_allow_html=True)
-                    cols[3].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500;'>{int(row['clicks']):,}</div>", unsafe_allow_html=True)
-                    cols[4].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500;'>{int(row['conversions']):,}</div>", unsafe_allow_html=True)
+                    cols[2].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500; font-size:15px;'>{int(row['impressions']):,}</div>", unsafe_allow_html=True)
+                    cols[3].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500; font-size:15px;'>{int(row['clicks']):,}</div>", unsafe_allow_html=True)
+                    cols[4].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500; font-size:15px;'>{int(row['conversions']):,}</div>", unsafe_allow_html=True)
                     ctr_color = '#16a34a' if row['ctr'] >= avg_ctr else '#dc2626'
-                    cols[5].markdown(f"<div style='text-align:center;color:{ctr_color};font-weight:700;'>{row['ctr']:.2f}%</div>", unsafe_allow_html=True)
+                    cols[5].markdown(f"<div style='text-align:center;color:{ctr_color};font-weight:700; font-size:15px;'>{row['ctr']:.2f}%</div>", unsafe_allow_html=True)
                     cvr_color = '#16a34a' if row['cvr'] >= avg_cvr else '#dc2626'
-                    cols[6].markdown(f"<div style='text-align:center;color:{cvr_color};font-weight:700;'>{row['cvr']:.2f}%</div>", unsafe_allow_html=True)
+                    cols[6].markdown(f"<div style='text-align:center;color:{cvr_color};font-weight:700; font-size:15px;'>{row['cvr']:.2f}%</div>", unsafe_allow_html=True)
             
             if st.session_state.selected_keyword and st.session_state.selected_url:
                 st.divider()
@@ -772,7 +788,6 @@ if st.session_state.data_a is not None:
                 if len(st.session_state.flows) > 0:
                     st.subheader("📊 Step 3: Analyze The Flow")
                     
-                    # Explain what a flow is
                     st.markdown("""
                     <div class="info-box">
                         <strong>🔄 What is a "Flow"?</strong><br>
@@ -903,13 +918,3 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
-
-
-
-
-
-
-
-
-
-
