@@ -512,79 +512,86 @@ body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #f
 </body></html>"""
 
 def render_device_preview(content, device):
-    """Render at ACTUAL device width with proper viewport handling"""
-    # Real device widths - matching actual devices
+    """Render at ACTUAL device width with proper scaling"""
+    # Real device widths
     dims = {
-        'mobile': 393,      # iPhone 14 Pro actual width
-        'tablet': 820,      # iPad Air width
-        'laptop': 1440      # MacBook Pro width
+        'mobile': 393,
+        'tablet': 820,
+        'laptop': 1440
     }
     device_w = dims[device]
-    
-    # Container height - fixed for scrolling
     container_height = 700
     
     # Device-specific frame styling
     if device == 'mobile':
         frame_style = "border-radius: 30px; border: 12px solid #94a3b8;"
-        inner_padding = "padding: 0;"
     elif device == 'tablet':
         frame_style = "border-radius: 20px; border: 14px solid #94a3b8;"
-        inner_padding = "padding: 0;"
     else:
         frame_style = "border-radius: 8px; border: 8px solid #94a3b8;"
-        inner_padding = "padding: 0;"
     
-    # Wrap content with proper viewport and constraints
-    wrapped_content = f"""<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    # Fix viewport in content if present, otherwise add it
+    if '<meta name="viewport"' in content:
+        # Replace existing viewport
+        import re
+        content = re.sub(
+            r'<meta\s+name="viewport"[^>]*>',
+            f'<meta name="viewport" content="width={device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">',
+            content,
+            flags=re.IGNORECASE
+        )
+    elif '<head>' in content or '<head ' in content:
+        # Insert viewport after <head>
+        content = re.sub(
+            r'(<head[^>]*>)',
+            f'\\1\n<meta name="viewport" content="width={device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">',
+            content,
+            count=1,
+            flags=re.IGNORECASE
+        )
+    
+    # Add overflow control CSS
+    if '</head>' in content:
+        overflow_css = """
 <style>
-* {{ box-sizing: border-box; }}
-html, body {{ 
-    margin: 0; 
-    padding: 0; 
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
-}}
-body {{
-    {inner_padding}
-}}
-img {{ max-width: 100%; height: auto; }}
-</style>
-</head>
-<body>
-{content}
-</body>
-</html>"""
+html, body { 
+    max-width: 100%; 
+    overflow-x: hidden !important; 
+}
+body { 
+    margin: 0 !important; 
+    padding: 0 !important; 
+}
+* { 
+    box-sizing: border-box; 
+}
+</style>"""
+        content = content.replace('</head>', overflow_css + '</head>', 1)
     
-    # Encode to base64 for cleaner rendering
-    encoded_bytes = base64.b64encode(wrapped_content.encode('utf-8')).decode('utf-8')
-    data_uri = f"data:text/html;base64,{encoded_bytes}"
+    # Properly escape for srcdoc
+    import html as html_lib
+    escaped = html_lib.escape(content, quote=True)
     
-    # Render with scrollable container
+    # Render
     html = f"""
     <div style="display: flex; justify-content: center; align-items: center; 
                 background: #e2e8f0; border-radius: 12px; padding: 30px; 
-                min-height: {container_height + 80}px; overflow: hidden;">
+                min-height: {container_height + 80}px;">
         <div style="width: {device_w}px; height: {container_height}px; 
                     {frame_style}
                     box-shadow: 0 20px 60px rgba(0,0,0,0.2); 
                     overflow-y: scroll; overflow-x: hidden;
-                    background: white; position: relative;
-                    -webkit-overflow-scrolling: touch;">
-            <iframe src="{data_uri}" 
-                    style="width: 100%; height: 100%; border: none; display: block; margin: 0; padding: 0;"
-                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
+                    background: white;">
+            <iframe srcdoc="{escaped}" 
+                    style="width: {device_w}px; height: 100%; border: none; display: block;"
+                    sandbox="allow-same-origin allow-scripts">
             </iframe>
         </div>
     </div>
     """
     
     return html, container_height + 110
+
 # Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
@@ -924,6 +931,7 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+
 
 
 
