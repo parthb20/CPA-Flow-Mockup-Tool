@@ -532,11 +532,11 @@ body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #f
 </body></html>"""
 
 def render_device_preview(content, device):
-    """Render at actual device width with proper viewport"""
-    # Real device widths
+    """Render with proper viewport and no extra spacing"""
+    # Device widths matching SERP's media query breakpoints
     dims = {
-        'mobile': 393,
-        'tablet': 820,
+        'mobile': 390,      # Below 600px = mobile CSS
+        'tablet': 820,      # Above 600px = desktop CSS
         'laptop': 1440
     }
     device_w = dims[device]
@@ -550,15 +550,42 @@ def render_device_preview(content, device):
     else:
         frame_style = "border-radius: 8px; border: 8px solid #94a3b8;"
     
-    # Force proper viewport and dimensions
-    viewport_meta = f'<meta name="viewport" content="width={device_w}, initial-scale=1.0">'
+    # Fix viewport and remove any default spacing
+    viewport_meta = f'<meta name="viewport" content="width={device_w}, initial-scale=1.0, user-scalable=no">'
     
+    # Inject CSS to remove spacing and ensure proper layout
+    fix_css = f'''
+    <style id="preview-fix">
+    * {{ box-sizing: border-box; }}
+    html {{ 
+        margin: 0 !important; 
+        padding: 0 !important; 
+        width: {device_w}px !important;
+        max-width: {device_w}px !important;
+    }}
+    body {{ 
+        margin: 0 !important; 
+        padding: 0 !important; 
+        width: {device_w}px !important;
+        max-width: {device_w}px !important;
+        overflow-x: hidden !important;
+    }}
+    </style>
+    '''
+    
+    # Inject viewport
     if '<meta name="viewport"' in content:
         content = re.sub(r'<meta\s+name="viewport"[^>]*>', viewport_meta, content)
     elif '<head>' in content:
         content = content.replace('<head>', f'<head>{viewport_meta}', 1)
     elif '<head ' in content:
         content = re.sub(r'(<head[^>]*>)', rf'\1{viewport_meta}', content, count=1)
+    
+    # Inject fix CSS
+    if '</head>' in content:
+        content = content.replace('</head>', f'{fix_css}</head>', 1)
+    elif '<body' in content:
+        content = re.sub(r'(<body[^>]*>)', rf'\1{fix_css}', content, count=1)
     
     html = f"""
     <div style="display: flex; justify-content: center; align-items: center; 
@@ -571,7 +598,8 @@ def render_device_preview(content, device):
                     background: white; position: relative;
                     -webkit-overflow-scrolling: touch;">
             <iframe srcdoc='{content.replace("'", "&apos;").replace('"', "&quot;")}' 
-                    style="width: {device_w}px; height: 2000px; border: none; display: block;"
+                    style="width: {device_w}px; height: 2500px; border: none; 
+                           display: block; margin: 0; padding: 0;"
                     sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
             </iframe>
         </div>
@@ -579,7 +607,6 @@ def render_device_preview(content, device):
     """
     
     return html, container_height + 110
-
 # Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
@@ -918,3 +945,4 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+
