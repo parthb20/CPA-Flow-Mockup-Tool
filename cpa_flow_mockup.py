@@ -13,19 +13,25 @@ import base64
 # Page config
 st.set_page_config(page_title="CPA Flow Analysis", page_icon="📊", layout="wide")
 
-# Custom CSS
+# Custom CSS - Light Mode
 st.markdown("""
     <style>
-    .main { background-color: #0e1117; }
-    .stApp { background-color: #0e1117; }
+    .main { background-color: #f8fafc; }
+    .stApp { background-color: #f8fafc; }
     [data-testid="stSidebar"] { display: none; }
     
+    /* Light mode text */
+    h1, h2, h3, h4, h5, h6, p, span, div, label {
+        color: #1e293b !important;
+    }
+    
     .metric-card {
-        background: rgba(255, 255, 255, 0.05);
+        background: white;
         padding: 15px; 
         border-radius: 8px; 
-        border: 2px solid rgba(255, 255, 255, 0.1);
+        border: 2px solid #e2e8f0;
         margin: 10px 0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
     .similarity-excellent { border-color: #22c55e; background: rgba(34, 197, 94, 0.1); }
     .similarity-good { border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
@@ -33,13 +39,14 @@ st.markdown("""
     .similarity-poor { border-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
     
     .info-box {
-        background: rgba(59, 130, 246, 0.1);
+        background: rgba(59, 130, 246, 0.08);
         padding: 16px; 
         border-radius: 8px; 
         border-left: 4px solid #3b82f6;
         margin: 15px 0;
         line-height: 1.8;
         font-size: 15px;
+        color: #1e293b;
     }
     .info-label { 
         font-weight: bold; 
@@ -49,21 +56,29 @@ st.markdown("""
     .table-header {
         display: flex;
         padding: 12px 8px;
-        border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+        border-bottom: 2px solid #cbd5e1;
         margin-bottom: 10px;
         font-weight: bold;
         font-size: 13px;
-        color: rgba(255, 255, 255, 0.9);
+        color: #475569;
+        background: white;
+        border-radius: 6px 6px 0 0;
     }
     
     .explanation-box {
-        background: rgba(139, 92, 246, 0.1);
+        background: rgba(139, 92, 246, 0.08);
         padding: 12px;
         border-radius: 6px;
         border-left: 3px solid #8b5cf6;
         margin: 10px 0;
         font-size: 13px;
         line-height: 1.6;
+        color: #1e293b;
+    }
+    
+    /* Light mode for plotly charts */
+    .js-plotly-plot {
+        background: white !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -284,11 +299,11 @@ def render_similarity_card(title, data, explanation, calculation_details):
     
     st.markdown(f"""
     <div class="metric-card {css_class}">
-        <h4 style="margin:0; color: #d1d5db; font-size: 12px;">{title}</h4>
+        <h4 style="margin:0; color: #64748b; font-size: 12px;">{title}</h4>
         <h2 style="margin: 8px 0; color: {color};">{score:.1%}</h2>
-        <p style="margin:0; color: #9ca3af; font-size: 11px;">{band.upper()}</p>
-        <p style="margin:8px 0 4px 0; color: #d1d5db; font-size: 10px;">{reason[:80]}</p>
-        <p style="margin:8px 0 0 0; color: #9ca3af; font-size: 9px; font-style: italic;">{explanation}</p>
+        <p style="margin:0; color: #64748b; font-size: 11px;">{band.upper()}</p>
+        <p style="margin:8px 0 4px 0; color: #475569; font-size: 10px;">{reason[:80]}</p>
+        <p style="margin:8px 0 0 0; color: #64748b; font-size: 9px; font-style: italic;">{explanation}</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -348,9 +363,9 @@ body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #f
 
 def render_device_preview(content, device):
     """Render properly - let content flow naturally at device width"""
-    # Actual device widths
+    # Actual device widths - INCREASED mobile width for CTA
     dims = {
-        'mobile': 375,
+        'mobile': 400,      # Increased from 375 to 400px
         'tablet': 768,
         'laptop': 1366
     }
@@ -361,20 +376,20 @@ def render_device_preview(content, device):
     
     # Device-specific frame styling
     if device == 'mobile':
-        frame_style = "border-radius: 30px; border: 12px solid #2d3748;"
+        frame_style = "border-radius: 30px; border: 12px solid #94a3b8;"
     elif device == 'tablet':
-        frame_style = "border-radius: 20px; border: 14px solid #2d3748;"
+        frame_style = "border-radius: 20px; border: 14px solid #94a3b8;"
     else:
-        frame_style = "border-radius: 8px; border: 8px solid #2d3748;"
+        frame_style = "border-radius: 8px; border: 8px solid #94a3b8;"
     
     # Simple: render at device width, make it scrollable
     html = f"""
     <div style="display: flex; justify-content: center; align-items: center; 
-                background: #1a1d24; border-radius: 12px; padding: 30px; 
+                background: #e2e8f0; border-radius: 12px; padding: 30px; 
                 min-height: {container_height + 80}px;">
         <div style="width: {device_w}px; height: {container_height}px; 
                     {frame_style}
-                    box-shadow: 0 30px 80px rgba(0,0,0,0.9); 
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.2); 
                     overflow-y: auto; overflow-x: hidden; 
                     background: white; position: relative;
                     -webkit-overflow-scrolling: touch;">
@@ -387,8 +402,8 @@ def render_device_preview(content, device):
     """
     
     return html, container_height + 110
-    
-    # Auto-load data
+
+# Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
         st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
@@ -430,7 +445,7 @@ if st.session_state.data_a is not None:
             <div class="info-box">
                 👉 <strong>What you need to do:</strong> Choose which keyword you want to check. 
                 You can click on bubbles in the chart OR use the table below. <br><br>
-                💡 <strong>Colors explained:</strong> <span style="color:#00ff00">●</span> Green = Above average performance | <span style="color:#ff4444">●</span> Red = Below average performance
+                💡 <strong>Colors explained:</strong> <span style="color:#22c55e">●</span> Green = Above average performance | <span style="color:#ef4444">●</span> Red = Below average performance
             </div>
             """, unsafe_allow_html=True)
             
@@ -461,9 +476,9 @@ if st.session_state.data_a is not None:
                 fig.add_hline(y=avg_cvr, line_dash="dash", line_color="gray", opacity=0.5)
                 fig.add_vline(x=avg_ctr, line_dash="dash", line_color="gray", opacity=0.5)
                 fig.update_layout(xaxis_title="CTR (%)", yaxis_title="CVR (%)", height=400,
-                    showlegend=False, plot_bgcolor='#1a1d24', paper_bgcolor='#1a1d24',
-                    font=dict(color='white'), hovermode='closest',
-                    xaxis=dict(gridcolor='#2d3748'), yaxis=dict(gridcolor='#2d3748'))
+                    showlegend=False, plot_bgcolor='white', paper_bgcolor='white',
+                    font=dict(color='#1e293b'), hovermode='closest',
+                    xaxis=dict(gridcolor='#e2e8f0'), yaxis=dict(gridcolor='#e2e8f0'))
                 
                 event = st.plotly_chart(fig, use_container_width=True, key="bubble", on_select="rerun")
                 
@@ -513,13 +528,13 @@ if st.session_state.data_a is not None:
                             st.session_state.similarities = {}
                             st.rerun()
                     cols[1].write(row['keyword_term'])
-                    cols[2].markdown(f"<div style='text-align:center;'>{int(row['impressions']):,}</div>", unsafe_allow_html=True)
-                    cols[3].markdown(f"<div style='text-align:center;'>{int(row['clicks']):,}</div>", unsafe_allow_html=True)
-                    cols[4].markdown(f"<div style='text-align:center;'>{int(row['conversions']):,}</div>", unsafe_allow_html=True)
-                    ctr_color = '#00ff00' if row['ctr'] >= avg_ctr else '#ff4444'
-                    cols[5].markdown(f"<div style='text-align:center;color:{ctr_color}'>{row['ctr']:.2f}%</div>", unsafe_allow_html=True)
-                    cvr_color = '#00ff00' if row['cvr'] >= avg_cvr else '#ff4444'
-                    cols[6].markdown(f"<div style='text-align:center;color:{cvr_color}'>{row['cvr']:.2f}%</div>", unsafe_allow_html=True)
+                    cols[2].markdown(f"<div style='text-align:center; color:#1e293b;'>{int(row['impressions']):,}</div>", unsafe_allow_html=True)
+                    cols[3].markdown(f"<div style='text-align:center; color:#1e293b;'>{int(row['clicks']):,}</div>", unsafe_allow_html=True)
+                    cols[4].markdown(f"<div style='text-align:center; color:#1e293b;'>{int(row['conversions']):,}</div>", unsafe_allow_html=True)
+                    ctr_color = '#22c55e' if row['ctr'] >= avg_ctr else '#ef4444'
+                    cols[5].markdown(f"<div style='text-align:center;color:{ctr_color};font-weight:600;'>{row['ctr']:.2f}%</div>", unsafe_allow_html=True)
+                    cvr_color = '#22c55e' if row['cvr'] >= avg_cvr else '#ef4444'
+                    cols[6].markdown(f"<div style='text-align:center;color:{cvr_color};font-weight:600;'>{row['cvr']:.2f}%</div>", unsafe_allow_html=True)
             
             if st.session_state.selected_keyword:
                 st.divider()
@@ -528,7 +543,7 @@ if st.session_state.data_a is not None:
                 <div class="info-box">
                     👉 <strong>What you need to do:</strong> Now pick which website your ad appeared on. 
                     Different websites can give different results. <br><br>
-                    💡 <strong>Colors explained:</strong> <span style="color:#00ff00">●</span> Green = Above average performance | <span style="color:#ff4444">●</span> Red = Below average performance
+                    💡 <strong>Colors explained:</strong> <span style="color:#22c55e">●</span> Green = Above average performance | <span style="color:#ef4444">●</span> Red = Below average performance
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -574,13 +589,13 @@ if st.session_state.data_a is not None:
                             st.rerun()
                     display_url = row['publisher_url'][:45] + '...' if len(str(row['publisher_url'])) > 45 else row['publisher_url']
                     cols[1].write(display_url)
-                    cols[2].markdown(f"<div style='text-align:center;'>{int(row['impressions']):,}</div>", unsafe_allow_html=True)
-                    cols[3].markdown(f"<div style='text-align:center;'>{int(row['clicks']):,}</div>", unsafe_allow_html=True)
-                    cols[4].markdown(f"<div style='text-align:center;'>{int(row['conversions']):,}</div>", unsafe_allow_html=True)
-                    ctr_color = '#00ff00' if row['ctr'] >= avg_ctr else '#ff4444'
-                    cols[5].markdown(f"<div style='text-align:center;color:{ctr_color}'>{row['ctr']:.2f}%</div>", unsafe_allow_html=True)
-                    cvr_color = '#00ff00' if row['cvr'] >= avg_cvr else '#ff4444'
-                    cols[6].markdown(f"<div style='text-align:center;color:{cvr_color}'>{row['cvr']:.2f}%</div>", unsafe_allow_html=True)
+                    cols[2].markdown(f"<div style='text-align:center; color:#1e293b;'>{int(row['impressions']):,}</div>", unsafe_allow_html=True)
+                    cols[3].markdown(f"<div style='text-align:center; color:#1e293b;'>{int(row['clicks']):,}</div>", unsafe_allow_html=True)
+                    cols[4].markdown(f"<div style='text-align:center; color:#1e293b;'>{int(row['conversions']):,}</div>", unsafe_allow_html=True)
+                    ctr_color = '#22c55e' if row['ctr'] >= avg_ctr else '#ef4444'
+                    cols[5].markdown(f"<div style='text-align:center;color:{ctr_color};font-weight:600;'>{row['ctr']:.2f}%</div>", unsafe_allow_html=True)
+                    cvr_color = '#22c55e' if row['cvr'] >= avg_cvr else '#ef4444'
+                    cols[6].markdown(f"<div style='text-align:center;color:{cvr_color};font-weight:600;'>{row['cvr']:.2f}%</div>", unsafe_allow_html=True)
             
             if st.session_state.selected_keyword and st.session_state.selected_url:
                 st.divider()
@@ -726,4 +741,3 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
-
