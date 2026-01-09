@@ -341,20 +341,26 @@ def render_device_preview(content, device, zoom, is_iframe=False, url=""):
     dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
     device_w, device_h = dims[device]
     
-    # Device-specific scaling for better UX
-    if device == 'mobile':
-        base_scale = 0.65  # Increased from 0.55 for better visibility
-    elif device == 'tablet':
-        base_scale = 0.70  # Adjusted for better fit
-    else:  # laptop
-        base_scale = 0.60  # Adjusted for better fit
+    # Container size
+    container_w = 1200
+    container_h = 550
     
-    # Apply user zoom on top of base scale
+    # Calculate scale to fit nicely in container
+    if device == 'mobile':
+        target_display_h = 450  # Target display height for mobile
+    elif device == 'tablet':
+        target_display_h = 480
+    else:  # laptop
+        target_display_h = 500
+    
+    base_scale = target_display_h / device_h
+    
+    # Apply user zoom
     final_scale = base_scale * (zoom / 100)
     
-    # Final dimensions
-    final_w = int(device_w * final_scale)
-    final_h = int(device_h * final_scale)
+    # Calculate final display dimensions
+    display_w = int(device_w * final_scale)
+    display_h = int(device_h * final_scale)
     
     if is_iframe:
         inner_content = f'<iframe src="{url}" width="{device_w}" height="{device_h}" style="border:none; background:white;" sandbox="allow-same-origin allow-scripts allow-popups allow-forms"></iframe>'
@@ -362,16 +368,16 @@ def render_device_preview(content, device, zoom, is_iframe=False, url=""):
         inner_content = content
     
     html = f"""
-    <div class="render-container">
-        <div class="device-frame" style="width:{final_w}px; height:{final_h}px;">
-            <div style="width:{device_w}px; height:{device_h}px; transform:scale({final_scale}); transform-origin:center center; margin:0 auto;">
+    <div style="display: flex; justify-content: center; align-items: center; padding: 20px; background: #1f2937; border-radius: 8px; height: {container_h}px; overflow: hidden;">
+        <div style="box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius: 8px; overflow: hidden; background: white;">
+            <div style="width: {device_w}px; height: {device_h}px; transform: scale({final_scale}); transform-origin: top left;">
                 {inner_content}
             </div>
         </div>
     </div>
     """
-    return html, 640
-# Auto-load data
+    return html, container_h + 40
+    # Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
         st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
@@ -750,5 +756,6 @@ if st.session_state.data_a is not None:
                     st.warning("No flows found")
 else:
     st.error("❌ Failed to load data")
+
 
 
