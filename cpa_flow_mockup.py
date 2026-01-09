@@ -662,7 +662,7 @@ body {{
 </body></html>"""
 
 def render_device_preview(content, device):
-    """Render with proper viewport and NO EXTRA SPACE"""
+    """Render with proper viewport - MINIMAL interference"""
     # Device widths
     dims = {
         'mobile': 390,
@@ -672,12 +672,11 @@ def render_device_preview(content, device):
     device_w = dims[device]
     container_height = 700
     
-    # CRITICAL FIX: Device-specific iframe heights to avoid white space
-    # These match typical content heights for each device
+    # Device-specific iframe heights
     iframe_heights = {
-        'mobile': 1100,    # Mobile SERP/pages are typically ~900-1000px
-        'tablet': 1500,    # Tablets need a bit more
-        'laptop': 2000     # Desktop can be taller
+        'mobile': 1200,     # Enough for mobile SERP/pages
+        'tablet': 1800,     # Tablet needs more
+        'laptop': 3000      # Laptop pages can be very long
     }
     iframe_height = iframe_heights[device]
     
@@ -689,50 +688,17 @@ def render_device_preview(content, device):
     else:
         frame_style = "border-radius: 8px; border: 8px solid #94a3b8;"
     
-    # Proper viewport
-    viewport_meta = f'<meta name="viewport" content="width={device_w}, initial-scale=1.0, user-scalable=no">'
+    # MINIMAL viewport injection (don't break existing styles)
+    viewport_meta = f'<meta name="viewport" content="width={device_w}, initial-scale=1.0">'
     
-    # CSS to ensure content starts at top AND remove bottom padding
-    fix_css = f'''
-    <style id="preview-fix">
-    html, body {{ 
-        margin: 0 !important; 
-        padding: 0 !important; 
-        width: {device_w}px !important;
-        max-width: {device_w}px !important;
-        overflow-x: hidden !important;
-        min-height: 0 !important;
-        height: auto !important;
-    }}
-    * {{ box-sizing: border-box !important; }}
+    # ONLY inject viewport if missing (don't override existing)
+    if '<meta name="viewport"' not in content:
+        if '<head>' in content:
+            content = content.replace('<head>', f'<head>{viewport_meta}', 1)
+        elif '<head ' in content:
+            content = re.sub(r'(<head[^>]*>)', rf'\1{viewport_meta}', content, count=1)
     
-    /* Remove any bottom padding/margin from all elements */
-    body > *:last-child {{
-        margin-bottom: 0 !important;
-        padding-bottom: 0 !important;
-    }}
-    </style>
-    '''
-    
-    # Inject viewport
-    if '<meta name="viewport"' in content:
-        content = re.sub(r'<meta\s+name="viewport"[^>]*>', viewport_meta, content)
-    elif '<head>' in content:
-        content = content.replace('<head>', f'<head>{viewport_meta}', 1)
-    elif '<head ' in content:
-        content = re.sub(r'(<head[^>]*>)', rf'\1{viewport_meta}', content, count=1)
-    else:
-        content = f'<head>{viewport_meta}</head>' + content
-    
-    # Inject fix CSS
-    if '</head>' in content:
-        content = content.replace('</head>', f'{fix_css}</head>', 1)
-    elif '<body' in content:
-        content = re.sub(r'(<body[^>]*>)', rf'\1{fix_css}', content, count=1)
-    else:
-        content = f'{fix_css}' + content
-    
-    # Escape for srcdoc
+    # Simple escaping for srcdoc
     escaped_content = content.replace("'", "&apos;").replace('"', '&quot;')
     
     html = f"""
@@ -757,6 +723,7 @@ def render_device_preview(content, device):
     """
     
     return html, container_height + 110
+    
 # Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
@@ -1103,5 +1070,6 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+
 
 
