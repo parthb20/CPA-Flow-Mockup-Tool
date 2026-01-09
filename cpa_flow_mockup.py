@@ -13,7 +13,7 @@ import base64
 # Page config
 st.set_page_config(page_title="CPA Flow Analysis", page_icon="📊", layout="wide")
 
-# Custom CSS - COMPLETE LIGHT MODE with LARGER FONTS
+# Custom CSS - COMPLETE LIGHT MODE
 st.markdown("""
     <style>
     /* Background */
@@ -21,47 +21,25 @@ st.markdown("""
     .stApp { background-color: #f8fafc; }
     [data-testid="stSidebar"] { display: none; }
     
-    /* All text elements - LARGER and DARKER */
+    /* All text elements */
     h1, h2, h3, h4, h5, h6, p, span, div, label, .stMarkdown {
         color: #0f172a !important;
         font-weight: 500 !important;
         font-size: 16px !important;
     }
     
-    /* Headings even bolder and larger */
     h1 { font-weight: 700 !important; font-size: 32px !important; }
     h2 { font-weight: 700 !important; font-size: 26px !important; }
     h3 { font-weight: 700 !important; font-size: 22px !important; }
     
-    /* Dropdowns and select boxes - FIXED FOR LIGHT MODE */
-    [data-baseweb="select"] {
-        background-color: white !important;
-    }
-    [data-baseweb="select"] > div {
-        background-color: white !important;
-        border-color: #cbd5e1 !important;
-    }
-    [data-baseweb="select"] * {
-        color: #0f172a !important;
-        font-weight: 500 !important;
-        font-size: 16px !important;
-    }
-    
-    /* Dropdown menu options - CRITICAL FIX */
-    [role="listbox"] {
-        background-color: white !important;
-    }
-    [role="option"] {
-        background-color: white !important;
-        color: #0f172a !important;
-    }
-    [role="option"]:hover {
-        background-color: #f1f5f9 !important;
-    }
-    [role="option"][aria-selected="true"] {
-        background-color: #e0f2fe !important;
-        color: #0369a1 !important;
-    }
+    /* Dropdowns */
+    [data-baseweb="select"] { background-color: white !important; }
+    [data-baseweb="select"] > div { background-color: white !important; border-color: #cbd5e1 !important; }
+    [data-baseweb="select"] * { color: #0f172a !important; font-weight: 500 !important; font-size: 16px !important; }
+    [role="listbox"] { background-color: white !important; }
+    [role="option"] { background-color: white !important; color: #0f172a !important; }
+    [role="option"]:hover { background-color: #f1f5f9 !important; }
+    [role="option"][aria-selected="true"] { background-color: #e0f2fe !important; color: #0369a1 !important; }
     
     /* Input fields */
     input, textarea, select {
@@ -72,7 +50,7 @@ st.markdown("""
         font-size: 16px !important;
     }
     
-    /* ALL Buttons - Light Mode with larger text */
+    /* Buttons */
     .stButton > button {
         background-color: white !important;
         color: #0f172a !important;
@@ -89,8 +67,6 @@ st.markdown("""
         background-color: #3b82f6 !important;
         color: white !important;
         border: none !important;
-        font-weight: 600 !important;
-        font-size: 16px !important;
     }
     .stButton > button[kind="primary"]:hover,
     .stButton > button[data-testid="baseButton-primary"]:hover {
@@ -101,51 +77,37 @@ st.markdown("""
         background-color: white !important;
         color: #0f172a !important;
         border: 1px solid #cbd5e1 !important;
-        font-weight: 600 !important;
-        font-size: 16px !important;
-    }
-    .stButton > button[kind="secondary"]:hover,
-    .stButton > button[data-testid="baseButton-secondary"]:hover {
-        background-color: #f1f5f9 !important;
-        border-color: #94a3b8 !important;
     }
     
     /* Tabs */
-    .stTabs [data-baseweb="tab-list"] {
-        background-color: white !important;
-        border-bottom: 2px solid #e2e8f0 !important;
-    }
-    .stTabs [data-baseweb="tab"] {
-        color: #475569 !important;
-        background-color: white !important;
-        font-weight: 600 !important;
-        font-size: 16px !important;
-    }
-    .stTabs [aria-selected="true"] {
-        color: #3b82f6 !important;
-        border-bottom-color: #3b82f6 !important;
-        font-weight: 700 !important;
-    }
+    .stTabs [data-baseweb="tab-list"] { background-color: white !important; border-bottom: 2px solid #e2e8f0 !important; }
+    .stTabs [data-baseweb="tab"] { color: #475569 !important; background-color: white !important; font-weight: 600 !important; }
+    .stTabs [aria-selected="true"] { color: #3b82f6 !important; border-bottom-color: #3b82f6 !important; font-weight: 700 !important; }
     
-    /* Metrics */
+    /* Metrics - COLORED BOXES */
+    [data-testid="stMetric"] {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        padding: 16px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    }
     [data-testid="stMetricValue"] {
-        color: #0f172a !important;
+        color: white !important;
         font-weight: 700 !important;
         font-size: 28px !important;
     }
     [data-testid="stMetricLabel"] {
-        color: #475569 !important;
+        color: rgba(255, 255, 255, 0.9) !important;
         font-weight: 600 !important;
-        font-size: 16px !important;
+        font-size: 14px !important;
     }
     
-    /* Expander - LIGHT MODE FIX */
+    /* Expander */
     .streamlit-expanderHeader {
         background-color: white !important;
         color: #0f172a !important;
         border: 1px solid #e2e8f0 !important;
         font-weight: 600 !important;
-        font-size: 16px !important;
     }
     .streamlit-expanderContent {
         background-color: #f8fafc !important;
@@ -154,22 +116,12 @@ st.markdown("""
         border-top: none !important;
         padding: 12px !important;
     }
-    .streamlit-expanderContent * {
-        color: #0f172a !important;
-    }
-    .streamlit-expanderContent [data-testid="stMetricLabel"] {
-        color: #475569 !important;
-    }
-    .streamlit-expanderContent [data-testid="stMetricValue"] {
-        color: #0f172a !important;
-    }
+    .streamlit-expanderContent * { color: #0f172a !important; }
+    .streamlit-expanderContent [data-testid="stMetricLabel"] { color: #475569 !important; }
+    .streamlit-expanderContent [data-testid="stMetricValue"] { color: #0f172a !important; }
     
     /* Radio buttons */
-    .stRadio > label {
-        color: #0f172a !important;
-        font-weight: 600 !important;
-        font-size: 16px !important;
-    }
+    .stRadio > label { color: #0f172a !important; font-weight: 600 !important; }
     .stRadio [role="radiogroup"] label {
         color: #0f172a !important;
         background-color: white !important;
@@ -177,7 +129,6 @@ st.markdown("""
         padding: 10px 18px;
         border-radius: 6px;
         font-weight: 600 !important;
-        font-size: 16px !important;
     }
     .stRadio [role="radiogroup"] label:hover {
         background-color: #f1f5f9 !important;
@@ -185,9 +136,7 @@ st.markdown("""
     }
     
     /* Divider */
-    hr {
-        border-color: #e2e8f0 !important;
-    }
+    hr { border-color: #e2e8f0 !important; }
     
     /* Custom cards */
     .metric-card {
@@ -221,27 +170,32 @@ st.markdown("""
         text-decoration: underline;
         font-weight: 600;
     }
-    .info-box a:hover {
-        color: #2563eb;
-    }
+    .info-box a:hover { color: #2563eb; }
     .info-label { 
         font-weight: 700; 
         color: #3b82f6;
         font-size: 16px;
     }
     
+    /* Table with visible boundaries */
     .table-header {
         display: flex;
         padding: 14px 8px;
-        border-bottom: 2px solid #cbd5e1;
-        margin-bottom: 10px;
         font-weight: 700;
         font-size: 15px;
-        color: #334155;
-        background: white;
-        border-radius: 6px 6px 0 0;
+        color: #0f172a;
+        background: #f1f5f9;
+        border-radius: 8px 8px 0 0;
+        border: 2px solid #cbd5e1;
+        border-bottom: 3px solid #94a3b8;
+    }
+    .table-row {
         border: 1px solid #e2e8f0;
-        border-bottom: 2px solid #cbd5e1;
+        border-radius: 6px;
+        margin: 6px 0;
+        padding: 8px;
+        background: white;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
     }
     
     .explanation-box {
@@ -287,28 +241,27 @@ st.markdown("""
         font-weight: 700;
     }
     
-    /* Spinner */
-    .stSpinner > div {
-        border-top-color: #3b82f6 !important;
+    /* Checkbox styling */
+    .checkbox-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        border: 2px solid #cbd5e1;
+        background: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .checkbox-selected {
+        background: #3b82f6 !important;
+        border-color: #3b82f6 !important;
+        color: white !important;
     }
     
-    /* Caption */
-    .stCaptionContainer {
-        color: #475569 !important;
-        font-weight: 500 !important;
-        font-size: 15px !important;
-    }
-    
-    /* Code blocks */
-    .stCodeBlock {
-        background-color: #f1f5f9 !important;
-        border: 1px solid #cbd5e1 !important;
-    }
-    code {
-        color: #0f172a !important;
-        background-color: #f1f5f9 !important;
-        font-size: 14px !important;
-    }
+    .stSpinner > div { border-top-color: #3b82f6 !important; }
+    .stCaptionContainer { color: #475569 !important; font-weight: 500 !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -349,7 +302,6 @@ def load_csv_from_gdrive(file_id):
         return None
 
 def load_json_from_gdrive(file_id):
-    """Load JSON file from Google Drive - returns array of SERP templates"""
     try:
         url = f"https://drive.google.com/uc?export=download&id={file_id}"
         response = requests.get(url, timeout=30)
@@ -495,15 +447,15 @@ Return JSON: {{"intent":"","topic_match":0.0,"answer_quality":0.0,"final_score":
     return results
 
 def get_similarity_label(score):
-    """Convert score to simple label"""
+    """Convert score to simple label with range"""
     if score >= 0.8:
-        return "Very High Similarity", "#22c55e"
+        return "Very High Match (0.8-1.0)", "#22c55e"
     elif score >= 0.6:
-        return "High Similarity", "#3b82f6"
+        return "High Match (0.6-0.8)", "#3b82f6"
     elif score >= 0.4:
-        return "Medium Similarity", "#eab308"
+        return "Medium Match (0.4-0.6)", "#eab308"
     else:
-        return "Low Similarity", "#ef4444"
+        return "Low Match (0.0-0.4)", "#ef4444"
 
 def render_similarity_card(title, data, explanation, calculation_details):
     if not data:
@@ -551,7 +503,7 @@ def render_similarity_card(title, data, explanation, calculation_details):
                 st.caption(f"**{key.replace('_', ' ').title()}:** {value}")
 
 def generate_serp_mockup(flow_data, serp_templates):
-    """Generate SERP HTML - fix media queries for iframe"""
+    """Generate SERP HTML"""
     keyword = flow_data.get('keyword_term', 'N/A')
     ad_title = flow_data.get('ad_title', 'N/A')
     ad_desc = flow_data.get('ad_description', 'N/A')
@@ -561,23 +513,13 @@ def generate_serp_mockup(flow_data, serp_templates):
         try:
             html = serp_templates[0].get('code', '')
             
-            # Change device-based media queries to viewport-based
             html = html.replace('min-device-width', 'min-width')
             html = html.replace('max-device-width', 'max-width')
             html = html.replace('min-device-height', 'min-height')
             html = html.replace('max-device-height', 'max-height')
-            
-            # Remove min-height with viewport units
             html = re.sub(r'min-height\s*:\s*calc\(100[sv][vh]h?[^)]*\)\s*;?', '', html, flags=re.IGNORECASE)
             
-            # Replace keyword
-            html = re.sub(
-                r'Sponsored results for:\s*"[^"]*"', 
-                f'Sponsored results for: "{keyword}"', 
-                html
-            )
-            
-            # Replace ad details
+            html = re.sub(r'Sponsored results for:\s*"[^"]*"', f'Sponsored results for: "{keyword}"', html)
             html = re.sub(r'(<div class="url">)[^<]*(</div>)', f'\\1{ad_url}\\2', html, count=1)
             html = re.sub(r'(<div class="title">)[^<]*(</div>)', f'\\1{ad_title}\\2', html, count=1)
             html = re.sub(r'(<div class="desc">)[^<]*(</div>)', f'\\1{ad_desc}\\2', html, count=1)
@@ -751,20 +693,36 @@ if st.session_state.data_a is not None:
                 for idx, row in filtered_keywords.iterrows():
                     cols = st.columns([0.4, 3.5, 1.2, 1.2, 1.2, 1.2, 1.2])
                     is_selected = (row['keyword_term'] == st.session_state.selected_keyword)
+                    
+                    # Better checkbox
+                    checkbox_html = f"""
+                    <div class="checkbox-btn {'checkbox-selected' if is_selected else ''}" 
+                         style="{'background:#3b82f6; border-color:#3b82f6;' if is_selected else ''}">
+                        {'✓' if is_selected else ''}
+                    </div>
+                    """
+                    
                     if cols[0].button("✓" if is_selected else "○", key=f"kw_{idx}", use_container_width=True):
                         if not is_selected:
                             st.session_state.selected_keyword = row['keyword_term']
                             st.session_state.selected_url = None
                             st.session_state.similarities = {}
                             st.rerun()
-                    cols[1].write(row['keyword_term'])
-                    cols[2].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500; font-size:15px;'>{int(row['impressions']):,}</div>", unsafe_allow_html=True)
-                    cols[3].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500; font-size:15px;'>{int(row['clicks']):,}</div>", unsafe_allow_html=True)
-                    cols[4].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500; font-size:15px;'>{int(row['conversions']):,}</div>", unsafe_allow_html=True)
+                    
+                    # Wrap row in table-row div for borders
+                    cols[1].markdown(f"<div class='table-row' style='padding:8px;'>{row['keyword_term']}</div>", unsafe_allow_html=True)
+                    cols[2].markdown(f"<div class='table-row' style='text-align:center;'>{int(row['impressions']):,}</div>", unsafe_allow_html=True)
+                    cols[3].markdown(f"<div class='table-row' style='text-align:center;'>{int(row['clicks']):,}</div>", unsafe_allow_html=True)
+                    cols[4].markdown(f"<div class='table-row' style='text-align:center;'>{int(row['conversions']):,}</div>", unsafe_allow_html=True)
+                    
+                    # Highlight CTR/CVR with background color
+                    ctr_bg = 'rgba(22, 163, 74, 0.15)' if row['ctr'] >= avg_ctr else 'rgba(220, 38, 38, 0.15)'
                     ctr_color = '#16a34a' if row['ctr'] >= avg_ctr else '#dc2626'
-                    cols[5].markdown(f"<div style='text-align:center;color:{ctr_color};font-weight:700; font-size:15px;'>{row['ctr']:.2f}%</div>", unsafe_allow_html=True)
+                    cols[5].markdown(f"<div class='table-row' style='text-align:center; background:{ctr_bg}; color:{ctr_color}; font-weight:700;'>{row['ctr']:.2f}%</div>", unsafe_allow_html=True)
+                    
+                    cvr_bg = 'rgba(22, 163, 74, 0.15)' if row['cvr'] >= avg_cvr else 'rgba(220, 38, 38, 0.15)'
                     cvr_color = '#16a34a' if row['cvr'] >= avg_cvr else '#dc2626'
-                    cols[6].markdown(f"<div style='text-align:center;color:{cvr_color};font-weight:700; font-size:15px;'>{row['cvr']:.2f}%</div>", unsafe_allow_html=True)
+                    cols[6].markdown(f"<div class='table-row' style='text-align:center; background:{cvr_bg}; color:{cvr_color}; font-weight:700;'>{row['cvr']:.2f}%</div>", unsafe_allow_html=True)
             
             if st.session_state.selected_keyword:
                 st.divider()
@@ -812,20 +770,26 @@ if st.session_state.data_a is not None:
                 for idx, row in filtered_urls.iterrows():
                     cols = st.columns([0.4, 3.5, 1.2, 1.2, 1.2, 1.2, 1.2])
                     is_selected = (row['publisher_url'] == st.session_state.selected_url)
+                    
                     if cols[0].button("✓" if is_selected else "○", key=f"url_{idx}", use_container_width=True):
                         if not is_selected:
                             st.session_state.selected_url = row['publisher_url']
                             st.session_state.similarities = {}
                             st.rerun()
+                    
                     display_url = row['publisher_url'][:45] + '...' if len(str(row['publisher_url'])) > 45 else row['publisher_url']
-                    cols[1].write(display_url)
-                    cols[2].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500; font-size:15px;'>{int(row['impressions']):,}</div>", unsafe_allow_html=True)
-                    cols[3].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500; font-size:15px;'>{int(row['clicks']):,}</div>", unsafe_allow_html=True)
-                    cols[4].markdown(f"<div style='text-align:center; color:#0f172a; font-weight:500; font-size:15px;'>{int(row['conversions']):,}</div>", unsafe_allow_html=True)
+                    cols[1].markdown(f"<div class='table-row' style='padding:8px;'>{display_url}</div>", unsafe_allow_html=True)
+                    cols[2].markdown(f"<div class='table-row' style='text-align:center;'>{int(row['impressions']):,}</div>", unsafe_allow_html=True)
+                    cols[3].markdown(f"<div class='table-row' style='text-align:center;'>{int(row['clicks']):,}</div>", unsafe_allow_html=True)
+                    cols[4].markdown(f"<div class='table-row' style='text-align:center;'>{int(row['conversions']):,}</div>", unsafe_allow_html=True)
+                    
+                    ctr_bg = 'rgba(22, 163, 74, 0.15)' if row['ctr'] >= avg_ctr else 'rgba(220, 38, 38, 0.15)'
                     ctr_color = '#16a34a' if row['ctr'] >= avg_ctr else '#dc2626'
-                    cols[5].markdown(f"<div style='text-align:center;color:{ctr_color};font-weight:700; font-size:15px;'>{row['ctr']:.2f}%</div>", unsafe_allow_html=True)
+                    cols[5].markdown(f"<div class='table-row' style='text-align:center; background:{ctr_bg}; color:{ctr_color}; font-weight:700;'>{row['ctr']:.2f}%</div>", unsafe_allow_html=True)
+                    
+                    cvr_bg = 'rgba(22, 163, 74, 0.15)' if row['cvr'] >= avg_cvr else 'rgba(220, 38, 38, 0.15)'
                     cvr_color = '#16a34a' if row['cvr'] >= avg_cvr else '#dc2626'
-                    cols[6].markdown(f"<div style='text-align:center;color:{cvr_color};font-weight:700; font-size:15px;'>{row['cvr']:.2f}%</div>", unsafe_allow_html=True)
+                    cols[6].markdown(f"<div class='table-row' style='text-align:center; background:{cvr_bg}; color:{cvr_color}; font-weight:700;'>{row['cvr']:.2f}%</div>", unsafe_allow_html=True)
             
             if st.session_state.selected_keyword and st.session_state.selected_url:
                 st.divider()
@@ -840,29 +804,6 @@ if st.session_state.data_a is not None:
                 if len(st.session_state.flows) > 0:
                     st.subheader("📊 Step 3: Analyze The Flow")
                     
-                    st.markdown("""
-                    <div class="info-box">
-                        <strong>🔄 What is a "Flow"?</strong><br>
-                        A <strong>Flow</strong> represents one complete user journey, which includes:<br>
-                        • <strong>1 Keyword</strong> (what the user searched for)<br>
-                        • <strong>1 Publisher URL</strong> (the website where the ad appeared)<br>
-                        • <strong>1 SERP Template</strong> (how the ad looked in search results)<br>
-                        • <strong>1 Advertiser Landing Page</strong> (where the user went after clicking)<br><br>
-                        Each flow represents a unique combination of these 4 elements. Different combinations can perform differently!
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    st.markdown("""
-                    <div class="info-box">
-                        💡 <strong>Understanding Similarity Scores:</strong><br>
-                        We calculate 3 similarity scores to check if everything in your flow matches properly:<br>
-                        • <span style="color:#22c55e">■</span> <strong>Very High Similarity</strong> = Great match, keep doing this!<br>
-                        • <span style="color:#3b82f6">■</span> <strong>High Similarity</strong> = Good match, working well<br>
-                        • <span style="color:#eab308">■</span> <strong>Medium Similarity</strong> = Could be better, review content<br>
-                        • <span style="color:#dc2626">■</span> <strong>Low Similarity</strong> = Needs attention, fix immediately
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
                     nav_cols = st.columns(min(5, len(st.session_state.flows)))
                     
                     for i, flow in enumerate(st.session_state.flows[:5]):
@@ -876,10 +817,25 @@ if st.session_state.data_a is not None:
                     
                     current_flow = st.session_state.flows[st.session_state.flow_index]
                     
+                    # Flow description with actual values
+                    keyword_val = current_flow.get('keyword_term', 'N/A')
+                    pub_val = current_flow.get('publisher_url', 'N/A')
+                    dest_val = current_flow.get('reporting_destination_url', 'N/A')
+                    
+                    st.markdown(f"""
+                    <div class="info-box">
+                        <strong>🔄 What is This Flow?</strong><br><br>
+                        <strong>Keyword:</strong> {keyword_val}<br>
+                        <strong>Publisher URL:</strong> {make_url_clickable(pub_val)}<br>
+                        <strong>SERP Template:</strong> How the ad looked in search results<br>
+                        <strong>Landing Page:</strong> {make_url_clickable(dest_val)}
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
                     # Visual Flow Diagram
-                    keyword_short = current_flow.get('keyword_term', 'N/A')[:25] + '...' if len(str(current_flow.get('keyword_term', 'N/A'))) > 25 else current_flow.get('keyword_term', 'N/A')
-                    pub_short = current_flow.get('publisher_url', 'N/A')[:25] + '...' if len(str(current_flow.get('publisher_url', 'N/A'))) > 25 else current_flow.get('publisher_url', 'N/A')
-                    dest_short = current_flow.get('reporting_destination_url', 'N/A')[:25] + '...' if len(str(current_flow.get('reporting_destination_url', 'N/A'))) > 25 else current_flow.get('reporting_destination_url', 'N/A')
+                    keyword_short = keyword_val[:25] + '...' if len(str(keyword_val)) > 25 else keyword_val
+                    pub_short = pub_val[:25] + '...' if len(str(pub_val)) > 25 else pub_val
+                    dest_short = dest_val[:25] + '...' if len(str(dest_val)) > 25 else dest_val
                     
                     st.markdown(f"""
                     <div class="flow-diagram">
@@ -893,6 +849,17 @@ if st.session_state.data_a is not None:
                     </div>
                     """, unsafe_allow_html=True)
                     
+                    # Similarity Score Explanation
+                    st.markdown("""
+                    <div class="info-box">
+                        💡 <strong>Similarity Score Ranges:</strong><br>
+                        • <span style="color:#22c55e">■</span> <strong>0.8 - 1.0:</strong> Very High Match<br>
+                        • <span style="color:#3b82f6">■</span> <strong>0.6 - 0.8:</strong> High Match<br>
+                        • <span style="color:#eab308">■</span> <strong>0.4 - 0.6:</strong> Medium Match<br>
+                        • <span style="color:#dc2626">■</span> <strong>0.0 - 0.4:</strong> Low Match
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
                     if not st.session_state.similarities:
                         if not API_KEY:
                             st.warning("⚠️ API key not set up. Contact your admin to add FASTROUTER_API_KEY.")
@@ -902,19 +869,18 @@ if st.session_state.data_a is not None:
 
                     st.divider()
                     
-                    # Card 1: SERP
-                    st.subheader("🔍 Search Results Page")
-                    st.caption("How your ad appears in search results")
+                    # Card 1: SERP and Card 2: Landing Page - SIDE BY SIDE
+                    col_left, col_right = st.columns(2)
                     
-                    card1_left, card1_right = st.columns([7, 3])
-                    
-                    with card1_left:
+                    with col_left:
+                        st.subheader("🔍 Search Results Page")
+                        st.caption("How your ad appears in search results")
+                        
                         device1 = st.radio("Device:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev1', index=0)
                         serp_html = generate_serp_mockup(current_flow, st.session_state.data_b)
                         preview_html, height = render_device_preview(serp_html, device1)
                         st.components.v1.html(preview_html, height=height, scrolling=False)
-                    
-                    with card1_right:
+                        
                         st.markdown(f"""
                         <div class="info-box">
                             <div class="info-label">Search Term:</div> {current_flow.get('keyword_term', 'N/A')}<br><br>
@@ -931,18 +897,13 @@ if st.session_state.data_a is not None:
                                 st.session_state.similarities.get('kwd_to_ad'),
                                 "Compares the user's search term with your ad copy",
                                 "We compare the <strong>keyword</strong> with <strong>ad title + description</strong>.<br>" +
-                                "Formula: 15% keyword match + 35% topic match + 50% intent match = Final Score"
+                                "Formula: 15% keyword match + 35% topic match + 50% intent match"
                             )
                     
-                    st.divider()
-                    
-                    # Card 2: Landing Page (HTML VERSION)
-                    st.subheader("🎯 Landing Page")
-                    st.caption("Where users go after clicking")
-                    
-                    card2_left, card2_right = st.columns([7, 3])
-                    
-                    with card2_left:
+                    with col_right:
+                        st.subheader("🎯 Landing Page")
+                        st.caption("Where users go after clicking")
+                        
                         device2 = st.radio("Device:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev2', index=0)
                         dest_url = current_flow.get('reporting_destination_url', '')
                         
@@ -955,18 +916,17 @@ if st.session_state.data_a is not None:
                                     
                                     final_url = response.url
                                     
-                                    # Show URLs as clickable
                                     if final_url != dest_url:
                                         st.markdown(f"""
                                         <div class="info-box">
-                                            📍 <strong>Original URL:</strong> {make_url_clickable(dest_url)}<br>
-                                            ⚠️ <strong>Redirected to:</strong> {make_url_clickable(final_url)}
+                                            📍 <strong>Original:</strong> {make_url_clickable(dest_url)}<br>
+                                            ⚠️ <strong>Redirected:</strong> {make_url_clickable(final_url)}
                                         </div>
                                         """, unsafe_allow_html=True)
                                     else:
                                         st.markdown(f"""
                                         <div class="info-box">
-                                            📍 <strong>Landing Page:</strong> {make_url_clickable(final_url)}
+                                            📍 <strong>URL:</strong> {make_url_clickable(final_url)}
                                         </div>
                                         """, unsafe_allow_html=True)
                                     
@@ -978,11 +938,10 @@ if st.session_state.data_a is not None:
                                         st.error(f"⚠️ Could not load page (Error: {response.status_code})")
                                 except Exception as e:
                                     st.error(f"⚠️ Could not load page: {str(e)}")
-                                    st.markdown(f"Try opening: {make_url_clickable(dest_url)}", unsafe_allow_html=True)
+                                    st.markdown(f"Try: {make_url_clickable(dest_url)}", unsafe_allow_html=True)
                         else:
                             st.warning("⚠️ No landing page URL found")
-                    
-                    with card2_right:
+                        
                         st.markdown("**Keyword → Page Similarity Score**")
                         if st.session_state.similarities:
                             render_similarity_card(
@@ -990,7 +949,7 @@ if st.session_state.data_a is not None:
                                 st.session_state.similarities.get('kwd_to_page'),
                                 "Compares the user's search term with landing page content",
                                 "We compare the <strong>keyword</strong> with <strong>landing page text</strong>.<br>" +
-                                "Formula: 40% topic match + 60% answer quality = Final Score"
+                                "Formula: 40% topic match + 60% answer quality"
                             )
                         
                         st.markdown("**Ad → Page Similarity Score**")
@@ -1000,7 +959,7 @@ if st.session_state.data_a is not None:
                                 st.session_state.similarities.get('ad_to_page'),
                                 "Compares ad promises with landing page content",
                                 "We compare <strong>ad copy</strong> with <strong>landing page text</strong>.<br>" +
-                                "Formula: 30% topic match + 20% brand match + 50% promise match = Final Score"
+                                "Formula: 30% topic match + 20% brand match + 50% promise match"
                             )
                 else:
                     st.warning("No data found")
