@@ -315,16 +315,18 @@ body {{ margin: 0; padding: 40px 20px; font-family: Arial, sans-serif; backgroun
 </body></html>"""
 
 def render_device_preview(content, device, zoom, is_iframe=False, url=""):
-    """Render HTML content at device width with proper scrolling"""
+    """Render HTML content properly at actual device width"""
     dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
     device_w, device_h = dims[device]
     
-    # Apply zoom to width only
+    # Container height
+    container_h = 650
+    
+    # Calculate display width with zoom
     display_w = int(device_w * (zoom / 100))
-    container_h = 650  # Fixed container height with scroll
     
     if is_iframe:
-        # For external URLs
+        # For external URLs (landing pages)
         html = f"""
         <div style="display: flex; justify-content: center; align-items: center; background: #1f2937; border-radius: 8px; padding: 20px; min-height: {container_h}px;">
             <div style="width:{display_w}px; height:{container_h - 40}px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius: 8px; overflow: hidden; background:white;">
@@ -333,11 +335,11 @@ def render_device_preview(content, device, zoom, is_iframe=False, url=""):
         </div>
         """
     else:
-        # For SERP HTML content - render directly at device width
+        # For SERP HTML - render at actual device width with scaling applied via CSS zoom
         html = f"""
         <div style="display: flex; justify-content: center; align-items: center; background: #1f2937; border-radius: 8px; padding: 20px; min-height: {container_h}px;">
             <div style="width:{display_w}px; max-height:{container_h - 40}px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius: 8px; overflow-y: auto; overflow-x: hidden; background:white;">
-                <div style="width:{device_w}px;">
+                <div style="width:{device_w}px; zoom:{zoom}%;">
                     {content}
                 </div>
             </div>
@@ -632,3 +634,4 @@ if st.session_state.data_a is not None:
                     st.warning("No flows found")
 else:
     st.error("❌ Failed to load data")
+
