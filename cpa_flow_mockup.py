@@ -182,20 +182,43 @@ def fetch_page_content(url):
         return ""
 
 def get_screenshot(url):
-    """Get screenshot using API or return cached version"""
+    """Get screenshot using multiple methods"""
     if url in st.session_state.screenshot_cache:
         return st.session_state.screenshot_cache[url]
     
+    # Method 1: Try screenshotmachine.com (free tier)
     try:
-        # Using free screenshot API
-        screenshot_url = f"https://api.apiflash.com/v1/urltoimage?access_key=demo&url={quote(url)}&width=1440&height=900&fresh=true"
-        response = requests.get(screenshot_url, timeout=30)
-        if response.status_code == 200:
+        api_url = f"https://api.screenshotmachine.com?key=demo&url={quote(url)}&dimension=1440x900&format=jpg&cacheLimit=0"
+        response = requests.get(api_url, timeout=20)
+        if response.status_code == 200 and len(response.content) > 5000:
             img_base64 = base64.b64encode(response.content).decode()
             st.session_state.screenshot_cache[url] = img_base64
             return img_base64
     except:
         pass
+    
+    # Method 2: Try thum.io
+    try:
+        api_url = f"https://image.thum.io/get/width/1440/crop/900/noanimate/{url}"
+        response = requests.get(api_url, timeout=20)
+        if response.status_code == 200 and len(response.content) > 5000:
+            img_base64 = base64.b64encode(response.content).decode()
+            st.session_state.screenshot_cache[url] = img_base64
+            return img_base64
+    except:
+        pass
+    
+    # Method 3: Try s-shot.ru
+    try:
+        api_url = f"https://mini.s-shot.ru/1440x900/JPEG/1024/Z100/?{url}"
+        response = requests.get(api_url, timeout=20)
+        if response.status_code == 200 and len(response.content) > 5000:
+            img_base64 = base64.b64encode(response.content).decode()
+            st.session_state.screenshot_cache[url] = img_base64
+            return img_base64
+    except:
+        pass
+    
     return None
 
 def calculate_similarities(flow_data):
@@ -273,97 +296,57 @@ def render_similarity_card(title, data):
             elif key not in ['final_score', 'band', 'reason']:
                 st.caption(f"**{key.replace('_', ' ').title()}:** {value}")
 
-def generate_serp_mockup(flow_data):
+def generate_serp_mockup(flow_data, serp_templates):
     keyword = flow_data.get('keyword_term', 'N/A')
     ad_title = flow_data.get('ad_title', 'N/A')
     ad_desc = flow_data.get('ad_description', 'N/A')
     ad_url = flow_data.get('ad_display_url', 'N/A')
     
+    # Try to use template from JSON
+    if serp_templates and len(serp_templates) > 0:
+        try:
+            html = serp_templates[0].get('code', '')
+            
+            # Replace placeholders in the template
+            # Replace header text (keyword)
+            html = re.sub(r'<div class="header_text">Sponsored results for: "[^"]*"</div>', 
+                         f'<div class="header_text">Sponsored results for: "{keyword}"</div>', html)
+            
+            # Replace URL
+            html = re.sub(r'<div class="url">[^<]*</div>', 
+                         f'<div class="url">{ad_url}</div>', html, count=1)
+            
+            # Replace title
+            html = re.sub(r'<div class="title">[^<]*</div>', 
+                         f'<div class="title">{ad_title}</div>', html, count=1)
+            
+            # Replace description
+            html = re.sub(r'<div class="desc">[^<]*</div>', 
+                         f'<div class="desc">{ad_desc}</div>', html, count=1)
+            
+            return html
+        except Exception as e:
+            pass
+    
+    # Fallback template
     return f"""
     <!DOCTYPE html>
     <html>
     <head>
         <style>
-            body {{ 
-                margin: 0; 
-                padding: 20px 40px; 
-                font-family: Arial, sans-serif; 
-                background: #f8f9fa; 
-            }}
-            .search-container {{
-                max-width: 600px;
-                background: white;
-                padding: 20px;
-                border-radius: 8px;
-                box-shadow: 0 1px 6px rgba(0,0,0,0.1);
-            }}
-            .sponsored {{ 
-                color: #70757a; 
-                font-size: 12px; 
-                margin-bottom: 8px; 
-                text-transform: uppercase;
-            }}
-            .ad-label {{
-                display: inline-block;
-                border: 1px solid #dadce0;
-                border-radius: 3px;
-                padding: 2px 6px;
-                font-size: 11px;
-                color: #5f6368;
-                margin-right: 8px;
-            }}
-            .url {{ 
-                color: #202124; 
-                font-size: 14px; 
-                margin-bottom: 4px;
-                display: flex;
-                align-items: center;
-            }}
-            .favicon {{
-                width: 16px;
-                height: 16px;
-                margin-right: 8px;
-                background: #e8eaed;
-                border-radius: 50%;
-            }}
-            .title {{ 
-                color: #1a0dab; 
-                font-size: 20px; 
-                font-weight: normal; 
-                margin: 0 0 8px 0;
-                line-height: 1.3;
-                cursor: pointer;
-            }}
-            .title:hover {{ 
-                text-decoration: underline; 
-            }}
-            .desc {{ 
-                color: #4d5156; 
-                font-size: 14px; 
-                line-height: 1.58;
-            }}
-            .keyword-highlight {{
-                color: #70757a;
-                font-size: 12px;
-                margin-top: 12px;
-                padding-top: 12px;
-                border-top: 1px solid #e8eaed;
-            }}
+            body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #f8f9fa; }}
+            .header_text {{ color: #70757a; font-size: 12px; margin-bottom: 12px; }}
+            .url {{ color: #006621; font-size: 14px; margin-bottom: 4px; }}
+            .title {{ color: #1a0dab; font-size: 20px; margin: 0 0 8px 0; cursor: pointer; }}
+            .title:hover {{ text-decoration: underline; }}
+            .desc {{ color: #4d5156; font-size: 14px; line-height: 1.58; }}
         </style>
     </head>
     <body>
-        <div class="search-container">
-            <div class="sponsored">
-                <span class="ad-label">Ad</span>
-                Sponsored results for: "{keyword}"
-            </div>
-            <div class="url">
-                <div class="favicon"></div>
-                {ad_url}
-            </div>
-            <h3 class="title">{ad_title}</h3>
-            <div class="desc">{ad_desc}</div>
-        </div>
+        <div class="header_text">Sponsored results for: "{keyword}"</div>
+        <div class="url">{ad_url}</div>
+        <div class="title">{ad_title}</div>
+        <div class="desc">{ad_desc}</div>
     </body>
     </html>
     """
@@ -461,9 +444,9 @@ if st.session_state.data_a is not None:
             
             with tab2:
                 f1, f2, f3 = st.columns(3)
-                keyword_filter = f1.selectbox("Filter", ['all', 'best', 'worst'])
-                keyword_limit = f2.selectbox("Show", [10, 25, 50])
-                keyword_sort = f3.selectbox("Sort", ['clicks', 'ctr', 'cvr'])
+                keyword_filter = f1.selectbox("Filter", ['all', 'best', 'worst'], key='kw_filter')
+                keyword_limit = f2.selectbox("Show", [5, 10, 25, 50], key='kw_limit')
+                keyword_sort = f3.selectbox("Sort", ['clicks', 'ctr', 'cvr'], key='kw_sort')
                 
                 filtered_keywords = keyword_agg.copy()
                 if keyword_filter == 'best':
@@ -474,13 +457,22 @@ if st.session_state.data_a is not None:
                 filtered_keywords = filtered_keywords.sort_values(keyword_sort, ascending=False).head(keyword_limit)
                 filtered_keywords = filtered_keywords.reset_index(drop=True)
                 
-                # Single table with selection and color coding
+                # Header row
+                col_h1, col_h2, col_h3, col_h4, col_h5 = st.columns([0.5, 4, 1.5, 1.5, 1.5])
+                col_h1.write("**Select**")
+                col_h2.write("**Keyword**")
+                col_h3.write("**Clicks**")
+                col_h4.write("**CTR %**")
+                col_h5.write("**CVR %**")
+                
+                # Data rows - radio button for single selection
                 for idx, row in filtered_keywords.iterrows():
                     col_check, col_kw, col_clicks, col_ctr, col_cvr = st.columns([0.5, 4, 1.5, 1.5, 1.5])
                     
                     with col_check:
-                        if st.checkbox("", key=f"kw_{idx}", value=(row['keyword_term'] == st.session_state.selected_keyword)):
-                            if row['keyword_term'] != st.session_state.selected_keyword:
+                        is_selected = (row['keyword_term'] == st.session_state.selected_keyword)
+                        if st.radio("", [True, False], index=0 if is_selected else 1, key=f"kw_radio_{idx}", label_visibility="collapsed"):
+                            if not is_selected:
                                 st.session_state.selected_keyword = row['keyword_term']
                                 st.session_state.selected_url = None
                                 st.session_state.similarities = {}
@@ -497,7 +489,7 @@ if st.session_state.data_a is not None:
                         cvr_color = '#00ff00' if row['cvr'] >= avg_cvr else '#ff4444'
                         st.markdown(f"<span style='color: {cvr_color}'>{row['cvr']:.2f}%</span>", unsafe_allow_html=True)
             
-            # URL Selection
+            # URL Selection - only show after keyword is selected
             if st.session_state.selected_keyword:
                 st.divider()
                 st.subheader(f"🔗 URLs for: {st.session_state.selected_keyword}")
@@ -511,15 +503,37 @@ if st.session_state.data_a is not None:
                 
                 url_agg['ctr'] = url_agg.apply(lambda x: (x['clicks']/x['impressions']*100) if x['impressions']>0 else 0, axis=1)
                 url_agg['cvr'] = url_agg.apply(lambda x: (x['conversions']/x['clicks']*100) if x['clicks']>0 else 0, axis=1)
-                url_agg = url_agg.sort_values('clicks', ascending=False).head(25).reset_index(drop=True)
                 
-                # Single table with selection and color coding
-                for idx, row in url_agg.iterrows():
+                # Add filters for URL table
+                f1, f2, f3 = st.columns(3)
+                url_filter = f1.selectbox("Filter", ['all', 'best', 'worst'], key='url_filter')
+                url_limit = f2.selectbox("Show", [5, 10, 25, 50], key='url_limit')
+                url_sort = f3.selectbox("Sort", ['clicks', 'ctr', 'cvr'], key='url_sort')
+                
+                filtered_urls = url_agg.copy()
+                if url_filter == 'best':
+                    filtered_urls = filtered_urls[(filtered_urls['ctr'] >= avg_ctr) & (filtered_urls['cvr'] >= avg_cvr)]
+                elif url_filter == 'worst':
+                    filtered_urls = filtered_urls[(filtered_urls['ctr'] < avg_ctr) & (filtered_urls['cvr'] < avg_cvr)]
+                
+                filtered_urls = filtered_urls.sort_values(url_sort, ascending=False).head(url_limit).reset_index(drop=True)
+                
+                # Header row
+                col_h1, col_h2, col_h3, col_h4, col_h5 = st.columns([0.5, 4, 1.5, 1.5, 1.5])
+                col_h1.write("**Select**")
+                col_h2.write("**Publisher URL**")
+                col_h3.write("**Clicks**")
+                col_h4.write("**CTR %**")
+                col_h5.write("**CVR %**")
+                
+                # Data rows - radio button for single selection
+                for idx, row in filtered_urls.iterrows():
                     col_check, col_url, col_clicks, col_ctr, col_cvr = st.columns([0.5, 4, 1.5, 1.5, 1.5])
                     
                     with col_check:
-                        if st.checkbox("", key=f"url_{idx}", value=(row['publisher_url'] == st.session_state.selected_url)):
-                            if row['publisher_url'] != st.session_state.selected_url:
+                        is_selected = (row['publisher_url'] == st.session_state.selected_url)
+                        if st.radio("", [True, False], index=0 if is_selected else 1, key=f"url_radio_{idx}", label_visibility="collapsed"):
+                            if not is_selected:
                                 st.session_state.selected_url = row['publisher_url']
                                 st.session_state.similarities = {}
                                 st.rerun()
@@ -590,7 +604,7 @@ if st.session_state.data_a is not None:
                         
                         device1 = st.radio("Device", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev1', index=0)
                         
-                        serp_html = generate_serp_mockup(current_flow)
+                        serp_html = generate_serp_mockup(current_flow, st.session_state.data_b)
                         
                         dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
                         device_w, device_h = dims[device1]
