@@ -347,61 +347,48 @@ body {{ margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #f
 </body></html>"""
 
 def render_device_preview(content, device):
-    """Render with realistic device frame and proper scaling"""
-    # Actual device dimensions
+    """Render properly - let content flow naturally at device width"""
+    # Actual device widths
     dims = {
-        'mobile': (375, 667),   # iPhone-like
-        'tablet': (768, 1024),  # iPad-like
-        'laptop': (1366, 768)   # Standard laptop
+        'mobile': 375,
+        'tablet': 768,
+        'laptop': 1366
     }
-    device_w, device_h = dims[device]
+    device_w = dims[device]
     
-    # Calculate scale to fit nicely (larger for better visibility)
-    if device == 'mobile':
-        scale = 1.0  # Show at actual size
-        display_w = device_w
-        display_h = 600  # Fixed height with scroll
-    elif device == 'tablet':
-        scale = 0.65
-        display_w = int(device_w * scale)
-        display_h = int(device_h * scale)
-    else:  # laptop
-        scale = 0.55
-        display_w = int(device_w * scale)
-        display_h = int(device_h * scale)
+    # Container height - fixed for scrolling
+    container_height = 700
     
-    container_h = display_h + 80
-    
-    # Device-specific styling
+    # Device-specific frame styling
     if device == 'mobile':
         frame_style = "border-radius: 30px; border: 12px solid #2d3748;"
     elif device == 'tablet':
-        frame_style = "border-radius: 20px; border: 16px solid #2d3748;"
+        frame_style = "border-radius: 20px; border: 14px solid #2d3748;"
     else:
         frame_style = "border-radius: 8px; border: 8px solid #2d3748;"
     
+    # Simple: render at device width, make it scrollable
     html = f"""
     <div style="display: flex; justify-content: center; align-items: center; 
                 background: #1a1d24; border-radius: 12px; padding: 30px; 
-                min-height: {container_h}px;">
-        <div style="width: {display_w}px; height: {display_h}px; 
+                min-height: {container_height + 80}px;">
+        <div style="width: {device_w}px; height: {container_height}px; 
                     {frame_style}
                     box-shadow: 0 30px 80px rgba(0,0,0,0.9); 
-                    overflow: auto; background: white; position: relative;">
-            <div style="width: 100%; height: 100%; overflow: auto;">
-                <iframe srcdoc='{content.replace("'", "&apos;").replace('"', "&quot;")}' 
-                        style="width: {device_w}px; height: {device_h}px; border: none;
-                               transform: scale({scale}); transform-origin: 0 0; display: block;"
-                        sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
-                </iframe>
-            </div>
+                    overflow-y: auto; overflow-x: hidden; 
+                    background: white; position: relative;
+                    -webkit-overflow-scrolling: touch;">
+            <iframe srcdoc='{content.replace("'", "&apos;").replace('"', "&quot;")}' 
+                    style="width: 100%; min-height: 100%; border: none; display: block;"
+                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
+            </iframe>
         </div>
     </div>
     """
     
-    return html, container_h + 60
-
-# Auto-load data
+    return html, container_height + 110
+    
+    # Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
         st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
@@ -739,3 +726,4 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+
