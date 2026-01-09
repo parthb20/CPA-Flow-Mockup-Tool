@@ -549,7 +549,7 @@ def generate_serp_mockup(flow_data, serp_templates):
             st.error(f"Error: {str(e)}")
     
     return ""
-    def render_device_preview(content, device):
+def render_device_preview(content, device):
     """Simple rendering - mobile gets taller iframe for CTA"""
     # Device widths
     dims = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
@@ -590,7 +590,8 @@ def generate_serp_mockup(flow_data, serp_templates):
     """
     
     return html, container_height + 110
-    # Auto-load data
+    
+# Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
         st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
@@ -936,6 +937,7 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+
 
 
 
