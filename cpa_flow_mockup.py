@@ -733,7 +733,7 @@ def render_device_preview(content, device):
         content = f'{fix_css}' + content
     
     # Escape for srcdoc
-    escaped_content = content.replace('\\', '\\\\').replace("'", "\\'").replace('"', '&quot;')
+    escaped_content = content.replace("'", "&apos;").replace('"', '&quot;')
     
     html = f"""
     <div style="display: flex; justify-content: center; align-items: center; 
@@ -1103,4 +1103,5 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+
 
