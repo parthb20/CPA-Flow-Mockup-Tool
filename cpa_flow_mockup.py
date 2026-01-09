@@ -315,7 +315,7 @@ body {{ margin: 0; padding: 40px 20px; font-family: Arial, sans-serif; backgroun
 </body></html>"""
 
 def render_device_preview(content, device, zoom, is_iframe=False, url=""):
-    """Properly sized rendering without transform issues"""
+    """Properly sized rendering with scrolling enabled"""
     dims = {'mobile': (375, 667), 'tablet': (768, 1024), 'laptop': (1440, 900)}
     original_w, original_h = dims[device]
     
@@ -335,17 +335,18 @@ def render_device_preview(content, device, zoom, is_iframe=False, url=""):
     else:
         # Scale content to fit display size
         scale = display_w / original_w
-        inner = f'<div style="width:{original_w}px; height:{original_h}px; transform:scale({scale}); transform-origin:top left; overflow:hidden;">{content}</div>'
+        inner = f'<div style="width:{original_w}px; height:{original_h}px; transform:scale({scale}); transform-origin:top left;">{content}</div>'
     
     html = f"""
     <div style="display: flex; justify-content: center; align-items: center; background: #1f2937; border-radius: 8px; padding: 20px; min-height: 600px;">
-        <div style="width:{display_w}px; height:{display_h}px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius: 8px; overflow:hidden; background:white;">
+        <div style="width:{display_w}px; height:{display_h}px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); border-radius: 8px; overflow-y: auto; overflow-x: hidden; background:white;">
             {inner}
         </div>
     </div>
     """
     
     return html, max(display_h + 80, 600)
+    
 # Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
@@ -640,4 +641,5 @@ if st.session_state.data_a is not None:
                     st.warning("No flows found")
 else:
     st.error("❌ Failed to load data")
+
 
