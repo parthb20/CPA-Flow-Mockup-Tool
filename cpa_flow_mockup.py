@@ -585,25 +585,11 @@ body {{ margin: 0; padding: 15px 18px; font-family: Arial, sans-serif; backgroun
 
 
 def render_device_preview(content, device):
-    """Render with proper viewport and auto-height detection"""
+    """Simple rendering - let browser handle it naturally"""
     # Device widths
-    dims = {
-        'mobile': 390,
-        'tablet': 820,
-        'laptop': 1440
-    }
+    dims = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
     device_w = dims[device]
-    
-    # Adaptive container heights based on device
-    container_heights = {
-        'mobile': 844,      # iPhone 14 Pro height
-        'tablet': 1180,     # iPad height
-        'laptop': 900       # Standard laptop viewport
-    }
-    container_height = container_heights[device]
-    
-    # Much larger iframe to prevent any cutoff
-    iframe_height = 3500
+    container_height = 700
     
     # Device frames
     if device == 'mobile':
@@ -613,41 +599,34 @@ def render_device_preview(content, device):
     else:
         frame_style = "border-radius: 8px; border: 8px solid #94a3b8;"
     
-    # MINIMAL viewport injection (don't override existing viewport)
-    viewport_meta = f'<meta name="viewport" content="width={device_w}, initial-scale=1.0, maximum-scale=1.0">'
-    
+    # Minimal viewport injection
     if '<meta name="viewport"' not in content:
+        viewport = f'<meta name="viewport" content="width={device_w}, initial-scale=1.0">'
         if '<head>' in content:
-            content = content.replace('<head>', f'<head>{viewport_meta}', 1)
-        elif '<head ' in content:
-            content = re.sub(r'(<head[^>]*>)', rf'\1{viewport_meta}', content, count=1)
+            content = content.replace('<head>', f'<head>{viewport}', 1)
     
     # Escape for srcdoc
-    escaped_content = content.replace("'", "&apos;").replace('"', '&quot;')
+    escaped = content.replace("'", "&apos;").replace('"', '&quot;')
     
+    # SIMPLE: Iframe at 100% height, scrolls naturally
     html = f"""
-    <div style="display: flex; justify-content: center; align-items: flex-start; 
+    <div style="display: flex; justify-content: center; padding: 30px; 
                 background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%); 
-                border-radius: 12px; padding: 30px; 
-                min-height: {container_height + 80}px;">
+                border-radius: 12px; min-height: {container_height + 80}px;">
         <div style="width: {device_w}px; height: {container_height}px; 
-                    {frame_style}
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.2), 0 8px 16px rgba(0,0,0,0.1); 
-                    overflow-y: auto; overflow-x: hidden; 
-                    background: white; position: relative;
-                    -webkit-overflow-scrolling: touch;">
-            <iframe srcdoc='{escaped_content}' 
-                    style="width: {device_w}px; height: {iframe_height}px; border: none; 
-                           display: block; margin: 0; padding: 0; overflow: visible;"
-                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-                    scrolling="yes">
+                    {frame_style} overflow: auto; background: white;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.2);">
+            <iframe srcdoc='{escaped}' 
+                    style="width: {device_w}px; height: 100%; border: none; display: block;"
+                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
             </iframe>
         </div>
     </div>
     """
     
     return html, container_height + 110
-# Auto-load data
+    
+    # Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
         st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
@@ -993,6 +972,7 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+
 
 
 
