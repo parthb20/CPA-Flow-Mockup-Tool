@@ -79,6 +79,19 @@ st.markdown("""
         border: 1px solid #cbd5e1 !important;
     }
     
+    /* Checkbox-style buttons */
+    .checkbox-btn {
+        width: 24px !important;
+        height: 24px !important;
+        min-width: 24px !important;
+        padding: 0 !important;
+        border-radius: 3px !important;
+        font-size: 14px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    
     /* Tabs */
     .stTabs [data-baseweb="tab-list"] { background-color: white !important; border-bottom: 2px solid #e2e8f0 !important; }
     .stTabs [data-baseweb="tab"] { color: #475569 !important; background-color: white !important; font-weight: 600 !important; }
@@ -86,20 +99,45 @@ st.markdown("""
     
     /* Metrics - COLORED BOXES */
     [data-testid="stMetric"] {
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        background: white;
         padding: 16px;
         border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        border: 2px solid #e2e8f0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
     [data-testid="stMetricValue"] {
-        color: white !important;
+        color: #0f172a !important;
         font-weight: 700 !important;
         font-size: 28px !important;
     }
     [data-testid="stMetricLabel"] {
-        color: rgba(255, 255, 255, 0.9) !important;
+        color: #64748b !important;
         font-weight: 600 !important;
         font-size: 14px !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Individual metric colors */
+    [data-testid="stMetric"]:nth-of-type(1) {
+        border-left: 4px solid #8b5cf6;
+        background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+    }
+    [data-testid="stMetric"]:nth-of-type(2) {
+        border-left: 4px solid #3b82f6;
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    }
+    [data-testid="stMetric"]:nth-of-type(3) {
+        border-left: 4px solid #10b981;
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    }
+    [data-testid="stMetric"]:nth-of-type(4) {
+        border-left: 4px solid #f59e0b;
+        background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    }
+    [data-testid="stMetric"]:nth-of-type(5) {
+        border-left: 4px solid #ef4444;
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
     }
     
     /* Expander */
@@ -593,6 +631,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             
             st.divider()
             
+            st.markdown("### 📊 Overall Campaign Stats")
             c1, c2, c3, c4, c5 = st.columns(5)
             c1.metric("Impressions", f"{safe_int(campaign_df['impressions'].sum()):,}")
             c2.metric("Clicks", f"{safe_int(campaign_df['clicks'].sum()):,}")
@@ -604,9 +643,15 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             st.subheader("🔑 Step 1: Pick a Keyword")
             st.markdown("""
             <div class="info-box">
-                👉 <strong>What you need to do:</strong> Choose which keyword you want to check. 
-                You can click on bubbles in the chart OR use the table below. <br><br>
-                💡 <strong>Colors explained:</strong> <span style="color:#22c55e">●</span> Green = Above average performance | <span style="color:#ef4444">●</span> Red = Below average performance
+                👉 <strong>What you need to do:</strong> Choose which keyword you want to analyze.<br><br>
+                
+                📊 <strong>Chart View:</strong> Visual bubble chart showing keyword performance. Larger bubbles = more clicks. 
+                Click any bubble to select that keyword.<br><br>
+                
+                📋 <strong>Table View:</strong> Detailed data table with all metrics. Use filters to find specific keywords. 
+                Click the checkbox to select a keyword.<br><br>
+                
+                💡 <strong>Table Colors:</strong> <span style="color:#22c55e">●</span> Green = Above average CTR/CVR | <span style="color:#ef4444">●</span> Red = Below average CTR/CVR
             </div>
             """, unsafe_allow_html=True)
             
@@ -685,7 +730,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     cols = st.columns([0.4, 3.5, 1.2, 1.2, 1.2, 1.2, 1.2])
                     is_selected = (row['keyword_term'] == st.session_state.selected_keyword)
                     
-                    if cols[0].button("✓" if is_selected else "○", key=f"kw_{idx}", use_container_width=True):
+                    if cols[0].button("☑" if is_selected else "☐", key=f"kw_{idx}", use_container_width=True):
                         if not is_selected:
                             st.session_state.selected_keyword = row['keyword_term']
                             st.session_state.selected_domain = None
@@ -753,7 +798,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     cols = st.columns([0.4, 3.5, 1.2, 1.2, 1.2, 1.2, 1.2])
                     is_selected = (row['publisher_domain'] == st.session_state.selected_domain)
                     
-                    if cols[0].button("✓" if is_selected else "○", key=f"domain_{idx}", use_container_width=True):
+                    if cols[0].button("☑" if is_selected else "☐", key=f"domain_{idx}", use_container_width=True):
                         if not is_selected:
                             st.session_state.selected_domain = row['publisher_domain']
                             st.session_state.selected_url = None
@@ -824,7 +869,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     cols = st.columns([0.4, 3.5, 1.2, 1.2, 1.2, 1.2, 1.2])
                     is_selected = (row['publisher_url'] == st.session_state.selected_url)
                     
-                    if cols[0].button("✓" if is_selected else "○", key=f"url_{idx}", use_container_width=True):
+                    if cols[0].button("☑" if is_selected else "☐", key=f"url_{idx}", use_container_width=True):
                         if not is_selected:
                             st.session_state.selected_url = row['publisher_url']
                             st.session_state.similarities = {}
