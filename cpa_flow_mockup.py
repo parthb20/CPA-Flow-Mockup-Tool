@@ -564,7 +564,7 @@ def render_similarity_card(title, data, explanation, calculation_details):
     
     st.markdown(f"""
     <div style="margin: 20px 0;">
-        <h4 style="margin:0 0 12px 0; color: #64748b; font-size: 14px; font-weight: 600; text-transform: uppercase;">{title}</h4>
+        <h3 style="margin:0 0 16px 0; color: #0f172a; font-size: 20px; font-weight: 700;">{title}</h3>
         <div style="display: inline-block; padding: 16px 24px; border-radius: 8px; border: 3px solid {color}; background: linear-gradient(135deg, {color}15, {color}08);">
             <div style="font-size: 48px; font-weight: 700; color: {color}; line-height: 1;">{score:.1%}</div>
         </div>
@@ -1016,7 +1016,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        st.markdown("**Keyword → Ad Similarity Score**")
+                        st.markdown("### 🔗 Keyword → Ad Similarity Score")
                         if st.session_state.similarities:
                             render_similarity_card(
                                 "Match Score", 
@@ -1077,19 +1077,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             st.warning("⚠️ No landing page URL found")
                     
                     with card2_right:
-                        st.markdown("**Keyword → Page Similarity Score**")
-                        if st.session_state.similarities:
-                            render_similarity_card(
-                                "Match Score", 
-                                st.session_state.similarities.get('kwd_to_page'),
-                                "Does the page help the user complete their task?",
-                                "<strong>What we check:</strong><br>" +
-                                "• Topic Match (40%): Page covers the topic?<br>" +
-                                "• Utility Match (60%): Can user complete their goal?<br><br>" +
-                                "<strong>Penalty:</strong> Wrong site, brand mismatch, or thin content = lower scores"
-                            )
-                        
-                        st.markdown("**Ad → Page Similarity Score**")
+                        st.markdown("### 🔗 Ad → Page Similarity Score")
                         if st.session_state.similarities:
                             render_similarity_card(
                                 "Match Score", 
@@ -1100,6 +1088,18 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 "• Brand Match (20%): Same company?<br>" +
                                 "• Promise Match (50%): Ad claims delivered?<br><br>" +
                                 "<strong>Penalty:</strong> Dead page, brand switch, or bait-and-switch = lower scores"
+                            )
+                        
+                        st.markdown("### 🔗 Keyword → Page Similarity Score")
+                        if st.session_state.similarities:
+                            render_similarity_card(
+                                "Match Score", 
+                                st.session_state.similarities.get('kwd_to_page'),
+                                "Does the page help the user complete their task?",
+                                "<strong>What we check:</strong><br>" +
+                                "• Topic Match (40%): Page covers the topic?<br>" +
+                                "• Utility Match (60%): Can user complete their goal?<br><br>" +
+                                "<strong>Penalty:</strong> Wrong site, brand mismatch, or thin content = lower scores"
                             )
                 else:
                     st.warning("No data found")
