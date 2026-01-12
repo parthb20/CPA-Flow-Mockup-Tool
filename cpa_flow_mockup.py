@@ -1236,59 +1236,87 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     
                     with card2_left:
                         device2 = st.radio("Device:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev2', index=0)
+                        
+                        # Add rendering method selector
+                        render_method = st.radio(
+                            "Rendering Method:",
+                            ['🔄 Fetch HTML (Recommended)', '🔗 Direct URL (May be blocked)'],
+                            horizontal=True,
+                            key='render_method',
+                            help="Fetch HTML: Works reliably, fetches page content\nDirect URL: Faster but many sites block iframe embedding"
+                        )
+                        
+                        use_direct_url = '🔗 Direct URL' in render_method
+                        
                         dest_url = current_flow.get('reporting_destination_url', '')
                         
                         if dest_url and pd.notna(dest_url) and str(dest_url).lower() != 'null':
-                            # Display URL info
+                            # Display URL info with method indicator
+                            method_badge = "🔗 Direct iframe src" if use_direct_url else "🔄 HTML fetch + srcdoc"
                             st.markdown(f"""
                             <div class="info-box">
-                                📍 <strong>Landing Page URL:</strong> {make_url_clickable(dest_url)}
+                                📍 <strong>Landing Page URL:</strong> {make_url_clickable(dest_url)}<br>
+                                <small><strong>Method:</strong> {method_badge}</small>
                             </div>
                             """, unsafe_allow_html=True)
                             
-                            # Try to fetch and render the page
-                            with st.spinner("Loading landing page..."):
+                            # Render based on selected method
+                            if use_direct_url:
+                                # METHOD 1: Direct URL iframe (may be blocked by X-Frame-Options)
+                                st.info("⚡ Loading page directly via iframe src...")
                                 try:
-                                    # Fetch page content
-                                    response = requests.get(dest_url, timeout=15, headers={
-                                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                                    }, allow_redirects=True)
-                                    
-                                    if response.status_code == 200:
-                                        final_url = response.url
-                                        
-                                        # Show if redirected
-                                        if final_url != dest_url:
-                                            st.info(f"⚠️ Page redirected to: {final_url}")
-                                        
-                                        # Get page HTML
-                                        page_html = response.text
-                                        
-                                        # Try to make URLs absolute so resources load correctly
-                                        from urllib.parse import urljoin
-                                        import re
-                                        
-                                        # Fix relative URLs for images, CSS, JS
-                                        page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
-                                                          lambda m: f'src="{urljoin(final_url, m.group(1))}"', page_html)
-                                        page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
-                                                          lambda m: f'href="{urljoin(final_url, m.group(1))}"', page_html)
-                                        
-                                        # Render with device preview (HTML content)
-                                        preview_html, height = render_device_preview(page_html, device2, use_url=False)
-                                        st.components.v1.html(preview_html, height=height, scrolling=False)
-                                        
-                                        st.caption("💡 Page fetched and rendered (some dynamic features may not work)")
-                                    else:
-                                        st.error(f"⚠️ Could not load page (HTTP {response.status_code})")
-                                        st.info(f"Visit directly: {make_url_clickable(dest_url)}")
-                                        
-                                except requests.exceptions.Timeout:
-                                    st.error("⚠️ Page took too long to load (timeout)")
-                                    st.info(f"Visit directly: {make_url_clickable(dest_url)}")
+                                    preview_html, height = render_device_preview(dest_url, device2, use_url=True)
+                                    st.components.v1.html(preview_html, height=height, scrolling=False)
+                                    st.success("✅ Page loaded successfully (direct iframe)")
                                 except Exception as e:
-                                    st.error(f"⚠️ Could not load page: {str(e)}")
+                                    st.error(f"❌ Direct iframe failed: {str(e)}")
+                                    st.warning("💡 Site likely blocks iframe embedding. Try 'Fetch HTML' method instead.")
                                     st.info(f"Visit directly: {make_url_clickable(dest_url)}")
+                            else:
+                                # METHOD 2: Fetch HTML and render (more reliable)
+                                with st.spinner("🔄 Fetching page content..."):
+                                    try:
+                                        # Fetch page content
+                                        response = requests.get(dest_url, timeout=15, headers={
+                                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                                        }, allow_redirects=True)
+                                        
+                                        if response.status_code == 200:
+                                            final_url = response.url
+                                            
+                                            # Show if redirected
+                                            if final_url != dest_url:
+                                                st.info(f"↪️ Page redirected to: {final_url}")
+                                            
+                                            # Get page HTML
+                                            page_html = response.text
+                                            
+                                            # Try to make URLs absolute so resources load correctly
+                                            from urllib.parse import urljoin
+                                            import re
+                                            
+                                            # Fix relative URLs for images, CSS, JS
+                                            page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
+                                                              lambda m: f'src="{urljoin(final_url, m.group(1))}"', page_html)
+                                            page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
+                                                              lambda m: f'href="{urljoin(final_url, m.group(1))}"', page_html)
+                                            
+                                            # Render with device preview (HTML content via srcdoc)
+                                            preview_html, height = render_device_preview(page_html, device2, use_url=False)
+                                            st.components.v1.html(preview_html, height=height, scrolling=False)
+                                            
+                                            st.success("✅ Page fetched and rendered successfully (HTML via srcdoc)")
+                                            st.caption("💡 Static content shown. Some dynamic features may not work.")
+                                        else:
+                                            st.error(f"❌ Could not load page (HTTP {response.status_code})")
+                                            st.info(f"Visit directly: {make_url_clickable(dest_url)}")
+                                            
+                                    except requests.exceptions.Timeout:
+                                        st.error("⏱️ Page took too long to load (timeout)")
+                                        st.info(f"Visit directly: {make_url_clickable(dest_url)}")
+                                    except Exception as e:
+                                        st.error(f"❌ Could not load page: {str(e)}")
+                                        st.info(f"Visit directly: {make_url_clickable(dest_url)}")
                         else:
                             st.warning("⚠️ No landing page URL found")
                     
