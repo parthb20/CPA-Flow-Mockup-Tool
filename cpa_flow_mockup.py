@@ -191,23 +191,6 @@ st.markdown("""
     /* Divider */
     hr { border-color: #e2e8f0 !important; }
     
-    /* Custom cards */
-    .metric-card {
-        background: white;
-        padding: 18px; 
-        border-radius: 8px; 
-        border: 2px solid #e2e8f0;
-        margin: 10px 0;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-    }
-    .metric-card p, .metric-card h2, .metric-card h4 {
-        background: transparent !important;
-    }
-    .similarity-excellent { border-color: #22c55e; background: rgba(34, 197, 94, 0.08); }
-    .similarity-good { border-color: #3b82f6; background: rgba(59, 130, 246, 0.08); }
-    .similarity-moderate { border-color: #eab308; background: rgba(234, 179, 8, 0.08); }
-    .similarity-weak { border-color: #f97316; background: rgba(249, 115, 22, 0.08); }
-    .similarity-poor { border-color: #ef4444; background: rgba(239, 68, 68, 0.08); }
     
     .info-box {
         background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
@@ -257,24 +240,6 @@ st.markdown("""
         padding: 8px;
         background: white;
         box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-    }
-    
-    .explanation-box {
-        background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
-        padding: 14px;
-        border-radius: 6px;
-        border: 1px solid #e9d5ff;
-        border-left: 3px solid #8b5cf6;
-        margin: 10px 0;
-        font-size: 15px;
-        line-height: 1.6;
-        color: #0f172a !important;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        font-weight: 500;
-    }
-    .explanation-box p, .explanation-box div, .explanation-box span, .explanation-box strong {
-        color: #0f172a !important;
-        background: transparent !important;
     }
     
     .flow-diagram {
@@ -593,30 +558,20 @@ def render_similarity_card(title, data, explanation, calculation_details):
     reason = data.get('reason', 'N/A')
     
     label, color = get_similarity_label(score)
-    if score >= 0.8:
-        css_class = 'similarity-excellent'
-    elif score >= 0.6:
-        css_class = 'similarity-good'
-    elif score >= 0.4:
-        css_class = 'similarity-moderate'
-    elif score >= 0.2:
-        css_class = 'similarity-weak'
-    else:
-        css_class = 'similarity-poor'
+    
+    with st.expander("📊 How This Score Is Calculated", expanded=False):
+        st.markdown(calculation_details)
     
     st.markdown(f"""
-    <div class="explanation-box">
-        <strong>📊 How This Score Is Calculated:</strong><br><br>
-        {calculation_details}
+    <div style="margin: 20px 0;">
+        <h4 style="margin:0 0 12px 0; color: #64748b; font-size: 14px; font-weight: 600; text-transform: uppercase;">{title}</h4>
+        <div style="display: inline-block; padding: 16px 24px; border-radius: 8px; border: 3px solid {color}; background: linear-gradient(135deg, {color}15, {color}08);">
+            <div style="font-size: 48px; font-weight: 700; color: {color}; line-height: 1;">{score:.1%}</div>
+        </div>
+        <p style="margin: 12px 0 4px 0; color: {color}; font-size: 16px; font-weight: 700;">{label}</p>
+        <p style="margin: 8px 0 0 0; color: #475569; font-size: 14px; font-weight: 500; max-width: 600px;">{reason}</p>
     </div>
     """, unsafe_allow_html=True)
-    
-    st.markdown(f'<div class="metric-card {css_class}">', unsafe_allow_html=True)
-    st.markdown(f'<h4 style="margin:0; color: #64748b; font-size: 14px; font-weight: 700;">{title}</h4>', unsafe_allow_html=True)
-    st.markdown(f'<h2 style="margin: 8px 0; color: {color}; font-weight: 700; font-size: 32px;">{score:.1%}</h2>', unsafe_allow_html=True)
-    st.markdown(f'<p style="margin:0; color: {color}; font-size: 16px; font-weight: 700;">{label}</p>', unsafe_allow_html=True)
-    st.markdown(f'<p style="margin:12px 0 0 0; color: #0f172a; font-size: 14px; font-weight: 500;">{reason}</p>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
     
     with st.expander("📊 View Detailed Score Breakdown"):
         for key, value in data.items():
