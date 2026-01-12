@@ -457,41 +457,30 @@ def calculate_similarities(flow_data):
     results = {}
     
     # Keyword → Ad
-    kwd_to_ad_prompt = f"""Evaluate keyword-to-ad match.
+    kwd_to_ad_prompt = f"""Score ad relevance to keyword. Judge meaning, not keyword stuffing. Penalize deceptive content.
 
 KEYWORD: "{keyword}"
 AD: "{ad_text}"
 
-Detect intent from keyword:
-TRANSACTIONAL: buy, price, deal, shop, apply, download, etc
-NAVIGATIONAL: [brand] login, official, website, account, etc
-INFORMATIONAL: how to, what is, guide, tips, why, etc
-COMPARISON: best, top, vs, compare, review, alternative, etc
+**Intent:** TRANSACTIONAL (buy/hire) | NAVIGATIONAL (brand+site) | INFORMATIONAL (how/what) | COMPARISON (best/vs)
 
-Brand rule: If keyword contains brand/company name:
-- Brand in ad → score normally
-- Brand missing → cap keyword_match≤0.3, intent_match≤0.5 (or ≤0.2 if NAVIGATIONAL)
+**Penalties:**
+- Brand mismatch: keyword has brand, ad doesn't → keyword_match≤0.3, topic_match≤0.4, intent_match≤0.5
+- Wrong product: ad promotes different core product → topic_match=0.1, final_score≤0.3
 
-Score components (0.0-1.0):
+**Scores (0.0–1.0):**
+KEYWORD_MATCH (15%): Term overlap | 1.0=all | 0.7=most | 0.4=some | 0.0=none
+TOPIC_MATCH (35%): Same subject? | 1.0=identical | 0.7=close | 0.4=loose | 0.1=unrelated
+INTENT_MATCH (50%): Satisfies intent?
+- TRANS: CTA/offer? 1.0=yes | 0.3=no
+- NAV: Correct brand? 1.0=yes | 0.1=no
+- INFO: Educational? 0.9=yes | 0.3=sales-only
+- COMP: Multiple options? 0.9=yes | 0.4=single
 
-KEYWORD_MATCH (0.15): Lexical/entity overlap (not semantic)
-1.0=all, 0.7=most, 0.4=half, 0.0=none
+**Bands:** 0.8–1.0=excellent | 0.6–0.8=good | 0.4–0.6=moderate | 0.2–0.4=weak | 0.0–0.2=poor
 
-TOPIC_MATCH (0.35): Semantic similarity (concept overlap)
-1.0=identical, 0.7=related, 0.4=loose, 0.1=unrelated
-
-INTENT_MATCH (0.50): Goal alignment
-TRANSACTIONAL→CTA=1.0|no CTA=0.2
-NAVIGATIONAL→exact brand=1.0|competitor=0.1
-INFORMATIONAL→content=0.9|sales=0.3
-COMPARISON→options=0.9|single=0.4
-
-Score bands: 0.0-0.2=poor, 0.2-0.4=weak, 0.4-0.6=moderate, 0.6-0.8=good, 0.8-1.0=excellent
-
-Return JSON only (no other text):
-{{"intent":"","keyword_match":0.0,"topic_match":0.0,"intent_match":0.0,"final_score":0.0,"band":"","reason":""}}
-
-Formula: 0.15×keyword_match + 0.35×topic_match + 0.50×intent_match"""
+JSON only: {{"intent":"","keyword_match":0.0,"topic_match":0.0,"intent_match":0.0,"final_score":0.0,"band":"","reason":""}}
+Formula: 0.15×K + 0.35×T + 0.50×I"""
     
     results['kwd_to_ad'] = call_similarity_api(kwd_to_ad_prompt)
     time.sleep(1)
@@ -501,68 +490,55 @@ Formula: 0.15×keyword_match + 0.35×topic_match + 0.50×intent_match"""
         
         if page_text:
             # Ad → Page
-            ad_to_page_prompt = f"""Evaluate ad-to-page match.
+            ad_to_page_prompt = f"""Score page vs ad promises. Judge meaning, not keyword stuffing. Penalize deceptive content.
 
 AD: "{ad_text}"
 PAGE: "{page_text}"
 
-Brand rule: If ad mentions specific brand/service:
-- Same brand on page → score normally
-- Different brand OR generic hub → cap brand_match≤0.2
+**Penalties:**
+- Dead page: error/parking/redirect/no content → ALL=0.0
+- Brand switch: ad brand ≠ page brand/hub → brand_match≤0.2, promise_match≤0.4
 
-Score components (0.0-1.0):
+**Scores (0.0–1.0):**
+TOPIC_MATCH (30%): Same product/service? | 1.0=exact | 0.7=related | 0.4=loose | 0.1=different
+BRAND_MATCH (20%): Same company? | 1.0=clear | 0.7=weak | 0.2=different | 0.0=bait-switch
+PROMISE_MATCH (50%): Ad claims delivered? (offers/features/pricing/CTAs) | 1.0=all | 0.7=most | 0.4=some | 0.1=missing
 
-TOPIC_MATCH (0.30): Same product/service?
-1.0=exact, 0.7=related, 0.4=loose, 0.1=unrelated
+**Bands:** 0.8–1.0=excellent | 0.6–0.8=good | 0.4–0.6=moderate | 0.2–0.4=weak | 0.0–0.2=poor
 
-BRAND_MATCH (0.20): Same company/identity?
-1.0=same brand clear, 0.7=same but weak, 0.2=different brand, 0.0=generic hub/redirect
-
-PROMISE_MATCH (0.50): Ad claims delivered?
-1.0=all delivered, 0.7=mostly, 0.3=partial, 0.0=bait-and-switch
-
-Score bands: 0.0-0.2=poor, 0.2-0.4=weak, 0.4-0.6=moderate, 0.6-0.8=good, 0.8-1.0=excellent
-
-Return JSON only (no other text):
-{{"topic_match":0.0,"brand_match":0.0,"promise_match":0.0,"final_score":0.0,"band":"","reason":""}}
-
-Formula: 0.30×topic_match + 0.20×brand_match + 0.50×promise_match"""
+JSON only: {{"topic_match":0.0,"brand_match":0.0,"promise_match":0.0,"final_score":0.0,"band":"","reason":""}}
+Formula: 0.30×T + 0.20×B + 0.50×P"""
             
             results['ad_to_page'] = call_similarity_api(ad_to_page_prompt)
             time.sleep(1)
             
             # Keyword → Page
-            kwd_to_page_prompt = f"""Evaluate keyword-to-page match.
+            kwd_to_page_prompt = f"""Score page relevance to keyword. Judge meaning, not keyword stuffing. Penalize deceptive/thin content.
 
 KEYWORD: "{keyword}"
 PAGE: "{page_text}"
 
-Detect intent from keyword:
-TRANSACTIONAL: buy, price, deal, shop, order, etc
-NAVIGATIONAL: [brand] login, official, website, etc
-INFORMATIONAL: how to, what is, guide, tips, etc
-COMPARISON: best, top, vs, compare, review, etc
+**Intent:** TRANSACTIONAL (buy/hire) | NAVIGATIONAL (brand+site) | INFORMATIONAL (how/what) | COMPARISON (best/vs)
 
-Brand rule: If NAVIGATIONAL with brand and page is wrong site:
-- Cap topic_match≤0.3 AND answer_quality≤0.2
+**Penalties:**
+- NAV mismatch: nav keyword, wrong site → both≤0.2
+- Brand mismatch: brand keyword, different brand → both≤0.4
+- Thin content: SEO filler/arbitrage → utility_match≤0.3
 
-Score components (0.0-1.0):
+**Scores (0.0–1.0):**
+TOPIC_MATCH (40%): Page covers topic? | 1.0=exact focus | 0.7=close | 0.4=mentioned | 0.1=no
+UTILITY_MATCH (60%): Enables user goal?
+- TRANS: Product+action? 1.0=yes | 0.3=no
+- NAV: Correct destination? 1.0=yes | 0.1=no
+- INFO: Teaches topic? 1.0=yes | 0.4=vague
+- COMP: Comparison data? 1.0=yes | 0.4=single
 
-TOPIC_MATCH (0.40): Addresses keyword subject?
-1.0=exact, 0.7=related, 0.4=loose, 0.1=unrelated
+Ask: Can user complete their task?
 
-ANSWER_QUALITY (0.60): Satisfies detected intent?
-TRANSACTIONAL→product+CTA=1.0|no CTA=0.3
-NAVIGATIONAL→correct site=1.0|wrong=0.1
-INFORMATIONAL→detailed=0.9|thin=0.2
-COMPARISON→actual comparison=0.9|links only=0.2
+**Bands:** 0.8–1.0=excellent | 0.6–0.8=good | 0.4–0.6=moderate | 0.2–0.4=weak | 0.0–0.2=poor
 
-Score bands: 0.0-0.2=poor, 0.2-0.4=weak, 0.4-0.6=moderate, 0.6-0.8=good, 0.8-1.0=excellent
-
-Return JSON only (no other text):
-{{"intent":"","topic_match":0.0,"answer_quality":0.0,"final_score":0.0,"band":"","reason":""}}
-
-Formula: 0.40×topic_match + 0.60×answer_quality"""
+JSON only: {{"intent":"","topic_match":0.0,"utility_match":0.0,"final_score":0.0,"band":"","reason":""}}
+Formula: 0.40×T + 0.60×U"""
             
             results['kwd_to_page'] = call_similarity_api(kwd_to_page_prompt)
     
@@ -1099,13 +1075,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             render_similarity_card(
                                 "Match Score", 
                                 st.session_state.similarities.get('kwd_to_ad'),
-                                "Measures how well your ad aligns with the user's search intent",
-                                "<strong>Components:</strong><br>" +
-                                "• <strong>Keyword Match (15%):</strong> Direct word/entity overlap between keyword and ad<br>" +
-                                "• <strong>Topic Match (35%):</strong> Semantic similarity and concept alignment<br>" +
-                                "• <strong>Intent Match (50%):</strong> Does the ad satisfy the search intent? (Transactional/Navigational/Informational/Comparison)<br><br>" +
-                                "<strong>Brand Rule:</strong> If keyword has brand name but ad doesn't, scores are capped lower.<br>" +
-                                "<strong>Formula:</strong> 0.15×keyword_match + 0.35×topic_match + 0.50×intent_match"
+                                "Does the ad match what the user searched for?",
+                                "<strong>What we check:</strong><br>" +
+                                "• Keyword Match (15%): Word overlap<br>" +
+                                "• Topic Match (35%): Same subject?<br>" +
+                                "• Intent Match (50%): Satisfies search intent?<br><br>" +
+                                "<strong>Penalty:</strong> Brand mismatch or wrong product = lower scores"
                             )
                     
                     st.divider()
@@ -1157,16 +1132,11 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             render_similarity_card(
                                 "Match Score", 
                                 st.session_state.similarities.get('kwd_to_page'),
-                                "Measures how well the landing page satisfies the user's search intent",
-                                "<strong>Components:</strong><br>" +
-                                "• <strong>Topic Match (40%):</strong> Does the page address the keyword's subject matter?<br>" +
-                                "• <strong>Answer Quality (60%):</strong> Does the page satisfy the search intent?<br>" +
-                                "&nbsp;&nbsp;- Transactional: Product details + clear CTA<br>" +
-                                "&nbsp;&nbsp;- Navigational: Correct brand/site<br>" +
-                                "&nbsp;&nbsp;- Informational: Detailed helpful content<br>" +
-                                "&nbsp;&nbsp;- Comparison: Actual comparison data<br><br>" +
-                                "<strong>Brand Rule:</strong> If navigational keyword for wrong site, scores are heavily capped.<br>" +
-                                "<strong>Formula:</strong> 0.40×topic_match + 0.60×answer_quality"
+                                "Does the page help the user complete their task?",
+                                "<strong>What we check:</strong><br>" +
+                                "• Topic Match (40%): Page covers the topic?<br>" +
+                                "• Utility Match (60%): Can user complete their goal?<br><br>" +
+                                "<strong>Penalty:</strong> Wrong site, brand mismatch, or thin content = lower scores"
                             )
                         
                         st.markdown("**Ad → Page Similarity Score**")
@@ -1174,17 +1144,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             render_similarity_card(
                                 "Match Score", 
                                 st.session_state.similarities.get('ad_to_page'),
-                                "Measures how well the landing page delivers on the ad's promises",
-                                "<strong>Components:</strong><br>" +
-                                "• <strong>Topic Match (30%):</strong> Same product/service as advertised?<br>" +
-                                "• <strong>Brand Match (20%):</strong> Same company identity?<br>" +
-                                "&nbsp;&nbsp;- Same brand clearly = high score<br>" +
-                                "&nbsp;&nbsp;- Different brand or generic hub = low score<br>" +
-                                "• <strong>Promise Match (50%):</strong> Are ad claims delivered on page?<br>" +
-                                "&nbsp;&nbsp;- All delivered = excellent<br>" +
-                                "&nbsp;&nbsp;- Bait-and-switch = poor<br><br>" +
-                                "<strong>Brand Rule:</strong> If ad mentions specific brand but page shows different/generic, brand_match is capped.<br>" +
-                                "<strong>Formula:</strong> 0.30×topic_match + 0.20×brand_match + 0.50×promise_match"
+                                "Does the page deliver what the ad promised?",
+                                "<strong>What we check:</strong><br>" +
+                                "• Topic Match (30%): Same product/service?<br>" +
+                                "• Brand Match (20%): Same company?<br>" +
+                                "• Promise Match (50%): Ad claims delivered?<br><br>" +
+                                "<strong>Penalty:</strong> Dead page, brand switch, or bait-and-switch = lower scores"
                             )
                 else:
                     st.warning("No data found")
