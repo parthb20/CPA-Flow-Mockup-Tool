@@ -156,15 +156,21 @@ st.markdown("""
         border: 1px solid #e2e8f0 !important;
         font-weight: 600 !important;
     }
-    .streamlit-expanderContent {
+    .streamlit-expanderHeader:hover {
         background-color: #f8fafc !important;
+    }
+    .streamlit-expanderContent {
+        background-color: white !important;
         color: #0f172a !important;
         border: 1px solid #e2e8f0 !important;
         border-top: none !important;
         padding: 12px !important;
     }
-    .streamlit-expanderContent * { color: #0f172a !important; }
-    .streamlit-expanderContent [data-testid="stMetricLabel"] { color: #475569 !important; }
+    .streamlit-expanderContent * { 
+        color: #0f172a !important; 
+        background-color: transparent !important;
+    }
+    .streamlit-expanderContent [data-testid="stMetricLabel"] { color: #64748b !important; }
     .streamlit-expanderContent [data-testid="stMetricValue"] { color: #0f172a !important; }
     
     /* Radio buttons */
@@ -193,6 +199,9 @@ st.markdown("""
         border: 2px solid #e2e8f0;
         margin: 10px 0;
         box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .metric-card p, .metric-card h2, .metric-card h4 {
+        background: transparent !important;
     }
     .similarity-excellent { border-color: #22c55e; background: rgba(34, 197, 94, 0.08); }
     .similarity-good { border-color: #3b82f6; background: rgba(59, 130, 246, 0.08); }
@@ -251,17 +260,21 @@ st.markdown("""
     }
     
     .explanation-box {
-        background: white;
+        background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
         padding: 14px;
         border-radius: 6px;
-        border: 1px solid #c4b5fd;
+        border: 1px solid #e9d5ff;
         border-left: 3px solid #8b5cf6;
         margin: 10px 0;
         font-size: 15px;
         line-height: 1.6;
-        color: #0f172a;
+        color: #0f172a !important;
         box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         font-weight: 500;
+    }
+    .explanation-box p, .explanation-box div, .explanation-box span, .explanation-box strong {
+        color: #0f172a !important;
+        background: transparent !important;
     }
     
     .flow-diagram {
@@ -480,6 +493,7 @@ INTENT_MATCH (50%): Satisfies intent?
 **Bands:** 0.8–1.0=excellent | 0.6–0.8=good | 0.4–0.6=moderate | 0.2–0.4=weak | 0.0–0.2=poor
 
 JSON only: {{"intent":"","keyword_match":0.0,"topic_match":0.0,"intent_match":0.0,"final_score":0.0,"band":"","reason":""}}
+**Reason:** Max 125 characters explaining the score.
 Formula: 0.15×K + 0.35×T + 0.50×I"""
     
     results['kwd_to_ad'] = call_similarity_api(kwd_to_ad_prompt)
@@ -507,6 +521,7 @@ PROMISE_MATCH (50%): Ad claims delivered? (offers/features/pricing/CTAs) | 1.0=a
 **Bands:** 0.8–1.0=excellent | 0.6–0.8=good | 0.4–0.6=moderate | 0.2–0.4=weak | 0.0–0.2=poor
 
 JSON only: {{"topic_match":0.0,"brand_match":0.0,"promise_match":0.0,"final_score":0.0,"band":"","reason":""}}
+**Reason:** Max 125 characters explaining the score.
 Formula: 0.30×T + 0.20×B + 0.50×P"""
             
             results['ad_to_page'] = call_similarity_api(ad_to_page_prompt)
@@ -538,6 +553,7 @@ Ask: Can user complete their task?
 **Bands:** 0.8–1.0=excellent | 0.6–0.8=good | 0.4–0.6=moderate | 0.2–0.4=weak | 0.0–0.2=poor
 
 JSON only: {{"intent":"","topic_match":0.0,"utility_match":0.0,"final_score":0.0,"band":"","reason":""}}
+**Reason:** Max 125 characters explaining the score.
 Formula: 0.40×T + 0.60×U"""
             
             results['kwd_to_page'] = call_similarity_api(kwd_to_page_prompt)
@@ -588,21 +604,18 @@ def render_similarity_card(title, data, explanation, calculation_details):
     else:
         css_class = 'similarity-poor'
     
-    st.markdown(f"""
-    <div class="explanation-box">
-        <strong>📊 How This Score Is Calculated:</strong><br>
-        {calculation_details}
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="explanation-box">', unsafe_allow_html=True)
+    st.markdown("**📊 How This Score Is Calculated:**")
+    st.markdown("")
+    st.markdown(calculation_details)
+    st.markdown('</div>', unsafe_allow_html=True)
     
-    st.markdown(f"""
-    <div class="metric-card {css_class}">
-        <h4 style="margin:0; color: #475569; font-size: 14px; font-weight: 700;">{title}</h4>
-        <h2 style="margin: 8px 0; color: {color}; font-weight: 700; font-size: 32px;">{score:.1%}</h2>
-        <p style="margin:0; color: {color}; font-size: 16px; font-weight: 700;">{label}</p>
-        <p style="margin:12px 0 0 0; color: #334155; font-size: 14px; font-weight: 500;">{reason}</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f'<div class="metric-card {css_class}">', unsafe_allow_html=True)
+    st.markdown(f'<h4 style="margin:0; color: #64748b; font-size: 14px; font-weight: 700;">{title}</h4>', unsafe_allow_html=True)
+    st.markdown(f'<h2 style="margin: 8px 0; color: {color}; font-weight: 700; font-size: 32px;">{score:.1%}</h2>', unsafe_allow_html=True)
+    st.markdown(f'<p style="margin:0; color: {color}; font-size: 16px; font-weight: 700;">{label}</p>', unsafe_allow_html=True)
+    st.markdown(f'<p style="margin:12px 0 0 0; color: #0f172a; font-size: 14px; font-weight: 500;">{reason}</p>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
     
     with st.expander("📊 View Detailed Score Breakdown"):
         for key, value in data.items():
@@ -1076,11 +1089,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 "Match Score", 
                                 st.session_state.similarities.get('kwd_to_ad'),
                                 "Does the ad match what the user searched for?",
-                                "<strong>What we check:</strong><br>" +
-                                "• Keyword Match (15%): Word overlap<br>" +
-                                "• Topic Match (35%): Same subject?<br>" +
-                                "• Intent Match (50%): Satisfies search intent?<br><br>" +
-                                "<strong>Penalty:</strong> Brand mismatch or wrong product = lower scores"
+                                "**What we check:**\n\n• Keyword Match (15%): Word overlap\n\n• Topic Match (35%): Same subject?\n\n• Intent Match (50%): Satisfies search intent?\n\n**Penalty:** Brand mismatch or wrong product = lower scores"
                             )
                     
                     st.divider()
@@ -1133,10 +1142,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 "Match Score", 
                                 st.session_state.similarities.get('kwd_to_page'),
                                 "Does the page help the user complete their task?",
-                                "<strong>What we check:</strong><br>" +
-                                "• Topic Match (40%): Page covers the topic?<br>" +
-                                "• Utility Match (60%): Can user complete their goal?<br><br>" +
-                                "<strong>Penalty:</strong> Wrong site, brand mismatch, or thin content = lower scores"
+                                "**What we check:**\n\n• Topic Match (40%): Page covers the topic?\n\n• Utility Match (60%): Can user complete their goal?\n\n**Penalty:** Wrong site, brand mismatch, or thin content = lower scores"
                             )
                         
                         st.markdown("**Ad → Page Similarity Score**")
@@ -1145,11 +1151,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 "Match Score", 
                                 st.session_state.similarities.get('ad_to_page'),
                                 "Does the page deliver what the ad promised?",
-                                "<strong>What we check:</strong><br>" +
-                                "• Topic Match (30%): Same product/service?<br>" +
-                                "• Brand Match (20%): Same company?<br>" +
-                                "• Promise Match (50%): Ad claims delivered?<br><br>" +
-                                "<strong>Penalty:</strong> Dead page, brand switch, or bait-and-switch = lower scores"
+                                "**What we check:**\n\n• Topic Match (30%): Same product/service?\n\n• Brand Match (20%): Same company?\n\n• Promise Match (50%): Ad claims delivered?\n\n**Penalty:** Dead page, brand switch, or bait-and-switch = lower scores"
                             )
                 else:
                     st.warning("No data found")
