@@ -64,19 +64,28 @@ st.markdown("""
     }
     .stButton > button[kind="primary"],
     .stButton > button[data-testid="baseButton-primary"] {
-        background-color: #3b82f6 !important;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
         color: white !important;
         border: none !important;
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3) !important;
     }
     .stButton > button[kind="primary"]:hover,
     .stButton > button[data-testid="baseButton-primary"]:hover {
-        background-color: #2563eb !important;
+        background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4) !important;
     }
     .stButton > button[kind="secondary"],
     .stButton > button[data-testid="baseButton-secondary"] {
-        background-color: white !important;
+        background: white !important;
+        color: #64748b !important;
+        border: 2px solid #e2e8f0 !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+    }
+    .stButton > button[kind="secondary"]:hover,
+    .stButton > button[data-testid="baseButton-secondary"]:hover {
+        background: #f8fafc !important;
         color: #0f172a !important;
-        border: 1px solid #cbd5e1 !important;
+        border-color: #cbd5e1 !important;
     }
     
     /* Checkbox-style buttons */
@@ -199,9 +208,13 @@ st.markdown("""
         margin: 15px 0;
         line-height: 1.8;
         font-size: 16px;
-        color: #0f172a;
+        color: #0f172a !important;
         box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         font-weight: 500;
+    }
+    .info-box p, .info-box div, .info-box span {
+        color: #0f172a !important;
+        background: transparent !important;
     }
     .info-box a {
         color: #3b82f6;
@@ -641,19 +654,16 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             
             st.divider()
             st.subheader("🔑 Step 1: Pick a Keyword")
-            st.markdown("""
-            <div class="info-box">
-                👉 <strong>What you need to do:</strong> Choose which keyword you want to analyze.<br><br>
-                
-                📊 <strong>Chart View:</strong> Visual bubble chart showing keyword performance. Larger bubbles = more clicks. 
-                Click any bubble to select that keyword.<br><br>
-                
-                📋 <strong>Table View:</strong> Detailed data table with all metrics. Use filters to find specific keywords. 
-                Click the checkbox to select a keyword.<br><br>
-                
-                💡 <strong>Table Colors:</strong> <span style="color:#22c55e">●</span> Green = Above average CTR/CVR | <span style="color:#ef4444">●</span> Red = Below average CTR/CVR
-            </div>
-            """, unsafe_allow_html=True)
+            
+            st.markdown('<div class="info-box">', unsafe_allow_html=True)
+            st.markdown("👉 **What you need to do:** Choose which keyword you want to analyze.")
+            st.markdown("")
+            st.markdown("📊 **Chart View:** Visual bubble chart showing keyword performance. Larger bubbles = more clicks. Click any bubble to select that keyword.")
+            st.markdown("")
+            st.markdown("📋 **Table View:** Detailed data table with all metrics. Use filters to find specific keywords. Click the checkbox to select a keyword.")
+            st.markdown("")
+            st.markdown("💡 **Table Colors:** 🟢 Green = Above average CTR/CVR | 🔴 Red = Below average CTR/CVR")
+            st.markdown('</div>', unsafe_allow_html=True)
             
             tab1, tab2 = st.tabs(["📊 Chart View", "📋 Table View"])
             
@@ -730,7 +740,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     cols = st.columns([0.4, 3.5, 1.2, 1.2, 1.2, 1.2, 1.2])
                     is_selected = (row['keyword_term'] == st.session_state.selected_keyword)
                     
-                    if cols[0].button("☑" if is_selected else "☐", key=f"kw_{idx}", use_container_width=True):
+                    if cols[0].button("■" if is_selected else "□", key=f"kw_{idx}", use_container_width=True):
                         if not is_selected:
                             st.session_state.selected_keyword = row['keyword_term']
                             st.session_state.selected_domain = None
@@ -754,13 +764,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             if st.session_state.selected_keyword:
                 st.divider()
                 st.subheader(f"🔗 Step 2: Pick Publisher Domain")
-                st.markdown(f"""
-                <div class="info-box">
-                    👉 <strong>What you need to do:</strong> Now pick which publisher domain your ad appeared on. 
-                    Different publisher domains can give different results. <br><br>
-                    💡 <strong>Colors explained:</strong> <span style="color:#16a34a">●</span> Green = Above average performance | <span style="color:#dc2626">●</span> Red = Below average performance
-                </div>
-                """, unsafe_allow_html=True)
+                
+                st.markdown('<div class="info-box">', unsafe_allow_html=True)
+                st.markdown("👉 **What you need to do:** Now pick which publisher domain your ad appeared on. Different publisher domains can give different results.")
+                st.markdown("")
+                st.markdown("💡 **Colors explained:** 🟢 Green = Above average performance | 🔴 Red = Below average performance")
+                st.markdown('</div>', unsafe_allow_html=True)
                 
                 keyword_domains = campaign_df[campaign_df['keyword_term'] == st.session_state.selected_keyword]
                 domain_agg = keyword_domains.groupby('publisher_domain').agg({
@@ -798,7 +807,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     cols = st.columns([0.4, 3.5, 1.2, 1.2, 1.2, 1.2, 1.2])
                     is_selected = (row['publisher_domain'] == st.session_state.selected_domain)
                     
-                    if cols[0].button("☑" if is_selected else "☐", key=f"domain_{idx}", use_container_width=True):
+                    if cols[0].button("■" if is_selected else "□", key=f"domain_{idx}", use_container_width=True):
                         if not is_selected:
                             st.session_state.selected_domain = row['publisher_domain']
                             st.session_state.selected_url = None
@@ -822,13 +831,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             if st.session_state.selected_keyword and st.session_state.selected_domain:
                 st.divider()
                 st.subheader(f"🔗 Step 3: Pick Publisher URL")
-                st.markdown(f"""
-                <div class="info-box">
-                    👉 <strong>What you need to do:</strong> Now pick which specific publisher URL your ad appeared on. 
-                    Different URLs within the same domain can give different results. <br><br>
-                    💡 <strong>Colors explained:</strong> <span style="color:#16a34a">●</span> Green = Above average performance | <span style="color:#dc2626">●</span> Red = Below average performance
-                </div>
-                """, unsafe_allow_html=True)
+                
+                st.markdown('<div class="info-box">', unsafe_allow_html=True)
+                st.markdown("👉 **What you need to do:** Now pick which specific publisher URL your ad appeared on. Different URLs within the same domain can give different results.")
+                st.markdown("")
+                st.markdown("💡 **Colors explained:** 🟢 Green = Above average performance | 🔴 Red = Below average performance")
+                st.markdown('</div>', unsafe_allow_html=True)
                 
                 domain_urls = campaign_df[
                     (campaign_df['keyword_term'] == st.session_state.selected_keyword) &
@@ -869,7 +877,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     cols = st.columns([0.4, 3.5, 1.2, 1.2, 1.2, 1.2, 1.2])
                     is_selected = (row['publisher_url'] == st.session_state.selected_url)
                     
-                    if cols[0].button("☑" if is_selected else "☐", key=f"url_{idx}", use_container_width=True):
+                    if cols[0].button("■" if is_selected else "□", key=f"url_{idx}", use_container_width=True):
                         if not is_selected:
                             st.session_state.selected_url = row['publisher_url']
                             st.session_state.similarities = {}
@@ -922,16 +930,15 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     pub_url_val = current_flow.get('publisher_url', 'N/A')
                     dest_val = current_flow.get('reporting_destination_url', 'N/A')
                     
-                    st.markdown(f"""
-                    <div class="info-box">
-                        <strong>🔄 What is This Flow?</strong><br><br>
-                        <strong>Keyword:</strong> {keyword_val}<br>
-                        <strong>Publisher Domain:</strong> {pub_domain_val}<br>
-                        <strong>Publisher URL:</strong> {make_url_clickable(pub_url_val)}<br>
-                        <strong>SERP Template:</strong> How the ad looked in search results<br>
-                        <strong>Landing Page:</strong> {make_url_clickable(dest_val)}
-                    </div>
-                    """, unsafe_allow_html=True)
+                    st.markdown('<div class="info-box">', unsafe_allow_html=True)
+                    st.markdown("**🔄 What is This Flow?**")
+                    st.markdown("")
+                    st.markdown(f"**Keyword:** {keyword_val}")
+                    st.markdown(f"**Publisher Domain:** {pub_domain_val}")
+                    st.markdown(f"**Publisher URL:** {make_url_clickable(pub_url_val)}", unsafe_allow_html=True)
+                    st.markdown("**SERP Template:** How the ad looked in search results")
+                    st.markdown(f"**Landing Page:** {make_url_clickable(dest_val)}", unsafe_allow_html=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
                     
                     # Visual Flow Diagram
                     keyword_short = keyword_val[:20] + '...' if len(str(keyword_val)) > 20 else keyword_val
@@ -954,15 +961,13 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     """, unsafe_allow_html=True)
                     
                     # Similarity Score Explanation
-                    st.markdown("""
-                    <div class="info-box">
-                        💡 <strong>Similarity Score Ranges:</strong><br>
-                        • <span style="color:#22c55e">■</span> <strong>0.8 - 1.0:</strong> Very High Match<br>
-                        • <span style="color:#3b82f6">■</span> <strong>0.6 - 0.8:</strong> High Match<br>
-                        • <span style="color:#eab308">■</span> <strong>0.4 - 0.6:</strong> Medium Match<br>
-                        • <span style="color:#dc2626">■</span> <strong>0.0 - 0.4:</strong> Low Match
-                    </div>
-                    """, unsafe_allow_html=True)
+                    st.markdown('<div class="info-box">', unsafe_allow_html=True)
+                    st.markdown("💡 **Similarity Score Ranges:**")
+                    st.markdown("• 🟢 **0.8 - 1.0:** Very High Match")
+                    st.markdown("• 🔵 **0.6 - 0.8:** High Match")
+                    st.markdown("• 🟡 **0.4 - 0.6:** Medium Match")
+                    st.markdown("• 🔴 **0.0 - 0.4:** Low Match")
+                    st.markdown('</div>', unsafe_allow_html=True)
                     
                     if not st.session_state.similarities:
                         if not API_KEY:
@@ -986,14 +991,15 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         st.components.v1.html(preview_html, height=height, scrolling=False)
                     
                     with card1_right:
-                        st.markdown(f"""
-                        <div class="info-box">
-                            <div class="info-label">Search Term:</div> {current_flow.get('keyword_term', 'N/A')}<br><br>
-                            <div class="info-label">Ad Headline:</div> {current_flow.get('ad_title', 'N/A')}<br><br>
-                            <div class="info-label">Ad Text:</div> {current_flow.get('ad_description', 'N/A')[:100]}<br><br>
-                            <div class="info-label">Display URL:</div> {make_url_clickable(current_flow.get('ad_display_url', 'N/A'))}
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.markdown('<div class="info-box">', unsafe_allow_html=True)
+                        st.markdown(f'<div class="info-label">Search Term:</div> {current_flow.get("keyword_term", "N/A")}', unsafe_allow_html=True)
+                        st.markdown("")
+                        st.markdown(f'<div class="info-label">Ad Headline:</div> {current_flow.get("ad_title", "N/A")}', unsafe_allow_html=True)
+                        st.markdown("")
+                        st.markdown(f'<div class="info-label">Ad Text:</div> {current_flow.get("ad_description", "N/A")[:100]}', unsafe_allow_html=True)
+                        st.markdown("")
+                        st.markdown(f'<div class="info-label">Display URL:</div> {make_url_clickable(current_flow.get("ad_display_url", "N/A"))}', unsafe_allow_html=True)
+                        st.markdown('</div>', unsafe_allow_html=True)
                         
                         st.markdown("**Keyword → Ad Similarity Score**")
                         if st.session_state.similarities:
@@ -1027,18 +1033,14 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     final_url = response.url
                                     
                                     if final_url != dest_url:
-                                        st.markdown(f"""
-                                        <div class="info-box">
-                                            📍 <strong>Original:</strong> {make_url_clickable(dest_url)}<br>
-                                            ⚠️ <strong>Redirected:</strong> {make_url_clickable(final_url)}
-                                        </div>
-                                        """, unsafe_allow_html=True)
+                                        st.markdown('<div class="info-box">', unsafe_allow_html=True)
+                                        st.markdown(f"📍 **Original:** {make_url_clickable(dest_url)}", unsafe_allow_html=True)
+                                        st.markdown(f"⚠️ **Redirected:** {make_url_clickable(final_url)}", unsafe_allow_html=True)
+                                        st.markdown('</div>', unsafe_allow_html=True)
                                     else:
-                                        st.markdown(f"""
-                                        <div class="info-box">
-                                            📍 <strong>URL:</strong> {make_url_clickable(final_url)}
-                                        </div>
-                                        """, unsafe_allow_html=True)
+                                        st.markdown('<div class="info-box">', unsafe_allow_html=True)
+                                        st.markdown(f"📍 **URL:** {make_url_clickable(final_url)}", unsafe_allow_html=True)
+                                        st.markdown('</div>', unsafe_allow_html=True)
                                     
                                     if response.status_code == 200:
                                         landing_html = response.text
