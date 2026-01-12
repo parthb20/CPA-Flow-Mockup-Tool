@@ -638,16 +638,19 @@ def generate_serp_mockup(flow_data, serp_templates):
 
 def render_device_preview(content, device):
     """Simple rendering for HTML content"""
-    dims = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
-    device_w = dims[device]
-    container_height = 700
-    
+    # Proper device dimensions: width x height
     if device == 'mobile':
-        frame_style = "border-radius: 30px; border: 12px solid #94a3b8;"
+        device_w = 375
+        container_height = 667  # iPhone aspect ratio (portrait)
+        frame_style = "border-radius: 30px; border: 12px solid #1f2937;"
     elif device == 'tablet':
-        frame_style = "border-radius: 20px; border: 14px solid #94a3b8;"
-    else:
-        frame_style = "border-radius: 8px; border: 8px solid #94a3b8;"
+        device_w = 820
+        container_height = 900  # Tablet aspect ratio (closer to landscape)
+        frame_style = "border-radius: 20px; border: 14px solid #374151;"
+    else:  # laptop
+        device_w = 1200
+        container_height = 675  # Laptop aspect ratio (16:9)
+        frame_style = "border-radius: 8px; border: 8px solid #4b5563;"
     
     if '<meta name="viewport"' not in content:
         viewport = f'<meta name="viewport" content="width={device_w}, initial-scale=1.0">'
@@ -656,22 +659,25 @@ def render_device_preview(content, device):
     
     escaped = content.replace("'", "&apos;").replace('"', '&quot;')
     
+    # Adjust padding based on device
+    padding = "20px" if device == 'laptop' else "30px"
+    
     html = f"""
-    <div style="display: flex; justify-content: center; padding: 30px; 
-                background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%); 
-                border-radius: 12px; min-height: {container_height + 80}px;">
+    <div style="display: flex; justify-content: center; align-items: center; padding: {padding}; 
+                background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); 
+                border-radius: 12px; min-height: {container_height + 60}px;">
         <div style="width: {device_w}px; height: {container_height}px; 
                     {frame_style} overflow: auto; background: white;
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.2);">
+                    box-shadow: 0 10px 40px rgba(0,0,0,0.15);">
             <iframe srcdoc='{escaped}' 
-                    style="width: {device_w}px; height: 100%; border: none; display: block;"
+                    style="width: 100%; height: 100%; border: none; display: block;"
                     sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
             </iframe>
         </div>
     </div>
     """
     
-    return html, container_height + 110
+    return html, container_height + 80
 
 def make_url_clickable(url):
     """Convert URL string to clickable hyperlink"""
@@ -746,13 +752,28 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         customdata=[[row['keyword_term']]]
                     ))
                 
-                fig.add_hline(y=avg_cvr, line_dash="dash", line_color="gray", opacity=0.5)
-                fig.add_vline(x=avg_ctr, line_dash="dash", line_color="gray", opacity=0.5)
-                fig.update_layout(xaxis_title="CTR (%)", yaxis_title="CVR (%)", height=400,
-                    showlegend=False, plot_bgcolor='white', paper_bgcolor='white',
-                    font=dict(color='#0f172a', size=14, family="Arial, sans-serif"), hovermode='closest',
-                    xaxis=dict(gridcolor='#e2e8f0', title_font=dict(size=16, color='#0f172a')), 
-                    yaxis=dict(gridcolor='#e2e8f0', title_font=dict(size=16, color='#0f172a')))
+                # Add bright, visible average lines with labels
+                fig.add_hline(y=avg_cvr, line_dash="dash", line_color="#ef4444", line_width=3, opacity=0.8,
+                             annotation_text=f"AVG CVR: {avg_cvr:.2f}%", 
+                             annotation_position="right",
+                             annotation=dict(font_size=14, font_color="#ef4444", font_weight="bold"))
+                fig.add_vline(x=avg_ctr, line_dash="dash", line_color="#3b82f6", line_width=3, opacity=0.8,
+                             annotation_text=f"AVG CTR: {avg_ctr:.2f}%",
+                             annotation_position="top",
+                             annotation=dict(font_size=14, font_color="#3b82f6", font_weight="bold"))
+                
+                fig.update_layout(
+                    xaxis_title="<b>CTR (%)</b>", 
+                    yaxis_title="<b>CVR (%)</b>", 
+                    height=500,
+                    showlegend=False, 
+                    plot_bgcolor='white', 
+                    paper_bgcolor='white',
+                    font=dict(color='#0f172a', size=16, family="Arial, sans-serif", weight='bold'), 
+                    hovermode='closest',
+                    xaxis=dict(gridcolor='#e2e8f0', title_font=dict(size=18, color='#0f172a', weight='bold')), 
+                    yaxis=dict(gridcolor='#e2e8f0', title_font=dict(size=18, color='#0f172a', weight='bold'))
+                )
                 
                 event = st.plotly_chart(fig, use_container_width=True, key="bubble", on_select="rerun")
                 
@@ -978,6 +999,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     pub_domain_val = current_flow.get('publisher_domain', 'N/A')
                     pub_url_val = current_flow.get('publisher_url', 'N/A')
                     dest_val = current_flow.get('reporting_destination_url', 'N/A')
+                    serp_template_val = current_flow.get('serp_template_id', current_flow.get('SERP_template_id', 'Template 1'))
                     
                     st.markdown(f"""
                     <div class="info-box">
@@ -985,7 +1007,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         <strong>Keyword:</strong> {keyword_val}<br>
                         <strong>Publisher Domain:</strong> {pub_domain_val}<br>
                         <strong>Publisher URL:</strong> {make_url_clickable(pub_url_val)}<br>
-                        <strong>SERP Template:</strong> How the ad looked in search results<br>
+                        <strong>SERP Template:</strong> {serp_template_val}<br>
                         <strong>Landing Page:</strong> {make_url_clickable(dest_val)}
                     </div>
                     """, unsafe_allow_html=True)
@@ -995,6 +1017,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     pub_domain_short = pub_domain_val[:20] + '...' if len(str(pub_domain_val)) > 20 else pub_domain_val
                     pub_url_short = pub_url_val[:20] + '...' if len(str(pub_url_val)) > 20 else pub_url_val
                     dest_short = dest_val[:20] + '...' if len(str(dest_val)) > 20 else dest_val
+                    serp_short = str(serp_template_val)[:15] + '...' if len(str(serp_template_val)) > 15 else str(serp_template_val)
                     
                     st.markdown(f"""
                     <div class="flow-diagram">
@@ -1004,7 +1027,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         <div class="flow-arrow">→</div>
                         <div class="flow-step">📰 URL<br><small>{pub_url_short}</small></div>
                         <div class="flow-arrow">→</div>
-                        <div class="flow-step">📄 SERP<br><small>Ad Display</small></div>
+                        <div class="flow-step">📄 SERP<br><small>{serp_short}</small></div>
                         <div class="flow-arrow">→</div>
                         <div class="flow-step">🎯 Landing<br><small>{dest_short}</small></div>
                     </div>
