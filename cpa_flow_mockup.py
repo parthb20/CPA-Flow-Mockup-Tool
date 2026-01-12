@@ -17,9 +17,17 @@ st.set_page_config(page_title="CPA Flow Analysis", page_icon="📊", layout="wid
 st.markdown("""
     <style>
     /* Background */
-    .main { background-color: #f8fafc; }
-    .stApp { background-color: #f8fafc; }
+    .main { background-color: #f8fafc !important; }
+    .stApp { background-color: #f8fafc !important; }
     [data-testid="stSidebar"] { display: none; }
+    
+    /* Force light backgrounds everywhere */
+    [data-testid="stExpander"],
+    [data-testid="stExpander"] > div,
+    [data-testid="stExpander"] details,
+    [data-testid="stExpander"] summary {
+        background: white !important;
+    }
     
     /* All text elements */
     h1, h2, h3, h4, h5, h6, p, span, div, label, .stMarkdown {
@@ -150,6 +158,23 @@ st.markdown("""
     }
     
     /* Expander */
+    [data-testid="stExpander"] {
+        background-color: white !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 6px !important;
+    }
+    [data-testid="stExpander"] details {
+        background-color: white !important;
+    }
+    [data-testid="stExpander"] summary {
+        background-color: white !important;
+        color: #0f172a !important;
+        font-weight: 600 !important;
+        padding: 12px 16px !important;
+    }
+    [data-testid="stExpander"] summary:hover {
+        background-color: #f8fafc !important;
+    }
     .streamlit-expanderHeader {
         background-color: white !important;
         color: #0f172a !important;
@@ -563,7 +588,7 @@ def render_similarity_card(title, data, explanation, calculation_details):
     label, color = get_similarity_label(score)
     
     with st.expander("📊 How This Score Is Calculated", expanded=False):
-        st.markdown(calculation_details)
+        st.markdown(calculation_details, unsafe_allow_html=True)
     
     st.markdown(f"""
     <div style="margin: 20px 0;">
