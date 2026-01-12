@@ -247,7 +247,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Config
-FILE_A_ID = "1bwdj-rAAp6I1SbO27BTFD2eLiv6V5vsB"
+FILE_A_ID = "1otRz-kxnlFvqFzCT_54gdxZ1kca1MIgK"
 FILE_B_ID = "1QpQhZhXFFpQWm_xhVGDjdpgRM3VMv57L"
 
 try:
@@ -256,7 +256,7 @@ except Exception as e:
     API_KEY = ""
 
 # Session state
-for key in ['data_a', 'data_b', 'selected_keyword', 'selected_url', 'flows', 
+for key in ['data_a', 'data_b', 'selected_keyword', 'selected_domain', 'selected_url', 'flows', 
             'flow_index', 'similarities', 'loading_done', 'screenshot_cache']:
     if key not in st.session_state:
         if key == 'flows':
@@ -641,6 +641,7 @@ if st.session_state.data_a is not None:
                         clicked_keyword = point['customdata'][0]
                         if clicked_keyword != st.session_state.selected_keyword:
                             st.session_state.selected_keyword = clicked_keyword
+                            st.session_state.selected_domain = None
                             st.session_state.selected_url = None
                             st.session_state.similarities = {}
                             st.rerun()
@@ -678,6 +679,7 @@ if st.session_state.data_a is not None:
                     if cols[0].button("✓" if is_selected else "○", key=f"kw_{idx}", use_container_width=True):
                         if not is_selected:
                             st.session_state.selected_keyword = row['keyword_term']
+                            st.session_state.selected_domain = None
                             st.session_state.selected_url = None
                             st.session_state.similarities = {}
                             st.rerun()
@@ -697,24 +699,95 @@ if st.session_state.data_a is not None:
             
             if st.session_state.selected_keyword:
                 st.divider()
-                st.subheader(f"🔗 Step 2: Pick Where The Ad Showed")
+                st.subheader(f"🔗 Step 2: Pick Publisher Domain")
                 st.markdown(f"""
                 <div class="info-box">
-                    👉 <strong>What you need to do:</strong> Now pick which website your ad appeared on. 
-                    Different websites can give different results. <br><br>
+                    👉 <strong>What you need to do:</strong> Now pick which publisher domain your ad appeared on. 
+                    Different publisher domains can give different results. <br><br>
                     💡 <strong>Colors explained:</strong> <span style="color:#16a34a">●</span> Green = Above average performance | <span style="color:#dc2626">●</span> Red = Below average performance
                 </div>
                 """, unsafe_allow_html=True)
                 
-                keyword_urls = campaign_df[campaign_df['keyword_term'] == st.session_state.selected_keyword]
-                url_agg = keyword_urls.groupby('publisher_url').agg({
+                keyword_domains = campaign_df[campaign_df['keyword_term'] == st.session_state.selected_keyword]
+                domain_agg = keyword_domains.groupby('publisher_domain').agg({
+                    'clicks': 'sum', 'conversions': 'sum', 'impressions': 'sum'
+                }).reset_index()
+                domain_agg['ctr'] = domain_agg.apply(lambda x: (x['clicks']/x['impressions']*100) if x['impressions']>0 else 0, axis=1)
+                domain_agg['cvr'] = domain_agg.apply(lambda x: (x['conversions']/x['clicks']*100) if x['clicks']>0 else 0, axis=1)
+                
+                f1, f2, f3 = st.columns(3)
+                domain_filter = f1.selectbox("Show me:", ['all publisher domains', 'best performers', 'worst performers'], key='domain_filter')
+                domain_limit = f2.selectbox("How many:", [5, 10, 25, 50], key='domain_limit')
+                domain_sort = f3.selectbox("Sort by:", ['clicks', 'conversions', 'ctr', 'cvr', 'impressions'], key='domain_sort')
+                
+                filtered_domains = domain_agg.copy()
+                if domain_filter == 'best performers':
+                    filtered_domains = filtered_domains[(filtered_domains['ctr'] >= avg_ctr) & (filtered_domains['cvr'] >= avg_cvr)]
+                elif domain_filter == 'worst performers':
+                    filtered_domains = filtered_domains[(filtered_domains['ctr'] < avg_ctr) & (filtered_domains['cvr'] < avg_cvr)]
+                
+                filtered_domains = filtered_domains.sort_values(domain_sort, ascending=False).head(domain_limit).reset_index(drop=True)
+                
+                st.markdown("""
+                <div class="table-header">
+                    <div style="flex: 0.4;"></div>
+                    <div style="flex: 3.5;">Publisher Domain</div>
+                    <div style="flex: 1.2; text-align: center;">Impr.</div>
+                    <div style="flex: 1.2; text-align: center;">Clicks</div>
+                    <div style="flex: 1.2; text-align: center;">Conv.</div>
+                    <div style="flex: 1.2; text-align: center;">CTR %</div>
+                    <div style="flex: 1.2; text-align: center;">CVR %</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                for idx, row in filtered_domains.iterrows():
+                    cols = st.columns([0.4, 3.5, 1.2, 1.2, 1.2, 1.2, 1.2])
+                    is_selected = (row['publisher_domain'] == st.session_state.selected_domain)
+                    
+                    if cols[0].button("✓" if is_selected else "○", key=f"domain_{idx}", use_container_width=True):
+                        if not is_selected:
+                            st.session_state.selected_domain = row['publisher_domain']
+                            st.session_state.selected_url = None
+                            st.session_state.similarities = {}
+                            st.rerun()
+                    
+                    display_domain = row['publisher_domain'][:45] + '...' if len(str(row['publisher_domain'])) > 45 else row['publisher_domain']
+                    cols[1].markdown(f"<div class='table-row' style='padding:8px;'>{display_domain}</div>", unsafe_allow_html=True)
+                    cols[2].markdown(f"<div class='table-row' style='text-align:center;'>{int(row['impressions']):,}</div>", unsafe_allow_html=True)
+                    cols[3].markdown(f"<div class='table-row' style='text-align:center;'>{int(row['clicks']):,}</div>", unsafe_allow_html=True)
+                    cols[4].markdown(f"<div class='table-row' style='text-align:center;'>{int(row['conversions']):,}</div>", unsafe_allow_html=True)
+                    
+                    ctr_bg = 'rgba(22, 163, 74, 0.15)' if row['ctr'] >= avg_ctr else 'rgba(220, 38, 38, 0.15)'
+                    ctr_color = '#16a34a' if row['ctr'] >= avg_ctr else '#dc2626'
+                    cols[5].markdown(f"<div class='table-row' style='text-align:center; background:{ctr_bg}; color:{ctr_color}; font-weight:700;'>{row['ctr']:.2f}%</div>", unsafe_allow_html=True)
+                    
+                    cvr_bg = 'rgba(22, 163, 74, 0.15)' if row['cvr'] >= avg_cvr else 'rgba(220, 38, 38, 0.15)'
+                    cvr_color = '#16a34a' if row['cvr'] >= avg_cvr else '#dc2626'
+                    cols[6].markdown(f"<div class='table-row' style='text-align:center; background:{cvr_bg}; color:{cvr_color}; font-weight:700;'>{row['cvr']:.2f}%</div>", unsafe_allow_html=True)
+            
+            if st.session_state.selected_keyword and st.session_state.selected_domain:
+                st.divider()
+                st.subheader(f"🔗 Step 3: Pick Publisher URL")
+                st.markdown(f"""
+                <div class="info-box">
+                    👉 <strong>What you need to do:</strong> Now pick which specific publisher URL your ad appeared on. 
+                    Different URLs within the same domain can give different results. <br><br>
+                    💡 <strong>Colors explained:</strong> <span style="color:#16a34a">●</span> Green = Above average performance | <span style="color:#dc2626">●</span> Red = Below average performance
+                </div>
+                """, unsafe_allow_html=True)
+                
+                domain_urls = campaign_df[
+                    (campaign_df['keyword_term'] == st.session_state.selected_keyword) &
+                    (campaign_df['publisher_domain'] == st.session_state.selected_domain)
+                ]
+                url_agg = domain_urls.groupby('publisher_url').agg({
                     'clicks': 'sum', 'conversions': 'sum', 'impressions': 'sum'
                 }).reset_index()
                 url_agg['ctr'] = url_agg.apply(lambda x: (x['clicks']/x['impressions']*100) if x['impressions']>0 else 0, axis=1)
                 url_agg['cvr'] = url_agg.apply(lambda x: (x['conversions']/x['clicks']*100) if x['clicks']>0 else 0, axis=1)
                 
                 f1, f2, f3 = st.columns(3)
-                url_filter = f1.selectbox("Show me:", ['all websites', 'best performers', 'worst performers'], key='url_filter')
+                url_filter = f1.selectbox("Show me:", ['all publisher URLs', 'best performers', 'worst performers'], key='url_filter')
                 url_limit = f2.selectbox("How many:", [5, 10, 25, 50], key='url_limit')
                 url_sort = f3.selectbox("Sort by:", ['clicks', 'conversions', 'ctr', 'cvr', 'impressions'], key='url_sort')
                 
@@ -729,7 +802,7 @@ if st.session_state.data_a is not None:
                 st.markdown("""
                 <div class="table-header">
                     <div style="flex: 0.4;"></div>
-                    <div style="flex: 3.5;">Website</div>
+                    <div style="flex: 3.5;">Publisher URL</div>
                     <div style="flex: 1.2; text-align: center;">Impr.</div>
                     <div style="flex: 1.2; text-align: center;">Clicks</div>
                     <div style="flex: 1.2; text-align: center;">Conv.</div>
@@ -762,18 +835,19 @@ if st.session_state.data_a is not None:
                     cvr_color = '#16a34a' if row['cvr'] >= avg_cvr else '#dc2626'
                     cols[6].markdown(f"<div class='table-row' style='text-align:center; background:{cvr_bg}; color:{cvr_color}; font-weight:700;'>{row['cvr']:.2f}%</div>", unsafe_allow_html=True)
             
-            if st.session_state.selected_keyword and st.session_state.selected_url:
+            if st.session_state.selected_keyword and st.session_state.selected_domain and st.session_state.selected_url:
                 st.divider()
                 
                 flows = campaign_df[
                     (campaign_df['keyword_term'] == st.session_state.selected_keyword) &
+                    (campaign_df['publisher_domain'] == st.session_state.selected_domain) &
                     (campaign_df['publisher_url'] == st.session_state.selected_url)
                 ].sort_values('clicks', ascending=False).head(5)
                 
                 st.session_state.flows = flows.to_dict('records')
                 
                 if len(st.session_state.flows) > 0:
-                    st.subheader("📊 Step 3: Analyze The Flow")
+                    st.subheader("📊 Step 4: Analyze The Flow")
                     
                     nav_cols = st.columns(min(5, len(st.session_state.flows)))
                     
@@ -790,29 +864,34 @@ if st.session_state.data_a is not None:
                     
                     # Flow description with actual values
                     keyword_val = current_flow.get('keyword_term', 'N/A')
-                    pub_val = current_flow.get('publisher_url', 'N/A')
+                    pub_domain_val = current_flow.get('publisher_domain', 'N/A')
+                    pub_url_val = current_flow.get('publisher_url', 'N/A')
                     dest_val = current_flow.get('reporting_destination_url', 'N/A')
                     
                     st.markdown(f"""
                     <div class="info-box">
                         <strong>🔄 What is This Flow?</strong><br><br>
                         <strong>Keyword:</strong> {keyword_val}<br>
-                        <strong>Publisher URL:</strong> {make_url_clickable(pub_val)}<br>
+                        <strong>Publisher Domain:</strong> {pub_domain_val}<br>
+                        <strong>Publisher URL:</strong> {make_url_clickable(pub_url_val)}<br>
                         <strong>SERP Template:</strong> How the ad looked in search results<br>
                         <strong>Landing Page:</strong> {make_url_clickable(dest_val)}
                     </div>
                     """, unsafe_allow_html=True)
                     
                     # Visual Flow Diagram
-                    keyword_short = keyword_val[:25] + '...' if len(str(keyword_val)) > 25 else keyword_val
-                    pub_short = pub_val[:25] + '...' if len(str(pub_val)) > 25 else pub_val
-                    dest_short = dest_val[:25] + '...' if len(str(dest_val)) > 25 else dest_val
+                    keyword_short = keyword_val[:20] + '...' if len(str(keyword_val)) > 20 else keyword_val
+                    pub_domain_short = pub_domain_val[:20] + '...' if len(str(pub_domain_val)) > 20 else pub_domain_val
+                    pub_url_short = pub_url_val[:20] + '...' if len(str(pub_url_val)) > 20 else pub_url_val
+                    dest_short = dest_val[:20] + '...' if len(str(dest_val)) > 20 else dest_val
                     
                     st.markdown(f"""
                     <div class="flow-diagram">
                         <div class="flow-step">🔍 Keyword<br><small>{keyword_short}</small></div>
                         <div class="flow-arrow">→</div>
-                        <div class="flow-step">📰 Publisher<br><small>{pub_short}</small></div>
+                        <div class="flow-step">🌐 Domain<br><small>{pub_domain_short}</small></div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-step">📰 URL<br><small>{pub_url_short}</small></div>
                         <div class="flow-arrow">→</div>
                         <div class="flow-step">📄 SERP<br><small>Ad Display</small></div>
                         <div class="flow-arrow">→</div>
