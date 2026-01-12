@@ -475,13 +475,16 @@ AD: "{ad_text}"
 PAGE: "{page_text}"
 
 **Penalties:**
-- Dead page: error/parking/redirect/no content → ALL=0.0
-- Brand switch: ad brand ≠ page brand/hub → brand_match≤0.2, promise_match≤0.4
+- Dead page: error/parking/forced redirect to different site/no real content → ALL=0.0
+- Brand hijack: ad brand ≠ page brand AND page is affiliate/comparison/different company → brand_match≤0.2, promise_match≤0.4
 
 **Scores (0.0–1.0):**
 TOPIC_MATCH (30%): Same product/service? | 1.0=exact | 0.7=related | 0.4=loose | 0.1=different
-BRAND_MATCH (20%): Same company? | 1.0=clear | 0.7=weak | 0.2=different | 0.0=bait-switch
-PROMISE_MATCH (50%): Ad claims delivered? (offers/features/pricing/CTAs) | 1.0=all | 0.7=most | 0.4=some | 0.1=missing
+BRAND_MATCH (20%): Same company? | 1.0=same brand clearly shown | 0.7=same brand, less prominent | 0.2=different company | 0.0=bait-switch
+PROMISE_MATCH (50%): Ad claims delivered on page? 
+- Check: same service/offer, CTA available, claims verifiable
+- 1.0=all delivered | 0.7=most delivered | 0.4=partially delivered | 0.1=not delivered
+- Note: Form-based access still counts as delivered if service is accessible
 
 **Bands:** 0.8–1.0=excellent | 0.6–0.8=good | 0.4–0.6=moderate | 0.2–0.4=weak | 0.0–0.2=poor
 
