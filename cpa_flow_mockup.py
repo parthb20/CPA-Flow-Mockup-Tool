@@ -637,47 +637,54 @@ def generate_serp_mockup(flow_data, serp_templates):
     return ""
 
 def render_device_preview(content, device):
-    """Simple rendering for HTML content"""
-    # Proper device dimensions: width x height
+    """Simple rendering for HTML content with accurate device dimensions"""
+    # Real device dimensions to match actual devices
     if device == 'mobile':
-        device_w = 375
-        container_height = 667  # iPhone aspect ratio (portrait)
-        frame_style = "border-radius: 30px; border: 12px solid #1f2937;"
+        device_w = 390  # iPhone 14 Pro width
+        container_height = 844  # iPhone 14 Pro height (tall portrait)
+        frame_style = "border-radius: 40px; border: 10px solid #000000;"
+        scale = 0.7  # Scale down to fit better
     elif device == 'tablet':
-        device_w = 820
-        container_height = 900  # Tablet aspect ratio (closer to landscape)
-        frame_style = "border-radius: 20px; border: 14px solid #374151;"
+        device_w = 820  # iPad Air width
+        container_height = 1180  # iPad Air height (portrait mode)
+        frame_style = "border-radius: 16px; border: 12px solid #1f2937;"
+        scale = 0.5  # Scale down to fit
     else:  # laptop
-        device_w = 1200
-        container_height = 675  # Laptop aspect ratio (16:9)
-        frame_style = "border-radius: 8px; border: 8px solid #4b5563;"
+        device_w = 1440  # Standard laptop width
+        container_height = 900  # Standard laptop height (16:10)
+        frame_style = "border-radius: 8px; border: 6px solid #374151;"
+        scale = 0.5  # Scale down to fit
     
     if '<meta name="viewport"' not in content:
-        viewport = f'<meta name="viewport" content="width={device_w}, initial-scale=1.0">'
+        viewport = f'<meta name="viewport" content="width={device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">'
         if '<head>' in content:
             content = content.replace('<head>', f'<head>{viewport}', 1)
+        else:
+            content = f'<head>{viewport}</head>' + content
     
     escaped = content.replace("'", "&apos;").replace('"', '&quot;')
     
-    # Adjust padding based on device
-    padding = "20px" if device == 'laptop' else "30px"
+    # Calculate scaled dimensions for display
+    display_w = int(device_w * scale)
+    display_h = int(container_height * scale)
     
     html = f"""
-    <div style="display: flex; justify-content: center; align-items: center; padding: {padding}; 
+    <div style="display: flex; justify-content: center; align-items: center; padding: 20px; 
                 background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); 
-                border-radius: 12px; min-height: {container_height + 60}px;">
-        <div style="width: {device_w}px; height: {container_height}px; 
-                    {frame_style} overflow: auto; background: white;
-                    box-shadow: 0 10px 40px rgba(0,0,0,0.15);">
+                border-radius: 12px; min-height: {display_h + 40}px;">
+        <div style="width: {display_w}px; height: {display_h}px; 
+                    {frame_style} overflow: hidden; background: white;
+                    box-shadow: 0 10px 40px rgba(0,0,0,0.2); position: relative;">
             <iframe srcdoc='{escaped}' 
-                    style="width: 100%; height: 100%; border: none; display: block;"
+                    style="width: {device_w}px; height: {container_height}px; border: none; 
+                           transform: scale({scale}); transform-origin: 0 0; display: block;"
                     sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
             </iframe>
         </div>
     </div>
     """
     
-    return html, container_height + 80
+    return html, display_h + 60
 
 def make_url_clickable(url):
     """Convert URL string to clickable hyperlink"""
