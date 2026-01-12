@@ -272,14 +272,23 @@ for key in ['data_a', 'data_b', 'selected_keyword', 'selected_domain', 'selected
 
 def load_csv_from_gdrive(file_id):
     try:
+        # Try as Google Sheets export
         url = f"https://docs.google.com/spreadsheets/d/{file_id}/export?format=csv"
         response = requests.get(url, timeout=30)
         if response.status_code != 200:
+            # Try direct download
             url = f"https://drive.google.com/uc?export=download&id={file_id}"
+            response = requests.get(url, timeout=30)
+        if response.status_code != 200:
+            # Try alternative direct download URL
+            url = f"https://drive.google.com/u/0/uc?id={file_id}&export=download"
             response = requests.get(url, timeout=30)
         response.raise_for_status()
         return pd.read_csv(StringIO(response.text), dtype=str)
-    except:
+    except Exception as e:
+        st.error(f"Error loading CSV: {str(e)}")
+        st.error(f"Status code: {response.status_code if 'response' in locals() else 'N/A'}")
+        st.error(f"File ID: {file_id}")
         return None
 
 def load_json_from_gdrive(file_id):
@@ -564,7 +573,7 @@ if not st.session_state.loading_done:
 
 st.title("📊 CPA Flow Analysis")
 
-if st.session_state.data_a is not None:
+if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
     df = st.session_state.data_a
     
     col1, col2 = st.columns(2)
@@ -1022,3 +1031,9 @@ if st.session_state.data_a is not None:
                     st.warning("No data found")
 else:
     st.error("❌ Could not load data")
+    st.info("""
+    **Troubleshooting:**
+    1. Make sure the Google Drive file is shared with "Anyone with the link can view"
+    2. Verify the file is a CSV or Google Sheet
+    3. Check that the file ID is correct: `1otRz-kxnlFvqFzCT_54gdxZ1kca1MIgK`
+    """)
