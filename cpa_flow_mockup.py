@@ -1242,18 +1242,53 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             # Display URL info
                             st.markdown(f"""
                             <div class="info-box">
-                                📍 <strong>Landing Page URL:</strong> {make_url_clickable(dest_url)}<br>
-                                <small>Loading page directly in iframe (some sites may block embedding)</small>
+                                📍 <strong>Landing Page URL:</strong> {make_url_clickable(dest_url)}
                             </div>
                             """, unsafe_allow_html=True)
                             
-                            # Render using iframe src (direct URL loading)
-                            try:
-                                preview_html, height = render_device_preview(dest_url, device2, use_url=True)
-                                st.components.v1.html(preview_html, height=height, scrolling=False)
-                            except Exception as e:
-                                st.error(f"⚠️ Could not render page in iframe. Site may block embedding.")
-                                st.info(f"💡 Visit directly: {make_url_clickable(dest_url)}")
+                            # Try to fetch and render the page
+                            with st.spinner("Loading landing page..."):
+                                try:
+                                    # Fetch page content
+                                    response = requests.get(dest_url, timeout=15, headers={
+                                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                                    }, allow_redirects=True)
+                                    
+                                    if response.status_code == 200:
+                                        final_url = response.url
+                                        
+                                        # Show if redirected
+                                        if final_url != dest_url:
+                                            st.info(f"⚠️ Page redirected to: {final_url}")
+                                        
+                                        # Get page HTML
+                                        page_html = response.text
+                                        
+                                        # Try to make URLs absolute so resources load correctly
+                                        from urllib.parse import urljoin
+                                        import re
+                                        
+                                        # Fix relative URLs for images, CSS, JS
+                                        page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
+                                                          lambda m: f'src="{urljoin(final_url, m.group(1))}"', page_html)
+                                        page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
+                                                          lambda m: f'href="{urljoin(final_url, m.group(1))}"', page_html)
+                                        
+                                        # Render with device preview (HTML content)
+                                        preview_html, height = render_device_preview(page_html, device2, use_url=False)
+                                        st.components.v1.html(preview_html, height=height, scrolling=False)
+                                        
+                                        st.caption("💡 Page fetched and rendered (some dynamic features may not work)")
+                                    else:
+                                        st.error(f"⚠️ Could not load page (HTTP {response.status_code})")
+                                        st.info(f"Visit directly: {make_url_clickable(dest_url)}")
+                                        
+                                except requests.exceptions.Timeout:
+                                    st.error("⚠️ Page took too long to load (timeout)")
+                                    st.info(f"Visit directly: {make_url_clickable(dest_url)}")
+                                except Exception as e:
+                                    st.error(f"⚠️ Could not load page: {str(e)}")
+                                    st.info(f"Visit directly: {make_url_clickable(dest_url)}")
                         else:
                             st.warning("⚠️ No landing page URL found")
                     
