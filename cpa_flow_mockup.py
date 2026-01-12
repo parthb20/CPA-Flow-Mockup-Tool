@@ -636,48 +636,187 @@ def generate_serp_mockup(flow_data, serp_templates):
     
     return ""
 
-def render_device_preview(content, device):
-    """Simple rendering for HTML content with accurate device dimensions"""
+def render_device_preview(content, device, use_url=False):
+    """Render HTML content or URL with realistic device UI chrome
+    
+    Args:
+        content: HTML content string or URL
+        device: 'mobile', 'tablet', or 'laptop'
+        use_url: If True, treats content as URL and uses iframe src instead of srcdoc
+    """
     # Real device dimensions to match actual devices
     if device == 'mobile':
         device_w = 390  # iPhone 14 Pro width
         container_height = 844  # iPhone 14 Pro height (tall portrait)
         frame_style = "border-radius: 40px; border: 10px solid #000000;"
         scale = 0.7  # Scale down to fit better
+        
+        # Mobile status bar and browser chrome
+        device_chrome = f"""
+        <!-- Status Bar -->
+        <div style="background: #000; color: white; padding: 6px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500;">
+            <div>9:41</div>
+            <div style="display: flex; gap: 4px; align-items: center;">
+                <span>📶</span>
+                <span>📡</span>
+                <span>🔋 100%</span>
+            </div>
+        </div>
+        <!-- Browser Bar -->
+        <div style="background: #f7f7f7; border-bottom: 1px solid #d1d1d1; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
+            <div style="flex: 1; background: white; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; border: 1px solid #e0e0e0;">
+                <span style="font-size: 16px;">🔒</span>
+                <span style="color: #666; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">beenverified.com</span>
+                <span style="font-size: 16px;">🔄</span>
+            </div>
+        </div>
+        """
+        
+        bottom_nav = """
+        <!-- Bottom Navigation -->
+        <div style="position: absolute; bottom: 0; left: 0; right: 0; background: #f7f7f7; border-top: 1px solid #d1d1d1; padding: 8px; display: flex; justify-content: space-around; align-items: center;">
+            <div style="text-align: center; font-size: 20px;">◀️</div>
+            <div style="text-align: center; font-size: 20px;">▶️</div>
+            <div style="text-align: center; font-size: 20px;">↻</div>
+            <div style="text-align: center; font-size: 20px;">⊞</div>
+        </div>
+        """
+        
     elif device == 'tablet':
         device_w = 820  # iPad Air width
         container_height = 1180  # iPad Air height (portrait mode)
         frame_style = "border-radius: 16px; border: 12px solid #1f2937;"
         scale = 0.5  # Scale down to fit
+        
+        # Tablet UI chrome
+        device_chrome = f"""
+        <!-- Status Bar -->
+        <div style="background: #000; color: white; padding: 8px 24px; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 500;">
+            <div style="display: flex; gap: 12px;">
+                <span>9:41 AM</span>
+                <span>Wed Jan 12</span>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <span>📶</span>
+                <span>📡</span>
+                <span>🔋 100%</span>
+            </div>
+        </div>
+        <!-- Browser Bar -->
+        <div style="background: #f0f0f0; border-bottom: 1px solid #d0d0d0; padding: 12px 16px; display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 20px;">◀️</span>
+            <span style="font-size: 20px;">▶️</span>
+            <span style="font-size: 20px;">↻</span>
+            <div style="flex: 1; background: white; border-radius: 10px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; border: 1px solid #e0e0e0;">
+                <span style="font-size: 18px;">🔒</span>
+                <span style="color: #666; font-size: 15px; flex: 1;">beenverified.com</span>
+            </div>
+            <span style="font-size: 20px;">⊞</span>
+            <span style="font-size: 20px;">⋮</span>
+        </div>
+        """
+        
+        bottom_nav = ""
+        
     else:  # laptop
         device_w = 1440  # Standard laptop width
         container_height = 900  # Standard laptop height (16:10)
         frame_style = "border-radius: 8px; border: 6px solid #374151;"
         scale = 0.5  # Scale down to fit
-    
-    if '<meta name="viewport"' not in content:
-        viewport = f'<meta name="viewport" content="width={device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">'
-        if '<head>' in content:
-            content = content.replace('<head>', f'<head>{viewport}', 1)
-        else:
-            content = f'<head>{viewport}</head>' + content
-    
-    escaped = content.replace("'", "&apos;").replace('"', '&quot;')
+        
+        # Laptop browser chrome
+        device_chrome = f"""
+        <!-- Browser Window Chrome -->
+        <div style="background: #e8e8e8; padding: 12px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #d0d0d0;">
+            <div style="display: flex; gap: 8px;">
+                <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f57;"></div>
+                <div style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e;"></div>
+                <div style="width: 12px; height: 12px; border-radius: 50%; background: #28c840;"></div>
+            </div>
+            <span style="font-size: 18px; margin-left: 8px;">◀️</span>
+            <span style="font-size: 18px;">▶️</span>
+            <span style="font-size: 18px; margin-right: 8px;">↻</span>
+            <div style="flex: 1; background: white; border-radius: 6px; padding: 8px 16px; display: flex; align-items: center; gap: 12px; border: 1px solid #d0d0d0;">
+                <span style="font-size: 16px;">🔒</span>
+                <span style="color: #333; font-size: 14px; flex: 1;">https://beenverified.com</span>
+                <span style="font-size: 16px;">⭐</span>
+            </div>
+            <span style="font-size: 18px; margin-left: 8px;">⊞</span>
+            <span style="font-size: 18px;">⋮</span>
+        </div>
+        """
+        
+        bottom_nav = ""
     
     # Calculate scaled dimensions for display
     display_w = int(device_w * scale)
     display_h = int(container_height * scale)
+    
+    if use_url:
+        # Use iframe src for direct URL loading (for landing pages)
+        iframe_tag = f'<iframe src="{content}" style="width: 100%; height: 100%; border: none;"></iframe>'
+        
+        # Create device wrapper with chrome
+        full_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta name="viewport" content="width={device_w}, initial-scale=1.0">
+            <style>
+                body {{ margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }}
+                .device-chrome {{ width: 100%; background: white; position: fixed; top: 0; left: 0; right: 0; z-index: 100; }}
+                .content-area {{ position: absolute; top: {'90px' if device == 'mobile' else '60px' if device == 'tablet' else '52px'}; bottom: {'50px' if device == 'mobile' else '0'}; left: 0; right: 0; }}
+                .bottom-nav {{ position: fixed; bottom: 0; left: 0; right: 0; background: #f7f7f7; border-top: 1px solid #d1d1d1; padding: 8px; display: flex; justify-content: space-around; z-index: 100; }}
+            </style>
+        </head>
+        <body>
+            <div class="device-chrome">
+                {device_chrome}
+            </div>
+            <div class="content-area">
+                {iframe_tag}
+            </div>
+            {f'<div class="bottom-nav">{bottom_nav}</div>' if device == 'mobile' else ''}
+        </body>
+        </html>
+        """
+    else:
+        # Use srcdoc for HTML content (for SERP)
+        full_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta name="viewport" content="width={device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+            <style>
+                body {{ margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }}
+                .device-chrome {{ width: 100%; background: white; }}
+                .content-area {{ height: calc(100vh - {'90px' if device == 'mobile' else '60px' if device == 'tablet' else '52px'}); overflow-y: auto; }}
+            </style>
+        </head>
+        <body>
+            <div class="device-chrome">
+                {device_chrome}
+            </div>
+            <div class="content-area">
+                {content}
+            </div>
+            {bottom_nav if device == 'mobile' else ''}
+        </body>
+        </html>
+        """
+    
+    escaped = full_content.replace("'", "&apos;").replace('"', '&quot;')
     
     html = f"""
     <div style="display: flex; justify-content: center; align-items: center; padding: 20px; 
                 background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); 
                 border-radius: 12px; min-height: {display_h + 40}px;">
         <div style="width: {display_w}px; height: {display_h}px; 
-                    {frame_style} overflow: hidden; background: white;
+                    {frame_style} overflow: hidden; background: #000;
                     box-shadow: 0 10px 40px rgba(0,0,0,0.2); position: relative;">
             <iframe srcdoc='{escaped}' 
                     style="width: {device_w}px; height: {container_height}px; border: none; 
-                           transform: scale({scale}); transform-origin: 0 0; display: block;"
+                           transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"
                     sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
             </iframe>
         </div>
@@ -1100,37 +1239,21 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         dest_url = current_flow.get('reporting_destination_url', '')
                         
                         if dest_url and pd.notna(dest_url) and str(dest_url).lower() != 'null':
-                            with st.spinner("Loading page..."):
-                                try:
-                                    response = requests.get(dest_url, timeout=15, headers={
-                                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                                    }, allow_redirects=True)
-                                    
-                                    final_url = response.url
-                                    
-                                    if final_url != dest_url:
-                                        st.markdown(f"""
-                                        <div class="info-box">
-                                            📍 <strong>Original:</strong> {make_url_clickable(dest_url)}<br>
-                                            ⚠️ <strong>Redirected:</strong> {make_url_clickable(final_url)}
-                                        </div>
-                                        """, unsafe_allow_html=True)
-                                    else:
-                                        st.markdown(f"""
-                                        <div class="info-box">
-                                            📍 <strong>URL:</strong> {make_url_clickable(final_url)}
-                                        </div>
-                                        """, unsafe_allow_html=True)
-                                    
-                                    if response.status_code == 200:
-                                        landing_html = response.text
-                                        preview_html, height = render_device_preview(landing_html, device2)
-                                        st.components.v1.html(preview_html, height=height, scrolling=False)
-                                    else:
-                                        st.error(f"⚠️ Could not load page (Error: {response.status_code})")
-                                except Exception as e:
-                                    st.error(f"⚠️ Could not load page: {str(e)}")
-                                    st.markdown(f"Try: {make_url_clickable(dest_url)}", unsafe_allow_html=True)
+                            # Display URL info
+                            st.markdown(f"""
+                            <div class="info-box">
+                                📍 <strong>Landing Page URL:</strong> {make_url_clickable(dest_url)}<br>
+                                <small>Loading page directly in iframe (some sites may block embedding)</small>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            # Render using iframe src (direct URL loading)
+                            try:
+                                preview_html, height = render_device_preview(dest_url, device2, use_url=True)
+                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                            except Exception as e:
+                                st.error(f"⚠️ Could not render page in iframe. Site may block embedding.")
+                                st.info(f"💡 Visit directly: {make_url_clickable(dest_url)}")
                         else:
                             st.warning("⚠️ No landing page URL found")
                     
