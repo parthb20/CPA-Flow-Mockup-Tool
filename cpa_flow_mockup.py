@@ -233,22 +233,46 @@ for key in ['data_a', 'loading_done', 'default_flow', 'current_flow', 'view_mode
 def load_csv_from_gdrive(file_id):
     """Load CSV from Google Drive - handles CSV, ZIP, and GZIP files"""
     try:
-        # Skip Google Sheets export - go straight to file download
-        url = f"https://drive.google.com/uc?export=download&id={file_id}"
-        response = requests.get(url, timeout=30)
+        # Try multiple download URLs
+        urls_to_try = [
+            f"https://drive.google.com/uc?export=download&id={file_id}",
+            f"https://drive.google.com/u/0/uc?id={file_id}&export=download",
+            f"https://docs.google.com/uc?export=download&id={file_id}",
+        ]
         
-        if response.status_code != 200:
-            url = f"https://drive.google.com/u/0/uc?id={file_id}&export=download"
-            response = requests.get(url, timeout=30)
+        response = None
+        for url in urls_to_try:
+            st.caption(f"🔄 Trying: {url[:60]}...")
+            response = requests.get(url, timeout=30, allow_redirects=True)
+            if response.status_code == 200:
+                # Check if it's actually file content (not HTML error page)
+                content = response.content
+                if not content.startswith(b'<!DOCTYPE') and not content.startswith(b'<html'):
+                    st.success(f"✅ Downloaded from URL")
+                    break
+            time.sleep(0.5)
         
-        response.raise_for_status()
+        if response is None or response.status_code != 200:
+            st.error("❌ All download URLs failed")
+            return None
         
         # Get content
         content = response.content
         
-        # Debug: Show first few bytes
-        st.caption(f"🔍 File signature: {content[:4].hex()} (first 4 bytes)")
+        # Debug: Show first few bytes and interpret
+        signature_hex = content[:4].hex()
+        signature_ascii = ''.join([chr(b) if 32 <= b < 127 else '.' for b in content[:10]])
+        
+        st.caption(f"🔍 File signature: {signature_hex} (hex)")
+        st.caption(f"🔍 First bytes as text: {signature_ascii}")
         st.caption(f"📦 Content size: {len(content):,} bytes")
+        
+        # Check if Google Drive returned HTML error page
+        if content.startswith(b'<!DOCTYPE') or content.startswith(b'<html') or b'<title>Google Drive' in content[:1000]:
+            st.error("❌ Google Drive returned an HTML page instead of file!")
+            st.error("🔧 **Fix**: Make sure file is shared with 'Anyone with the link can view'")
+            st.code(content[:500].decode('utf-8', errors='ignore'), language='html')
+            return None
         
         # Check file type by magic bytes
         # GZIP: 1f 8b
