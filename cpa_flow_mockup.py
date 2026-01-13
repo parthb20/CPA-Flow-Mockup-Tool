@@ -4,22 +4,24 @@ import plotly.graph_objects as go
 import requests
 from bs4 import BeautifulSoup
 import json
-from urllib.parse import urlparse, quote
+from urllib.parse import urlparse, quote, urljoin
 import re
-from io import StringIO
+from io import StringIO, BytesIO
 import time
 import base64
+import html
+import zipfile
+import gzip
 
 # Page config
-st.set_page_config(page_title="CPA Flow Analysis", page_icon="📊", layout="wide")
+st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊", layout="wide")
 
-# Custom CSS - COMPLETE LIGHT MODE
+# Custom CSS
 st.markdown("""
     <style>
     /* Background */
     .main { background-color: #f8fafc !important; }
     .stApp { background-color: #f8fafc !important; }
-    [data-testid="stSidebar"] { display: none; }
     
     /* Force light backgrounds everywhere */
     [data-testid="stExpander"],
@@ -44,77 +46,8 @@ st.markdown("""
     [data-baseweb="select"] { background-color: white !important; }
     [data-baseweb="select"] > div { background-color: white !important; border-color: #cbd5e1 !important; }
     [data-baseweb="select"] * { color: #0f172a !important; font-weight: 500 !important; font-size: 16px !important; }
-    [role="listbox"] { background-color: white !important; }
-    [role="option"] { background-color: white !important; color: #0f172a !important; }
-    [role="option"]:hover { background-color: #f1f5f9 !important; }
-    [role="option"][aria-selected="true"] { background-color: #e0f2fe !important; color: #0369a1 !important; }
     
-    /* Input fields */
-    input, textarea, select {
-        background-color: white !important;
-        color: #0f172a !important;
-        border-color: #cbd5e1 !important;
-        font-weight: 500 !important;
-        font-size: 16px !important;
-    }
-    
-    /* Buttons */
-    .stButton > button {
-        background-color: white !important;
-        color: #0f172a !important;
-        border: 1px solid #cbd5e1 !important;
-        font-weight: 600 !important;
-        font-size: 16px !important;
-    }
-    .stButton > button:hover {
-        background-color: #f1f5f9 !important;
-        border-color: #94a3b8 !important;
-    }
-    .stButton > button[kind="primary"],
-    .stButton > button[data-testid="baseButton-primary"] {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-        color: white !important;
-        border: none !important;
-        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3) !important;
-    }
-    .stButton > button[kind="primary"]:hover,
-    .stButton > button[data-testid="baseButton-primary"]:hover {
-        background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4) !important;
-    }
-    .stButton > button[kind="secondary"],
-    .stButton > button[data-testid="baseButton-secondary"] {
-        background: white !important;
-        color: #64748b !important;
-        border: 2px solid #e2e8f0 !important;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
-    }
-    .stButton > button[kind="secondary"]:hover,
-    .stButton > button[data-testid="baseButton-secondary"]:hover {
-        background: #f8fafc !important;
-        color: #0f172a !important;
-        border-color: #cbd5e1 !important;
-    }
-    
-    /* Checkbox-style buttons */
-    .checkbox-btn {
-        width: 24px !important;
-        height: 24px !important;
-        min-width: 24px !important;
-        padding: 0 !important;
-        border-radius: 3px !important;
-        font-size: 14px !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-    }
-    
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] { background-color: white !important; border-bottom: 2px solid #e2e8f0 !important; }
-    .stTabs [data-baseweb="tab"] { color: #475569 !important; background-color: white !important; font-weight: 600 !important; }
-    .stTabs [aria-selected="true"] { color: #3b82f6 !important; border-bottom-color: #3b82f6 !important; font-weight: 700 !important; }
-    
-    /* Metrics - COLORED BOXES */
+    /* Metrics */
     [data-testid="stMetric"] {
         background: white;
         padding: 16px;
@@ -157,70 +90,87 @@ st.markdown("""
         background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
     }
     
-    /* Expander */
-    [data-testid="stExpander"] {
-        background-color: white !important;
-        border: 1px solid #e2e8f0 !important;
-        border-radius: 6px !important;
-    }
-    [data-testid="stExpander"] details {
-        background-color: white !important;
-    }
-    [data-testid="stExpander"] summary {
-        background-color: white !important;
-        color: #0f172a !important;
-        font-weight: 600 !important;
-        padding: 12px 16px !important;
-    }
-    [data-testid="stExpander"] summary:hover {
-        background-color: #f8fafc !important;
-    }
-    .streamlit-expanderHeader {
-        background-color: white !important;
-        color: #0f172a !important;
-        border: 1px solid #e2e8f0 !important;
-        font-weight: 600 !important;
-    }
-    .streamlit-expanderHeader:hover {
-        background-color: #f8fafc !important;
-    }
-    .streamlit-expanderContent {
-        background-color: white !important;
-        color: #0f172a !important;
-        border: 1px solid #e2e8f0 !important;
-        border-top: none !important;
-        padding: 12px !important;
-    }
-    .streamlit-expanderContent * { 
-        color: #0f172a !important; 
-        background-color: transparent !important;
-    }
-    .streamlit-expanderContent [data-testid="stMetricLabel"] { color: #64748b !important; }
-    .streamlit-expanderContent [data-testid="stMetricValue"] { color: #0f172a !important; }
-    
-    /* Radio buttons */
-    .stRadio > label { color: #0f172a !important; font-weight: 600 !important; }
-    .stRadio [role="radiogroup"] label {
-        color: #0f172a !important;
-        background-color: white !important;
-        border: 1px solid #cbd5e1 !important;
-        padding: 10px 18px;
-        border-radius: 6px;
-        font-weight: 600 !important;
-    }
-    .stRadio [role="radiogroup"] label:hover {
-        background-color: #f1f5f9 !important;
-        border-color: #94a3b8 !important;
+    /* Flow Card */
+    .flow-card {
+        background: white;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 20px;
+        margin: 10px 0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     
-    /* Divider */
-    hr { border-color: #e2e8f0 !important; }
+    .stage-card {
+        background: white;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        height: 100%;
+        transition: all 0.3s ease;
+    }
     
+    .stage-card:hover {
+        box-shadow: 0 6px 16px rgba(59, 130, 246, 0.15);
+        border-color: #3b82f6;
+    }
+    
+    .stage-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    
+    .flow-stage {
+        text-align: center;
+        padding: 16px;
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border: 2px solid #3b82f6;
+        border-radius: 8px;
+        margin: 0 10px;
+    }
+    
+    .flow-arrow {
+        font-size: 32px;
+        color: #3b82f6;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 5px;
+    }
+    
+    .similarity-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        border: 2px solid #e2e8f0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .score-box {
+        display: inline-block;
+        padding: 16px 24px;
+        border-radius: 10px;
+        border: 3px solid;
+        font-size: 42px;
+        font-weight: 700;
+        margin: 15px 0;
+    }
+    
+    .score-excellent { border-color: #22c55e; background: linear-gradient(135deg, #22c55e15, #22c55e08); color: #22c55e; }
+    .score-good { border-color: #3b82f6; background: linear-gradient(135deg, #3b82f615, #3b82f608); color: #3b82f6; }
+    .score-moderate { border-color: #eab308; background: linear-gradient(135deg, #eab30815, #eab30808); color: #eab308; }
+    .score-weak { border-color: #f97316; background: linear-gradient(135deg, #f9731615, #f9731608); color: #f97316; }
+    .score-poor { border-color: #ef4444; background: linear-gradient(135deg, #ef444415, #ef444408); color: #ef4444; }
     
     .info-box {
         background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-        padding: 18px; 
-        border-radius: 8px; 
+        padding: 18px;
+        border-radius: 8px;
         border: 1px solid #bae6fd;
         border-left: 4px solid #3b82f6;
         margin: 15px 0;
@@ -234,76 +184,11 @@ st.markdown("""
         color: #0f172a !important;
         background: transparent !important;
     }
-    .info-box a {
-        color: #3b82f6;
-        text-decoration: underline;
-        font-weight: 600;
-    }
-    .info-box a:hover { color: #2563eb; }
-    .info-label { 
-        font-weight: 700; 
-        color: #3b82f6;
-        font-size: 16px;
-    }
-    
-    /* Table with visible boundaries */
-    .table-header {
-        display: flex;
-        padding: 14px 8px;
-        font-weight: 700;
-        font-size: 15px;
-        color: #0f172a;
-        background: #f1f5f9;
-        border-radius: 8px 8px 0 0;
-        border: 2px solid #cbd5e1;
-        border-bottom: 3px solid #94a3b8;
-    }
-    .table-row {
-        border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        margin: 6px 0;
-        padding: 8px;
-        background: white;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-    }
-    
-    .flow-diagram {
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        border: 2px solid #cbd5e1;
-        margin: 15px 0;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 10px;
-    }
-    .flow-step {
-        background: #f1f5f9;
-        padding: 12px 16px;
-        border-radius: 6px;
-        border: 2px solid #cbd5e1;
-        font-weight: 600;
-        color: #0f172a;
-        text-align: center;
-        flex: 1;
-        min-width: 120px;
-    }
-    .flow-arrow {
-        font-size: 24px;
-        color: #3b82f6;
-        font-weight: 700;
-    }
-    
-    .stSpinner > div { border-top-color: #3b82f6 !important; }
-    .stCaptionContainer { color: #475569 !important; font-weight: 500 !important; }
     </style>
 """, unsafe_allow_html=True)
 
 # Config
-FILE_A_ID = "1BKBE7zW9LWtaReBrft0l-zTo62GSPHQB"
-FILE_B_ID = "1QpQhZhXFFpQWm_xhVGDjdpgRM3VMv57L"
+FILE_A_ID = "1gfBzP2S2PdpyeGMw7DBWra2kA4ApuYUI"  # Main data file (CSV/ZIP/GZ)
 
 try:
     API_KEY = st.secrets.get("FASTROUTER_API_KEY", st.secrets.get("OPENAI_API_KEY", "")).strip()
@@ -311,53 +196,80 @@ except Exception as e:
     API_KEY = ""
 
 # Session state
-for key in ['data_a', 'data_b', 'selected_keyword', 'selected_domain', 'selected_url', 'flows', 
-            'flow_index', 'similarities', 'loading_done', 'screenshot_cache']:
+for key in ['data_a', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'similarities']:
     if key not in st.session_state:
-        if key == 'flows':
-            st.session_state[key] = []
-        elif key == 'flow_index':
-            st.session_state[key] = 0
-        elif key == 'loading_done':
-            st.session_state[key] = False
-        elif key == 'screenshot_cache':
-            st.session_state[key] = {}
+        if key == 'view_mode':
+            st.session_state[key] = 'basic'
+        elif key == 'flow_layout':
+            st.session_state[key] = 'horizontal'
         else:
             st.session_state[key] = None
 
 def load_csv_from_gdrive(file_id):
+    """Load CSV from Google Drive - handles CSV, ZIP, and GZIP files"""
     try:
-        # Try as Google Sheets export
+        # Try as Google Sheets export first
         url = f"https://docs.google.com/spreadsheets/d/{file_id}/export?format=csv"
         response = requests.get(url, timeout=30)
         if response.status_code != 200:
-            # Try direct download
             url = f"https://drive.google.com/uc?export=download&id={file_id}"
             response = requests.get(url, timeout=30)
         if response.status_code != 200:
-            # Try alternative direct download URL
             url = f"https://drive.google.com/u/0/uc?id={file_id}&export=download"
             response = requests.get(url, timeout=30)
         response.raise_for_status()
-        return pd.read_csv(StringIO(response.text), dtype=str)
+        
+        # Check file type by magic bytes
+        content = response.content
+        
+        # Check if it's a GZIP file (magic bytes: 1f 8b)
+        if content[:2] == b'\x1f\x8b':
+            st.info("📦 Detected GZIP file (.gz) - decompressing...")
+            try:
+                # Decompress GZIP
+                with gzip.open(BytesIO(content), 'rb') as gz_file:
+                    decompressed = gz_file.read()
+                
+                st.success("✅ GZIP decompressed successfully")
+                # Read as CSV
+                return pd.read_csv(BytesIO(decompressed), dtype=str)
+            except Exception as e:
+                st.error(f"❌ Error decompressing GZIP: {str(e)}")
+                return None
+        
+        # Check if it's a ZIP file (magic bytes: PK)
+        elif content[:2] == b'PK':
+            st.info("📦 Detected ZIP file - extracting...")
+            with zipfile.ZipFile(BytesIO(content)) as zip_file:
+                # List all files in zip
+                file_list = zip_file.namelist()
+                st.caption(f"Found files: {', '.join(file_list)}")
+                
+                # Find CSV file (first .csv file)
+                csv_file = None
+                for filename in file_list:
+                    if filename.lower().endswith('.csv'):
+                        csv_file = filename
+                        break
+                
+                if csv_file:
+                    st.success(f"✅ Extracting: {csv_file}")
+                    # Extract and read CSV
+                    csv_content = zip_file.read(csv_file)
+                    return pd.read_csv(BytesIO(csv_content), dtype=str)
+                else:
+                    st.error("❌ No CSV file found in ZIP")
+                    return None
+        else:
+            # It's a direct CSV file
+            st.info("📄 Loading CSV file...")
+            return pd.read_csv(StringIO(response.text), dtype=str)
+            
     except Exception as e:
-        st.error(f"Error loading CSV: {str(e)}")
-        st.error(f"Status code: {response.status_code if 'response' in locals() else 'N/A'}")
-        st.error(f"File ID: {file_id}")
+        st.error(f"❌ Error loading data: {str(e)}")
+        st.info("💡 Make sure the file is shared with 'Anyone with the link'")
         return None
 
-def load_json_from_gdrive(file_id):
-    try:
-        url = f"https://drive.google.com/uc?export=download&id={file_id}"
-        response = requests.get(url, timeout=30)
-        response.raise_for_status()
-        data = response.json()
-        if isinstance(data, dict):
-            data = [data]
-        return data
-    except Exception as e:
-        st.error(f"Error loading SERP templates: {str(e)}")
-        return None
 
 def safe_float(value, default=0.0):
     try:
@@ -371,74 +283,58 @@ def safe_int(value, default=0):
     except:
         return default
 
-def calculate_metrics(df):
-    df['impressions'] = df['impressions'].apply(safe_float)
-    df['clicks'] = df['clicks'].apply(safe_float)
-    df['conversions'] = df['conversions'].apply(safe_float)
-    df['ctr'] = df.apply(lambda x: (x['clicks'] / x['impressions'] * 100) if x['impressions'] > 0 else 0, axis=1)
-    df['cvr'] = df.apply(lambda x: (x['conversions'] / x['clicks'] * 100) if x['clicks'] > 0 else 0, axis=1)
-    return df
-
-def calculate_campaign_averages(df):
-    total_impressions = df['impressions'].sum()
-    total_clicks = df['clicks'].sum()
-    total_conversions = df['conversions'].sum()
-    avg_ctr = (total_clicks / total_impressions * 100) if total_impressions > 0 else 0
-    avg_cvr = (total_conversions / total_clicks * 100) if total_clicks > 0 else 0
-    return avg_ctr, avg_cvr
-
-def get_quadrant(ctr, cvr, avg_ctr, avg_cvr):
-    if ctr >= avg_ctr and cvr >= avg_cvr:
-        return 'High Performing', '#22c55e'
-    elif ctr >= avg_ctr and cvr < avg_cvr:
-        return 'Low CVR', '#eab308'
-    elif ctr < avg_ctr and cvr >= avg_cvr:
-        return 'Niche', '#3b82f6'
-    else:
-        return 'Underperforming', '#ef4444'
-
 def call_similarity_api(prompt):
+    """Call FastRouter API for similarity scoring"""
     if not API_KEY:
         return {
             "error": True,
             "status_code": "no_api_key",
             "body": "FASTROUTER_API_KEY not found in Streamlit secrets"
         }
-    response = requests.post(
-        "https://go.fastrouter.ai/api/v1/chat/completions",
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {API_KEY}"
-        },
-        json={
-            "model": "anthropic/claude-sonnet-4-20250514",
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.3,
-            "max_tokens": 1000
-        },
-        timeout=30
-    )
-
-    if response.status_code != 200:
-        return {
-            "error": True,
-            "status_code": response.status_code,
-            "body": response.text
-        }
-
-    raw = response.json()['choices'][0]['message']['content']
-
+    
     try:
-        match = re.search(r'\{[\s\S]*\}', raw)
-        return json.loads(match.group())
-    except:
+        response = requests.post(
+            "https://go.fastrouter.ai/api/v1/chat/completions",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {API_KEY}"
+            },
+            json={
+                "model": "anthropic/claude-sonnet-4-20250514",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.3,
+                "max_tokens": 1000
+            },
+            timeout=30
+        )
+
+        if response.status_code != 200:
+            return {
+                "error": True,
+                "status_code": response.status_code,
+                "body": response.text
+            }
+
+        raw = response.json()['choices'][0]['message']['content']
+
+        try:
+            match = re.search(r'\{[\s\S]*\}', raw)
+            return json.loads(match.group())
+        except:
+            return {
+                "error": True,
+                "status_code": "bad_json",
+                "body": raw[:500]
+            }
+    except Exception as e:
         return {
             "error": True,
-            "status_code": "bad_json",
-            "body": raw[:500]
+            "status_code": "api_error",
+            "body": str(e)
         }
 
 def fetch_page_content(url):
+    """Fetch page content for similarity analysis"""
     if not url or pd.isna(url) or str(url).lower() == 'null':
         return ""
     try:
@@ -451,6 +347,7 @@ def fetch_page_content(url):
         return ""
 
 def calculate_similarities(flow_data):
+    """Calculate all three similarity scores"""
     keyword = flow_data.get('keyword_term', '')
     ad_title = flow_data.get('ad_title', '')
     ad_desc = flow_data.get('ad_description', '')
@@ -553,180 +450,168 @@ Formula: 0.40×T + 0.60×U"""
     
     return results
 
-def get_similarity_label(score):
-    """Convert score to simple label with range"""
+def get_score_class(score):
+    """Get CSS class based on score"""
     if score >= 0.8:
-        return "Excellent Match (0.8-1.0)", "#22c55e"
+        return "score-excellent", "Excellent", "#22c55e"
     elif score >= 0.6:
-        return "Good Match (0.6-0.8)", "#3b82f6"
+        return "score-good", "Good", "#3b82f6"
     elif score >= 0.4:
-        return "Moderate Match (0.4-0.6)", "#eab308"
+        return "score-moderate", "Moderate", "#eab308"
     elif score >= 0.2:
-        return "Weak Match (0.2-0.4)", "#f97316"
+        return "score-weak", "Weak", "#f97316"
     else:
-        return "Poor Match (0.0-0.2)", "#ef4444"
+        return "score-poor", "Poor", "#ef4444"
 
-def render_similarity_card(title, data, explanation, calculation_details):
-    if not data:
-        st.error(f"{title}: API Error")
-        return
-    
-    if "error" in data:
-        if data.get("status_code") == "no_api_key":
-            st.error(f"{title}: Add FASTROUTER_API_KEY to secrets")
+def find_default_flow(df):
+    """Find the best performing flow based on conversions and recency"""
+    try:
+        # Convert numeric columns
+        df['conversions'] = df['conversions'].apply(safe_float)
+        df['impressions'] = df['impressions'].apply(safe_float)
+        df['clicks'] = df['clicks'].apply(safe_float)
+        
+        # Ensure ts is datetime
+        if 'ts' in df.columns:
+            df['ts'] = pd.to_datetime(df['ts'], errors='coerce')
+        
+        # Get domain from publisher_url or Serp_URl if publisher_domain doesn't exist
+        if 'publisher_domain' not in df.columns:
+            if 'publisher_url' in df.columns:
+                df['publisher_domain'] = df['publisher_url'].apply(lambda x: urlparse(str(x)).netloc if pd.notna(x) else '')
+            elif 'Serp_URl' in df.columns:
+                df['publisher_domain'] = df['Serp_URl'].apply(lambda x: urlparse(str(x)).netloc if pd.notna(x) else '')
+        
+        # Step 1: Find keyword_domain combination with most conversions
+        if 'publisher_domain' in df.columns:
+            kwd_domain_conv = df.groupby(['keyword_term', 'publisher_domain'])['conversions'].sum().reset_index()
+            best_kwd_domain = kwd_domain_conv.nlargest(1, 'conversions').iloc[0]
+            
+            # Filter to this combination
+            filtered = df[
+                (df['keyword_term'] == best_kwd_domain['keyword_term']) &
+                (df['publisher_domain'] == best_kwd_domain['publisher_domain'])
+            ]
         else:
-            st.error(f"{title}: API failed")
-            st.code({
-                "status_code": data.get("status_code"),
-                "body": data.get("body")
-            })
-            return
+            # Fallback: just use keyword
+            kwd_conv = df.groupby('keyword_term')['conversions'].sum().reset_index()
+            best_kw = kwd_conv.nlargest(1, 'conversions').iloc[0]['keyword_term']
+            filtered = df[df['keyword_term'] == best_kw]
+        
+        # Step 2: Find SERP template with most conversions
+        if 'serp_template_name' in filtered.columns:
+            serp_conv = filtered.groupby('serp_template_name')['conversions'].sum().reset_index()
+            best_serp = serp_conv.nlargest(1, 'conversions').iloc[0]['serp_template_name']
+            filtered = filtered[filtered['serp_template_name'] == best_serp]
+        elif 'serp_template_id' in filtered.columns:
+            serp_conv = filtered.groupby('serp_template_id')['conversions'].sum().reset_index()
+            best_serp = serp_conv.nlargest(1, 'conversions').iloc[0]['serp_template_id']
+            filtered = filtered[filtered['serp_template_id'] == best_serp]
+        
+        # Step 3: Find publisher_url with most conversions
+        if 'publisher_url' in filtered.columns:
+            url_conv = filtered.groupby('publisher_url')['conversions'].sum().reset_index()
+            best_url = url_conv.nlargest(1, 'conversions').iloc[0]['publisher_url']
+            filtered = filtered[filtered['publisher_url'] == best_url]
+        
+        # Step 4: Get most recent view_id (MAX(ts))
+        if 'ts' in filtered.columns:
+            best_flow = filtered.nlargest(1, 'ts').iloc[0]
+        else:
+            best_flow = filtered.iloc[0]
+        
+        return best_flow.to_dict()
     
-    score = data.get('final_score', 0)
-    reason = data.get('reason', 'N/A')
-    
-    label, color = get_similarity_label(score)
-    
-    with st.expander("📊 How This Score Is Calculated", expanded=False):
-        st.markdown(calculation_details, unsafe_allow_html=True)
-    
-    st.markdown(f"""
-    <div style="margin: 20px 0;">
-        <h3 style="margin:0 0 16px 0; color: #0f172a; font-size: 20px; font-weight: 700;">{title}</h3>
-        <div style="display: inline-block; padding: 16px 24px; border-radius: 8px; border: 3px solid {color}; background: linear-gradient(135deg, {color}15, {color}08);">
-            <div style="font-size: 48px; font-weight: 700; color: {color}; line-height: 1;">{score:.1%}</div>
-        </div>
-        <p style="margin: 12px 0 4px 0; color: {color}; font-size: 16px; font-weight: 700;">{label}</p>
-        <p style="margin: 8px 0 0 0; color: #475569; font-size: 14px; font-weight: 500; max-width: 600px;">{reason}</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    with st.expander("📊 View Detailed Score Breakdown"):
-        for key, value in data.items():
-            if key not in ['final_score', 'band', 'reason'] and isinstance(value, (int, float)):
-                st.metric(key.replace('_', ' ').title(), f"{value:.1%}")
-            elif key not in ['final_score', 'band', 'reason']:
-                st.caption(f"**{key.replace('_', ' ').title()}:** {value}")
+    except Exception as e:
+        st.error(f"Error finding default flow: {str(e)}")
+        return None
 
-def generate_serp_mockup(flow_data, serp_templates):
-    """Generate SERP HTML"""
-    keyword = flow_data.get('keyword_term', 'N/A')
-    ad_title = flow_data.get('ad_title', 'N/A')
-    ad_desc = flow_data.get('ad_description', 'N/A')
-    ad_url = flow_data.get('ad_display_url', 'N/A')
-    
-    if serp_templates and len(serp_templates) > 0:
-        try:
-            html = serp_templates[0].get('code', '')
-            
-            html = html.replace('min-device-width', 'min-width')
-            html = html.replace('max-device-width', 'max-width')
-            html = html.replace('min-device-height', 'min-height')
-            html = html.replace('max-device-height', 'max-height')
-            html = re.sub(r'min-height\s*:\s*calc\(100[sv][vh]h?[^)]*\)\s*;?', '', html, flags=re.IGNORECASE)
-            
-            html = re.sub(r'Sponsored results for:\s*"[^"]*"', f'Sponsored results for: "{keyword}"', html)
-            html = re.sub(r'(<div class="url">)[^<]*(</div>)', f'\\1{ad_url}\\2', html, count=1)
-            html = re.sub(r'(<div class="title">)[^<]*(</div>)', f'\\1{ad_title}\\2', html, count=1)
-            html = re.sub(r'(<div class="desc">)[^<]*(</div>)', f'\\1{ad_desc}\\2', html, count=1)
-            
-            return html
-        except Exception as e:
-            st.error(f"Error: {str(e)}")
-    
-    return ""
-
-def render_device_preview(content, device, use_url=False):
-    """Render HTML content or URL with realistic device UI chrome
+def render_mini_device_preview(content, is_url=False, device='mobile'):
+    """Render device preview with realistic chrome for mobile/tablet/laptop
     
     Args:
-        content: HTML content string or URL
+        content: URL or HTML content
+        is_url: If True, tries iframe src first
         device: 'mobile', 'tablet', or 'laptop'
-        use_url: If True, treats content as URL and uses iframe src instead of srcdoc
     """
-    # Real device dimensions to match actual devices
+    # Real device dimensions
     if device == 'mobile':
-        device_w = 390  # iPhone 14 Pro width
-        container_height = 844  # iPhone 14 Pro height (tall portrait)
+        device_w = 390
+        container_height = 844
+        scale = 0.35
         frame_style = "border-radius: 40px; border: 10px solid #000000;"
-        scale = 0.7  # Scale down to fit better
         
-        # Mobile status bar and browser chrome
-        device_chrome = f"""
-        <!-- Status Bar -->
+        # Mobile chrome
+        device_chrome = """
         <div style="background: #000; color: white; padding: 6px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500;">
             <div>9:41</div>
             <div style="display: flex; gap: 4px; align-items: center;">
                 <span>📶</span>
                 <span>📡</span>
-                <span>🔋 100%</span>
+                <span>🔋</span>
             </div>
         </div>
-        <!-- Browser Bar -->
         <div style="background: #f7f7f7; border-bottom: 1px solid #d1d1d1; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
             <div style="flex: 1; background: white; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; border: 1px solid #e0e0e0;">
                 <span style="font-size: 16px;">🔒</span>
-                <span style="color: #666; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">beenverified.com</span>
+                <span style="color: #666; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">URL</span>
                 <span style="font-size: 16px;">🔄</span>
             </div>
         </div>
         """
         
         bottom_nav = """
-        <!-- Bottom Navigation -->
-        <div style="position: absolute; bottom: 0; left: 0; right: 0; background: #f7f7f7; border-top: 1px solid #d1d1d1; padding: 8px; display: flex; justify-content: space-around; align-items: center;">
+        <div style="position: fixed; bottom: 0; left: 0; right: 0; background: #f7f7f7; border-top: 1px solid #d1d1d1; padding: 8px; display: flex; justify-content: space-around; align-items: center;">
             <div style="text-align: center; font-size: 20px;">◀️</div>
             <div style="text-align: center; font-size: 20px;">▶️</div>
             <div style="text-align: center; font-size: 20px;">↻</div>
             <div style="text-align: center; font-size: 20px;">⊞</div>
         </div>
         """
+        chrome_height = "90px"
         
     elif device == 'tablet':
-        device_w = 820  # iPad Air width
-        container_height = 1180  # iPad Air height (portrait mode)
+        device_w = 820
+        container_height = 1180
+        scale = 0.25
         frame_style = "border-radius: 16px; border: 12px solid #1f2937;"
-        scale = 0.5  # Scale down to fit
         
-        # Tablet UI chrome
-        device_chrome = f"""
-        <!-- Status Bar -->
+        # Tablet chrome
+        device_chrome = """
         <div style="background: #000; color: white; padding: 8px 24px; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 500;">
             <div style="display: flex; gap: 12px;">
                 <span>9:41 AM</span>
-                <span>Wed Jan 12</span>
+                <span>Wed Jan 13</span>
             </div>
             <div style="display: flex; gap: 8px; align-items: center;">
                 <span>📶</span>
                 <span>📡</span>
-                <span>🔋 100%</span>
+                <span>🔋</span>
             </div>
         </div>
-        <!-- Browser Bar -->
         <div style="background: #f0f0f0; border-bottom: 1px solid #d0d0d0; padding: 12px 16px; display: flex; align-items: center; gap: 12px;">
             <span style="font-size: 20px;">◀️</span>
             <span style="font-size: 20px;">▶️</span>
             <span style="font-size: 20px;">↻</span>
             <div style="flex: 1; background: white; border-radius: 10px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; border: 1px solid #e0e0e0;">
                 <span style="font-size: 18px;">🔒</span>
-                <span style="color: #666; font-size: 15px; flex: 1;">beenverified.com</span>
+                <span style="color: #666; font-size: 15px; flex: 1;">URL</span>
             </div>
             <span style="font-size: 20px;">⊞</span>
             <span style="font-size: 20px;">⋮</span>
         </div>
         """
-        
         bottom_nav = ""
+        chrome_height = "60px"
         
     else:  # laptop
-        device_w = 1440  # Standard laptop width
-        container_height = 900  # Standard laptop height (16:10)
+        device_w = 1440
+        container_height = 900
+        scale = 0.2
         frame_style = "border-radius: 8px; border: 6px solid #374151;"
-        scale = 0.5  # Scale down to fit
         
-        # Laptop browser chrome
-        device_chrome = f"""
-        <!-- Browser Window Chrome -->
+        # Laptop chrome
+        device_chrome = """
         <div style="background: #e8e8e8; padding: 12px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #d0d0d0;">
             <div style="display: flex; gap: 8px;">
                 <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f57;"></div>
@@ -738,112 +623,169 @@ def render_device_preview(content, device, use_url=False):
             <span style="font-size: 18px; margin-right: 8px;">↻</span>
             <div style="flex: 1; background: white; border-radius: 6px; padding: 8px 16px; display: flex; align-items: center; gap: 12px; border: 1px solid #d0d0d0;">
                 <span style="font-size: 16px;">🔒</span>
-                <span style="color: #333; font-size: 14px; flex: 1;">https://beenverified.com</span>
+                <span style="color: #333; font-size: 14px; flex: 1;">https://URL</span>
                 <span style="font-size: 16px;">⭐</span>
             </div>
             <span style="font-size: 18px; margin-left: 8px;">⊞</span>
             <span style="font-size: 18px;">⋮</span>
         </div>
         """
-        
         bottom_nav = ""
+        chrome_height = "52px"
     
-    # Calculate scaled dimensions for display
     display_w = int(device_w * scale)
     display_h = int(container_height * scale)
     
-    if use_url:
-        # Use iframe src for direct URL loading (for landing pages)
-        iframe_tag = f'<iframe src="{content}" style="width: 100%; height: 100%; border: none;"></iframe>'
-        
-        # Create device wrapper with chrome
-        full_content = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta name="viewport" content="width={device_w}, initial-scale=1.0">
-            <style>
-                body {{ margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }}
-                .device-chrome {{ width: 100%; background: white; position: fixed; top: 0; left: 0; right: 0; z-index: 100; }}
-                .content-area {{ position: absolute; top: {'90px' if device == 'mobile' else '60px' if device == 'tablet' else '52px'}; bottom: {'50px' if device == 'mobile' else '0'}; left: 0; right: 0; }}
-                .bottom-nav {{ position: fixed; bottom: 0; left: 0; right: 0; background: #f7f7f7; border-top: 1px solid #d1d1d1; padding: 8px; display: flex; justify-content: space-around; z-index: 100; }}
-            </style>
-        </head>
-        <body>
-            <div class="device-chrome">
-                {device_chrome}
-            </div>
-            <div class="content-area">
-                {iframe_tag}
-            </div>
-            {f'<div class="bottom-nav">{bottom_nav}</div>' if device == 'mobile' else ''}
-        </body>
-        </html>
-        """
+    if is_url:
+        iframe_content = f'<iframe src="{content}" style="width: 100%; height: 100%; border: none;"></iframe>'
     else:
-        # Use srcdoc for HTML content (for SERP)
-        full_content = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta name="viewport" content="width={device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-            <style>
-                body {{ margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }}
-                .device-chrome {{ width: 100%; background: white; }}
-                .content-area {{ height: calc(100vh - {'90px' if device == 'mobile' else '60px' if device == 'tablet' else '52px'}); overflow-y: auto; }}
-            </style>
-        </head>
-        <body>
-            <div class="device-chrome">
-                {device_chrome}
-            </div>
-            <div class="content-area">
-                {content}
-            </div>
-            {bottom_nav if device == 'mobile' else ''}
-        </body>
-        </html>
-        """
+        iframe_content = content
+    
+    full_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta name="viewport" content="width={device_w}, initial-scale=1.0">
+        <style>
+            body {{ margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }}
+            .chrome {{ width: 100%; background: white; position: fixed; top: 0; left: 0; right: 0; z-index: 100; }}
+            .content {{ position: absolute; top: {chrome_height}; bottom: {'50px' if device == 'mobile' else '0'}; left: 0; right: 0; overflow-y: auto; }}
+            .bottom-nav {{ position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; }}
+        </style>
+    </head>
+    <body>
+        <div class="chrome">{device_chrome}</div>
+        <div class="content">{iframe_content}</div>
+        {f'<div class="bottom-nav">{bottom_nav}</div>' if device == 'mobile' else ''}
+    </body>
+    </html>
+    """
     
     escaped = full_content.replace("'", "&apos;").replace('"', '&quot;')
     
     html = f"""
-    <div style="display: flex; justify-content: center; align-items: center; padding: 20px; 
-                background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); 
-                border-radius: 12px; min-height: {display_h + 40}px;">
-        <div style="width: {display_w}px; height: {display_h}px; 
-                    {frame_style} overflow: hidden; background: #000;
-                    box-shadow: 0 10px 40px rgba(0,0,0,0.2); position: relative;">
-            <iframe srcdoc='{escaped}' 
-                    style="width: {device_w}px; height: {container_height}px; border: none; 
-                           transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"
-                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms">
-            </iframe>
+    <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
+        <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+            <iframe srcdoc='{escaped}' style="width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"></iframe>
         </div>
     </div>
     """
     
-    return html, display_h + 60
+    return html, display_h + 30, is_url
 
-def make_url_clickable(url):
-    """Convert URL string to clickable hyperlink"""
-    if not url or pd.isna(url) or str(url).lower() == 'null':
-        return 'N/A'
-    url_display = url[:60] + "..." if len(str(url)) > 60 else url
-    return f'<a href="{url}" target="_blank" style="color:#3b82f6; text-decoration:underline; font-weight:600;">{url_display}</a>'
+def unescape_adcode(adcode):
+    """
+    Unescape the adcode string properly (from Flask app logic)
+    Handles both \\u003c (double-escaped) and \u003c (single-escaped)
+    """
+    # Check if this is double-escaped (contains literal \u sequences)
+    if '\\u' in adcode or '\\/' in adcode or '\\"' in adcode:
+        try:
+            # This is double-escaped - parse it again as JSON
+            # Wrap it in quotes and parse as JSON string
+            adcode = json.loads('"' + adcode + '"')
+        except:
+            # If that fails, try manual unicode escape decoding
+            try:
+                adcode = adcode.encode('utf-8').decode('unicode_escape')
+            except:
+                pass
+    
+    # Then unescape HTML entities if any
+    adcode = html.unescape(adcode)
+    
+    return adcode
+
+def parse_creative_html(response_str):
+    """Parse response JSON and extract HTML with proper unescaping"""
+    try:
+        if not response_str or pd.isna(response_str):
+            return None, None
+        
+        # Check if JSON is double-stringified
+        if str(response_str).startswith('{\\'):
+            try:
+                response_str = json.loads('"' + response_str + '"')
+            except:
+                pass
+        
+        # Parse JSON
+        response_data = json.loads(response_str)
+        
+        # Get adcode (escaped HTML with unicode escapes)
+        raw_adcode = response_data.get('adcode', '')
+        
+        if not raw_adcode:
+            return None, None
+        
+        # Unescape using Flask app logic
+        adcode = unescape_adcode(raw_adcode)
+        
+        # Get metadata
+        metadata = {
+            'adomain': response_data.get('adomain', 'N/A'),
+            'ecrid': response_data.get('ecrid', 'N/A')
+        }
+        
+        # Try to extract dimensions from adcode
+        size_match = re.search(r'(\d{2,4})\s*[x×]\s*(\d{2,4})', raw_adcode)
+        if size_match:
+            metadata['dimensions'] = f"{size_match.group(1)}×{size_match.group(2)}"
+        
+        # Wrap in HTML structure WITHOUT responsive constraints (original dimensions)
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body {{ 
+                    margin: 0; 
+                    padding: 0; 
+                    background: white; 
+                    font-family: Arial, sans-serif;
+                }}
+                /* Keep original dimensions - don't force responsive */
+            </style>
+        </head>
+        <body>
+            {adcode}
+        </body>
+        </html>
+        """
+        
+        return html, raw_adcode
+        
+    except Exception as e:
+        st.error(f"Error parsing creative: {str(e)}")
+        return None, None
+
 
 # Auto-load data
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
         st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
-        st.session_state.data_b = load_json_from_gdrive(FILE_B_ID)
         st.session_state.loading_done = True
 
-st.title("📊 CPA Flow Analysis")
+st.title("📊 CPA Flow Analysis v2")
+
+# View mode toggle
+view_col1, view_col2, view_col3 = st.columns([1, 1, 4])
+with view_col1:
+    if st.button("📊 Basic View", type="primary" if st.session_state.view_mode == 'basic' else "secondary"):
+        st.session_state.view_mode = 'basic'
+        st.rerun()
+with view_col2:
+    if st.button("⚙️ Advanced View", type="primary" if st.session_state.view_mode == 'advanced' else "secondary"):
+        st.session_state.view_mode = 'advanced'
+        st.rerun()
+
+st.divider()
 
 if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
     df = st.session_state.data_a
     
+    # Select Advertiser and Campaign
     col1, col2 = st.columns(2)
     with col1:
         advertisers = ['-- Select Advertiser --'] + sorted(df['Advertiser_Name'].dropna().unique().tolist())
@@ -856,502 +798,603 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
         
         if selected_campaign and selected_campaign != '-- Select Campaign --':
             campaign_df = df[(df['Advertiser_Name'] == selected_advertiser) & (df['Campaign_Name'] == selected_campaign)].copy()
-            campaign_df = calculate_metrics(campaign_df)
-            avg_ctr, avg_cvr = calculate_campaign_averages(campaign_df)
             
-            st.divider()
+            # Calculate metrics
+            campaign_df['impressions'] = campaign_df['impressions'].apply(safe_float)
+            campaign_df['clicks'] = campaign_df['clicks'].apply(safe_float)
+            campaign_df['conversions'] = campaign_df['conversions'].apply(safe_float)
+            campaign_df['ctr'] = campaign_df.apply(lambda x: (x['clicks'] / x['impressions'] * 100) if x['impressions'] > 0 else 0, axis=1)
+            campaign_df['cvr'] = campaign_df.apply(lambda x: (x['conversions'] / x['clicks'] * 100) if x['clicks'] > 0 else 0, axis=1)
             
-            st.markdown("### 📊 Overall Campaign Stats")
-            c1, c2, c3, c4, c5 = st.columns(5)
-            c1.metric("Impressions", f"{safe_int(campaign_df['impressions'].sum()):,}")
-            c2.metric("Clicks", f"{safe_int(campaign_df['clicks'].sum()):,}")
-            c3.metric("Conversions", f"{safe_int(campaign_df['conversions'].sum()):,}")
-            c4.metric("CTR", f"{avg_ctr:.2f}%")
-            c5.metric("CVR", f"{avg_cvr:.2f}%")
-            
-            st.divider()
-            st.subheader("🔑 Step 1: Pick a Keyword")
-            
-            st.info("👉 **What you need to do:** Choose which keyword you want to analyze.\n\n📊 **Chart View:** Visual bubble chart showing keyword performance. Larger bubbles = more clicks. Click any bubble to select that keyword.\n\n📋 **Table View:** Detailed data table with all metrics. Use filters to find specific keywords. Click the checkbox to select a keyword.\n\n💡 **Table Colors:** 🟢 Green = Above average CTR/CVR | 🔴 Red = Below average CTR/CVR")
-            
-            tab1, tab2 = st.tabs(["📊 Chart View", "📋 Table View"])
-            
-            keyword_agg = campaign_df.groupby('keyword_term').agg({
-                'impressions': 'sum', 'clicks': 'sum', 'conversions': 'sum'
-            }).reset_index()
-            keyword_agg['ctr'] = keyword_agg.apply(lambda x: (x['clicks']/x['impressions']*100) if x['impressions']>0 else 0, axis=1)
-            keyword_agg['cvr'] = keyword_agg.apply(lambda x: (x['conversions']/x['clicks']*100) if x['clicks']>0 else 0, axis=1)
-            
-            with tab1:
-                bubble_data = keyword_agg.nlargest(20, 'clicks').reset_index(drop=True)
-                
-                fig = go.Figure()
-                for idx, row in bubble_data.iterrows():
-                    quadrant, color = get_quadrant(row['ctr'], row['cvr'], avg_ctr, avg_cvr)
-                    fig.add_trace(go.Scatter(
-                        x=[row['ctr']], y=[row['cvr']], mode='markers',
-                        marker=dict(size=max(20, min(70, row['clicks']/10)), color=color, 
-                                   line=dict(width=2, color='white')),
-                        name=row['keyword_term'],
-                        hovertemplate='<b>%{fullData.name}</b><br>CTR: %{x:.2f}%<br>CVR: %{y:.2f}%<br>' + 
-                                     f"Impressions: {int(row['impressions'])}<br>Clicks: {int(row['clicks'])}<br>Conversions: {int(row['conversions'])}<extra></extra>",
-                        customdata=[[row['keyword_term']]]
-                    ))
-                
-                # Add bright, visible average lines with labels
-                fig.add_hline(y=avg_cvr, line_dash="dash", line_color="#ef4444", line_width=3, opacity=0.8,
-                             annotation_text=f"AVG CVR: {avg_cvr:.2f}%", 
-                             annotation_position="right",
-                             annotation=dict(font_size=14, font_color="#ef4444", font_weight="bold"))
-                fig.add_vline(x=avg_ctr, line_dash="dash", line_color="#3b82f6", line_width=3, opacity=0.8,
-                             annotation_text=f"AVG CTR: {avg_ctr:.2f}%",
-                             annotation_position="top",
-                             annotation=dict(font_size=14, font_color="#3b82f6", font_weight="bold"))
-                
-                fig.update_layout(
-                    xaxis_title="<b>CTR (%)</b>", 
-                    yaxis_title="<b>CVR (%)</b>", 
-                    height=500,
-                    showlegend=False, 
-                    plot_bgcolor='white', 
-                    paper_bgcolor='white',
-                    font=dict(color='#0f172a', size=16, family="Arial, sans-serif", weight='bold'), 
-                    hovermode='closest',
-                    xaxis=dict(gridcolor='#e2e8f0', title_font=dict(size=18, color='#0f172a', weight='bold')), 
-                    yaxis=dict(gridcolor='#e2e8f0', title_font=dict(size=18, color='#0f172a', weight='bold'))
+            # Add publisher_domain if not present
+            if 'publisher_domain' not in campaign_df.columns and 'publisher_url' in campaign_df.columns:
+                campaign_df['publisher_domain'] = campaign_df['publisher_url'].apply(
+                    lambda x: urlparse(str(x)).netloc if pd.notna(x) else ''
                 )
-                
-                event = st.plotly_chart(fig, use_container_width=True, key="bubble", on_select="rerun")
-                
-                if event and 'selection' in event and 'points' in event['selection'] and len(event['selection']['points']) > 0:
-                    point = event['selection']['points'][0]
-                    if 'customdata' in point and point['customdata']:
-                        clicked_keyword = point['customdata'][0]
-                        if clicked_keyword != st.session_state.selected_keyword:
-                            st.session_state.selected_keyword = clicked_keyword
-                            st.session_state.selected_domain = None
-                            st.session_state.selected_url = None
-                            st.session_state.similarities = {}
-                            st.rerun()
             
-            with tab2:
-                f1, f2, f3 = st.columns(3)
-                keyword_filter = f1.selectbox("Show me:", ['all keywords', 'best performers', 'worst performers'], key='kw_filter')
-                keyword_limit = f2.selectbox("How many:", [5, 10, 25, 50], key='kw_limit')
-                keyword_sort = f3.selectbox("Sort by:", ['clicks', 'conversions', 'ctr', 'cvr', 'impressions'], key='kw_sort')
-                
-                filtered_keywords = keyword_agg.copy()
-                if keyword_filter == 'best performers':
-                    filtered_keywords = filtered_keywords[(filtered_keywords['ctr'] >= avg_ctr) & (filtered_keywords['cvr'] >= avg_cvr)]
-                elif keyword_filter == 'worst performers':
-                    filtered_keywords = filtered_keywords[(filtered_keywords['ctr'] < avg_ctr) & (filtered_keywords['cvr'] < avg_cvr)]
-                
-                filtered_keywords = filtered_keywords.sort_values(keyword_sort, ascending=False).head(keyword_limit).reset_index(drop=True)
-                
-                st.markdown("""
-                <div class="table-header">
-                    <div style="flex: 0.4;"></div>
-                    <div style="flex: 3.5;">Keyword</div>
-                    <div style="flex: 1.2; text-align: center;">Impr.</div>
-                    <div style="flex: 1.2; text-align: center;">Clicks</div>
-                    <div style="flex: 1.2; text-align: center;">Conv.</div>
-                    <div style="flex: 1.2; text-align: center;">CTR %</div>
-                    <div style="flex: 1.2; text-align: center;">CVR %</div>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                for idx, row in filtered_keywords.iterrows():
-                    cols = st.columns([0.4, 3.5, 1.2, 1.2, 1.2, 1.2, 1.2])
-                    is_selected = (row['keyword_term'] == st.session_state.selected_keyword)
-                    
-                    if cols[0].button("■" if is_selected else "□", key=f"kw_{idx}", use_container_width=True):
-                        if not is_selected:
-                            st.session_state.selected_keyword = row['keyword_term']
-                            st.session_state.selected_domain = None
-                            st.session_state.selected_url = None
-                            st.session_state.similarities = {}
-                            st.rerun()
-                    
-                    cols[1].markdown(f"<div class='table-row' style='padding:8px;'>{row['keyword_term']}</div>", unsafe_allow_html=True)
-                    cols[2].markdown(f"<div class='table-row' style='text-align:center;'>{int(row['impressions']):,}</div>", unsafe_allow_html=True)
-                    cols[3].markdown(f"<div class='table-row' style='text-align:center;'>{int(row['clicks']):,}</div>", unsafe_allow_html=True)
-                    cols[4].markdown(f"<div class='table-row' style='text-align:center;'>{int(row['conversions']):,}</div>", unsafe_allow_html=True)
-                    
-                    ctr_bg = 'rgba(22, 163, 74, 0.15)' if row['ctr'] >= avg_ctr else 'rgba(220, 38, 38, 0.15)'
-                    ctr_color = '#16a34a' if row['ctr'] >= avg_ctr else '#dc2626'
-                    cols[5].markdown(f"<div class='table-row' style='text-align:center; background:{ctr_bg}; color:{ctr_color}; font-weight:700;'>{row['ctr']:.2f}%</div>", unsafe_allow_html=True)
-                    
-                    cvr_bg = 'rgba(22, 163, 74, 0.15)' if row['cvr'] >= avg_cvr else 'rgba(220, 38, 38, 0.15)'
-                    cvr_color = '#16a34a' if row['cvr'] >= avg_cvr else '#dc2626'
-                    cols[6].markdown(f"<div class='table-row' style='text-align:center; background:{cvr_bg}; color:{cvr_color}; font-weight:700;'>{row['cvr']:.2f}%</div>", unsafe_allow_html=True)
+            total_impressions = campaign_df['impressions'].sum()
+            total_clicks = campaign_df['clicks'].sum()
+            total_conversions = campaign_df['conversions'].sum()
+            avg_ctr = (total_clicks / total_impressions * 100) if total_impressions > 0 else 0
+            avg_cvr = (total_conversions / total_clicks * 100) if total_clicks > 0 else 0
             
-            if st.session_state.selected_keyword:
-                st.divider()
-                st.subheader(f"🔗 Step 2: Pick Publisher Domain")
-                
-                st.info("👉 **What you need to do:** Now pick which publisher domain your ad appeared on. Different publisher domains can give different results.\n\n💡 **Colors explained:** 🟢 Green = Above average performance | 🔴 Red = Below average performance")
-                
-                keyword_domains = campaign_df[campaign_df['keyword_term'] == st.session_state.selected_keyword]
-                domain_agg = keyword_domains.groupby('publisher_domain').agg({
-                    'clicks': 'sum', 'conversions': 'sum', 'impressions': 'sum'
+            st.divider()
+            
+            # Show aggregated table
+            st.markdown("### 📊 Flow Combinations Overview")
+            
+            if 'publisher_domain' in campaign_df.columns and 'keyword_term' in campaign_df.columns:
+                # Aggregate by domain + keyword
+                agg_df = campaign_df.groupby(['publisher_domain', 'keyword_term']).agg({
+                    'impressions': 'sum',
+                    'clicks': 'sum',
+                    'conversions': 'sum'
                 }).reset_index()
-                domain_agg['ctr'] = domain_agg.apply(lambda x: (x['clicks']/x['impressions']*100) if x['impressions']>0 else 0, axis=1)
-                domain_agg['cvr'] = domain_agg.apply(lambda x: (x['conversions']/x['clicks']*100) if x['clicks']>0 else 0, axis=1)
                 
-                f1, f2, f3 = st.columns(3)
-                domain_filter = f1.selectbox("Show me:", ['all publisher domains', 'best performers', 'worst performers'], key='domain_filter')
-                domain_limit = f2.selectbox("How many:", [5, 10, 25, 50], key='domain_limit')
-                domain_sort = f3.selectbox("Sort by:", ['clicks', 'conversions', 'ctr', 'cvr', 'impressions'], key='domain_sort')
+                agg_df['CTR'] = agg_df.apply(lambda x: (x['clicks']/x['impressions']*100) if x['impressions']>0 else 0, axis=1)
+                agg_df['CVR'] = agg_df.apply(lambda x: (x['conversions']/x['clicks']*100) if x['clicks']>0 else 0, axis=1)
                 
-                filtered_domains = domain_agg.copy()
-                if domain_filter == 'best performers':
-                    filtered_domains = filtered_domains[(filtered_domains['ctr'] >= avg_ctr) & (filtered_domains['cvr'] >= avg_cvr)]
-                elif domain_filter == 'worst performers':
-                    filtered_domains = filtered_domains[(filtered_domains['ctr'] < avg_ctr) & (filtered_domains['cvr'] < avg_cvr)]
+                # Sort by conversions and show top 20
+                agg_df = agg_df.sort_values('conversions', ascending=False).head(20)
                 
-                filtered_domains = filtered_domains.sort_values(domain_sort, ascending=False).head(domain_limit).reset_index(drop=True)
+                # Format for display
+                display_df = agg_df.copy()
+                display_df.columns = ['Publisher Domain', 'Keyword', 'Impressions', 'Clicks', 'Conversions', 'CTR %', 'CVR %']
+                display_df['Impressions'] = display_df['Impressions'].apply(lambda x: f"{int(x):,}")
+                display_df['Clicks'] = display_df['Clicks'].apply(lambda x: f"{int(x):,}")
+                display_df['Conversions'] = display_df['Conversions'].apply(lambda x: f"{int(x):,}")
+                display_df['CTR %'] = display_df['CTR %'].apply(lambda x: f"{x:.2f}%")
+                display_df['CVR %'] = display_df['CVR %'].apply(lambda x: f"{x:.2f}%")
                 
-                st.markdown("""
-                <div class="table-header">
-                    <div style="flex: 0.4;"></div>
-                    <div style="flex: 3.5;">Publisher Domain</div>
-                    <div style="flex: 1.2; text-align: center;">Impr.</div>
-                    <div style="flex: 1.2; text-align: center;">Clicks</div>
-                    <div style="flex: 1.2; text-align: center;">Conv.</div>
-                    <div style="flex: 1.2; text-align: center;">CTR %</div>
-                    <div style="flex: 1.2; text-align: center;">CVR %</div>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                for idx, row in filtered_domains.iterrows():
-                    cols = st.columns([0.4, 3.5, 1.2, 1.2, 1.2, 1.2, 1.2])
-                    is_selected = (row['publisher_domain'] == st.session_state.selected_domain)
-                    
-                    if cols[0].button("■" if is_selected else "□", key=f"domain_{idx}", use_container_width=True):
-                        if not is_selected:
-                            st.session_state.selected_domain = row['publisher_domain']
-                            st.session_state.selected_url = None
-                            st.session_state.similarities = {}
-                            st.rerun()
-                    
-                    display_domain = row['publisher_domain'][:45] + '...' if len(str(row['publisher_domain'])) > 45 else row['publisher_domain']
-                    cols[1].markdown(f"<div class='table-row' style='padding:8px;'>{display_domain}</div>", unsafe_allow_html=True)
-                    cols[2].markdown(f"<div class='table-row' style='text-align:center;'>{int(row['impressions']):,}</div>", unsafe_allow_html=True)
-                    cols[3].markdown(f"<div class='table-row' style='text-align:center;'>{int(row['clicks']):,}</div>", unsafe_allow_html=True)
-                    cols[4].markdown(f"<div class='table-row' style='text-align:center;'>{int(row['conversions']):,}</div>", unsafe_allow_html=True)
-                    
-                    ctr_bg = 'rgba(22, 163, 74, 0.15)' if row['ctr'] >= avg_ctr else 'rgba(220, 38, 38, 0.15)'
-                    ctr_color = '#16a34a' if row['ctr'] >= avg_ctr else '#dc2626'
-                    cols[5].markdown(f"<div class='table-row' style='text-align:center; background:{ctr_bg}; color:{ctr_color}; font-weight:700;'>{row['ctr']:.2f}%</div>", unsafe_allow_html=True)
-                    
-                    cvr_bg = 'rgba(22, 163, 74, 0.15)' if row['cvr'] >= avg_cvr else 'rgba(220, 38, 38, 0.15)'
-                    cvr_color = '#16a34a' if row['cvr'] >= avg_cvr else '#dc2626'
-                    cols[6].markdown(f"<div class='table-row' style='text-align:center; background:{cvr_bg}; color:{cvr_color}; font-weight:700;'>{row['cvr']:.2f}%</div>", unsafe_allow_html=True)
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
             
-            if st.session_state.selected_keyword and st.session_state.selected_domain:
-                st.divider()
-                st.subheader(f"🔗 Step 3: Pick Publisher URL")
-                
-                st.info("👉 **What you need to do:** Now pick which specific publisher URL your ad appeared on. Different URLs within the same domain can give different results.\n\n💡 **Colors explained:** 🟢 Green = Above average performance | 🔴 Red = Below average performance")
-                
-                domain_urls = campaign_df[
-                    (campaign_df['keyword_term'] == st.session_state.selected_keyword) &
-                    (campaign_df['publisher_domain'] == st.session_state.selected_domain)
-                ]
-                url_agg = domain_urls.groupby('publisher_url').agg({
-                    'clicks': 'sum', 'conversions': 'sum', 'impressions': 'sum'
-                }).reset_index()
-                url_agg['ctr'] = url_agg.apply(lambda x: (x['clicks']/x['impressions']*100) if x['impressions']>0 else 0, axis=1)
-                url_agg['cvr'] = url_agg.apply(lambda x: (x['conversions']/x['clicks']*100) if x['clicks']>0 else 0, axis=1)
-                
-                f1, f2, f3 = st.columns(3)
-                url_filter = f1.selectbox("Show me:", ['all publisher URLs', 'best performers', 'worst performers'], key='url_filter')
-                url_limit = f2.selectbox("How many:", [5, 10, 25, 50], key='url_limit')
-                url_sort = f3.selectbox("Sort by:", ['clicks', 'conversions', 'ctr', 'cvr', 'impressions'], key='url_sort')
-                
-                filtered_urls = url_agg.copy()
-                if url_filter == 'best performers':
-                    filtered_urls = filtered_urls[(filtered_urls['ctr'] >= avg_ctr) & (filtered_urls['cvr'] >= avg_cvr)]
-                elif url_filter == 'worst performers':
-                    filtered_urls = filtered_urls[(filtered_urls['ctr'] < avg_ctr) & (filtered_urls['cvr'] < avg_cvr)]
-                
-                filtered_urls = filtered_urls.sort_values(url_sort, ascending=False).head(url_limit).reset_index(drop=True)
-                
-                st.markdown("""
-                <div class="table-header">
-                    <div style="flex: 0.4;"></div>
-                    <div style="flex: 3.5;">Publisher URL</div>
-                    <div style="flex: 1.2; text-align: center;">Impr.</div>
-                    <div style="flex: 1.2; text-align: center;">Clicks</div>
-                    <div style="flex: 1.2; text-align: center;">Conv.</div>
-                    <div style="flex: 1.2; text-align: center;">CTR %</div>
-                    <div style="flex: 1.2; text-align: center;">CVR %</div>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                for idx, row in filtered_urls.iterrows():
-                    cols = st.columns([0.4, 3.5, 1.2, 1.2, 1.2, 1.2, 1.2])
-                    is_selected = (row['publisher_url'] == st.session_state.selected_url)
-                    
-                    if cols[0].button("■" if is_selected else "□", key=f"url_{idx}", use_container_width=True):
-                        if not is_selected:
-                            st.session_state.selected_url = row['publisher_url']
-                            st.session_state.similarities = {}
-                            st.rerun()
-                    
-                    display_url = row['publisher_url'][:45] + '...' if len(str(row['publisher_url'])) > 45 else row['publisher_url']
-                    cols[1].markdown(f"<div class='table-row' style='padding:8px;'>{display_url}</div>", unsafe_allow_html=True)
-                    cols[2].markdown(f"<div class='table-row' style='text-align:center;'>{int(row['impressions']):,}</div>", unsafe_allow_html=True)
-                    cols[3].markdown(f"<div class='table-row' style='text-align:center;'>{int(row['clicks']):,}</div>", unsafe_allow_html=True)
-                    cols[4].markdown(f"<div class='table-row' style='text-align:center;'>{int(row['conversions']):,}</div>", unsafe_allow_html=True)
-                    
-                    ctr_bg = 'rgba(22, 163, 74, 0.15)' if row['ctr'] >= avg_ctr else 'rgba(220, 38, 38, 0.15)'
-                    ctr_color = '#16a34a' if row['ctr'] >= avg_ctr else '#dc2626'
-                    cols[5].markdown(f"<div class='table-row' style='text-align:center; background:{ctr_bg}; color:{ctr_color}; font-weight:700;'>{row['ctr']:.2f}%</div>", unsafe_allow_html=True)
-                    
-                    cvr_bg = 'rgba(22, 163, 74, 0.15)' if row['cvr'] >= avg_cvr else 'rgba(220, 38, 38, 0.15)'
-                    cvr_color = '#16a34a' if row['cvr'] >= avg_cvr else '#dc2626'
-                    cols[6].markdown(f"<div class='table-row' style='text-align:center; background:{cvr_bg}; color:{cvr_color}; font-weight:700;'>{row['cvr']:.2f}%</div>", unsafe_allow_html=True)
+            st.divider()
             
-            if st.session_state.selected_keyword and st.session_state.selected_domain and st.session_state.selected_url:
-                st.divider()
+            # Explain what a flow is
+            st.info("""
+            **🔄 What is a Flow?**
+            
+            A flow represents the complete user journey from seeing your ad to reaching your landing page:
+            
+            **Publisher** → **Creative** → **SERP** → **Landing Page**
+            
+            • Each combination of these elements creates a unique flow
+            • We automatically select the best performing flow to display
+            • You can customize any element to see how it affects the journey
+            """)
+            
+            st.divider()
+            
+            # Find default flow if not set
+            if st.session_state.default_flow is None:
+                with st.spinner("Finding best performing flow..."):
+                    st.session_state.default_flow = find_default_flow(campaign_df)
+                    st.session_state.current_flow = st.session_state.default_flow.copy() if st.session_state.default_flow else None
+            
+            if st.session_state.current_flow:
+                current_flow = st.session_state.current_flow
                 
-                flows = campaign_df[
-                    (campaign_df['keyword_term'] == st.session_state.selected_keyword) &
-                    (campaign_df['publisher_domain'] == st.session_state.selected_domain) &
-                    (campaign_df['publisher_url'] == st.session_state.selected_url)
-                ].sort_values('clicks', ascending=False).head(5)
+                # Flow layout toggle
+                layout_col1, layout_col2, layout_col3, layout_col4 = st.columns([1, 1, 3, 1])
+                with layout_col1:
+                    if st.button("↔️ Horizontal", type="primary" if st.session_state.flow_layout == 'horizontal' else "secondary", key='horiz_btn'):
+                        st.session_state.flow_layout = 'horizontal'
+                        st.rerun()
+                with layout_col2:
+                    if st.button("↕️ Vertical", type="primary" if st.session_state.flow_layout == 'vertical' else "secondary", key='vert_btn'):
+                        st.session_state.flow_layout = 'vertical'
+                        st.rerun()
                 
-                st.session_state.flows = flows.to_dict('records')
-                
-                if len(st.session_state.flows) > 0:
-                    st.subheader("📊 Step 4: Analyze The Flow")
+                # Advanced mode: Show keyword and domain filters
+                if st.session_state.view_mode == 'advanced':
+                    with layout_col3:
+                        st.markdown("")  # spacing
+                    with layout_col4:
+                        st.markdown("")  # spacing
                     
-                    nav_cols = st.columns(min(5, len(st.session_state.flows)))
-                    
-                    for i, flow in enumerate(st.session_state.flows[:5]):
-                        with nav_cols[i]:
-                            is_selected = i == st.session_state.flow_index
-                            if st.button(f"Flow {i+1}\n{safe_int(flow.get('clicks',0))} clicks\n{safe_float(flow.get('cvr',0)):.1f}% CVR", 
-                                        key=f"flow_{i}", type="primary" if is_selected else "secondary"):
-                                st.session_state.flow_index = i
-                                st.session_state.similarities = {}
-                                st.rerun()
-                    
-                    current_flow = st.session_state.flows[st.session_state.flow_index]
-                    
-                    # Flow description with actual values
-                    keyword_val = current_flow.get('keyword_term', 'N/A')
-                    pub_domain_val = current_flow.get('publisher_domain', 'N/A')
-                    pub_url_val = current_flow.get('publisher_url', 'N/A')
-                    dest_val = current_flow.get('reporting_destination_url', 'N/A')
-                    serp_template_val = current_flow.get('serp_template_id', current_flow.get('SERP_template_id', 'Template 1'))
-                    
-                    st.markdown(f"""
-                    <div class="info-box">
-                        <strong>🔄 What is This Flow?</strong><br><br>
-                        <strong>Keyword:</strong> {keyword_val}<br>
-                        <strong>Publisher Domain:</strong> {pub_domain_val}<br>
-                        <strong>Publisher URL:</strong> {make_url_clickable(pub_url_val)}<br>
-                        <strong>SERP Template:</strong> {serp_template_val}<br>
-                        <strong>Landing Page:</strong> {make_url_clickable(dest_val)}
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Visual Flow Diagram
-                    keyword_short = keyword_val[:20] + '...' if len(str(keyword_val)) > 20 else keyword_val
-                    pub_domain_short = pub_domain_val[:20] + '...' if len(str(pub_domain_val)) > 20 else pub_domain_val
-                    pub_url_short = pub_url_val[:20] + '...' if len(str(pub_url_val)) > 20 else pub_url_val
-                    dest_short = dest_val[:20] + '...' if len(str(dest_val)) > 20 else dest_val
-                    serp_short = str(serp_template_val)[:15] + '...' if len(str(serp_template_val)) > 15 else str(serp_template_val)
-                    
-                    st.markdown(f"""
-                    <div class="flow-diagram">
-                        <div class="flow-step">🔍 Keyword<br><small>{keyword_short}</small></div>
-                        <div class="flow-arrow">→</div>
-                        <div class="flow-step">🌐 Domain<br><small>{pub_domain_short}</small></div>
-                        <div class="flow-arrow">→</div>
-                        <div class="flow-step">📰 URL<br><small>{pub_url_short}</small></div>
-                        <div class="flow-arrow">→</div>
-                        <div class="flow-step">📄 SERP<br><small>{serp_short}</small></div>
-                        <div class="flow-arrow">→</div>
-                        <div class="flow-step">🎯 Landing<br><small>{dest_short}</small></div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Similarity Score Explanation
-                    st.info("💡 **Similarity Score Ranges:**\n\n• 🟢 **0.8 - 1.0:** Excellent Match\n• 🔵 **0.6 - 0.8:** Good Match\n• 🟡 **0.4 - 0.6:** Moderate Match\n• 🟠 **0.2 - 0.4:** Weak Match\n• 🔴 **0.0 - 0.2:** Poor Match")
-                    
-                    if not st.session_state.similarities:
-                        if not API_KEY:
-                            st.warning("⚠️ API key not set up. Contact your admin to add FASTROUTER_API_KEY.")
-                        else:
-                            with st.spinner("Calculating similarity scores..."):
-                                st.session_state.similarities = calculate_similarities(current_flow)
-
                     st.divider()
                     
-                    # Card 1: SERP
-                    st.subheader("🔍 Search Results Page")
-                    st.caption("How your ad appears in search results")
+                    filter_col1, filter_col2 = st.columns(2)
+                    with filter_col1:
+                        keywords = sorted(campaign_df['keyword_term'].dropna().unique().tolist())
+                        selected_keyword_filter = st.selectbox("🔑 Filter by Keyword:", ['All'] + keywords, key='kw_filter_adv')
                     
-                    card1_left, card1_right = st.columns([7, 3])
+                    with filter_col2:
+                        if 'publisher_domain' in campaign_df.columns:
+                            domains = sorted(campaign_df['publisher_domain'].dropna().unique().tolist())
+                            selected_domain_filter = st.selectbox("🌐 Filter by Domain:", ['All'] + domains, key='dom_filter_adv')
+                
+                st.divider()
+                
+                if st.session_state.view_mode == 'basic':
+                    st.success("✨ **Auto-Selected**: Best performing flow displayed. Expand '⚙️ Edit Details' on any card to customize.")
+                else:
+                    st.success("✨ **Best Flow**: Highest conversions + most recent data. Use filters above to rebuild flow.")
+                
+                # Build filter data
+                keywords = sorted(campaign_df['keyword_term'].dropna().unique().tolist())
+                
+                # Filter based on selections
+                current_kw = current_flow.get('keyword_term', keywords[0] if keywords else '')
+                kw_filtered = campaign_df[campaign_df['keyword_term'] == current_kw]
+                
+                domains = sorted(kw_filtered['publisher_domain'].dropna().unique().tolist()) if 'publisher_domain' in kw_filtered.columns else []
+                current_dom = current_flow.get('publisher_domain', domains[0] if domains else '')
+                dom_filtered = kw_filtered[kw_filtered['publisher_domain'] == current_dom] if domains else kw_filtered
+                
+                urls = sorted(dom_filtered['publisher_url'].dropna().unique().tolist()) if 'publisher_url' in dom_filtered.columns else []
+                current_url = current_flow.get('publisher_url', urls[0] if urls else '')
+                url_filtered = dom_filtered[dom_filtered['publisher_url'] == current_url] if urls else dom_filtered
+                
+                serps = []
+                if 'serp_template_name' in url_filtered.columns:
+                    serps = sorted(url_filtered['serp_template_name'].dropna().unique().tolist())
+                current_serp = current_flow.get('serp_template_name', serps[0] if serps else '')
+                final_filtered = url_filtered[url_filtered['serp_template_name'] == current_serp] if serps else url_filtered
+                
+                if len(final_filtered) > 0:
+                    current_flow.update(final_filtered.iloc[0].to_dict())
+                
+                # Update session state
+                st.session_state.current_flow = current_flow
+                
+                # Show stats for current selection (only in advanced view)
+                if st.session_state.view_mode == 'advanced' and len(final_filtered) > 0:
+                    stats_df = final_filtered.agg({
+                        'impressions': 'sum',
+                        'clicks': 'sum',
+                        'conversions': 'sum'
+                    })
                     
-                    with card1_left:
-                        device1 = st.radio("Device:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev1', index=0)
-                        serp_html = generate_serp_mockup(current_flow, st.session_state.data_b)
-                        preview_html, height = render_device_preview(serp_html, device1)
-                        st.components.v1.html(preview_html, height=height, scrolling=False)
+                    st.markdown("#### 📈 Selected Flow Performance")
+                    s1, s2, s3, s4, s5 = st.columns(5)
+                    s1.metric("Impressions", f"{safe_int(stats_df['impressions']):,}")
+                    s2.metric("Clicks", f"{safe_int(stats_df['clicks']):,}")
+                    s3.metric("Conversions", f"{safe_int(stats_df['conversions']):,}")
+                    s4.metric("CTR", f"{(stats_df['clicks']/stats_df['impressions']*100 if stats_df['impressions'] > 0 else 0):.2f}%")
+                    s5.metric("CVR", f"{(stats_df['conversions']/stats_df['clicks']*100 if stats_df['clicks'] > 0 else 0):.2f}%")
                     
-                    with card1_right:
-                        st.markdown(f"""
-                        <div class="info-box">
-                            <div class="info-label">Search Term:</div> {current_flow.get("keyword_term", "N/A")}<br><br>
-                            <div class="info-label">Ad Headline:</div> {current_flow.get("ad_title", "N/A")}<br><br>
-                            <div class="info-label">Ad Text:</div> {current_flow.get("ad_description", "N/A")[:100]}<br><br>
-                            <div class="info-label">Display URL:</div> {make_url_clickable(current_flow.get("ad_display_url", "N/A"))}
+                    st.divider()
+                
+                # Flow Display based on layout
+                st.markdown("### 🔄 Flow Journey")
+                
+                if st.session_state.flow_layout == 'horizontal':
+                    # Add some spacing and styling for horizontal layout
+                    st.markdown("""
+                    <div style='background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); 
+                                padding: 20px; border-radius: 12px; margin: 10px 0; 
+                                border: 2px solid #e2e8f0;'>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    stage_cols = st.columns([1, 0.15, 1, 0.15, 1, 0.15, 1])
+                else:
+                    # Vertical layout - one card per row
+                    stage_cols = None
+                
+                # Stage 1: Publisher URL
+                stage_1_container = stage_cols[0] if stage_cols else st.container()
+                with stage_1_container:
+                    st.markdown('<div class="stage-card">', unsafe_allow_html=True)
+                    st.markdown('<div class="stage-title">📰 Publisher URL</div>', unsafe_allow_html=True)
+                    
+                    # Device selector
+                    device1 = st.radio("Device:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev_pub', index=0, label_visibility="collapsed")
+                    
+                    # Only show edit details in advanced mode
+                    if st.session_state.view_mode == 'advanced':
+                        with st.expander("⚙️ Edit Details", expanded=True):
+                            # Domain selector
+                            if domains:
+                                selected_domain = st.selectbox(
+                                    "🌐 Publisher Domain:",
+                                    domains,
+                                    index=domains.index(current_dom) if current_dom in domains else 0,
+                                    key='dom_select_stage'
+                                )
+                            else:
+                                st.caption("No domains available")
+                                selected_domain = current_dom
+                            
+                                if selected_domain != current_dom:
+                                    current_flow['publisher_domain'] = selected_domain
+                                    dom_filtered = kw_filtered[kw_filtered['publisher_domain'] == selected_domain]
+                                    urls = sorted(dom_filtered['publisher_url'].dropna().unique().tolist())
+                                    if urls:
+                                        current_flow['publisher_url'] = urls[0]
+                                    url_filtered = dom_filtered[dom_filtered['publisher_url'] == urls[0]] if urls else dom_filtered
+                                    if len(url_filtered) > 0:
+                                        current_flow.update(url_filtered.iloc[0].to_dict())
+                                    st.session_state.similarities = None  # Reset scores
+                                    st.rerun()
+                            
+                            # URL selector
+                            if urls:
+                                selected_pub_url = st.selectbox(
+                                    "📰 Specific URL:",
+                                    urls,
+                                    index=urls.index(current_url) if current_url in urls else 0,
+                                    key='url_select'
+                                )
+                                
+                                if selected_pub_url != current_url:
+                                    current_flow['publisher_url'] = selected_pub_url
+                                    url_filtered = dom_filtered[dom_filtered['publisher_url'] == selected_pub_url]
+                                    if 'serp_template_name' in url_filtered.columns:
+                                        serps = sorted(url_filtered['serp_template_name'].dropna().unique().tolist())
+                                    final_filtered = url_filtered
+                                    if len(final_filtered) > 0:
+                                        current_flow.update(final_filtered.iloc[0].to_dict())
+                                    st.session_state.similarities = None  # Reset scores
+                                    st.rerun()
+                            
+                            # Show count
+                            st.caption(f"📊 {len(urls)} URLs available")
+                    else:
+                        # Basic mode - show info only
+                        st.caption(f"**Domain:** {current_dom}")
+                        st.caption(f"**URL:** {current_url[:50]}...")
+                    
+                    pub_url = current_flow.get('publisher_url', '')
+                    if pub_url:
+                        # Try iframe src first, fallback to fetched HTML if blocked
+                        try:
+                            preview_html, height, used_src = render_mini_device_preview(pub_url, is_url=True, device=device1)
+                            st.components.v1.html(preview_html, height=height, scrolling=False)
+                            st.caption("✅ Direct iframe" if used_src else "✅ Rendered")
+                        except:
+                            # Fallback: Fetch HTML
+                            try:
+                                st.caption("⚠️ Fetching HTML...")
+                                response = requests.get(pub_url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
+                                if response.status_code == 200:
+                                    page_html = response.text
+                                    page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
+                                                      lambda m: f'src="{urljoin(pub_url, m.group(1))}"', page_html)
+                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device1)
+                                    st.components.v1.html(preview_html, height=height, scrolling=False)
+                                    st.caption("✅ HTML fetched")
+                                else:
+                                    st.error("❌ Could not load")
+                            except:
+                                st.error("❌ Load failed")
+                    
+                    st.markdown('</div>', unsafe_allow_html=True)
+                
+                if stage_cols:
+                    with stage_cols[1]:
+                        st.markdown("""
+                        <div style='display: flex; align-items: center; justify-content: center; height: 100%;'>
+                            <div style='font-size: 36px; color: #3b82f6; font-weight: 700;'>→</div>
                         </div>
                         """, unsafe_allow_html=True)
-                        
-                        st.markdown("### 🔗 Keyword → Ad Similarity Score")
-                        if st.session_state.similarities:
-                            render_similarity_card(
-                                "Match Score", 
-                                st.session_state.similarities.get('kwd_to_ad'),
-                                "Does the ad match what the user searched for?",
-                                "<strong>What we check:</strong><br>" +
-                                "• Keyword Match (15%): Word overlap<br>" +
-                                "• Topic Match (35%): Same subject?<br>" +
-                                "• Intent Match (50%): Satisfies search intent?<br><br>" +
-                                "<strong>Penalty:</strong> Brand mismatch or wrong product = lower scores"
-                            )
+                else:
+                    st.markdown("""
+                    <div style='text-align: center; font-size: 40px; color: #3b82f6; margin: 20px 0; font-weight: 700;'>
+                        ↓
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Stage 2: Creative
+                stage_2_container = stage_cols[2] if stage_cols else st.container()
+                with stage_2_container:
+                    st.markdown('<div class="stage-card">', unsafe_allow_html=True)
+                    st.markdown('<div class="stage-title">🎨 Creative</div>', unsafe_allow_html=True)
                     
-                    st.divider()
+                    # Device selector
+                    device2 = st.radio("Device:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev_creative', index=0, label_visibility="collapsed")
                     
-                    # Card 2: Landing Page
-                    st.subheader("🎯 Landing Page")
-                    st.caption("Where users go after clicking")
+                    # Show details
+                    creative_id = current_flow.get('creative_id', 'N/A')
+                    creative_name = current_flow.get('creative_template_name', 'N/A')
+                    creative_size = current_flow.get('creative_size', 'N/A')
                     
-                    card2_left, card2_right = st.columns([7, 3])
+                    if st.session_state.view_mode == 'advanced':
+                        with st.expander("⚙️ View Details", expanded=False):
+                            st.caption(f"**ID:** {creative_id}")
+                            st.caption(f"**Name:** {creative_name}")
+                            st.caption(f"**Size:** {creative_size}")
+                            st.caption("*Auto-selected based on flow*")
+                    else:
+                        st.caption(f"**Size:** {creative_size}")
                     
-                    with card2_left:
-                        device2 = st.radio("Device:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev2', index=0)
-                        
-                        # Add rendering method selector
-                        render_method = st.radio(
-                            "Rendering Method:",
-                            ['🔄 Fetch HTML (Recommended)', '🔗 Direct URL (May be blocked)'],
-                            horizontal=True,
-                            key='render_method',
-                            help="Fetch HTML: Works reliably, fetches page content\nDirect URL: Faster but many sites block iframe embedding"
-                        )
-                        
-                        use_direct_url = '🔗 Direct URL' in render_method
-                        
-                        dest_url = current_flow.get('reporting_destination_url', '')
-                        
-                        if dest_url and pd.notna(dest_url) and str(dest_url).lower() != 'null':
-                            # Display URL info with method indicator
-                            method_badge = "🔗 Direct iframe src" if use_direct_url else "🔄 HTML fetch + srcdoc"
-                            st.markdown(f"""
-                            <div class="info-box">
-                                📍 <strong>Landing Page URL:</strong> {make_url_clickable(dest_url)}<br>
-                                <small><strong>Method:</strong> {method_badge}</small>
+                    # Get response column (creative data)
+                    if 'response' in current_flow and current_flow.get('response'):
+                        creative_html, raw_adcode = parse_creative_html(current_flow['response'])
+                        if creative_html:
+                            try:
+                                # Render in original dimensions
+                                st.components.v1.html(creative_html, height=400, scrolling=True)
+                                st.caption("📱 Creative (Original Size)")
+                                
+                                # Show raw code option
+                                with st.expander("👁️ View Raw Ad Code"):
+                                    st.code(raw_adcode, language='html')
+                            except Exception as e:
+                                st.error(f"Could not render creative: {str(e)}")
+                                st.markdown("""
+                                <div class='flow-card' style='height: 250px; display: flex; align-items: center; justify-content: center; background: #fef2f2;'>
+                                    <div style='text-align: center; color: #ef4444;'>
+                                        <div style='font-size: 32px;'>⚠️</div>
+                                        <div style='font-size: 12px; margin-top: 8px;'>Creative Error</div>
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                        else:
+                            st.markdown("""
+                            <div class='flow-card' style='height: 250px; display: flex; align-items: center; justify-content: center; background: #fffbeb;'>
+                                <div style='text-align: center; color: #f59e0b;'>
+                                    <div style='font-size: 32px;'>📝</div>
+                                    <div style='font-size: 12px; margin-top: 8px;'>No Creative Data</div>
+                                </div>
                             </div>
                             """, unsafe_allow_html=True)
-                            
-                            # Render based on selected method
-                            if use_direct_url:
-                                # METHOD 1: Direct URL iframe (may be blocked by X-Frame-Options)
-                                st.info("⚡ Loading page directly via iframe src...")
-                                try:
-                                    preview_html, height = render_device_preview(dest_url, device2, use_url=True)
-                                    st.components.v1.html(preview_html, height=height, scrolling=False)
-                                    st.success("✅ Page loaded successfully (direct iframe)")
-                                except Exception as e:
-                                    st.error(f"❌ Direct iframe failed: {str(e)}")
-                                    st.warning("💡 Site likely blocks iframe embedding. Try 'Fetch HTML' method instead.")
-                                    st.info(f"Visit directly: {make_url_clickable(dest_url)}")
-                            else:
-                                # METHOD 2: Fetch HTML and render (more reliable)
-                                with st.spinner("🔄 Fetching page content..."):
-                                    try:
-                                        # Fetch page content
-                                        response = requests.get(dest_url, timeout=15, headers={
-                                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                                        }, allow_redirects=True)
-                                        
-                                        if response.status_code == 200:
-                                            final_url = response.url
-                                            
-                                            # Show if redirected
-                                            if final_url != dest_url:
-                                                st.info(f"↪️ Page redirected to: {final_url}")
-                                            
-                                            # Get page HTML
-                                            page_html = response.text
-                                            
-                                            # Try to make URLs absolute so resources load correctly
-                                            from urllib.parse import urljoin
-                                            import re
-                                            
-                                            # Fix relative URLs for images, CSS, JS
-                                            page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
-                                                              lambda m: f'src="{urljoin(final_url, m.group(1))}"', page_html)
-                                            page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
-                                                              lambda m: f'href="{urljoin(final_url, m.group(1))}"', page_html)
-                                            
-                                            # Render with device preview (HTML content via srcdoc)
-                                            preview_html, height = render_device_preview(page_html, device2, use_url=False)
-                                            st.components.v1.html(preview_html, height=height, scrolling=False)
-                                            
-                                            st.success("✅ Page fetched and rendered successfully (HTML via srcdoc)")
-                                            st.caption("💡 Static content shown. Some dynamic features may not work.")
-                                        else:
-                                            st.error(f"❌ Could not load page (HTTP {response.status_code})")
-                                            st.info(f"Visit directly: {make_url_clickable(dest_url)}")
-                                            
-                                    except requests.exceptions.Timeout:
-                                        st.error("⏱️ Page took too long to load (timeout)")
-                                        st.info(f"Visit directly: {make_url_clickable(dest_url)}")
-                                    except Exception as e:
-                                        st.error(f"❌ Could not load page: {str(e)}")
-                                        st.info(f"Visit directly: {make_url_clickable(dest_url)}")
-                        else:
-                            st.warning("⚠️ No landing page URL found")
+                    else:
+                        st.markdown("""
+                        <div class='flow-card' style='height: 250px; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);'>
+                            <div style='text-align: center; color: #6b7280;'>
+                                <div style='font-size: 48px;'>🎨</div>
+                                <div style='font-size: 14px; margin-top: 10px;'>Creative Not Available</div>
+                                <div style='font-size: 12px; margin-top: 5px;'>Column not found in data</div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
                     
-                    with card2_right:
-                        st.markdown("### 🔗 Ad → Page Similarity Score")
-                        if st.session_state.similarities:
-                            render_similarity_card(
-                                "Match Score", 
-                                st.session_state.similarities.get('ad_to_page'),
-                                "Does the page deliver what the ad promised?",
-                                "<strong>What we check:</strong><br>" +
-                                "• Topic Match (30%): Same product/service?<br>" +
-                                "• Brand Match (20%): Same company?<br>" +
-                                "• Promise Match (50%): Ad claims delivered?<br><br>" +
-                                "<strong>Penalty:</strong> Dead page, brand switch, or bait-and-switch = lower scores"
-                            )
-                        
-                        st.markdown("### 🔗 Keyword → Page Similarity Score")
-                        if st.session_state.similarities:
-                            render_similarity_card(
-                                "Match Score", 
-                                st.session_state.similarities.get('kwd_to_page'),
-                                "Does the page help the user complete their task?",
-                                "<strong>What we check:</strong><br>" +
-                                "• Topic Match (40%): Page covers the topic?<br>" +
-                                "• Utility Match (60%): Can user complete their goal?<br><br>" +
-                                "<strong>Penalty:</strong> Wrong site, brand mismatch, or thin content = lower scores"
-                            )
+                    st.markdown('</div>', unsafe_allow_html=True)
+                
+                if stage_cols:
+                    with stage_cols[3]:
+                        st.markdown("""
+                        <div style='display: flex; align-items: center; justify-content: center; height: 100%;'>
+                            <div style='font-size: 36px; color: #3b82f6; font-weight: 700;'>→</div>
+                        </div>
+                        """, unsafe_allow_html=True)
                 else:
-                    st.warning("No data found")
+                    st.markdown("""
+                    <div style='text-align: center; font-size: 40px; color: #3b82f6; margin: 20px 0; font-weight: 700;'>
+                        ↓
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Stage 3: SERP
+                stage_3_container = stage_cols[4] if stage_cols else st.container()
+                with stage_3_container:
+                    st.markdown('<div class="stage-card">', unsafe_allow_html=True)
+                    st.markdown('<div class="stage-title">📄 SERP</div>', unsafe_allow_html=True)
+                    
+                    # Device selector
+                    device3 = st.radio("Device:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev_serp', index=0, label_visibility="collapsed")
+                    
+                    if st.session_state.view_mode == 'advanced':
+                        with st.expander("⚙️ Edit Details", expanded=False):
+                            # SERP template dropdown
+                            if serps:
+                                selected_serp = st.selectbox(
+                                    "📄 SERP Template:",
+                                    serps,
+                                    index=serps.index(current_serp) if current_serp in serps else 0,
+                                    key='serp_select'
+                                )
+                                
+                                if selected_serp != current_serp:
+                                    current_flow['serp_template_name'] = selected_serp
+                                    final_filtered = url_filtered[url_filtered['serp_template_name'] == selected_serp]
+                                    if len(final_filtered) > 0:
+                                        current_flow.update(final_filtered.iloc[0].to_dict())
+                                    st.session_state.similarities = None  # Reset scores
+                                    st.rerun()
+                            
+                                # Show ad details
+                                st.caption(f"**Title:** {current_flow.get('ad_title', 'N/A')[:30]}...")
+                                st.caption(f"**Display URL:** {current_flow.get('ad_display_url', 'N/A')[:30]}...")
+                                st.caption(f"📊 {len(serps)} templates available")
+                    else:
+                        # Basic mode - show template name only
+                        serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
+                        st.caption(f"**Template:** {serp_name}")
+                    
+                    # Use Serp_URl for iframe rendering
+                    serp_url = current_flow.get('Serp_URl', '')
+                    if serp_url and pd.notna(serp_url):
+                        # Try iframe src first, fallback to fetched HTML if blocked
+                        try:
+                            preview_html, height, used_src = render_mini_device_preview(serp_url, is_url=True, device=device3)
+                            st.components.v1.html(preview_html, height=height, scrolling=False)
+                            st.caption("✅ SERP iframe" if used_src else "✅ Rendered")
+                        except:
+                            # Fallback: Fetch HTML
+                            try:
+                                st.caption("⚠️ Fetching SERP HTML...")
+                                response = requests.get(serp_url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
+                                if response.status_code == 200:
+                                    page_html = response.text
+                                    page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
+                                                      lambda m: f'src="{urljoin(serp_url, m.group(1))}"', page_html)
+                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device3)
+                                    st.components.v1.html(preview_html, height=height, scrolling=False)
+                                    st.caption("✅ HTML fetched")
+                                else:
+                                    st.error("❌ Could not load SERP")
+                            except:
+                                st.error("❌ SERP load failed")
+                    else:
+                        st.warning("No SERP URL available")
+                    
+                    st.markdown('</div>', unsafe_allow_html=True)
+                
+                if stage_cols:
+                    with stage_cols[5]:
+                        st.markdown("""
+                        <div style='display: flex; align-items: center; justify-content: center; height: 100%;'>
+                            <div style='font-size: 36px; color: #3b82f6; font-weight: 700;'>→</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.markdown("""
+                    <div style='text-align: center; font-size: 40px; color: #3b82f6; margin: 20px 0; font-weight: 700;'>
+                        ↓
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Stage 4: Landing Page
+                stage_4_container = stage_cols[6] if stage_cols else st.container()
+                with stage_4_container:
+                    st.markdown('<div class="stage-card">', unsafe_allow_html=True)
+                    st.markdown('<div class="stage-title">🎯 Landing Page</div>', unsafe_allow_html=True)
+                    
+                    # Device selector
+                    device4 = st.radio("Device:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev_landing', index=0, label_visibility="collapsed")
+                    
+                    if st.session_state.view_mode == 'advanced':
+                        with st.expander("⚙️ Edit Details", expanded=False):
+                            # Keyword selector
+                            selected_keyword = st.selectbox(
+                                "🔑 Search Keyword:",
+                                keywords,
+                                index=keywords.index(current_kw) if current_kw in keywords else 0,
+                                key='kw_select'
+                            )
+                            
+                            if selected_keyword != current_kw:
+                                # Rebuild filters from keyword
+                                current_flow['keyword_term'] = selected_keyword
+                                kw_filtered = campaign_df[campaign_df['keyword_term'] == selected_keyword]
+                                if 'publisher_domain' in kw_filtered.columns:
+                                    domains = sorted(kw_filtered['publisher_domain'].dropna().unique().tolist())
+                                    if domains:
+                                        current_flow['publisher_domain'] = domains[0]
+                                        dom_filtered = kw_filtered[kw_filtered['publisher_domain'] == domains[0]]
+                                        urls = sorted(dom_filtered['publisher_url'].dropna().unique().tolist())
+                                        if urls:
+                                            current_flow['publisher_url'] = urls[0]
+                                            url_filtered = dom_filtered[dom_filtered['publisher_url'] == urls[0]]
+                                            if len(url_filtered) > 0:
+                                                current_flow.update(url_filtered.iloc[0].to_dict())
+                                st.session_state.similarities = None  # Reset scores
+                                st.rerun()
+                            
+                            # Show landing page URL
+                            adv_url = current_flow.get('reporting_destination_url', '')
+                            st.caption(f"**Landing:** {adv_url[:35]}...")
+                            st.caption(f"📊 {len(keywords)} keywords available")
+                    else:
+                        # Basic mode - show keyword only
+                        st.caption(f"**Keyword:** {current_kw}")
+                    
+                    if adv_url:
+                        # Try iframe src first, fallback to fetched HTML if blocked
+                        try:
+                            preview_html, height, used_src = render_mini_device_preview(adv_url, is_url=True, device=device4)
+                            st.components.v1.html(preview_html, height=height, scrolling=False)
+                            st.caption("✅ Direct iframe" if used_src else "✅ Rendered")
+                        except:
+                            # Fallback: Fetch HTML
+                            try:
+                                st.caption("⚠️ Fetching HTML (iframe blocked)...")
+                                response = requests.get(adv_url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
+                                if response.status_code == 200:
+                                    page_html = response.text
+                                    # Fix relative URLs
+                                    page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
+                                                      lambda m: f'src="{urljoin(adv_url, m.group(1))}"', page_html)
+                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device4)
+                                    st.components.v1.html(preview_html, height=height, scrolling=False)
+                                    st.caption("✅ HTML fetched")
+                                else:
+                                    st.error("❌ Could not load")
+                            except:
+                                st.error("❌ Load failed")
+                    
+                    st.markdown('</div>', unsafe_allow_html=True)
+                
+                st.divider()
+                
+                # Calculate similarity scores
+                if 'similarities' not in st.session_state or st.session_state.similarities is None:
+                    if API_KEY:
+                        with st.spinner("🧠 Calculating similarity scores..."):
+                            st.session_state.similarities = calculate_similarities(current_flow)
+                    else:
+                        st.session_state.similarities = {}
+                
+                # Similarity Scores Below
+                st.markdown("### 📊 Similarity Scores")
+                
+                score_cols = st.columns(3)
+                
+                with score_cols[0]:
+                    st.markdown("#### 🔗 Keyword → Ad")
+                    if 'similarities' in st.session_state and st.session_state.similarities:
+                        data = st.session_state.similarities.get('kwd_to_ad', {})
+                        if 'error' not in data:
+                            score = data.get('final_score', 0)
+                            reason = data.get('reason', 'N/A')
+                            css_class, label, color = get_score_class(score)
+                            
+                            st.markdown(f'<div class="score-box {css_class}">{score:.1%}</div>', unsafe_allow_html=True)
+                            st.markdown(f"**{label} Match**")
+                            st.caption(reason)
+                            
+                            with st.expander("📊 Details"):
+                                for key, value in data.items():
+                                    if key not in ['final_score', 'band', 'reason'] and isinstance(value, (int, float)):
+                                        st.metric(key.replace('_', ' ').title(), f"{value:.1%}")
+                        else:
+                            st.error("API Error")
+                    else:
+                        st.info("Add API key to calculate")
+                
+                with score_cols[1]:
+                    st.markdown("#### 🔗 Ad → Page")
+                    if 'similarities' in st.session_state and st.session_state.similarities:
+                        data = st.session_state.similarities.get('ad_to_page', {})
+                        if data and 'error' not in data:
+                            score = data.get('final_score', 0)
+                            reason = data.get('reason', 'N/A')
+                            css_class, label, color = get_score_class(score)
+                            
+                            st.markdown(f'<div class="score-box {css_class}">{score:.1%}</div>', unsafe_allow_html=True)
+                            st.markdown(f"**{label} Match**")
+                            st.caption(reason)
+                            
+                            with st.expander("📊 Details"):
+                                for key, value in data.items():
+                                    if key not in ['final_score', 'band', 'reason'] and isinstance(value, (int, float)):
+                                        st.metric(key.replace('_', ' ').title(), f"{value:.1%}")
+                        else:
+                            st.info("Will calculate after landing page loads")
+                    else:
+                        st.info("Add API key to calculate")
+                
+                with score_cols[2]:
+                    st.markdown("#### 🔗 Keyword → Page")
+                    if 'similarities' in st.session_state and st.session_state.similarities:
+                        data = st.session_state.similarities.get('kwd_to_page', {})
+                        if data and 'error' not in data:
+                            score = data.get('final_score', 0)
+                            reason = data.get('reason', 'N/A')
+                            css_class, label, color = get_score_class(score)
+                            
+                            st.markdown(f'<div class="score-box {css_class}">{score:.1%}</div>', unsafe_allow_html=True)
+                            st.markdown(f"**{label} Match**")
+                            st.caption(reason)
+                            
+                            with st.expander("📊 Details"):
+                                for key, value in data.items():
+                                    if key not in ['final_score', 'band', 'reason'] and isinstance(value, (int, float)):
+                                        st.metric(key.replace('_', ' ').title(), f"{value:.1%}")
+                        else:
+                            st.info("Will calculate after landing page loads")
+                    else:
+                        st.info("Add API key to calculate")
+            
+            else:
+                st.warning("No data available for this campaign")
 else:
     st.error("❌ Could not load data")
     st.info("""
     **Troubleshooting:**
     1. Make sure the Google Drive file is shared with "Anyone with the link can view"
     2. Verify the file is a CSV or Google Sheet
-    3. Check that the file ID is correct: `1otRz-kxnlFvqFzCT_54gdxZ1kca1MIgK`
+    3. Check that the file ID is correct
     """)
