@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+"""
+CPA Flow Analysis Tool v2
+Horizontal flow visualization with auto-selected best performing flows
+"""
+
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
