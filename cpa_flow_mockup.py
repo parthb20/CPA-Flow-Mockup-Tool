@@ -231,33 +231,46 @@ for key in ['data_a', 'loading_done', 'default_flow', 'current_flow', 'view_mode
             st.session_state[key] = None
 
 def load_csv_from_gdrive(file_id):
-    """Load CSV from Google Drive - handles CSV, ZIP, and GZIP files"""
+    """Load CSV from Google Drive - handles CSV, ZIP, GZIP, and large file virus scan"""
     try:
-        # Try multiple download URLs
-        urls_to_try = [
-            f"https://drive.google.com/uc?export=download&id={file_id}",
-            f"https://drive.google.com/u/0/uc?id={file_id}&export=download",
-            f"https://docs.google.com/uc?export=download&id={file_id}",
-        ]
+        # Use session to handle cookies for large file downloads
+        session = requests.Session()
         
-        response = None
-        for url in urls_to_try:
-            st.caption(f"🔄 Trying: {url[:60]}...")
-            response = requests.get(url, timeout=30, allow_redirects=True)
-            if response.status_code == 200:
-                # Check if it's actually file content (not HTML error page)
-                content = response.content
-                if not content.startswith(b'<!DOCTYPE') and not content.startswith(b'<html'):
-                    st.success(f"✅ Downloaded from URL")
-                    break
-            time.sleep(0.5)
+        # Initial download URL
+        url = f"https://drive.google.com/uc?export=download&id={file_id}"
+        st.caption(f"🔄 Downloading file from Google Drive...")
         
-        if response is None or response.status_code != 200:
-            st.error("❌ All download URLs failed")
-            return None
+        response = session.get(url, timeout=30, allow_redirects=True, stream=True)
         
-        # Get content
+        # Check for virus scan warning (large files)
         content = response.content
+        
+        if b'virus scan warning' in content.lower() or b'Google Drive - Virus scan warning' in content:
+            st.warning("⚠️ Large file detected - handling virus scan confirmation...")
+            
+            # Extract confirmation token
+            match = re.search(r'id="download-form"[^>]*action="([^"]*)"', content.decode('utf-8', errors='ignore'))
+            if not match:
+                match = re.search(r'confirm=([^&"]+)', content.decode('utf-8', errors='ignore'))
+            
+            if match:
+                # Build confirmation URL
+                confirm_token = match.group(1) if match.group(1).startswith('http') else match.group(1)
+                
+                if confirm_token.startswith('http'):
+                    confirm_url = confirm_token
+                else:
+                    confirm_url = f"https://drive.google.com/uc?export=download&id={file_id}&confirm={confirm_token}"
+                
+                st.caption("🔄 Confirming download...")
+                response = session.get(confirm_url, timeout=60, allow_redirects=True, stream=True)
+                content = response.content
+                st.success("✅ Large file download confirmed")
+            else:
+                st.error("❌ Could not find confirmation token")
+                return None
+        
+        response.raise_for_status()
         
         # Debug: Show first few bytes and interpret
         signature_hex = content[:4].hex()
