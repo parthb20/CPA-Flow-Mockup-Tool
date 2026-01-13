@@ -891,19 +891,42 @@ def parse_creative_html(response_str):
         return None, None
 
 
-# Auto-load data
-if not st.session_state.loading_done:
-    with st.spinner("Loading data from Google Drive..."):
-        try:
-            st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
-            if st.session_state.data_a is not None:
-                st.success(f"✅ Loaded {len(st.session_state.data_a)} rows")
-            st.session_state.loading_done = True
-        except Exception as e:
-            st.error(f"Error during load: {str(e)}")
-            st.session_state.loading_done = True
-
 st.title("📊 CPA Flow Analysis v2")
+
+# File upload option (primary method)
+st.markdown("### 📤 Upload Data File")
+uploaded_file = st.file_uploader(
+    "Upload your data file (CSV, ZIP, or GZIP)",
+    type=['csv', 'gz', 'zip'],
+    help="Upload your campaign data file. Supports .csv, .csv.gz, and .zip formats"
+)
+
+if uploaded_file is not None:
+    with st.spinner("Processing uploaded file..."):
+        try:
+            content = uploaded_file.read()
+            st.session_state.data_a = process_file_content(content)
+            if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
+                st.success(f"✅ Loaded {len(st.session_state.data_a)} rows from {uploaded_file.name}")
+                st.session_state.loading_done = True
+        except Exception as e:
+            st.error(f"❌ Error processing file: {str(e)}")
+
+# Fallback: Auto-load from Google Drive if no file uploaded
+if not uploaded_file and not st.session_state.loading_done:
+    with st.expander("🔽 Or load from Google Drive (for large files, upload recommended)", expanded=False):
+        if st.button("Load from Google Drive"):
+            with st.spinner("Loading data from Google Drive..."):
+                try:
+                    st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
+                    if st.session_state.data_a is not None:
+                        st.success(f"✅ Loaded {len(st.session_state.data_a)} rows")
+                    st.session_state.loading_done = True
+                except Exception as e:
+                    st.error(f"Error during load: {str(e)}")
+                    st.session_state.loading_done = True
+
+st.divider()
 
 # View mode toggle
 view_col1, view_col2, view_col3 = st.columns([1, 1, 4])
