@@ -42,6 +42,31 @@ st.markdown("""
     h2 { font-weight: 700 !important; font-size: 26px !important; }
     h3 { font-weight: 700 !important; font-size: 22px !important; }
     
+    /* Buttons */
+    .stButton > button {
+        background-color: white !important;
+        color: #0f172a !important;
+        border: 2px solid #cbd5e1 !important;
+        font-weight: 600 !important;
+        font-size: 16px !important;
+    }
+    .stButton > button:hover {
+        background-color: #f1f5f9 !important;
+        border-color: #94a3b8 !important;
+    }
+    .stButton > button[kind="primary"],
+    .stButton > button[data-testid="baseButton-primary"] {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+        color: white !important;
+        border: none !important;
+    }
+    .stButton > button[kind="secondary"],
+    .stButton > button[data-testid="baseButton-secondary"] {
+        background: white !important;
+        color: #0f172a !important;
+        border: 2px solid #e2e8f0 !important;
+    }
+    
     /* Dropdowns */
     [data-baseweb="select"] { background-color: white !important; }
     [data-baseweb="select"] > div { background-color: white !important; border-color: #cbd5e1 !important; }
@@ -763,9 +788,15 @@ def parse_creative_html(response_str):
 
 # Auto-load data
 if not st.session_state.loading_done:
-    with st.spinner("Loading data..."):
-        st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
-        st.session_state.loading_done = True
+    with st.spinner("Loading data from Google Drive..."):
+        try:
+            st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
+            if st.session_state.data_a is not None:
+                st.success(f"✅ Loaded {len(st.session_state.data_a)} rows")
+            st.session_state.loading_done = True
+        except Exception as e:
+            st.error(f"Error during load: {str(e)}")
+            st.session_state.loading_done = True
 
 st.title("📊 CPA Flow Analysis v2")
 
@@ -1392,9 +1423,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.warning("No data available for this campaign")
 else:
     st.error("❌ Could not load data")
-    st.info("""
+    st.info(f"""
     **Troubleshooting:**
     1. Make sure the Google Drive file is shared with "Anyone with the link can view"
-    2. Verify the file is a CSV or Google Sheet
-    3. Check that the file ID is correct
+    2. Verify the file is a CSV, ZIP, or GZIP
+    3. Check that the file ID is correct: `{FILE_A_ID}`
+    4. Try reloading the page
+    
+    **Current File ID:** `{FILE_A_ID}`
     """)
