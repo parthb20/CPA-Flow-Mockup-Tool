@@ -12,6 +12,15 @@ import base64
 import html
 import zipfile
 import gzip
+import tempfile
+import os
+
+# Try to import gdown (better for large files)
+try:
+    import gdown
+    GDOWN_AVAILABLE = True
+except ImportError:
+    GDOWN_AVAILABLE = False
 
 # Page config
 st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊", layout="wide")
@@ -232,57 +241,101 @@ for key in ['data_a', 'loading_done', 'default_flow', 'current_flow', 'view_mode
 
 def load_csv_from_gdrive(file_id):
     """Load CSV from Google Drive - handles CSV, ZIP, GZIP, and large file virus scan"""
+    
+    # Method 1: Try gdown if available (best for large files)
+    if GDOWN_AVAILABLE:
+        st.caption(f"🔄 Using gdown for reliable download...")
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.tmp') as tmp_file:
+                url = f"https://drive.google.com/uc?id={file_id}"
+                output = tmp_file.name
+                
+                gdown.download(url, output, quiet=False, fuzzy=True)
+                
+                # Read the downloaded file
+                with open(output, 'rb') as f:
+                    content = f.read()
+                
+                # Clean up
+                os.unlink(output)
+                
+                st.success(f"✅ Downloaded {len(content):,} bytes via gdown")
+                
+                # Process the content (detect type and decompress if needed)
+                return process_file_content(content)
+                
+        except Exception as e:
+            st.warning(f"⚠️ gdown failed: {str(e)}, trying alternative method...")
+    
+    # Method 2: Manual download (fallback)
     try:
-        # Use session to handle cookies for large file downloads
+        st.caption(f"🔄 Downloading via requests...")
+        
         session = requests.Session()
         
-        # Initial download URL
+        # Initial request
         url = f"https://drive.google.com/uc?export=download&id={file_id}"
-        st.caption(f"🔄 Downloading file from Google Drive...")
+        response = session.get(url, timeout=30, stream=False)
         
-        response = session.get(url, timeout=30, allow_redirects=True, stream=True)
-        
-        # Check for virus scan warning (large files)
         content = response.content
         
-        if b'virus scan warning' in content.lower() or b'Google Drive - Virus scan warning' in content:
-            st.warning("⚠️ Large file detected - handling virus scan confirmation...")
+        # Check for virus scan warning or download confirmation
+        if b'virus scan warning' in content.lower() or b'download anyway' in content.lower() or content.startswith(b'<!DOCTYPE'):
+            st.warning("⚠️ Large file - getting confirmation link...")
             
-            # Extract confirmation token
-            match = re.search(r'id="download-form"[^>]*action="([^"]*)"', content.decode('utf-8', errors='ignore'))
-            if not match:
-                match = re.search(r'confirm=([^&"]+)', content.decode('utf-8', errors='ignore'))
+            # Try to find the actual download link with token
+            text = content.decode('utf-8', errors='ignore')
             
-            if match:
-                # Build confirmation URL
-                confirm_token = match.group(1) if match.group(1).startswith('http') else match.group(1)
-                
-                if confirm_token.startswith('http'):
-                    confirm_url = confirm_token
-                else:
-                    confirm_url = f"https://drive.google.com/uc?export=download&id={file_id}&confirm={confirm_token}"
-                
-                st.caption("🔄 Confirming download...")
-                response = session.get(confirm_url, timeout=60, allow_redirects=True, stream=True)
+            # Method 1: Look for confirm parameter
+            confirm_match = re.search(r'confirm=([a-zA-Z0-9_-]+)', text)
+            if confirm_match:
+                confirm = confirm_match.group(1)
+                url = f"https://drive.google.com/uc?export=download&id={file_id}&confirm={confirm}"
+                st.caption(f"🔄 Downloading with confirmation token...")
+                response = session.get(url, timeout=60, stream=False)
                 content = response.content
-                st.success("✅ Large file download confirmed")
+                st.success("✅ Downloaded with confirmation")
             else:
-                st.error("❌ Could not find confirmation token")
-                return None
+                # Method 2: Look for download link in HTML
+                download_match = re.search(r'href="(/uc\?[^"]*export=download[^"]*)"', text)
+                if download_match:
+                    download_path = download_match.group(1).replace('&amp;', '&')
+                    url = f"https://drive.google.com{download_path}"
+                    st.caption(f"🔄 Following download link...")
+                    response = session.get(url, timeout=60, stream=False)
+                    content = response.content
+                    st.success("✅ Downloaded via link")
+                else:
+                    st.error("❌ Could not extract download link")
+                    st.warning("💡 Try: File → Make a copy → Share the new copy")
+                    return None
         
-        response.raise_for_status()
+        if response.status_code != 200:
+            st.error(f"❌ HTTP {response.status_code}: {response.reason}")
+            return None
         
-        # Debug: Show first few bytes and interpret
+        # Process the content
+        return process_file_content(content)
+            
+    except Exception as e:
+        st.error(f"❌ Error loading data: {str(e)}")
+        st.info("💡 Make sure the file is shared with 'Anyone with the link'")
+        return None
+
+def process_file_content(content):
+    """Process file content - detect type and decompress if needed"""
+    try:
+        # Debug: Show first few bytes
         signature_hex = content[:4].hex()
         signature_ascii = ''.join([chr(b) if 32 <= b < 127 else '.' for b in content[:10]])
         
         st.caption(f"🔍 File signature: {signature_hex} (hex)")
-        st.caption(f"🔍 First bytes as text: {signature_ascii}")
+        st.caption(f"🔍 First bytes: {signature_ascii}")
         st.caption(f"📦 Content size: {len(content):,} bytes")
         
         # Check if Google Drive returned HTML error page
         if content.startswith(b'<!DOCTYPE') or content.startswith(b'<html') or b'<title>Google Drive' in content[:1000]:
-            st.error("❌ Google Drive returned an HTML page instead of file!")
+            st.error("❌ Received HTML page instead of file!")
             st.error("🔧 **Fix**: Make sure file is shared with 'Anyone with the link can view'")
             st.code(content[:500].decode('utf-8', errors='ignore'), language='html')
             return None
@@ -336,16 +389,15 @@ def load_csv_from_gdrive(file_id):
             # Try as CSV
             st.info("📄 Loading as CSV file...")
             try:
-                df = pd.read_csv(StringIO(response.text), dtype=str)
+                df = pd.read_csv(StringIO(content.decode('utf-8')), dtype=str)
                 st.success(f"✅ CSV parsed: {len(df)} rows, {len(df.columns)} columns")
                 return df
             except Exception as e:
                 st.error(f"❌ CSV parse error: {str(e)}")
                 return None
-            
+                
     except Exception as e:
-        st.error(f"❌ Error loading data: {str(e)}")
-        st.info("💡 Make sure the file is shared with 'Anyone with the link'")
+        st.error(f"❌ Error processing file: {str(e)}")
         return None
 
 
@@ -1476,12 +1528,36 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.warning("No data available for this campaign")
 else:
     st.error("❌ Could not load data")
-    st.info(f"""
-    **Troubleshooting:**
-    1. Make sure the Google Drive file is shared with "Anyone with the link can view"
-    2. Verify the file is a CSV, ZIP, or GZIP
-    3. Check that the file ID is correct: `{FILE_A_ID}`
-    4. Try reloading the page
     
+    st.warning("""
+    ### 🔧 Quick Fix for Large Files:
+    
+    Google Drive's virus scan warning blocks automated downloads for large files.
+    
+    **Option 1: Make a Copy (Recommended)**
+    1. Open your file in Google Drive
+    2. File → Make a copy
+    3. Share the **copy** with "Anyone with the link"
+    4. Use the **copy's** file ID
+    
+    **Option 2: Use Direct Link Format**
+    Try this URL format in your browser to test download:
+    ```
+    https://drive.google.com/uc?export=download&id={FILE_A_ID}
+    ```
+    If it downloads successfully in browser, the file is accessible.
+    
+    **Option 3: Reduce File Size**
+    - Compress with higher compression
+    - Filter to essential rows only
+    - Split into smaller files
+    """)
+    
+    st.info(f"""
     **Current File ID:** `{FILE_A_ID}`
+    
+    **Troubleshooting:**
+    1. File must be shared with "Anyone with the link can view"
+    2. File should be < 100MB for reliable downloads
+    3. Make sure it's .csv, .zip, or .gz format
     """)
