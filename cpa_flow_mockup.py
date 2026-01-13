@@ -233,62 +233,78 @@ for key in ['data_a', 'loading_done', 'default_flow', 'current_flow', 'view_mode
 def load_csv_from_gdrive(file_id):
     """Load CSV from Google Drive - handles CSV, ZIP, and GZIP files"""
     try:
-        # Try as Google Sheets export first
-        url = f"https://docs.google.com/spreadsheets/d/{file_id}/export?format=csv"
+        # Skip Google Sheets export - go straight to file download
+        url = f"https://drive.google.com/uc?export=download&id={file_id}"
         response = requests.get(url, timeout=30)
-        if response.status_code != 200:
-            url = f"https://drive.google.com/uc?export=download&id={file_id}"
-            response = requests.get(url, timeout=30)
+        
         if response.status_code != 200:
             url = f"https://drive.google.com/u/0/uc?id={file_id}&export=download"
             response = requests.get(url, timeout=30)
+        
         response.raise_for_status()
         
-        # Check file type by magic bytes
+        # Get content
         content = response.content
         
-        # Check if it's a GZIP file (magic bytes: 1f 8b)
-        if content[:2] == b'\x1f\x8b':
+        # Debug: Show first few bytes
+        st.caption(f"🔍 File signature: {content[:4].hex()} (first 4 bytes)")
+        st.caption(f"📦 Content size: {len(content):,} bytes")
+        
+        # Check file type by magic bytes
+        # GZIP: 1f 8b
+        if len(content) >= 2 and content[:2] == b'\x1f\x8b':
             st.info("📦 Detected GZIP file (.gz) - decompressing...")
             try:
                 # Decompress GZIP
                 with gzip.open(BytesIO(content), 'rb') as gz_file:
                     decompressed = gz_file.read()
                 
-                st.success("✅ GZIP decompressed successfully")
+                st.success(f"✅ GZIP decompressed: {len(decompressed):,} bytes")
                 # Read as CSV
-                return pd.read_csv(BytesIO(decompressed), dtype=str)
+                df = pd.read_csv(BytesIO(decompressed), dtype=str)
+                st.success(f"✅ CSV parsed: {len(df)} rows, {len(df.columns)} columns")
+                return df
             except Exception as e:
                 st.error(f"❌ Error decompressing GZIP: {str(e)}")
                 return None
         
-        # Check if it's a ZIP file (magic bytes: PK)
-        elif content[:2] == b'PK':
+        # ZIP: 50 4b (PK)
+        elif len(content) >= 2 and content[:2] == b'PK':
             st.info("📦 Detected ZIP file - extracting...")
-            with zipfile.ZipFile(BytesIO(content)) as zip_file:
-                # List all files in zip
-                file_list = zip_file.namelist()
-                st.caption(f"Found files: {', '.join(file_list)}")
-                
-                # Find CSV file (first .csv file)
-                csv_file = None
-                for filename in file_list:
-                    if filename.lower().endswith('.csv'):
-                        csv_file = filename
-                        break
-                
-                if csv_file:
-                    st.success(f"✅ Extracting: {csv_file}")
-                    # Extract and read CSV
-                    csv_content = zip_file.read(csv_file)
-                    return pd.read_csv(BytesIO(csv_content), dtype=str)
-                else:
-                    st.error("❌ No CSV file found in ZIP")
-                    return None
+            try:
+                with zipfile.ZipFile(BytesIO(content)) as zip_file:
+                    file_list = zip_file.namelist()
+                    st.caption(f"Found files: {', '.join(file_list)}")
+                    
+                    # Find CSV file
+                    csv_file = None
+                    for filename in file_list:
+                        if filename.lower().endswith('.csv'):
+                            csv_file = filename
+                            break
+                    
+                    if csv_file:
+                        st.success(f"✅ Extracting: {csv_file}")
+                        csv_content = zip_file.read(csv_file)
+                        df = pd.read_csv(BytesIO(csv_content), dtype=str)
+                        st.success(f"✅ CSV parsed: {len(df)} rows, {len(df.columns)} columns")
+                        return df
+                    else:
+                        st.error("❌ No CSV file found in ZIP")
+                        return None
+            except Exception as e:
+                st.error(f"❌ Error extracting ZIP: {str(e)}")
+                return None
         else:
-            # It's a direct CSV file
-            st.info("📄 Loading CSV file...")
-            return pd.read_csv(StringIO(response.text), dtype=str)
+            # Try as CSV
+            st.info("📄 Loading as CSV file...")
+            try:
+                df = pd.read_csv(StringIO(response.text), dtype=str)
+                st.success(f"✅ CSV parsed: {len(df)} rows, {len(df.columns)} columns")
+                return df
+            except Exception as e:
+                st.error(f"❌ CSV parse error: {str(e)}")
+                return None
             
     except Exception as e:
         st.error(f"❌ Error loading data: {str(e)}")
