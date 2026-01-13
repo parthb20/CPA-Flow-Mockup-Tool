@@ -15,16 +15,15 @@ import gzip
 import tempfile
 import os
 
+# Page config - MUST be first Streamlit command
+st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊", layout="wide")
+
 # Try to import gdown (better for large files)
 try:
     import gdown
     GDOWN_AVAILABLE = True
 except:
     GDOWN_AVAILABLE = False
-    st.warning("⚠️ gdown not installed - Google Drive downloads may be limited. Use file uploader instead.")
-
-# Page config
-st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊", layout="wide")
 
 # Custom CSS
 st.markdown("""
