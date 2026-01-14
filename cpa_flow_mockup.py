@@ -1264,17 +1264,32 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 iframe_blocked = True  # Failed, use HTML
                         
                         if iframe_blocked:
-                            # Fetch HTML and render (automatic fallback)
+                            # Fetch HTML with complete browser headers
                             try:
-                                response = requests.get(pub_url, timeout=15, headers={
-                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9',
+                                # More complete headers to mimic real browser
+                                headers = {
+                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
                                     'Accept-Language': 'en-US,en;q=0.9',
-                                    'Accept-Encoding': 'gzip, deflate',
+                                    'Accept-Encoding': 'gzip, deflate, br',
+                                    'DNT': '1',
                                     'Connection': 'keep-alive',
-                                    'Upgrade-Insecure-Requests': '1'
-                                })
-                                if response.status_code == 200:
+                                    'Upgrade-Insecure-Requests': '1',
+                                    'Sec-Fetch-Dest': 'document',
+                                    'Sec-Fetch-Mode': 'navigate',
+                                    'Sec-Fetch-Site': 'none',
+                                    'Cache-Control': 'max-age=0'
+                                }
+                                
+                                # Try with session to handle cookies
+                                session = requests.Session()
+                                response = session.get(pub_url, timeout=15, headers=headers, allow_redirects=True)
+                                
+                                if response.status_code == 403:
+                                    st.error("🚫 **Site blocks automated access** (HTTP 403)")
+                                    st.info("Forbes and similar sites use anti-bot protection. This is normal.")
+                                    st.markdown(f"**Visit directly:** [🔗 Open {pub_url[:30]}...]({pub_url})")
+                                elif response.status_code == 200:
                                     page_html = response.text
                                     # Fix relative URLs
                                     page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
@@ -1522,17 +1537,30 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 iframe_blocked = True
                         
                         if iframe_blocked:
-                            # Auto-fallback to HTML fetch
+                            # Auto-fallback to HTML fetch with enhanced headers
                             try:
-                                response = requests.get(adv_url, timeout=15, headers={
-                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9',
+                                headers = {
+                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
                                     'Accept-Language': 'en-US,en;q=0.9',
-                                    'Accept-Encoding': 'gzip, deflate',
+                                    'Accept-Encoding': 'gzip, deflate, br',
+                                    'DNT': '1',
                                     'Connection': 'keep-alive',
-                                    'Upgrade-Insecure-Requests': '1'
-                                })
-                                if response.status_code == 200:
+                                    'Upgrade-Insecure-Requests': '1',
+                                    'Sec-Fetch-Dest': 'document',
+                                    'Sec-Fetch-Mode': 'navigate',
+                                    'Sec-Fetch-Site': 'none',
+                                    'Cache-Control': 'max-age=0'
+                                }
+                                
+                                session = requests.Session()
+                                response = session.get(adv_url, timeout=15, headers=headers, allow_redirects=True)
+                                
+                                if response.status_code == 403:
+                                    st.error("🚫 **Site blocks automated access** (HTTP 403)")
+                                    st.info("This site has anti-bot protection. This is expected for some advertisers.")
+                                    st.markdown(f"**Visit directly:** [🔗 Open landing page]({adv_url})")
+                                elif response.status_code == 200:
                                     page_html = response.text
                                     page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
                                                       lambda m: f'src="{urljoin(adv_url, m.group(1))}"', page_html)
