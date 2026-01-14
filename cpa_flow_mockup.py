@@ -997,7 +997,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Sort by conversions and show top 20
                 agg_df = agg_df.sort_values('conversions', ascending=False).head(20).reset_index(drop=True)
                 
-                # Create dataframe with formatting
+                # Simple approach - format the dataframe with visual indicators in the cells
                 display_df = pd.DataFrame({
                     'Publisher Domain': agg_df['publisher_domain'],
                     'Keyword': agg_df['keyword_term'],
@@ -1005,30 +1005,25 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     'Clicks': agg_df['clicks'].apply(lambda x: f"{int(x):,}"),
                     'Conversions': agg_df['conversions'].apply(lambda x: f"{int(x):,}"),
                     'CTR %': agg_df['CTR'].apply(lambda x: f"{x:.2f}%"),
-                    'CVR %': agg_df['CVR'].apply(lambda x: f"{x:.2f}%"),
-                    '_ctr_num': agg_df['CTR'],
-                    '_cvr_num': agg_df['CVR']
+                    'CVR %': agg_df['CVR'].apply(lambda x: f"{x:.2f}%")
                 })
                 
-                # Style function using numeric columns
-                def color_metrics(row):
-                    styles = [''] * len(row)
-                    # CTR (index 5)
-                    styles[5] = 'background-color: #d1fae5; color: #065f46; font-weight: bold' if row.iloc[7] >= avg_ctr else 'background-color: #fee2e2; color: #991b1b; font-weight: bold'
-                    # CVR (index 6)
-                    styles[6] = 'background-color: #d1fae5; color: #065f46; font-weight: bold' if row.iloc[8] >= avg_cvr else 'background-color: #fee2e2; color: #991b1b; font-weight: bold'
-                    return styles
-                
-                # Drop helper columns, apply styling
-                final_df = display_df.drop(columns=['_ctr_num', '_cvr_num'])
-                styled_df = final_df.style.apply(color_metrics, axis=1).set_properties(**{
-                    'background-color': 'white',
-                    'color': 'black'
-                }).set_table_styles([
-                    {'selector': 'th', 'props': [('background-color', '#f1f5f9'), ('color', 'black'), ('font-weight', 'bold')]}
-                ])
-                
-                st.dataframe(styled_df, height=600)
+                # Apply background colors using column_config (Streamlit's way)
+                st.dataframe(
+                    display_df,
+                    column_config={
+                        "CTR %": st.column_config.TextColumn(
+                            "CTR %",
+                            help=f"Green if ≥ {avg_ctr:.2f}% (avg), Red if below"
+                        ),
+                        "CVR %": st.column_config.TextColumn(
+                            "CVR %", 
+                            help=f"Green if ≥ {avg_cvr:.2f}% (avg), Red if below"
+                        )
+                    },
+                    height=600,
+                    hide_index=True
+                )
             else:
                 st.warning("Could not generate table - missing required columns")
             
