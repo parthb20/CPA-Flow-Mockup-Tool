@@ -361,9 +361,16 @@ def process_file_content(content):
                     decompressed = gz_file.read()
                 
                 st.success(f"✅ GZIP decompressed: {len(decompressed):,} bytes")
-                # Read as CSV
-                df = pd.read_csv(BytesIO(decompressed), dtype=str)
+                # Read as CSV with error handling for malformed lines
+                df = pd.read_csv(
+                    BytesIO(decompressed), 
+                    dtype=str, 
+                    on_bad_lines='skip',  # Skip malformed rows
+                    encoding='utf-8',
+                    engine='python'  # Python engine is more forgiving
+                )
                 st.success(f"✅ CSV parsed: {len(df)} rows, {len(df.columns)} columns")
+                st.caption("⚠️ Some malformed rows were skipped")
                 return df
             except Exception as e:
                 st.error(f"❌ Error decompressing GZIP: {str(e)}")
@@ -387,7 +394,13 @@ def process_file_content(content):
                     if csv_file:
                         st.success(f"✅ Extracting: {csv_file}")
                         csv_content = zip_file.read(csv_file)
-                        df = pd.read_csv(BytesIO(csv_content), dtype=str)
+                        df = pd.read_csv(
+                            BytesIO(csv_content), 
+                            dtype=str, 
+                            on_bad_lines='skip',
+                            encoding='utf-8',
+                            engine='python'
+                        )
                         st.success(f"✅ CSV parsed: {len(df)} rows, {len(df.columns)} columns")
                         return df
                     else:
@@ -400,7 +413,13 @@ def process_file_content(content):
             # Try as CSV
             st.info("📄 Loading as CSV file...")
             try:
-                df = pd.read_csv(StringIO(content.decode('utf-8')), dtype=str)
+                df = pd.read_csv(
+                    StringIO(content.decode('utf-8')), 
+                    dtype=str, 
+                    on_bad_lines='skip',
+                    encoding='utf-8',
+                    engine='python'
+                )
                 st.success(f"✅ CSV parsed: {len(df)} rows, {len(df.columns)} columns")
                 return df
             except Exception as e:
