@@ -246,10 +246,17 @@ st.markdown("""
         background: transparent !important;
     }
     
-    /* Dataframe styling - Minimal override */
+    /* Dataframe styling - White table with dark text */
     [data-testid="stDataFrame"] th {
         background-color: #f1f5f9 !important;
         color: #0f172a !important;
+    }
+    [data-testid="stDataFrame"] td {
+        background-color: white !important;
+        color: #0f172a !important;
+    }
+    [data-testid="stDataFrame"] table {
+        background-color: white !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -362,7 +369,7 @@ def process_file_content(content):
                 
                 # Read CSV with maximum field size to prevent truncation
                 import csv
-                csv.field_size_limit(1000000)  # Increase field size limit to 1MB
+                csv.field_size_limit(10000000)  # Increase to 10MB per field
                 
                 # Read as CSV
                 df = pd.read_csv(
@@ -372,6 +379,14 @@ def process_file_content(content):
                     encoding='utf-8',
                     engine='python'
                 )
+                
+                # Debug: Check URL lengths after loading
+                if 'publisher_url' in df.columns:
+                    max_url_len = df['publisher_url'].str.len().max()
+                    sample_url = df['publisher_url'].iloc[0] if len(df) > 0 else 'N/A'
+                    st.info(f"🔍 Debug - Max URL length in data: {max_url_len} chars")
+                    st.info(f"🔍 Debug - Sample URL: {sample_url[:100]}...")
+                    st.info(f"🔍 Debug - Full sample URL length: {len(str(sample_url))} chars")
                 return df
             except Exception as e:
                 st.error(f"❌ Error decompressing GZIP: {str(e)}")
@@ -1099,8 +1114,14 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 current_dom = current_flow.get('publisher_domain', domains[0] if domains else '')
                 dom_filtered = kw_filtered[kw_filtered['publisher_domain'] == current_dom] if domains else kw_filtered
                 
-                urls = sorted(dom_filtered['publisher_url'].dropna().unique().tolist()) if 'publisher_url' in dom_filtered.columns else []
+                # Get unique URLs - DON'T sort to preserve full URL
+                urls = dom_filtered['publisher_url'].dropna().unique().tolist() if 'publisher_url' in dom_filtered.columns else []
                 current_url = current_flow.get('publisher_url', urls[0] if urls else '')
+                
+                # Debug URL length
+                if current_url:
+                    st.info(f"🔍 Debug - Current URL: {current_url}")
+                    st.info(f"🔍 Debug - Current URL length: {len(str(current_url))} chars")
                 url_filtered = dom_filtered[dom_filtered['publisher_url'] == current_url] if urls else dom_filtered
                 
                 serps = []
