@@ -671,21 +671,8 @@ def find_default_flow(df):
             best_url = url_agg.iloc[0]['publisher_url']
             filtered = filtered[filtered['publisher_url'] == best_url]
         
-        # Step 4: From the best combination, get most recent view WITH the sort_metric > 0
+        # Step 4: Get most recent view from the best combination
         if len(filtered) > 0:
-            # Filter to views that have the metric
-            if sort_metric == 'conversions':
-                filtered_with_data = filtered[filtered['conversions'] > 0]
-            elif sort_metric == 'clicks':
-                filtered_with_data = filtered[filtered['clicks'] > 0]
-            else:
-                filtered_with_data = filtered[filtered['impressions'] > 0]
-            
-            # If no views with data, fall back to all
-            if len(filtered_with_data) > 0:
-                filtered = filtered_with_data
-            
-            # Get most recent
             if 'ts' in filtered.columns:
                 best_flow = filtered.nlargest(1, 'ts').iloc[0]
             else:
