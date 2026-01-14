@@ -668,24 +668,15 @@ def find_default_flow(df):
             best_url = url_agg.nlargest(1, sort_metric).iloc[0]['publisher_url']
             filtered = filtered[filtered['publisher_url'] == best_url]
         
-        # Step 4: Get most recent view_id with actual metric value
-        # Filter to only rows where the metric > 0
-        if sort_metric == 'conversions':
-            filtered_with_metric = filtered[filtered['conversions'] > 0]
-        elif sort_metric == 'clicks':
-            filtered_with_metric = filtered[filtered['clicks'] > 0]
-        else:
-            filtered_with_metric = filtered[filtered['impressions'] > 0]
-        
-        # If no rows with the metric, fall back to all filtered rows
-        if len(filtered_with_metric) > 0:
-            filtered = filtered_with_metric
-        
-        # Get most recent view (MAX(ts))
-        if 'ts' in filtered.columns:
+        # Step 4: From the best combination, get most recent view (MAX(ts))
+        # Don't filter by individual view metrics - just get latest view from best combo
+        if 'ts' in filtered.columns and len(filtered) > 0:
             best_flow = filtered.nlargest(1, 'ts').iloc[0]
-        else:
+        elif len(filtered) > 0:
             best_flow = filtered.iloc[0]
+        else:
+            # No data in filtered, return None
+            return None
         
         return best_flow.to_dict()
     
@@ -1108,10 +1099,21 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 st.divider()
                 
+                # Show selected flow details
+                st.info(f"""
+                **🎯 Selected Flow:**
+                • Keyword: {current_flow.get('keyword_term', 'N/A')}
+                • Domain: {current_flow.get('publisher_domain', 'N/A')}
+                • SERP: {current_flow.get('serp_template_name', 'N/A')}
+                • Impressions: {safe_int(current_flow.get('impressions', 0)):,}
+                • Clicks: {safe_int(current_flow.get('clicks', 0)):,}
+                • Conversions: {safe_int(current_flow.get('conversions', 0)):,}
+                """)
+                
                 if st.session_state.view_mode == 'basic':
-                    st.success("✨ **Auto-Selected**: Best performing flow displayed.")
+                    st.success("✨ Auto-selected based on best performance")
                 else:
-                    st.success("✨ **Best Flow**: Highest conversions + most recent data.")
+                    st.success("✨ Use filters above to change flow")
                 
                 # Build filter data
                 keywords = sorted(campaign_df['keyword_term'].dropna().unique().tolist())
@@ -1486,15 +1488,15 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         # Basic mode - show keyword only
                         st.caption(f"**Keyword:** {current_kw}")
                     
-                    # Get landing URL (no debug display)
+                    # Get landing URL
                     
-                    # Check if this flow has clicks
-                    flow_clicks = safe_float(current_flow.get('clicks', 0))
+                    # Check if this COMBINATION has any clicks (check the filtered data, not just this view)
+                    combo_total_clicks = final_filtered['clicks'].sum() if len(final_filtered) > 0 else 0
                     
-                    if flow_clicks == 0:
-                        # No ad clicks - don't render landing page
+                    if combo_total_clicks == 0:
+                        # This keyword+domain+serp+url combination has NO clicks at all
                         st.warning("⚠️ **No Ad Clicks**")
-                        st.caption("This flow has 0 clicks, so no landing page was reached.")
+                        st.caption("This flow combination has 0 total clicks, so landing page was never reached.")
                     elif adv_url and pd.notna(adv_url) and str(adv_url).strip():
                         # Check if site blocks iframe embedding
                         try:
