@@ -245,6 +245,23 @@ st.markdown("""
         color: #0f172a !important;
         background: transparent !important;
     }
+    
+    /* Dataframe styling */
+    [data-testid="stDataFrame"] {
+        background-color: white !important;
+    }
+    [data-testid="stDataFrame"] table {
+        background-color: white !important;
+    }
+    [data-testid="stDataFrame"] th {
+        background-color: #f1f5f9 !important;
+        color: #0f172a !important;
+        font-weight: 700 !important;
+    }
+    [data-testid="stDataFrame"] td {
+        background-color: white !important;
+        color: #0f172a !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -360,7 +377,8 @@ def process_file_content(content):
                     dtype=str, 
                     on_bad_lines='skip',  # Skip malformed rows
                     encoding='utf-8',
-                    engine='python'  # Python engine is more forgiving
+                    engine='python',  # Python engine is more forgiving
+                    quoting=1  # Handle quoted fields properly
                 )
                 return df
             except Exception as e:
@@ -1000,28 +1018,54 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Sort by conversions and show top 20
                 agg_df = agg_df.sort_values('conversions', ascending=False).head(20)
                 
-                # Simple dataframe with column config for color
+                # Get landing URLs for each combo
+                landing_urls = []
+                for _, row in agg_df.iterrows():
+                    matching = campaign_df[
+                        (campaign_df['publisher_domain'] == row['publisher_domain']) &
+                        (campaign_df['keyword_term'] == row['keyword_term'])
+                    ]
+                    if len(matching) > 0:
+                        landing_urls.append(matching.iloc[0]['reporting_destination_url'])
+                    else:
+                        landing_urls.append('N/A')
+                
+                agg_df['Landing URL'] = landing_urls
+                
+                # Create display dataframe
                 display_df = agg_df.copy()
-                display_df.columns = ['Publisher Domain', 'Keyword', 'Impressions', 'Clicks', 'Conversions', 'CTR', 'CVR']
                 
-                # Format numbers
-                display_df['Impressions'] = display_df['Impressions'].astype(int)
-                display_df['Clicks'] = display_df['Clicks'].astype(int)
-                display_df['Conversions'] = display_df['Conversions'].astype(int)
+                # Format columns
+                display_df['Impressions'] = display_df['impressions'].apply(lambda x: f"{int(x):,}")
+                display_df['Clicks'] = display_df['clicks'].apply(lambda x: f"{int(x):,}")
+                display_df['Conversions'] = display_df['conversions'].apply(lambda x: f"{int(x):,}")
+                display_df['CTR %'] = display_df['CTR'].apply(lambda x: f"{x:.2f}%")
+                display_df['CVR %'] = display_df['CVR'].apply(lambda x: f"{x:.2f}%")
                 
-                # Add indicators for above/below average
-                display_df['CTR Status'] = display_df['CTR'].apply(lambda x: '🟢' if x >= weighted_avg_ctr else '🔴')
-                display_df['CVR Status'] = display_df['CVR'].apply(lambda x: '🟢' if x >= weighted_avg_cvr else '🔴')
+                # Select and order columns
+                display_df = display_df[['publisher_domain', 'keyword_term', 'Impressions', 'Clicks', 'Conversions', 'CTR %', 'CVR %', 'Landing URL']]
+                display_df.columns = ['Publisher Domain', 'Keyword', 'Impressions', 'Clicks', 'Conversions', 'CTR %', 'CVR %', 'Landing URL']
                 
-                # Reorder columns
-                display_df = display_df[['Publisher Domain', 'Keyword', 'Impressions', 'Clicks', 'Conversions', 
-                                        'CTR Status', 'CTR', 'CVR Status', 'CVR']]
-                
-                # Format percentages
-                display_df['CTR'] = display_df['CTR'].apply(lambda x: f"{x:.2f}%")
-                display_df['CVR'] = display_df['CVR'].apply(lambda x: f"{x:.2f}%")
-                
-                st.dataframe(display_df, height=600)
+                # Style with column_config
+                st.dataframe(
+                    display_df,
+                    column_config={
+                        "CTR %": st.column_config.TextColumn(
+                            "CTR %",
+                            help="Click-through rate"
+                        ),
+                        "CVR %": st.column_config.TextColumn(
+                            "CVR %",
+                            help="Conversion rate"
+                        ),
+                        "Landing URL": st.column_config.LinkColumn(
+                            "Landing URL",
+                            help="Advertiser landing page"
+                        )
+                    },
+                    hide_index=True,
+                    height=600
+                )
             else:
                 st.warning("Could not generate table - missing required columns")
             
