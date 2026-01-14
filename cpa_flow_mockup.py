@@ -904,14 +904,8 @@ def parse_creative_html(response_str):
         return None, None
 
 
-# Title in top bar with custom styling
-st.markdown("""
-<div style='background: #000; color: white; padding: 20px; margin: -75px -75px 30px -75px; border-radius: 0;'>
-    <h1 style='color: white !important; font-size: 32px !important; margin: 0; text-align: center;'>
-        📊 CPA Flow Analysis v2
-    </h1>
-</div>
-""", unsafe_allow_html=True)
+# Simple title at top (Streamlit handles styling)
+st.title("📊 CPA Flow Analysis v2")
 
 # Auto-load from Google Drive (silent loading)
 if not st.session_state.loading_done:
@@ -1038,6 +1032,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 table_html += "</tbody></table>"
                 st.markdown(table_html, unsafe_allow_html=True)
+            else:
+                st.warning("Could not generate table - missing required columns")
             
             st.divider()
             
@@ -1227,16 +1223,14 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         st.caption(f"**URL:** {current_url[:50]}...")
                     
                     pub_url = current_flow.get('publisher_url', '')
-                    if pub_url:
+                    if pub_url and pd.notna(pub_url) and str(pub_url).strip():
                         # Try iframe src first, fallback to fetched HTML if blocked
                         try:
                             preview_html, height, used_src = render_mini_device_preview(pub_url, is_url=True, device=device1)
                             st.components.v1.html(preview_html, height=height, scrolling=False)
-                            st.caption("✅ Direct iframe" if used_src else "✅ Rendered")
                         except:
                             # Fallback: Fetch HTML
                             try:
-                                st.caption("⚠️ Fetching HTML...")
                                 response = requests.get(pub_url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
                                 if response.status_code == 200:
                                     page_html = response.text
@@ -1244,11 +1238,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                       lambda m: f'src="{urljoin(pub_url, m.group(1))}"', page_html)
                                     preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device1)
                                     st.components.v1.html(preview_html, height=height, scrolling=False)
-                                    st.caption("✅ HTML fetched")
                                 else:
-                                    st.error("❌ Could not load")
+                                    st.error("Could not load")
                             except:
-                                st.error("❌ Load failed")
+                                st.error("Load failed")
+                    else:
+                        st.warning("No publisher URL")
                     
                     st.markdown('</div>', unsafe_allow_html=True)
                 
@@ -1291,45 +1286,21 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     
                     # Get response column (creative data)
                     if 'response' in current_flow and current_flow.get('response'):
-                        creative_html, raw_adcode = parse_creative_html(current_flow['response'])
-                        if creative_html:
-                            try:
+                        try:
+                            creative_html, raw_adcode = parse_creative_html(current_flow['response'])
+                            if creative_html and raw_adcode:
                                 # Render in original dimensions
                                 st.components.v1.html(creative_html, height=400, scrolling=True)
-                                st.caption("📱 Creative (Original Size)")
                                 
                                 # Show raw code option
                                 with st.expander("👁️ View Raw Ad Code"):
-                                    st.code(raw_adcode, language='html')
-                            except Exception as e:
-                                st.error(f"Could not render creative: {str(e)}")
-                                st.markdown("""
-                                <div class='flow-card' style='height: 250px; display: flex; align-items: center; justify-content: center; background: #fef2f2;'>
-                                    <div style='text-align: center; color: #ef4444;'>
-                                        <div style='font-size: 32px;'>⚠️</div>
-                                        <div style='font-size: 12px; margin-top: 8px;'>Creative Error</div>
-                                    </div>
-                                </div>
-                                """, unsafe_allow_html=True)
-                        else:
-                            st.markdown("""
-                            <div class='flow-card' style='height: 250px; display: flex; align-items: center; justify-content: center; background: #fffbeb;'>
-                                <div style='text-align: center; color: #f59e0b;'>
-                                    <div style='font-size: 32px;'>📝</div>
-                                    <div style='font-size: 12px; margin-top: 8px;'>No Creative Data</div>
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
+                                    st.code(raw_adcode[:500], language='html')
+                            else:
+                                st.warning("Could not parse creative JSON")
+                        except Exception as e:
+                            st.error(f"Creative error: {str(e)}")
                     else:
-                        st.markdown("""
-                        <div class='flow-card' style='height: 250px; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);'>
-                            <div style='text-align: center; color: #6b7280;'>
-                                <div style='font-size: 48px;'>🎨</div>
-                                <div style='font-size: 14px; margin-top: 10px;'>Creative Not Available</div>
-                                <div style='font-size: 12px; margin-top: 5px;'>Column not found in data</div>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.warning("No creative data in 'response' column")
                     
                     st.markdown('</div>', unsafe_allow_html=True)
                 
@@ -1386,16 +1357,14 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     
                     # Use Serp_URL for iframe rendering
                     serp_url = current_flow.get('Serp_URL', '')
-                    if serp_url and pd.notna(serp_url):
+                    if serp_url and pd.notna(serp_url) and str(serp_url).strip():
                         # Try iframe src first, fallback to fetched HTML if blocked
                         try:
                             preview_html, height, used_src = render_mini_device_preview(serp_url, is_url=True, device=device3)
                             st.components.v1.html(preview_html, height=height, scrolling=False)
-                            st.caption("✅ SERP iframe" if used_src else "✅ Rendered")
                         except:
                             # Fallback: Fetch HTML
                             try:
-                                st.caption("⚠️ Fetching SERP HTML...")
                                 response = requests.get(serp_url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
                                 if response.status_code == 200:
                                     page_html = response.text
@@ -1403,13 +1372,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                       lambda m: f'src="{urljoin(serp_url, m.group(1))}"', page_html)
                                     preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device3)
                                     st.components.v1.html(preview_html, height=height, scrolling=False)
-                                    st.caption("✅ HTML fetched")
                                 else:
-                                    st.error("❌ Could not load SERP")
+                                    st.error("Could not load SERP")
                             except:
-                                st.error("❌ SERP load failed")
+                                st.error("SERP load failed")
                     else:
-                        st.warning("No SERP URL available")
+                        st.warning("No SERP URL")
                     
                     st.markdown('</div>', unsafe_allow_html=True)
                 
@@ -1474,16 +1442,14 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         # Basic mode - show keyword only
                         st.caption(f"**Keyword:** {current_kw}")
                     
-                    if adv_url:
+                    if adv_url and pd.notna(adv_url) and str(adv_url).strip():
                         # Try iframe src first, fallback to fetched HTML if blocked
                         try:
                             preview_html, height, used_src = render_mini_device_preview(adv_url, is_url=True, device=device4)
                             st.components.v1.html(preview_html, height=height, scrolling=False)
-                            st.caption("✅ Direct iframe" if used_src else "✅ Rendered")
                         except:
                             # Fallback: Fetch HTML
                             try:
-                                st.caption("⚠️ Fetching HTML (iframe blocked)...")
                                 response = requests.get(adv_url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
                                 if response.status_code == 200:
                                     page_html = response.text
@@ -1492,11 +1458,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                       lambda m: f'src="{urljoin(adv_url, m.group(1))}"', page_html)
                                     preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device4)
                                     st.components.v1.html(preview_html, height=height, scrolling=False)
-                                    st.caption("✅ HTML fetched")
                                 else:
-                                    st.error("❌ Could not load")
+                                    st.error("Could not load page")
                             except:
-                                st.error("❌ Load failed")
+                                st.error("Load failed")
+                    else:
+                        st.warning("No landing page URL")
                     
                     st.markdown('</div>', unsafe_allow_html=True)
                 
