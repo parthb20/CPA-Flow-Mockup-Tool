@@ -84,8 +84,29 @@ st.markdown("""
     
     /* Dropdowns */
     [data-baseweb="select"] { background-color: white !important; }
-    [data-baseweb="select"] > div { background-color: white !important; border-color: #cbd5e1 !important; }
-    [data-baseweb="select"] * { color: #0f172a !important; font-weight: 500 !important; font-size: 16px !important; }
+    [data-baseweb="select"] > div { 
+        background-color: white !important; 
+        border-color: #cbd5e1 !important; 
+    }
+    [data-baseweb="select"] span { 
+        color: #0f172a !important; 
+        font-weight: 500 !important; 
+        font-size: 16px !important; 
+    }
+    [role="listbox"] { 
+        background-color: white !important; 
+    }
+    [role="option"] { 
+        background-color: white !important; 
+        color: #0f172a !important; 
+    }
+    [role="option"]:hover { 
+        background-color: #f1f5f9 !important; 
+    }
+    [role="option"][aria-selected="true"] { 
+        background-color: #e0f2fe !important; 
+        color: #0369a1 !important; 
+    }
     
     /* Metrics */
     [data-testid="stMetric"] {
@@ -252,13 +273,12 @@ def load_csv_from_gdrive(file_id):
     
     # Method 1: Try gdown if available (best for large files)
     if GDOWN_AVAILABLE:
-        st.caption(f"🔄 Using gdown for reliable download...")
         try:
             with tempfile.NamedTemporaryFile(delete=False, suffix='.tmp') as tmp_file:
                 url = f"https://drive.google.com/uc?id={file_id}"
                 output = tmp_file.name
                 
-                gdown.download(url, output, quiet=False, fuzzy=True)
+                gdown.download(url, output, quiet=True, fuzzy=True)
                 
                 # Read the downloaded file
                 with open(output, 'rb') as f:
@@ -270,18 +290,14 @@ def load_csv_from_gdrive(file_id):
                 except:
                     pass
                 
-                st.success(f"✅ Downloaded {len(content):,} bytes via gdown")
-                
                 # Process the content (detect type and decompress if needed)
                 return process_file_content(content)
                 
         except Exception as e:
-            st.warning(f"⚠️ gdown failed: {str(e)}, trying alternative method...")
+            pass  # Silently try alternative
     
     # Method 2: Manual download (fallback)
     try:
-        st.caption(f"🔄 Downloading via requests...")
-        
         session = requests.Session()
         
         # Initial request
@@ -290,39 +306,28 @@ def load_csv_from_gdrive(file_id):
         
         content = response.content
         
-        # Check for virus scan warning or download confirmation
+        # Check for virus scan warning or download confirmation (handle silently)
         if b'virus scan warning' in content.lower() or b'download anyway' in content.lower() or content.startswith(b'<!DOCTYPE'):
-            st.warning("⚠️ Large file - getting confirmation link...")
-            
-            # Try to find the actual download link with token
             text = content.decode('utf-8', errors='ignore')
             
-            # Method 1: Look for confirm parameter
+            # Try to find confirmation token
             confirm_match = re.search(r'confirm=([a-zA-Z0-9_-]+)', text)
             if confirm_match:
                 confirm = confirm_match.group(1)
                 url = f"https://drive.google.com/uc?export=download&id={file_id}&confirm={confirm}"
-                st.caption(f"🔄 Downloading with confirmation token...")
                 response = session.get(url, timeout=60, stream=False)
                 content = response.content
-                st.success("✅ Downloaded with confirmation")
             else:
-                # Method 2: Look for download link in HTML
                 download_match = re.search(r'href="(/uc\?[^"]*export=download[^"]*)"', text)
                 if download_match:
                     download_path = download_match.group(1).replace('&amp;', '&')
                     url = f"https://drive.google.com{download_path}"
-                    st.caption(f"🔄 Following download link...")
                     response = session.get(url, timeout=60, stream=False)
                     content = response.content
-                    st.success("✅ Downloaded via link")
                 else:
-                    st.error("❌ Could not extract download link")
-                    st.warning("💡 Try: File → Make a copy → Share the new copy")
                     return None
         
         if response.status_code != 200:
-            st.error(f"❌ HTTP {response.status_code}: {response.reason}")
             return None
         
         # Process the content
@@ -336,31 +341,19 @@ def load_csv_from_gdrive(file_id):
 def process_file_content(content):
     """Process file content - detect type and decompress if needed"""
     try:
-        # Debug: Show first few bytes
-        signature_hex = content[:4].hex()
-        signature_ascii = ''.join([chr(b) if 32 <= b < 127 else '.' for b in content[:10]])
-        
-        st.caption(f"🔍 File signature: {signature_hex} (hex)")
-        st.caption(f"🔍 First bytes: {signature_ascii}")
-        st.caption(f"📦 Content size: {len(content):,} bytes")
-        
         # Check if Google Drive returned HTML error page
         if content.startswith(b'<!DOCTYPE') or content.startswith(b'<html') or b'<title>Google Drive' in content[:1000]:
-            st.error("❌ Received HTML page instead of file!")
-            st.error("🔧 **Fix**: Make sure file is shared with 'Anyone with the link can view'")
-            st.code(content[:500].decode('utf-8', errors='ignore'), language='html')
+            st.error("❌ Could not download file - check sharing settings")
             return None
         
         # Check file type by magic bytes
         # GZIP: 1f 8b
         if len(content) >= 2 and content[:2] == b'\x1f\x8b':
-            st.info("📦 Detected GZIP file (.gz) - decompressing...")
             try:
                 # Decompress GZIP
                 with gzip.open(BytesIO(content), 'rb') as gz_file:
                     decompressed = gz_file.read()
                 
-                st.success(f"✅ GZIP decompressed: {len(decompressed):,} bytes")
                 # Read as CSV with error handling for malformed lines
                 df = pd.read_csv(
                     BytesIO(decompressed), 
@@ -369,8 +362,6 @@ def process_file_content(content):
                     encoding='utf-8',
                     engine='python'  # Python engine is more forgiving
                 )
-                st.success(f"✅ CSV parsed: {len(df)} rows, {len(df.columns)} columns")
-                st.caption("⚠️ Some malformed rows were skipped")
                 return df
             except Exception as e:
                 st.error(f"❌ Error decompressing GZIP: {str(e)}")
@@ -378,21 +369,16 @@ def process_file_content(content):
         
         # ZIP: 50 4b (PK)
         elif len(content) >= 2 and content[:2] == b'PK':
-            st.info("📦 Detected ZIP file - extracting...")
             try:
                 with zipfile.ZipFile(BytesIO(content)) as zip_file:
-                    file_list = zip_file.namelist()
-                    st.caption(f"Found files: {', '.join(file_list)}")
-                    
                     # Find CSV file
                     csv_file = None
-                    for filename in file_list:
+                    for filename in zip_file.namelist():
                         if filename.lower().endswith('.csv'):
                             csv_file = filename
                             break
                     
                     if csv_file:
-                        st.success(f"✅ Extracting: {csv_file}")
                         csv_content = zip_file.read(csv_file)
                         df = pd.read_csv(
                             BytesIO(csv_content), 
@@ -401,7 +387,6 @@ def process_file_content(content):
                             encoding='utf-8',
                             engine='python'
                         )
-                        st.success(f"✅ CSV parsed: {len(df)} rows, {len(df.columns)} columns")
                         return df
                     else:
                         st.error("❌ No CSV file found in ZIP")
@@ -411,7 +396,6 @@ def process_file_content(content):
                 return None
         else:
             # Try as CSV
-            st.info("📄 Loading as CSV file...")
             try:
                 df = pd.read_csv(
                     StringIO(content.decode('utf-8')), 
@@ -420,7 +404,6 @@ def process_file_content(content):
                     encoding='utf-8',
                     engine='python'
                 )
-                st.success(f"✅ CSV parsed: {len(df)} rows, {len(df.columns)} columns")
                 return df
             except Exception as e:
                 st.error(f"❌ CSV parse error: {str(e)}")
@@ -921,21 +904,24 @@ def parse_creative_html(response_str):
         return None, None
 
 
-st.title("📊 CPA Flow Analysis v2")
+# Title in top bar with custom styling
+st.markdown("""
+<div style='background: #000; color: white; padding: 20px; margin: -75px -75px 30px -75px; border-radius: 0;'>
+    <h1 style='color: white !important; font-size: 32px !important; margin: 0; text-align: center;'>
+        📊 CPA Flow Analysis v2
+    </h1>
+</div>
+""", unsafe_allow_html=True)
 
-# Auto-load from Google Drive
+# Auto-load from Google Drive (silent loading)
 if not st.session_state.loading_done:
-    with st.spinner("📥 Loading data from Google Drive..."):
+    with st.spinner("Loading data..."):
         try:
             st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
-            if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
-                st.success(f"✅ Loaded {len(st.session_state.data_a):,} rows")
             st.session_state.loading_done = True
         except Exception as e:
-            st.error(f"❌ Error loading: {str(e)}")
+            st.error(f"❌ Error loading data")
             st.session_state.loading_done = True
-
-st.divider()
 
 # View mode toggle
 view_col1, view_col2, view_col3 = st.columns([1, 1, 4])
@@ -988,6 +974,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             
             st.divider()
             
+            # Calculate weighted averages for coloring
+            weighted_avg_ctr = avg_ctr  # Already calculated as weighted avg
+            weighted_avg_cvr = avg_cvr  # Already calculated as weighted avg
+            
             # Show aggregated table
             st.markdown("### 📊 Flow Combinations Overview")
             
@@ -1005,16 +995,49 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Sort by conversions and show top 20
                 agg_df = agg_df.sort_values('conversions', ascending=False).head(20)
                 
-                # Format for display
-                display_df = agg_df.copy()
-                display_df.columns = ['Publisher Domain', 'Keyword', 'Impressions', 'Clicks', 'Conversions', 'CTR %', 'CVR %']
-                display_df['Impressions'] = display_df['Impressions'].apply(lambda x: f"{int(x):,}")
-                display_df['Clicks'] = display_df['Clicks'].apply(lambda x: f"{int(x):,}")
-                display_df['Conversions'] = display_df['Conversions'].apply(lambda x: f"{int(x):,}")
-                display_df['CTR %'] = display_df['CTR %'].apply(lambda x: f"{x:.2f}%")
-                display_df['CVR %'] = display_df['CVR %'].apply(lambda x: f"{x:.2f}%")
+                # Create HTML table with color coding
+                table_html = """
+                <style>
+                .flow-table { width: 100%; background: white; border-collapse: collapse; border-radius: 8px; overflow: hidden; }
+                .flow-table th { background: #f1f5f9; color: #0f172a; padding: 12px; text-align: left; font-weight: 700; border-bottom: 2px solid #cbd5e1; }
+                .flow-table td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; color: #0f172a; }
+                .flow-table tr:hover { background: #f8fafc; }
+                .green-cell { background: #dcfce7 !important; color: #16a34a !important; font-weight: 700; }
+                .red-cell { background: #fee2e2 !important; color: #dc2626 !important; font-weight: 700; }
+                </style>
+                <table class="flow-table">
+                <thead>
+                    <tr>
+                        <th>Publisher Domain</th>
+                        <th>Keyword</th>
+                        <th style="text-align: right;">Impressions</th>
+                        <th style="text-align: right;">Clicks</th>
+                        <th style="text-align: right;">Conversions</th>
+                        <th style="text-align: center;">CTR %</th>
+                        <th style="text-align: center;">CVR %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                """
                 
-                st.dataframe(display_df, use_container_width=True, hide_index=True)
+                for _, row in agg_df.iterrows():
+                    ctr_class = 'green-cell' if row['CTR'] >= weighted_avg_ctr else 'red-cell'
+                    cvr_class = 'green-cell' if row['CVR'] >= weighted_avg_cvr else 'red-cell'
+                    
+                    table_html += f"""
+                    <tr>
+                        <td>{row['publisher_domain']}</td>
+                        <td>{row['keyword_term']}</td>
+                        <td style="text-align: right;">{int(row['impressions']):,}</td>
+                        <td style="text-align: right;">{int(row['clicks']):,}</td>
+                        <td style="text-align: right;">{int(row['conversions']):,}</td>
+                        <td class="{ctr_class}" style="text-align: center;">{row['CTR']:.2f}%</td>
+                        <td class="{cvr_class}" style="text-align: center;">{row['CVR']:.2f}%</td>
+                    </tr>
+                    """
+                
+                table_html += "</tbody></table>"
+                st.markdown(table_html, unsafe_allow_html=True)
             
             st.divider()
             
@@ -1413,6 +1436,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     # Device selector
                     device4 = st.radio("Device:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev_landing', index=0, label_visibility="collapsed")
                     
+                    # Get landing page URL
+                    adv_url = current_flow.get('reporting_destination_url', '')
+                    
                     if st.session_state.view_mode == 'advanced':
                         with st.expander("⚙️ Edit Details", expanded=False):
                             # Keyword selector
@@ -1441,8 +1467,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 st.session_state.similarities = None  # Reset scores
                                 st.rerun()
                             
-                            # Show landing page URL
-                            adv_url = current_flow.get('reporting_destination_url', '')
+                            # Show landing page URL info
                             st.caption(f"**Landing:** {adv_url[:35]}...")
                             st.caption(f"📊 {len(keywords)} keywords available")
                     else:
