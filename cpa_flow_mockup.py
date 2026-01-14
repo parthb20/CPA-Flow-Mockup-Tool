@@ -1246,7 +1246,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     else:
                         # Basic mode - show info
                         st.caption(f"**Domain:** {current_dom}")
-                        st.caption(f"**URL:** {current_url[:60]}...")
+                        if current_url and pd.notna(current_url):
+                            url_display = str(current_url)[:60] + "..." if len(str(current_url)) > 60 else str(current_url)
+                            st.caption(f"**URL:** {url_display}")
                     
                     # Get the full URL for rendering
                     pub_url = current_flow.get('publisher_url', '')
@@ -1506,8 +1508,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     flow_clicks = safe_int(current_flow.get('clicks', 0))
                     
                     # Show landing URL info in basic mode
-                    if st.session_state.view_mode == 'basic':
-                        st.caption(f"**Landing URL:** {adv_url[:60] if adv_url else 'N/A'}...")
+                    if st.session_state.view_mode == 'basic' and adv_url and pd.notna(adv_url):
+                        url_display = str(adv_url)[:60] + "..." if len(str(adv_url)) > 60 else str(adv_url)
+                        st.caption(f"**Landing URL:** {url_display}")
                     
                     if flow_clicks == 0:
                         # This specific view has no clicks
