@@ -228,8 +228,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Config
-FILE_A_ID = "1gfBzP2S2PdpyeGMw7DBWra2kA4ApuYUI"  # Main data file (CSV/ZIP/GZ)
 
+# Get ID from: https://drive.google.com/file/d/FILE_ID_HERE/view
+# File should be compressed (.gz) and < 100MB for best performance
+FILE_A_ID = "17_JKUhXfBYlWZZEKUStRgFQhL3Ty-YZu"  # ← UPDATE THIS with your Google Drive file ID
 try:
     API_KEY = st.secrets.get("FASTROUTER_API_KEY", st.secrets.get("OPENAI_API_KEY", "")).strip()
 except Exception as e:
@@ -614,12 +616,12 @@ def find_default_flow(df):
         if 'ts' in df.columns:
             df['ts'] = pd.to_datetime(df['ts'], errors='coerce')
         
-        # Get domain from publisher_url or Serp_URl if publisher_domain doesn't exist
+        # Get domain from publisher_url or Serp_URL if publisher_domain doesn't exist
         if 'publisher_domain' not in df.columns:
             if 'publisher_url' in df.columns:
                 df['publisher_domain'] = df['publisher_url'].apply(lambda x: urlparse(str(x)).netloc if pd.notna(x) else '')
-            elif 'Serp_URl' in df.columns:
-                df['publisher_domain'] = df['Serp_URl'].apply(lambda x: urlparse(str(x)).netloc if pd.notna(x) else '')
+            elif 'Serp_URL' in df.columns:
+                df['publisher_domain'] = df['Serp_URL'].apply(lambda x: urlparse(str(x)).netloc if pd.notna(x) else '')
         
         # Step 1: Find keyword_domain combination with most conversions
         if 'publisher_domain' in df.columns:
@@ -902,38 +904,17 @@ def parse_creative_html(response_str):
 
 st.title("📊 CPA Flow Analysis v2")
 
-# File upload option (primary method)
-st.markdown("### 📤 Upload Data File")
-uploaded_file = st.file_uploader(
-    "Upload your data file (CSV, ZIP, or GZIP)",
-    type=['csv', 'gz', 'zip'],
-    help="Upload your campaign data file. Supports .csv, .csv.gz, and .zip formats"
-)
-
-if uploaded_file is not None:
-    with st.spinner("Processing uploaded file..."):
+# Auto-load from Google Drive
+if not st.session_state.loading_done:
+    with st.spinner("📥 Loading data from Google Drive..."):
         try:
-            content = uploaded_file.read()
-            st.session_state.data_a = process_file_content(content)
+            st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
             if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
-                st.success(f"✅ Loaded {len(st.session_state.data_a)} rows from {uploaded_file.name}")
-                st.session_state.loading_done = True
+                st.success(f"✅ Loaded {len(st.session_state.data_a):,} rows")
+            st.session_state.loading_done = True
         except Exception as e:
-            st.error(f"❌ Error processing file: {str(e)}")
-
-# Fallback: Auto-load from Google Drive if no file uploaded
-if not uploaded_file and not st.session_state.loading_done:
-    with st.expander("🔽 Or load from Google Drive (for large files, upload recommended)", expanded=False):
-        if st.button("Load from Google Drive"):
-            with st.spinner("Loading data from Google Drive..."):
-                try:
-                    st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
-                    if st.session_state.data_a is not None:
-                        st.success(f"✅ Loaded {len(st.session_state.data_a)} rows")
-                    st.session_state.loading_done = True
-                except Exception as e:
-                    st.error(f"Error during load: {str(e)}")
-                    st.session_state.loading_done = True
+            st.error(f"❌ Error loading: {str(e)}")
+            st.session_state.loading_done = True
 
 st.divider()
 
@@ -1361,8 +1342,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
                         st.caption(f"**Template:** {serp_name}")
                     
-                    # Use Serp_URl for iframe rendering
-                    serp_url = current_flow.get('Serp_URl', '')
+                    # Use Serp_URL for iframe rendering
+                    serp_url = current_flow.get('Serp_URL', '')
                     if serp_url and pd.notna(serp_url):
                         # Try iframe src first, fallback to fetched HTML if blocked
                         try:
