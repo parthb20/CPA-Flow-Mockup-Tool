@@ -1000,47 +1000,46 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Sort by conversions and show top 20
                 agg_df = agg_df.sort_values('conversions', ascending=False).head(20)
                 
-                # Create styled dataframe BEFORE renaming
-                def highlight_metrics(row):
+                # Store original CTR/CVR for comparison
+                agg_df['ctr_val'] = agg_df['CTR']
+                agg_df['cvr_val'] = agg_df['CVR']
+                
+                # Format for display
+                display_df = agg_df.copy()
+                display_df.columns = ['Publisher Domain', 'Keyword', 'Impressions', 'Clicks', 'Conversions', 'CTR %', 'CVR %', '_ctr', '_cvr']
+                
+                # Format numbers
+                display_df['Impressions'] = display_df['Impressions'].apply(lambda x: f"{int(x):,}")
+                display_df['Clicks'] = display_df['Clicks'].apply(lambda x: f"{int(x):,}")
+                display_df['Conversions'] = display_df['Conversions'].apply(lambda x: f"{int(x):,}")
+                display_df['CTR %'] = display_df['CTR %'].apply(lambda x: f"{x:.2f}%")
+                display_df['CVR %'] = display_df['CVR %'].apply(lambda x: f"{x:.2f}%")
+                
+                # Apply color coding using indices
+                def color_by_index(row):
                     styles = [''] * len(row)
-                    # CTR column (index 5)
-                    if row['CTR'] >= weighted_avg_ctr:
-                        styles[5] = 'background-color: #dcfce7; color: #16a34a; font-weight: 700'
+                    # CTR (index 5)
+                    if row.iloc[7] >= weighted_avg_ctr:  # _ctr column
+                        styles[5] = 'background-color: #dcfce7; color: #16a34a; font-weight: bold'
                     else:
-                        styles[5] = 'background-color: #fee2e2; color: #dc2626; font-weight: 700'
-                    # CVR column (index 6)
-                    if row['CVR'] >= weighted_avg_cvr:
-                        styles[6] = 'background-color: #dcfce7; color: #16a34a; font-weight: 700'
+                        styles[5] = 'background-color: #fee2e2; color: #dc2626; font-weight: bold'
+                    # CVR (index 6)
+                    if row.iloc[8] >= weighted_avg_cvr:  # _cvr column
+                        styles[6] = 'background-color: #dcfce7; color: #16a34a; font-weight: bold'
                     else:
-                        styles[6] = 'background-color: #fee2e2; color: #dc2626; font-weight: 700'
+                        styles[6] = 'background-color: #fee2e2; color: #dc2626; font-weight: bold'
                     return styles
                 
-                # Apply styling first
-                styled_df = agg_df.style.apply(highlight_metrics, axis=1)
-                
-                # Then format
-                styled_df = styled_df.format({
-                    'impressions': lambda x: f"{int(x):,}",
-                    'clicks': lambda x: f"{int(x):,}",
-                    'conversions': lambda x: f"{int(x):,}",
-                    'CTR': lambda x: f"{x:.2f}%",
-                    'CVR': lambda x: f"{x:.2f}%"
-                })
-                
-                # Set table styles
-                styled_df = styled_df.set_properties(**{
+                # Drop helper columns and apply styling
+                styled_df = display_df.drop(columns=['_ctr', '_cvr']).style.apply(color_by_index, axis=1).set_properties(**{
                     'background-color': 'white',
                     'color': '#0f172a'
                 }).set_table_styles([
-                    {'selector': 'th', 'props': [('background-color', '#f1f5f9'), ('color', '#0f172a'), ('font-weight', '700'), ('text-align', 'left')]},
-                    {'selector': '', 'props': [('background-color', 'white')]},
-                    {'selector': 'td', 'props': [('padding', '10px')]}
+                    {'selector': 'th', 'props': [('background-color', '#f1f5f9'), ('color', '#0f172a'), ('font-weight', '700')]},
+                    {'selector': '', 'props': [('background-color', 'white')]}
                 ])
                 
-                # Rename columns for display
-                agg_df.columns = ['Publisher Domain', 'Keyword', 'Impressions', 'Clicks', 'Conversions', 'CTR %', 'CVR %']
-                
-                st.dataframe(styled_df, use_container_width=True, hide_index=True)
+                st.dataframe(styled_df, width=None)
             else:
                 st.warning("Could not generate table - missing required columns")
             
