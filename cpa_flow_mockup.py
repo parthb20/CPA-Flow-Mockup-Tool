@@ -1000,46 +1000,28 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Sort by conversions and show top 20
                 agg_df = agg_df.sort_values('conversions', ascending=False).head(20)
                 
-                # Store original CTR/CVR for comparison
-                agg_df['ctr_val'] = agg_df['CTR']
-                agg_df['cvr_val'] = agg_df['CVR']
-                
-                # Format for display
+                # Simple dataframe with column config for color
                 display_df = agg_df.copy()
-                display_df.columns = ['Publisher Domain', 'Keyword', 'Impressions', 'Clicks', 'Conversions', 'CTR %', 'CVR %', '_ctr', '_cvr']
+                display_df.columns = ['Publisher Domain', 'Keyword', 'Impressions', 'Clicks', 'Conversions', 'CTR', 'CVR']
                 
                 # Format numbers
-                display_df['Impressions'] = display_df['Impressions'].apply(lambda x: f"{int(x):,}")
-                display_df['Clicks'] = display_df['Clicks'].apply(lambda x: f"{int(x):,}")
-                display_df['Conversions'] = display_df['Conversions'].apply(lambda x: f"{int(x):,}")
-                display_df['CTR %'] = display_df['CTR %'].apply(lambda x: f"{x:.2f}%")
-                display_df['CVR %'] = display_df['CVR %'].apply(lambda x: f"{x:.2f}%")
+                display_df['Impressions'] = display_df['Impressions'].astype(int)
+                display_df['Clicks'] = display_df['Clicks'].astype(int)
+                display_df['Conversions'] = display_df['Conversions'].astype(int)
                 
-                # Apply color coding using indices
-                def color_by_index(row):
-                    styles = [''] * len(row)
-                    # CTR (index 5)
-                    if row.iloc[7] >= weighted_avg_ctr:  # _ctr column
-                        styles[5] = 'background-color: #dcfce7; color: #16a34a; font-weight: bold'
-                    else:
-                        styles[5] = 'background-color: #fee2e2; color: #dc2626; font-weight: bold'
-                    # CVR (index 6)
-                    if row.iloc[8] >= weighted_avg_cvr:  # _cvr column
-                        styles[6] = 'background-color: #dcfce7; color: #16a34a; font-weight: bold'
-                    else:
-                        styles[6] = 'background-color: #fee2e2; color: #dc2626; font-weight: bold'
-                    return styles
+                # Add indicators for above/below average
+                display_df['CTR Status'] = display_df['CTR'].apply(lambda x: '🟢' if x >= weighted_avg_ctr else '🔴')
+                display_df['CVR Status'] = display_df['CVR'].apply(lambda x: '🟢' if x >= weighted_avg_cvr else '🔴')
                 
-                # Drop helper columns and apply styling
-                styled_df = display_df.drop(columns=['_ctr', '_cvr']).style.apply(color_by_index, axis=1).set_properties(**{
-                    'background-color': 'white',
-                    'color': '#0f172a'
-                }).set_table_styles([
-                    {'selector': 'th', 'props': [('background-color', '#f1f5f9'), ('color', '#0f172a'), ('font-weight', '700')]},
-                    {'selector': '', 'props': [('background-color', 'white')]}
-                ])
+                # Reorder columns
+                display_df = display_df[['Publisher Domain', 'Keyword', 'Impressions', 'Clicks', 'Conversions', 
+                                        'CTR Status', 'CTR', 'CVR Status', 'CVR']]
                 
-                st.dataframe(styled_df, width=None)
+                # Format percentages
+                display_df['CTR'] = display_df['CTR'].apply(lambda x: f"{x:.2f}%")
+                display_df['CVR'] = display_df['CVR'].apply(lambda x: f"{x:.2f}%")
+                
+                st.dataframe(display_df, height=600)
             else:
                 st.warning("Could not generate table - missing required columns")
             
