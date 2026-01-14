@@ -642,13 +642,10 @@ def find_default_flow(df):
             kwd_domain_agg = df.groupby(['keyword_term', 'publisher_domain'])[sort_metric].sum().reset_index()
             best_kwd_domain = kwd_domain_agg.nlargest(1, sort_metric).iloc[0]
             
-            st.info(f"📊 Step 1 - Best combo: {best_kwd_domain['keyword_term']} + {best_kwd_domain['publisher_domain']} = {best_kwd_domain[sort_metric]} total {sort_metric}")
-            
             filtered = df[
                 (df['keyword_term'] == best_kwd_domain['keyword_term']) &
                 (df['publisher_domain'] == best_kwd_domain['publisher_domain'])
             ]
-            st.caption(f"  Filtered to {len(filtered)} views")
         else:
             # Fallback: just use keyword
             kwd_agg = df.groupby('keyword_term')[sort_metric].sum().reset_index()
@@ -660,10 +657,7 @@ def find_default_flow(df):
             serp_agg = filtered.groupby('serp_template_name')[sort_metric].sum().reset_index()
             best_serp = serp_agg.nlargest(1, sort_metric).iloc[0]['serp_template_name']
             
-            st.info(f"📊 Step 2 - Best SERP: {best_serp[:50]}... = {serp_agg.iloc[0][sort_metric]} total {sort_metric}")
-            
             filtered = filtered[filtered['serp_template_name'] == best_serp]
-            st.caption(f"  Filtered to {len(filtered)} views")
         elif 'serp_template_id' in filtered.columns:
             serp_agg = filtered.groupby('serp_template_id')[sort_metric].sum().reset_index()
             best_serp = serp_agg.nlargest(1, sort_metric).iloc[0]['serp_template_id']
@@ -674,20 +668,11 @@ def find_default_flow(df):
             url_agg = filtered.groupby('publisher_url')[sort_metric].sum().reset_index()
             url_agg = url_agg.sort_values(sort_metric, ascending=False)
             
-            st.info(f"📊 Step 3 - Best URL: {url_agg.iloc[0]['publisher_url'][:50]}... = {url_agg.iloc[0][sort_metric]} total {sort_metric}")
-            st.caption(f"  (out of {len(url_agg)} unique URLs)")
-            
             best_url = url_agg.iloc[0]['publisher_url']
             filtered = filtered[filtered['publisher_url'] == best_url]
-            st.caption(f"  Filtered to {len(filtered)} views with this URL")
         
         # Step 4: From the best combination, get most recent view WITH the sort_metric > 0
         if len(filtered) > 0:
-            # Show what we have before filtering
-            st.info(f"📊 Step 4 - Views in this exact combo:")
-            st.caption(f"  Total views: {len(filtered)}")
-            st.caption(f"  Views with {sort_metric} > 0: {len(filtered[filtered[sort_metric] > 0])}")
-            
             # Filter to views that have the metric
             if sort_metric == 'conversions':
                 filtered_with_data = filtered[filtered['conversions'] > 0]
@@ -699,20 +684,15 @@ def find_default_flow(df):
             # If no views with data, fall back to all
             if len(filtered_with_data) > 0:
                 filtered = filtered_with_data
-                st.success(f"✅ Using {len(filtered)} views with {sort_metric} > 0")
-            else:
-                st.warning(f"⚠️ No views with {sort_metric} > 0, using all {len(filtered)} views")
             
             # Get most recent
             if 'ts' in filtered.columns:
                 best_flow = filtered.nlargest(1, 'ts').iloc[0]
-                st.info(f"📊 Selected view: {sort_metric}={best_flow[sort_metric]}, clicks={best_flow['clicks']}, conversions={best_flow['conversions']}")
             else:
                 best_flow = filtered.iloc[0]
             
             return best_flow.to_dict()
         else:
-            st.error("❌ No views in filtered data!")
             return None
     
     except Exception as e:
@@ -1264,13 +1244,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             # Show count
                             st.caption(f"📊 {len(urls)} URLs available")
                     else:
-                        # Basic mode - show info only
+                        # Basic mode - show info
                         st.caption(f"**Domain:** {current_dom}")
+                        st.caption(f"**URL:** {current_url[:60]}...")
                     
-                    # Get the URL and ALWAYS display it
+                    # Get the full URL for rendering
                     pub_url = current_flow.get('publisher_url', '')
-                    st.write("**URL:**")
-                    st.code(pub_url if pub_url else 'No URL', language=None)
                     
                     if pub_url and pub_url != 'NOT_FOUND' and pd.notna(pub_url) and str(pub_url).strip():
                         # Check if site blocks iframe embedding by checking headers
@@ -1523,15 +1502,17 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         # Basic mode - show keyword only
                         st.caption(f"**Keyword:** {current_kw}")
                     
-                    # Get landing URL
+                    # Get landing URL and check clicks
+                    flow_clicks = safe_int(current_flow.get('clicks', 0))
                     
-                    # Check if this COMBINATION has any clicks (check the filtered data, not just this view)
-                    combo_total_clicks = final_filtered['clicks'].sum() if len(final_filtered) > 0 else 0
+                    # Show landing URL info in basic mode
+                    if st.session_state.view_mode == 'basic':
+                        st.caption(f"**Landing URL:** {adv_url[:60] if adv_url else 'N/A'}...")
                     
-                    if combo_total_clicks == 0:
-                        # This keyword+domain+serp+url combination has NO clicks at all
+                    if flow_clicks == 0:
+                        # This specific view has no clicks
                         st.warning("⚠️ **No Ad Clicks**")
-                        st.caption("This flow combination has 0 total clicks, so landing page was never reached.")
+                        st.caption("This view has 0 clicks - user didn't click the ad.")
                     elif adv_url and pd.notna(adv_url) and str(adv_url).strip():
                         # Check if site blocks iframe embedding
                         try:
