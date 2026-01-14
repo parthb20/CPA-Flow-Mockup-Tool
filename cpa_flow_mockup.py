@@ -246,21 +246,25 @@ st.markdown("""
         background: transparent !important;
     }
     
-    /* Dataframe styling */
-    [data-testid="stDataFrame"] {
+    /* Dataframe styling - Force white background */
+    [data-testid="stDataFrame"],
+    [data-testid="stDataFrame"] > div,
+    [data-testid="stDataFrame"] table,
+    [data-testid="stDataFrame"] tbody,
+    [data-testid="stDataFrame"] tr,
+    [data-testid="stDataFrame"] td {
         background-color: white !important;
+        color: #0f172a !important;
     }
-    [data-testid="stDataFrame"] table {
-        background-color: white !important;
-    }
-    [data-testid="stDataFrame"] th {
+    [data-testid="stDataFrame"] th,
+    [data-testid="stDataFrame"] thead {
         background-color: #f1f5f9 !important;
         color: #0f172a !important;
         font-weight: 700 !important;
     }
-    [data-testid="stDataFrame"] td {
-        background-color: white !important;
-        color: #0f172a !important;
+    /* Override any dark theme */
+    .stDataFrame, .stDataFrame * {
+        background: white !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -371,17 +375,31 @@ def process_file_content(content):
                 with gzip.open(BytesIO(content), 'rb') as gz_file:
                     decompressed = gz_file.read()
                 
-                # Read as CSV with error handling for malformed lines and proper quoting
+                # Read CSV - try to detect if URLs are being split
+                # First, peek at the data
+                text_sample = decompressed[:10000].decode('utf-8', errors='ignore')
+                st.caption(f"📝 Sample of decompressed data (first 200 chars): {text_sample[:200]}")
+                
+                # Read as CSV with comprehensive error handling
                 df = pd.read_csv(
                     BytesIO(decompressed), 
                     dtype=str, 
                     on_bad_lines='skip',  # Skip malformed rows
                     encoding='utf-8',
-                    engine='python',  # Python engine is more forgiving
-                    quotechar='"',  # Standard quote character
-                    doublequote=True,  # Handle escaped quotes
-                    skipinitialspace=True  # Skip spaces after delimiter
+                    engine='python',  # Python engine handles quotes better
+                    sep=',',  # Explicit separator
+                    quotechar='"',  # Standard quote character  
+                    quoting=1,  # QUOTE_ALL - everything in quotes
+                    doublequote=True,  # Handle "" as escaped quote
+                    escapechar=None,  # Don't use escape char
+                    skipinitialspace=False  # Keep spaces
                 )
+                
+                # Check if publisher_url is complete
+                if 'publisher_url' in df.columns:
+                    sample_url = df['publisher_url'].iloc[0] if len(df) > 0 else 'N/A'
+                    st.caption(f"📎 Sample publisher_url: {sample_url}")
+                    st.caption(f"   Length: {len(str(sample_url))} chars")
                 return df
             except Exception as e:
                 st.error(f"❌ Error decompressing GZIP: {str(e)}")
