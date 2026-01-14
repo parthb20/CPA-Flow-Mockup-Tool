@@ -869,6 +869,11 @@ def capture_with_playwright(url, device='mobile'):
         return None
     
     try:
+        # Clean URL - remove tracking params (everything after ?)
+        from urllib.parse import urlparse, urlunparse
+        parsed = urlparse(url)
+        clean_url = urlunparse((parsed.scheme, parsed.netloc, parsed.path, '', '', ''))
+        
         # Device viewports
         viewports = {
             'mobile': {'width': 390, 'height': 844},
@@ -877,16 +882,29 @@ def capture_with_playwright(url, device='mobile'):
         }
         
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            # Launch with anti-detection
+            browser = p.chromium.launch(
+                headless=True,
+                args=['--disable-blink-features=AutomationControlled']
+            )
+            
             context = browser.new_context(
                 viewport=viewports[device],
-                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                locale='en-US',
+                timezone_id='America/New_York'
             )
+            
             page = context.new_page()
             
-            # Navigate with timeout
-            page.goto(url, wait_until='domcontentloaded', timeout=15000)
-            page.wait_for_timeout(2000)  # Wait 2 seconds for page to settle
+            # Hide webdriver detection
+            page.add_init_script("""
+                Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+            """)
+            
+            # Navigate with clean URL (no tracking params)
+            page.goto(clean_url, wait_until='domcontentloaded', timeout=20000)
+            page.wait_for_timeout(3000)  # Wait for page to settle
             
             # Get HTML
             html_content = page.content()
@@ -1207,7 +1225,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.markdown("### 🔄 Flow Journey")
                 
                 if st.session_state.flow_layout == 'horizontal':
-                    stage_cols = st.columns([1, 0.15, 1, 0.15, 1, 0.15, 1])
+                    # Equal width columns for 4 cards + 3 arrows
+                    stage_cols = st.columns([1, 0.1, 1, 0.1, 1, 0.1, 1])
                 else:
                     # Vertical layout - one card per row
                     stage_cols = None
