@@ -1380,7 +1380,20 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         st.info("Install Playwright or add SCREENSHOT_API_KEY")
                                         st.markdown(f"[🔗 Open in new tab]({pub_url})")
                                 elif response.status_code == 200:
-                                    page_html = response.text
+                                    # Detect and use proper encoding
+                                    if response.encoding:
+                                        page_html = response.content.decode(response.encoding, errors='replace')
+                                    else:
+                                        # Try UTF-8 first, fallback to latin-1
+                                        try:
+                                            page_html = response.content.decode('utf-8')
+                                        except:
+                                            page_html = response.content.decode('latin-1', errors='replace')
+                                    
+                                    # Add charset meta tag if missing
+                                    if '<meta charset' not in page_html.lower():
+                                        page_html = page_html.replace('<head>', '<head><meta charset="utf-8">', 1)
+                                    
                                     # Fix relative URLs
                                     page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
                                                       lambda m: f'src="{urljoin(pub_url, m.group(1))}"', page_html)
@@ -1680,7 +1693,19 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         st.info("Install Playwright or add SCREENSHOT_API_KEY")
                                         st.markdown(f"[🔗 Open landing page]({adv_url})")
                                 elif response.status_code == 200:
-                                    page_html = response.text
+                                    # Detect and use proper encoding
+                                    if response.encoding:
+                                        page_html = response.content.decode(response.encoding, errors='replace')
+                                    else:
+                                        try:
+                                            page_html = response.content.decode('utf-8')
+                                        except:
+                                            page_html = response.content.decode('latin-1', errors='replace')
+                                    
+                                    # Add charset meta tag if missing
+                                    if '<meta charset' not in page_html.lower():
+                                        page_html = page_html.replace('<head>', '<head><meta charset="utf-8">', 1)
+                                    
                                     page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
                                                       lambda m: f'src="{urljoin(adv_url, m.group(1))}"', page_html)
                                     page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
