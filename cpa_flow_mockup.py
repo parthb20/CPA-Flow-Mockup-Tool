@@ -668,7 +668,20 @@ def find_default_flow(df):
             best_url = url_agg.nlargest(1, sort_metric).iloc[0]['publisher_url']
             filtered = filtered[filtered['publisher_url'] == best_url]
         
-        # Step 4: Get most recent view_id (MAX(ts))
+        # Step 4: Get most recent view_id with actual metric value
+        # Filter to only rows where the metric > 0
+        if sort_metric == 'conversions':
+            filtered_with_metric = filtered[filtered['conversions'] > 0]
+        elif sort_metric == 'clicks':
+            filtered_with_metric = filtered[filtered['clicks'] > 0]
+        else:
+            filtered_with_metric = filtered[filtered['impressions'] > 0]
+        
+        # If no rows with the metric, fall back to all filtered rows
+        if len(filtered_with_metric) > 0:
+            filtered = filtered_with_metric
+        
+        # Get most recent view (MAX(ts))
         if 'ts' in filtered.columns:
             best_flow = filtered.nlargest(1, 'ts').iloc[0]
         else:
@@ -1217,13 +1230,19 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         # Basic mode - show info only
                         st.caption(f"**Domain:** {current_dom}")
                     
-                    # Get the URL
+                    # Get the URL and ALWAYS display it
                     pub_url = current_flow.get('publisher_url', '')
+                    st.write("**URL:**")
+                    st.code(pub_url if pub_url else 'No URL', language=None)
                     
                     if pub_url and pub_url != 'NOT_FOUND' and pd.notna(pub_url) and str(pub_url).strip():
                         # Check if site blocks iframe embedding by checking headers
                         try:
-                            head_response = requests.head(pub_url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'})
+                            head_response = requests.head(pub_url, timeout=5, headers={
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                                'Accept': 'text/html,application/xhtml+xml',
+                                'Accept-Language': 'en-US,en;q=0.9'
+                            })
                             x_frame = head_response.headers.get('X-Frame-Options', '').upper()
                             csp = head_response.headers.get('Content-Security-Policy', '')
                             
@@ -1245,7 +1264,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             # Fetch HTML and render (automatic fallback)
                             try:
                                 response = requests.get(pub_url, timeout=15, headers={
-                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9',
+                                    'Accept-Language': 'en-US,en;q=0.9',
+                                    'Accept-Encoding': 'gzip, deflate',
+                                    'Connection': 'keep-alive',
+                                    'Upgrade-Insecure-Requests': '1'
                                 })
                                 if response.status_code == 200:
                                     page_html = response.text
@@ -1495,7 +1519,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             # Auto-fallback to HTML fetch
                             try:
                                 response = requests.get(adv_url, timeout=15, headers={
-                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9',
+                                    'Accept-Language': 'en-US,en;q=0.9',
+                                    'Accept-Encoding': 'gzip, deflate',
+                                    'Connection': 'keep-alive',
+                                    'Upgrade-Insecure-Requests': '1'
                                 })
                                 if response.status_code == 200:
                                     page_html = response.text
