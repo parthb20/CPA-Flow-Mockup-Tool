@@ -1189,16 +1189,26 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             # Show count
                             st.caption(f"📊 {len(urls)} URLs available")
                     else:
-                        # Basic mode - show info only (don't truncate!)
+                        # Basic mode - show info only
                         st.caption(f"**Domain:** {current_dom}")
                     
-                    pub_url = current_flow.get('publisher_url', '')
-                    if pub_url and pd.notna(pub_url) and str(pub_url).strip():
-                        # Try iframe src first, fallback to fetched HTML if blocked
+                    # Get the URL - ALWAYS show it
+                    pub_url = current_flow.get('publisher_url', 'NOT_FOUND')
+                    
+                    # Display URL prominently
+                    st.write("**Publisher URL being rendered:**")
+                    st.text(pub_url)
+                    st.write(f"**Length:** {len(str(pub_url))} chars")
+                    st.write(f"**Type:** {type(pub_url)}")
+                    
+                    if pub_url and pub_url != 'NOT_FOUND' and pd.notna(pub_url) and str(pub_url).strip():
+                        # Try iframe src first
                         try:
                             preview_html, height, used_src = render_mini_device_preview(pub_url, is_url=True, device=device1)
                             st.components.v1.html(preview_html, height=height, scrolling=False)
-                        except:
+                            st.caption("✅ Loaded via iframe")
+                        except Exception as e:
+                            st.warning(f"⚠️ Iframe blocked: {str(e)[:100]}")
                             # Fallback: Fetch HTML
                             try:
                                 response = requests.get(pub_url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
@@ -1208,12 +1218,13 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                       lambda m: f'src="{urljoin(pub_url, m.group(1))}"', page_html)
                                     preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device1)
                                     st.components.v1.html(preview_html, height=height, scrolling=False)
+                                    st.caption("✅ Loaded via HTML fetch")
                                 else:
-                                    st.error("Could not load")
-                            except:
-                                st.error("Load failed")
+                                    st.error(f"❌ HTTP {response.status_code}")
+                            except Exception as fetch_error:
+                                st.error(f"❌ Fetch failed: {str(fetch_error)[:100]}")
                     else:
-                        st.warning("No publisher URL")
+                        st.warning("⚠️ No valid publisher URL in data")
                     
                     st.markdown('</div>', unsafe_allow_html=True)
                 
