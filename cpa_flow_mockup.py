@@ -997,18 +997,38 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Sort by conversions and show top 20
                 agg_df = agg_df.sort_values('conversions', ascending=False).head(20).reset_index(drop=True)
                 
-                # Simple dataframe display - let Streamlit handle styling
+                # Create dataframe with numeric CTR/CVR for styling
                 display_df = pd.DataFrame({
                     'Publisher Domain': agg_df['publisher_domain'],
                     'Keyword': agg_df['keyword_term'],
                     'Impressions': agg_df['impressions'].apply(lambda x: f"{int(x):,}"),
                     'Clicks': agg_df['clicks'].apply(lambda x: f"{int(x):,}"),
                     'Conversions': agg_df['conversions'].apply(lambda x: f"{int(x):,}"),
-                    'CTR %': agg_df['CTR'].apply(lambda x: f"{'🟢' if x >= avg_ctr else '🔴'} {x:.2f}%"),
-                    'CVR %': agg_df['CVR'].apply(lambda x: f"{'🟢' if x >= avg_cvr else '🔴'} {x:.2f}%")
+                    'CTR %': agg_df['CTR'].apply(lambda x: f"{x:.2f}%"),
+                    'CVR %': agg_df['CVR'].apply(lambda x: f"{x:.2f}%"),
+                    '_ctr': agg_df['CTR'],  # Hidden for comparison
+                    '_cvr': agg_df['CVR']   # Hidden for comparison
                 })
                 
-                st.dataframe(display_df, height=600)
+                # Style function
+                def style_metrics(row):
+                    styles = [''] * len(row)
+                    # CTR column (index 5)
+                    if row['_ctr'] >= avg_ctr:
+                        styles[5] = 'background-color: #d1fae5; color: #065f46; font-weight: bold'
+                    else:
+                        styles[5] = 'background-color: #fee2e2; color: #991b1b; font-weight: bold'
+                    # CVR column (index 6)
+                    if row['_cvr'] >= avg_cvr:
+                        styles[6] = 'background-color: #d1fae5; color: #065f46; font-weight: bold'
+                    else:
+                        styles[6] = 'background-color: #fee2e2; color: #991b1b; font-weight: bold'
+                    return styles
+                
+                # Apply styling and hide helper columns
+                styled_df = display_df.style.apply(style_metrics, axis=1).hide(['_ctr', '_cvr'])
+                
+                st.dataframe(styled_df, height=600)
             else:
                 st.warning("Could not generate table - missing required columns")
             
@@ -1192,14 +1212,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         # Basic mode - show info only
                         st.caption(f"**Domain:** {current_dom}")
                     
-                    # Get the URL - ALWAYS show it
-                    pub_url = current_flow.get('publisher_url', 'NOT_FOUND')
-                    
-                    # Display URL prominently
-                    st.write("**Publisher URL being rendered:**")
-                    st.text(pub_url)
-                    st.write(f"**Length:** {len(str(pub_url))} chars")
-                    st.write(f"**Type:** {type(pub_url)}")
+                    # Get the URL
+                    pub_url = current_flow.get('publisher_url', '')
                     
                     if pub_url and pub_url != 'NOT_FOUND' and pd.notna(pub_url) and str(pub_url).strip():
                         # Check if site blocks iframe embedding by checking headers
@@ -1443,9 +1457,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         # Basic mode - show keyword only
                         st.caption(f"**Keyword:** {current_kw}")
                     
-                    # Display landing URL
-                    st.write("**🔗 Landing URL:**")
-                    st.text(adv_url if adv_url else 'No URL')
+                    # Get landing URL (no debug display)
                     
                     if adv_url and pd.notna(adv_url) and str(adv_url).strip():
                         # Check if site blocks iframe embedding
