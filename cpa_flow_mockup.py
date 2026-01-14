@@ -608,7 +608,7 @@ def get_score_class(score):
         return "score-poor", "Poor", "#ef4444"
 
 def find_default_flow(df):
-    """Find the best performing flow based on conversions and recency"""
+    """Find the best performing flow - prioritize conversions, then clicks, then impressions"""
     try:
         # Convert numeric columns
         df['conversions'] = df['conversions'].apply(safe_float)
@@ -626,36 +626,46 @@ def find_default_flow(df):
             elif 'Serp_URL' in df.columns:
                 df['publisher_domain'] = df['Serp_URL'].apply(lambda x: urlparse(str(x)).netloc if pd.notna(x) else '')
         
-        # Step 1: Find keyword_domain combination with most conversions
+        # Determine sorting metric: conversions > clicks > impressions
+        total_conversions = df['conversions'].sum()
+        total_clicks = df['clicks'].sum()
+        
+        if total_conversions > 0:
+            sort_metric = 'conversions'
+        elif total_clicks > 0:
+            sort_metric = 'clicks'
+        else:
+            sort_metric = 'impressions'
+        
+        # Step 1: Find keyword_domain combination with most of the sort_metric
         if 'publisher_domain' in df.columns:
-            kwd_domain_conv = df.groupby(['keyword_term', 'publisher_domain'])['conversions'].sum().reset_index()
-            best_kwd_domain = kwd_domain_conv.nlargest(1, 'conversions').iloc[0]
+            kwd_domain_agg = df.groupby(['keyword_term', 'publisher_domain'])[sort_metric].sum().reset_index()
+            best_kwd_domain = kwd_domain_agg.nlargest(1, sort_metric).iloc[0]
             
-            # Filter to this combination
             filtered = df[
                 (df['keyword_term'] == best_kwd_domain['keyword_term']) &
                 (df['publisher_domain'] == best_kwd_domain['publisher_domain'])
             ]
         else:
             # Fallback: just use keyword
-            kwd_conv = df.groupby('keyword_term')['conversions'].sum().reset_index()
-            best_kw = kwd_conv.nlargest(1, 'conversions').iloc[0]['keyword_term']
+            kwd_agg = df.groupby('keyword_term')[sort_metric].sum().reset_index()
+            best_kw = kwd_agg.nlargest(1, sort_metric).iloc[0]['keyword_term']
             filtered = df[df['keyword_term'] == best_kw]
         
-        # Step 2: Find SERP template with most conversions
+        # Step 2: Find SERP template with most of sort_metric
         if 'serp_template_name' in filtered.columns:
-            serp_conv = filtered.groupby('serp_template_name')['conversions'].sum().reset_index()
-            best_serp = serp_conv.nlargest(1, 'conversions').iloc[0]['serp_template_name']
+            serp_agg = filtered.groupby('serp_template_name')[sort_metric].sum().reset_index()
+            best_serp = serp_agg.nlargest(1, sort_metric).iloc[0]['serp_template_name']
             filtered = filtered[filtered['serp_template_name'] == best_serp]
         elif 'serp_template_id' in filtered.columns:
-            serp_conv = filtered.groupby('serp_template_id')['conversions'].sum().reset_index()
-            best_serp = serp_conv.nlargest(1, 'conversions').iloc[0]['serp_template_id']
+            serp_agg = filtered.groupby('serp_template_id')[sort_metric].sum().reset_index()
+            best_serp = serp_agg.nlargest(1, sort_metric).iloc[0]['serp_template_id']
             filtered = filtered[filtered['serp_template_id'] == best_serp]
         
-        # Step 3: Find publisher_url with most conversions
+        # Step 3: Find publisher_url with most of sort_metric
         if 'publisher_url' in filtered.columns:
-            url_conv = filtered.groupby('publisher_url')['conversions'].sum().reset_index()
-            best_url = url_conv.nlargest(1, 'conversions').iloc[0]['publisher_url']
+            url_agg = filtered.groupby('publisher_url')[sort_metric].sum().reset_index()
+            best_url = url_agg.nlargest(1, sort_metric).iloc[0]['publisher_url']
             filtered = filtered[filtered['publisher_url'] == best_url]
         
         # Step 4: Get most recent view_id (MAX(ts))
@@ -1454,7 +1464,14 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     
                     # Get landing URL (no debug display)
                     
-                    if adv_url and pd.notna(adv_url) and str(adv_url).strip():
+                    # Check if this flow has clicks
+                    flow_clicks = safe_float(current_flow.get('clicks', 0))
+                    
+                    if flow_clicks == 0:
+                        # No ad clicks - don't render landing page
+                        st.warning("⚠️ **No Ad Clicks**")
+                        st.caption("This flow has 0 clicks, so no landing page was reached.")
+                    elif adv_url and pd.notna(adv_url) and str(adv_url).strip():
                         # Check if site blocks iframe embedding
                         try:
                             head_response = requests.head(adv_url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'})
