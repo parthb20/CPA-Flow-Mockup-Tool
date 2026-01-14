@@ -1288,23 +1288,24 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 response = session.get(pub_url, timeout=15, headers=headers, allow_redirects=True)
                                 
                                 if response.status_code == 403:
-                                    st.warning("🚫 Site blocks automated access (403)")
+                                    st.warning("🚫 Site blocks access (403) - using screenshot")
                                     
                                     # Try screenshot API as fallback
                                     if SCREENSHOT_API_KEY:
-                                        with st.spinner("📸 Getting screenshot..."):
-                                            try:
-                                                from urllib.parse import quote
-                                                screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(pub_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                                
-                                                # Display screenshot
-                                                st.image(screenshot_url, caption="📸 Screenshot (Free tier: 100/month)", use_column_width=True)
-                                                st.caption("💡 Using screenshot API (limited to 100/month)")
-                                            except Exception as ss_error:
-                                                st.error(f"Screenshot failed: {str(ss_error)[:50]}")
-                                                st.markdown(f"[🔗 Open in new tab]({pub_url})")
+                                        try:
+                                            from urllib.parse import quote
+                                            screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(pub_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
+                                            
+                                            # Wrap screenshot in device preview
+                                            screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
+                                            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device1)
+                                            st.components.v1.html(preview_html, height=height, scrolling=False)
+                                            st.caption("📸 Screenshot")
+                                        except Exception as ss_error:
+                                            st.error(f"Screenshot failed")
+                                            st.markdown(f"[🔗 Open in new tab]({pub_url})")
                                     else:
-                                        st.info("💡 Add SCREENSHOT_API_KEY to secrets for preview")
+                                        st.info("Add SCREENSHOT_API_KEY for preview")
                                         st.markdown(f"[🔗 Open in new tab]({pub_url})")
                                 elif response.status_code == 200:
                                     page_html = response.text
@@ -1574,23 +1575,24 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 response = session.get(adv_url, timeout=15, headers=headers, allow_redirects=True)
                                 
                                 if response.status_code == 403:
-                                    st.warning("🚫 Site blocks automated access (403)")
+                                    st.warning("🚫 Site blocks access (403) - using screenshot")
                                     
                                     # Try screenshot API as fallback
                                     if SCREENSHOT_API_KEY:
-                                        with st.spinner("📸 Getting screenshot..."):
-                                            try:
-                                                from urllib.parse import quote
-                                                screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(adv_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                                
-                                                # Display screenshot
-                                                st.image(screenshot_url, caption="📸 Screenshot (Free tier: 100/month)", use_column_width=True)
-                                                st.caption("💡 Using screenshot API (limited to 100/month)")
-                                            except Exception as ss_error:
-                                                st.error(f"Screenshot failed: {str(ss_error)[:50]}")
-                                                st.markdown(f"[🔗 Open in new tab]({adv_url})")
+                                        try:
+                                            from urllib.parse import quote
+                                            screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(adv_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
+                                            
+                                            # Wrap screenshot in device preview
+                                            screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
+                                            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device4)
+                                            st.components.v1.html(preview_html, height=height, scrolling=False)
+                                            st.caption("📸 Screenshot")
+                                        except Exception as ss_error:
+                                            st.error(f"Screenshot failed")
+                                            st.markdown(f"[🔗 Open in new tab]({adv_url})")
                                     else:
-                                        st.info("💡 Add SCREENSHOT_API_KEY to secrets for preview")
+                                        st.info("Add SCREENSHOT_API_KEY for preview")
                                         st.markdown(f"[🔗 Open landing page]({adv_url})")
                                 elif response.status_code == 200:
                                     page_html = response.text
