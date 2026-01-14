@@ -1202,27 +1202,32 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     st.write(f"**Type:** {type(pub_url)}")
                     
                     if pub_url and pub_url != 'NOT_FOUND' and pd.notna(pub_url) and str(pub_url).strip():
-                        # Try iframe src first
-                        try:
-                            preview_html, height, used_src = render_mini_device_preview(pub_url, is_url=True, device=device1)
-                            st.components.v1.html(preview_html, height=height, scrolling=False)
-                            st.caption("✅ Loaded via iframe")
-                        except Exception as e:
-                            st.warning(f"⚠️ Iframe blocked: {str(e)[:100]}")
-                            # Fallback: Fetch HTML
-                            try:
-                                response = requests.get(pub_url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
-                                if response.status_code == 200:
-                                    page_html = response.text
-                                    page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
-                                                      lambda m: f'src="{urljoin(pub_url, m.group(1))}"', page_html)
-                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device1)
-                                    st.components.v1.html(preview_html, height=height, scrolling=False)
-                                    st.caption("✅ Loaded via HTML fetch")
-                                else:
-                                    st.error(f"❌ HTTP {response.status_code}")
-                            except Exception as fetch_error:
-                                st.error(f"❌ Fetch failed: {str(fetch_error)[:100]}")
+                        # Try iframe src first (preferred)
+                        preview_html, height, _ = render_mini_device_preview(pub_url, is_url=True, device=device1)
+                        pub_container = st.empty()
+                        pub_container.components.v1.html(preview_html, height=height, scrolling=False)
+                        
+                        # Fallback button if iframe is blocked
+                        if st.button("🔄 Reload via HTML", key=f"fallback_pub_{device1}"):
+                            with st.spinner("Fetching HTML..."):
+                                try:
+                                    response = requests.get(pub_url, timeout=15, headers={
+                                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                                    })
+                                    if response.status_code == 200:
+                                        page_html = response.text
+                                        # Fix relative URLs
+                                        page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
+                                                          lambda m: f'src="{urljoin(pub_url, m.group(1))}"', page_html)
+                                        page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
+                                                          lambda m: f'href="{urljoin(pub_url, m.group(1))}"', page_html)
+                                        preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device1)
+                                        pub_container.components.v1.html(preview_html, height=height, scrolling=False)
+                                        st.success("✅ Loaded via HTML")
+                                    else:
+                                        st.error(f"❌ HTTP {response.status_code}")
+                                except Exception as e:
+                                    st.error(f"❌ {str(e)[:100]}")
                     else:
                         st.warning("⚠️ No valid publisher URL in data")
                     
@@ -1424,26 +1429,40 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         # Basic mode - show keyword only
                         st.caption(f"**Keyword:** {current_kw}")
                     
+                    # Display landing URL
+                    st.write("**🔗 Landing URL:**")
+                    st.text(adv_url if adv_url else 'No URL')
+                    
                     if adv_url and pd.notna(adv_url) and str(adv_url).strip():
-                        # Try iframe src first, fallback to fetched HTML if blocked
-                        try:
-                            preview_html, height, used_src = render_mini_device_preview(adv_url, is_url=True, device=device4)
-                            st.components.v1.html(preview_html, height=height, scrolling=False)
-                        except:
-                            # Fallback: Fetch HTML
-                            try:
-                                response = requests.get(adv_url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
-                                if response.status_code == 200:
-                                    page_html = response.text
-                                    # Fix relative URLs
-                                    page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
-                                                      lambda m: f'src="{urljoin(adv_url, m.group(1))}"', page_html)
-                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device4)
-                                    st.components.v1.html(preview_html, height=height, scrolling=False)
-                                else:
-                                    st.error("Could not load page")
-                            except:
-                                st.error("Load failed")
+                        # Try iframe src first (preferred method)
+                        preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device4)
+                        landing_container = st.empty()
+                        landing_container.components.v1.html(preview_html, height=height, scrolling=False)
+                        
+                        # Wait a moment
+                        time.sleep(0.5)
+                        
+                        # Fallback button if iframe blocked
+                        if st.button("🔄 Load via HTML (if iframe blocked)", key=f"fallback_landing_{device4}"):
+                            with st.spinner("Fetching page HTML..."):
+                                try:
+                                    response = requests.get(adv_url, timeout=15, headers={
+                                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                                    })
+                                    if response.status_code == 200:
+                                        page_html = response.text
+                                        # Fix relative URLs
+                                        page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
+                                                          lambda m: f'src="{urljoin(adv_url, m.group(1))}"', page_html)
+                                        page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
+                                                          lambda m: f'href="{urljoin(adv_url, m.group(1))}"', page_html)
+                                        preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device4)
+                                        landing_container.components.v1.html(preview_html, height=height, scrolling=False)
+                                        st.success("✅ Loaded via HTML")
+                                    else:
+                                        st.error(f"❌ HTTP {response.status_code}")
+                                except Exception as e:
+                                    st.error(f"❌ {str(e)[:100]}")
                     else:
                         st.warning("No landing page URL")
                     
