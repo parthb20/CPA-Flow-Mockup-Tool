@@ -245,27 +245,12 @@ st.markdown("""
         color: #0f172a !important;
         background: transparent !important;
     }
-    
-    /* Dataframe styling - White table with dark text */
-    [data-testid="stDataFrame"] th {
-        background-color: #f1f5f9 !important;
-        color: #0f172a !important;
-    }
-    [data-testid="stDataFrame"] td {
-        background-color: white !important;
-        color: #0f172a !important;
-    }
-    [data-testid="stDataFrame"] table {
-        background-color: white !important;
-    }
     </style>
 """, unsafe_allow_html=True)
 
 # Config
-
-# Get ID from: https://drive.google.com/file/d/FILE_ID_HERE/view
-# File should be compressed (.gz) and < 100MB for best performance
 FILE_A_ID = "17_JKUhXfBYlWZZEKUStRgFQhL3Ty-YZu"  # ← UPDATE THIS with your Google Drive file ID
+
 try:
     API_KEY = st.secrets.get("FASTROUTER_API_KEY", st.secrets.get("OPENAI_API_KEY", "")).strip()
 except Exception as e:
@@ -347,8 +332,6 @@ def load_csv_from_gdrive(file_id):
         return process_file_content(content)
             
     except Exception as e:
-        st.error(f"❌ Error loading data: {str(e)}")
-        st.info("💡 Make sure the file is shared with 'Anyone with the link'")
         return None
 
 def process_file_content(content):
@@ -369,24 +352,17 @@ def process_file_content(content):
                 
                 # Read CSV with maximum field size to prevent truncation
                 import csv
-                csv.field_size_limit(10000000)  # Increase to 10MB per field
+                csv.field_size_limit(100000000)  # 100MB per field - very large to prevent any truncation
                 
-                # Read as CSV
+                # Read as CSV with comprehensive options
                 df = pd.read_csv(
                     BytesIO(decompressed), 
                     dtype=str, 
                     on_bad_lines='skip',
                     encoding='utf-8',
-                    engine='python'
+                    engine='python'  # Python engine doesn't truncate
                 )
                 
-                # Debug: Check URL lengths after loading
-                if 'publisher_url' in df.columns:
-                    max_url_len = df['publisher_url'].str.len().max()
-                    sample_url = df['publisher_url'].iloc[0] if len(df) > 0 else 'N/A'
-                    st.info(f"🔍 Debug - Max URL length in data: {max_url_len} chars")
-                    st.info(f"🔍 Debug - Sample URL: {sample_url[:100]}...")
-                    st.info(f"🔍 Debug - Full sample URL length: {len(str(sample_url))} chars")
                 return df
             except Exception as e:
                 st.error(f"❌ Error decompressing GZIP: {str(e)}")
@@ -831,7 +807,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile'):
     
     escaped = full_content.replace("'", "&apos;").replace('"', '&quot;')
     
-    html = f"""
+    html_output = f"""
     <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
         <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
             <iframe srcdoc='{escaped}' style="width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"></iframe>
@@ -839,7 +815,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile'):
     </div>
     """
     
-    return html, display_h + 30, is_url
+    return html_output, display_h + 30, is_url
 
 def unescape_adcode(adcode):
     """
@@ -901,7 +877,7 @@ def parse_creative_html(response_str):
             metadata['dimensions'] = f"{size_match.group(1)}×{size_match.group(2)}"
         
         # Wrap in HTML structure WITHOUT responsive constraints (original dimensions)
-        html = f"""
+        html_content = f"""
         <!DOCTYPE html>
         <html>
         <head>
@@ -922,7 +898,7 @@ def parse_creative_html(response_str):
         </html>
         """
         
-        return html, raw_adcode
+        return html_content, raw_adcode
         
     except Exception as e:
         st.error(f"Error parsing creative: {str(e)}")
@@ -1004,10 +980,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             
             st.divider()
             
-            # Calculate weighted averages for coloring
-            weighted_avg_ctr = avg_ctr  # Already calculated as weighted avg
-            weighted_avg_cvr = avg_cvr  # Already calculated as weighted avg
-            
             # Show aggregated table
             st.markdown("### 📊 Flow Combinations Overview")
             
@@ -1025,15 +997,15 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Sort by conversions and show top 20
                 agg_df = agg_df.sort_values('conversions', ascending=False).head(20).reset_index(drop=True)
                 
-                # Format for simple display without styling issues
+                # Simple dataframe display - let Streamlit handle styling
                 display_df = pd.DataFrame({
                     'Publisher Domain': agg_df['publisher_domain'],
                     'Keyword': agg_df['keyword_term'],
                     'Impressions': agg_df['impressions'].apply(lambda x: f"{int(x):,}"),
                     'Clicks': agg_df['clicks'].apply(lambda x: f"{int(x):,}"),
                     'Conversions': agg_df['conversions'].apply(lambda x: f"{int(x):,}"),
-                    'CTR %': agg_df['CTR'].apply(lambda x: f"{'🟢' if x >= weighted_avg_ctr else '🔴'} {x:.2f}%"),
-                    'CVR %': agg_df['CVR'].apply(lambda x: f"{'🟢' if x >= weighted_avg_cvr else '🔴'} {x:.2f}%")
+                    'CTR %': agg_df['CTR'].apply(lambda x: f"{'🟢' if x >= avg_ctr else '🔴'} {x:.2f}%"),
+                    'CVR %': agg_df['CVR'].apply(lambda x: f"{'🟢' if x >= avg_cvr else '🔴'} {x:.2f}%")
                 })
                 
                 st.dataframe(display_df, height=600)
@@ -1099,9 +1071,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.divider()
                 
                 if st.session_state.view_mode == 'basic':
-                    st.success("✨ **Auto-Selected**: Best performing flow displayed. Expand '⚙️ Edit Details' on any card to customize.")
+                    st.success("✨ **Auto-Selected**: Best performing flow displayed.")
                 else:
-                    st.success("✨ **Best Flow**: Highest conversions + most recent data. Use filters above to rebuild flow.")
+                    st.success("✨ **Best Flow**: Highest conversions + most recent data.")
                 
                 # Build filter data
                 keywords = sorted(campaign_df['keyword_term'].dropna().unique().tolist())
@@ -1114,14 +1086,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 current_dom = current_flow.get('publisher_domain', domains[0] if domains else '')
                 dom_filtered = kw_filtered[kw_filtered['publisher_domain'] == current_dom] if domains else kw_filtered
                 
-                # Get unique URLs - DON'T sort to preserve full URL
+                # Get unique URLs without sorting to preserve full URL
                 urls = dom_filtered['publisher_url'].dropna().unique().tolist() if 'publisher_url' in dom_filtered.columns else []
                 current_url = current_flow.get('publisher_url', urls[0] if urls else '')
-                
-                # Debug URL length
-                if current_url:
-                    st.info(f"🔍 Debug - Current URL: {current_url}")
-                    st.info(f"🔍 Debug - Current URL length: {len(str(current_url))} chars")
                 url_filtered = dom_filtered[dom_filtered['publisher_url'] == current_url] if urls else dom_filtered
                 
                 serps = []
@@ -1158,13 +1125,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.markdown("### 🔄 Flow Journey")
                 
                 if st.session_state.flow_layout == 'horizontal':
-                    # Add some spacing and styling for horizontal layout
-                    st.markdown("""
-                    <div style='background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); 
-                                padding: 20px; border-radius: 12px; margin: 10px 0; 
-                                border: 2px solid #e2e8f0;'>
-                    </div>
-                    """, unsafe_allow_html=True)
                     stage_cols = st.columns([1, 0.15, 1, 0.15, 1, 0.15, 1])
                 else:
                     # Vertical layout - one card per row
@@ -1197,7 +1157,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 if selected_domain != current_dom:
                                     current_flow['publisher_domain'] = selected_domain
                                     dom_filtered = kw_filtered[kw_filtered['publisher_domain'] == selected_domain]
-                                    urls = sorted(dom_filtered['publisher_url'].dropna().unique().tolist())
+                                    urls = dom_filtered['publisher_url'].dropna().unique().tolist()
                                     if urls:
                                         current_flow['publisher_url'] = urls[0]
                                     url_filtered = dom_filtered[dom_filtered['publisher_url'] == urls[0]] if urls else dom_filtered
@@ -1219,7 +1179,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     current_flow['publisher_url'] = selected_pub_url
                                     url_filtered = dom_filtered[dom_filtered['publisher_url'] == selected_pub_url]
                                     if 'serp_template_name' in url_filtered.columns:
-                                        serps = sorted(url_filtered['serp_template_name'].dropna().unique().tolist())
+                                        serps = url_filtered['serp_template_name'].dropna().unique().tolist()
                                     final_filtered = url_filtered
                                     if len(final_filtered) > 0:
                                         current_flow.update(final_filtered.iloc[0].to_dict())
@@ -1229,9 +1189,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             # Show count
                             st.caption(f"📊 {len(urls)} URLs available")
                     else:
-                        # Basic mode - show info only
+                        # Basic mode - show info only (don't truncate!)
                         st.caption(f"**Domain:** {current_dom}")
-                        st.caption(f"**URL:** {current_url[:50]}...")
                     
                     pub_url = current_flow.get('publisher_url', '')
                     if pub_url and pd.notna(pub_url) and str(pub_url).strip():
@@ -1309,14 +1268,11 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 with st.expander("👁️ View Raw Ad Code"):
                                     st.code(raw_adcode[:500], language='html')
                             else:
-                                st.warning("⚠️ Creative JSON is empty or malformed")
-                                st.caption(f"Response length: {len(str(response_value))} chars")
+                                st.warning("⚠️ Empty creative JSON")
                         except Exception as e:
-                            st.error(f"⚠️ Creative parsing failed: {str(e)}")
-                            st.caption("Check if 'response' column contains valid JSON with 'adcode' field")
+                            st.error(f"⚠️ Creative error: {str(e)[:100]}")
                     else:
-                        st.warning("⚠️ No data in 'response' column for this flow")
-                        st.caption("The response field is empty or null")
+                        st.warning("⚠️ No creative data")
                     
                     st.markdown('</div>', unsafe_allow_html=True)
                 
@@ -1442,7 +1398,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     if domains:
                                         current_flow['publisher_domain'] = domains[0]
                                         dom_filtered = kw_filtered[kw_filtered['publisher_domain'] == domains[0]]
-                                        urls = sorted(dom_filtered['publisher_url'].dropna().unique().tolist())
+                                        urls = dom_filtered['publisher_url'].dropna().unique().tolist()
                                         if urls:
                                             current_flow['publisher_url'] = urls[0]
                                             url_filtered = dom_filtered[dom_filtered['publisher_url'] == urls[0]]
@@ -1451,8 +1407,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 st.session_state.similarities = None  # Reset scores
                                 st.rerun()
                             
-                            # Show landing page URL info
-                            st.caption(f"**Landing:** {adv_url[:35]}...")
+                            # Show landing page URL
                             st.caption(f"📊 {len(keywords)} keywords available")
                     else:
                         # Basic mode - show keyword only
@@ -1567,37 +1522,4 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             else:
                 st.warning("No data available for this campaign")
 else:
-    st.error("❌ Could not load data")
-    
-    st.warning("""
-    ### 🔧 Quick Fix for Large Files:
-    
-    Google Drive's virus scan warning blocks automated downloads for large files.
-    
-    **Option 1: Make a Copy (Recommended)**
-    1. Open your file in Google Drive
-    2. File → Make a copy
-    3. Share the **copy** with "Anyone with the link"
-    4. Use the **copy's** file ID
-    
-    **Option 2: Use Direct Link Format**
-    Try this URL format in your browser to test download:
-    ```
-    https://drive.google.com/uc?export=download&id={FILE_A_ID}
-    ```
-    If it downloads successfully in browser, the file is accessible.
-    
-    **Option 3: Reduce File Size**
-    - Compress with higher compression
-    - Filter to essential rows only
-    - Split into smaller files
-    """)
-    
-    st.info(f"""
-    **Current File ID:** `{FILE_A_ID}`
-    
-    **Troubleshooting:**
-    1. File must be shared with "Anyone with the link can view"
-    2. File should be < 100MB for reliable downloads
-    3. Make sure it's .csv, .zip, or .gz format
-    """)
+    st.error("❌ Could not load data - Check FILE_A_ID and file sharing settings")
