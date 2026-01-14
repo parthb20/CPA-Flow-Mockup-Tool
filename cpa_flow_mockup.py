@@ -1202,37 +1202,46 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     st.write(f"**Type:** {type(pub_url)}")
                     
                     if pub_url and pub_url != 'NOT_FOUND' and pd.notna(pub_url) and str(pub_url).strip():
-                        # Button to choose rendering method
-                        use_html = st.checkbox("📄 Use HTML fetch (if iframe blocked)", key=f"use_html_pub_{device1}")
+                        # Check if site blocks iframe embedding by checking headers
+                        try:
+                            head_response = requests.head(pub_url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'})
+                            x_frame = head_response.headers.get('X-Frame-Options', '').upper()
+                            csp = head_response.headers.get('Content-Security-Policy', '')
+                            
+                            # Check if iframe will be blocked
+                            iframe_blocked = ('DENY' in x_frame or 'SAMEORIGIN' in x_frame or 'frame-ancestors' in csp.lower())
+                        except:
+                            iframe_blocked = False  # If can't check, try iframe anyway
                         
-                        if not use_html:
-                            # Try iframe src first (preferred)
+                        if not iframe_blocked:
+                            # Try iframe src (preferred)
                             try:
                                 preview_html, height, _ = render_mini_device_preview(pub_url, is_url=True, device=device1)
                                 st.components.v1.html(preview_html, height=height, scrolling=False)
+                                st.caption("📺 Iframe")
+                            except:
+                                iframe_blocked = True  # Failed, use HTML
+                        
+                        if iframe_blocked:
+                            # Fetch HTML and render (automatic fallback)
+                            try:
+                                response = requests.get(pub_url, timeout=15, headers={
+                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                                })
+                                if response.status_code == 200:
+                                    page_html = response.text
+                                    # Fix relative URLs
+                                    page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
+                                                      lambda m: f'src="{urljoin(pub_url, m.group(1))}"', page_html)
+                                    page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
+                                                      lambda m: f'href="{urljoin(pub_url, m.group(1))}"', page_html)
+                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device1)
+                                    st.components.v1.html(preview_html, height=height, scrolling=False)
+                                    st.caption("📄 HTML")
+                                else:
+                                    st.error(f"❌ HTTP {response.status_code}")
                             except Exception as e:
-                                st.error(f"❌ Iframe error: {str(e)[:100]}")
-                        else:
-                            # Fetch HTML and render
-                            with st.spinner("Fetching HTML..."):
-                                try:
-                                    response = requests.get(pub_url, timeout=15, headers={
-                                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                                    })
-                                    if response.status_code == 200:
-                                        page_html = response.text
-                                        # Fix relative URLs
-                                        page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
-                                                          lambda m: f'src="{urljoin(pub_url, m.group(1))}"', page_html)
-                                        page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
-                                                          lambda m: f'href="{urljoin(pub_url, m.group(1))}"', page_html)
-                                        preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device1)
-                                        st.components.v1.html(preview_html, height=height, scrolling=False)
-                                        st.success("✅ Loaded via HTML")
-                                    else:
-                                        st.error(f"❌ HTTP {response.status_code}")
-                                except Exception as e:
-                                    st.error(f"❌ {str(e)[:100]}")
+                                st.error(f"❌ {str(e)[:100]}")
                     else:
                         st.warning("⚠️ No valid publisher URL in data")
                     
@@ -1439,31 +1448,44 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     st.text(adv_url if adv_url else 'No URL')
                     
                     if adv_url and pd.notna(adv_url) and str(adv_url).strip():
-                        # Try iframe src first (preferred method)
+                        # Check if site blocks iframe embedding
                         try:
-                            preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device4)
-                            st.components.v1.html(preview_html, height=height, scrolling=False)
+                            head_response = requests.head(adv_url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'})
+                            x_frame = head_response.headers.get('X-Frame-Options', '').upper()
+                            csp = head_response.headers.get('Content-Security-Policy', '')
                             
-                            # Fallback button if iframe blocked
-                            if st.button("🔄 Reload via HTML (if iframe blocked)", key=f"fallback_landing_{device4}"):
-                                with st.spinner("Fetching HTML..."):
-                                    response = requests.get(adv_url, timeout=15, headers={
-                                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                                    })
-                                    if response.status_code == 200:
-                                        page_html = response.text
-                                        # Fix relative URLs
-                                        page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
-                                                          lambda m: f'src="{urljoin(adv_url, m.group(1))}"', page_html)
-                                        page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
-                                                          lambda m: f'href="{urljoin(adv_url, m.group(1))}"', page_html)
-                                        preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device4)
-                                        st.components.v1.html(preview_html, height=height, scrolling=False)
-                                        st.success("✅ Reloaded via HTML")
-                                    else:
-                                        st.error(f"❌ HTTP {response.status_code}")
-                        except Exception as e:
-                            st.error(f"❌ Error: {str(e)[:100]}")
+                            iframe_blocked = ('DENY' in x_frame or 'SAMEORIGIN' in x_frame or 'frame-ancestors' in csp.lower())
+                        except:
+                            iframe_blocked = False
+                        
+                        if not iframe_blocked:
+                            # Try iframe src
+                            try:
+                                preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device4)
+                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                st.caption("📺 Iframe")
+                            except:
+                                iframe_blocked = True
+                        
+                        if iframe_blocked:
+                            # Auto-fallback to HTML fetch
+                            try:
+                                response = requests.get(adv_url, timeout=15, headers={
+                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                                })
+                                if response.status_code == 200:
+                                    page_html = response.text
+                                    page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
+                                                      lambda m: f'src="{urljoin(adv_url, m.group(1))}"', page_html)
+                                    page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
+                                                      lambda m: f'href="{urljoin(adv_url, m.group(1))}"', page_html)
+                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device4)
+                                    st.components.v1.html(preview_html, height=height, scrolling=False)
+                                    st.caption("📄 HTML")
+                                else:
+                                    st.error(f"❌ HTTP {response.status_code}")
+                            except Exception as e:
+                                st.error(f"❌ {str(e)[:100]}")
                     else:
                         st.warning("No landing page URL")
                     
