@@ -656,14 +656,21 @@ def find_default_flow(df):
         for col in group_cols:
             filtered = filtered[filtered[col] == best_combo[col]]
         
-        # Step 2: Within that combo, find URL with most metric
-        if 'publisher_url' in filtered.columns:
-            url_totals = filtered.groupby('publisher_url')[sort_metric].sum().reset_index()
-            best_url = url_totals.nlargest(1, sort_metric).iloc[0]['publisher_url']
-            filtered = filtered[filtered['publisher_url'] == best_url]
-        
-        # Step 3: From that exact keyword+domain+SERP+URL, get most recent view (MAX(ts))
+        # Step 2: From best keyword+domain+SERP combo, pick most recent view WITH the metric
         if len(filtered) > 0:
+            # Prefer views that have the metric > 0
+            if sort_metric == 'conversions':
+                views_with_metric = filtered[filtered['conversions'] > 0]
+            elif sort_metric == 'clicks':
+                views_with_metric = filtered[filtered['clicks'] > 0]
+            else:
+                views_with_metric = filtered[filtered['impressions'] > 0]
+            
+            # If we have views with metric, use those; otherwise use all
+            if len(views_with_metric) > 0:
+                filtered = views_with_metric
+            
+            # Get most recent view
             if 'ts' in filtered.columns:
                 best_flow = filtered.nlargest(1, 'ts').iloc[0]
             else:
