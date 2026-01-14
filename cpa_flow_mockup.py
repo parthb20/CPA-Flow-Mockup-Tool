@@ -371,14 +371,16 @@ def process_file_content(content):
                 with gzip.open(BytesIO(content), 'rb') as gz_file:
                     decompressed = gz_file.read()
                 
-                # Read as CSV with error handling for malformed lines
+                # Read as CSV with error handling for malformed lines and proper quoting
                 df = pd.read_csv(
                     BytesIO(decompressed), 
                     dtype=str, 
                     on_bad_lines='skip',  # Skip malformed rows
                     encoding='utf-8',
                     engine='python',  # Python engine is more forgiving
-                    quoting=1  # Handle quoted fields properly
+                    quotechar='"',  # Standard quote character
+                    doublequote=True,  # Handle escaped quotes
+                    skipinitialspace=True  # Skip spaces after delimiter
                 )
                 return df
             except Exception as e:
@@ -1016,56 +1018,37 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 agg_df['CVR'] = agg_df.apply(lambda x: (x['conversions']/x['clicks']*100) if x['clicks']>0 else 0, axis=1)
                 
                 # Sort by conversions and show top 20
-                agg_df = agg_df.sort_values('conversions', ascending=False).head(20)
-                
-                # Get landing URLs for each combo
-                landing_urls = []
-                for _, row in agg_df.iterrows():
-                    matching = campaign_df[
-                        (campaign_df['publisher_domain'] == row['publisher_domain']) &
-                        (campaign_df['keyword_term'] == row['keyword_term'])
-                    ]
-                    if len(matching) > 0:
-                        landing_urls.append(matching.iloc[0]['reporting_destination_url'])
-                    else:
-                        landing_urls.append('N/A')
-                
-                agg_df['Landing URL'] = landing_urls
+                agg_df = agg_df.sort_values('conversions', ascending=False).head(20).reset_index(drop=True)
                 
                 # Create display dataframe
-                display_df = agg_df.copy()
+                display_df = pd.DataFrame({
+                    'Publisher Domain': agg_df['publisher_domain'],
+                    'Keyword': agg_df['keyword_term'],
+                    'Impressions': agg_df['impressions'].astype(int),
+                    'Clicks': agg_df['clicks'].astype(int),
+                    'Conversions': agg_df['conversions'].astype(int),
+                    'CTR %': agg_df['CTR'].apply(lambda x: f"{x:.2f}%"),
+                    'CVR %': agg_df['CVR'].apply(lambda x: f"{x:.2f}%")
+                })
                 
-                # Format columns
-                display_df['Impressions'] = display_df['impressions'].apply(lambda x: f"{int(x):,}")
-                display_df['Clicks'] = display_df['clicks'].apply(lambda x: f"{int(x):,}")
-                display_df['Conversions'] = display_df['conversions'].apply(lambda x: f"{int(x):,}")
-                display_df['CTR %'] = display_df['CTR'].apply(lambda x: f"{x:.2f}%")
-                display_df['CVR %'] = display_df['CVR'].apply(lambda x: f"{x:.2f}%")
+                # Style function for highlighting
+                def highlight_performance(row):
+                    # Extract numeric values from formatted strings
+                    ctr_val = float(row['CTR %'].strip('%'))
+                    cvr_val = float(row['CVR %'].strip('%'))
+                    
+                    styles = [''] * len(row)
+                    # CTR column (index 5)
+                    styles[5] = 'background-color: #dcfce7; color: #16a34a; font-weight: bold' if ctr_val >= weighted_avg_ctr else 'background-color: #fee2e2; color: #dc2626; font-weight: bold'
+                    # CVR column (index 6)
+                    styles[6] = 'background-color: #dcfce7; color: #16a34a; font-weight: bold' if cvr_val >= weighted_avg_cvr else 'background-color: #fee2e2; color: #dc2626; font-weight: bold'
+                    
+                    return styles
                 
-                # Select and order columns
-                display_df = display_df[['publisher_domain', 'keyword_term', 'Impressions', 'Clicks', 'Conversions', 'CTR %', 'CVR %', 'Landing URL']]
-                display_df.columns = ['Publisher Domain', 'Keyword', 'Impressions', 'Clicks', 'Conversions', 'CTR %', 'CVR %', 'Landing URL']
+                # Apply styling
+                styled = display_df.style.apply(highlight_performance, axis=1)
                 
-                # Style with column_config
-                st.dataframe(
-                    display_df,
-                    column_config={
-                        "CTR %": st.column_config.TextColumn(
-                            "CTR %",
-                            help="Click-through rate"
-                        ),
-                        "CVR %": st.column_config.TextColumn(
-                            "CVR %",
-                            help="Conversion rate"
-                        ),
-                        "Landing URL": st.column_config.LinkColumn(
-                            "Landing URL",
-                            help="Advertiser landing page"
-                        )
-                    },
-                    hide_index=True,
-                    height=600
-                )
+                st.dataframe(styled, height=600)
             else:
                 st.warning("Could not generate table - missing required columns")
             
@@ -1319,9 +1302,11 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         st.caption(f"**Size:** {creative_size}")
                     
                     # Get response column (creative data)
-                    if 'response' in current_flow and current_flow.get('response'):
+                    response_value = current_flow.get('response', None)
+                    
+                    if response_value and pd.notna(response_value) and str(response_value).strip():
                         try:
-                            creative_html, raw_adcode = parse_creative_html(current_flow['response'])
+                            creative_html, raw_adcode = parse_creative_html(response_value)
                             if creative_html and raw_adcode:
                                 # Render in original dimensions
                                 st.components.v1.html(creative_html, height=400, scrolling=True)
@@ -1330,11 +1315,14 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 with st.expander("👁️ View Raw Ad Code"):
                                     st.code(raw_adcode[:500], language='html')
                             else:
-                                st.warning("Could not parse creative JSON")
+                                st.warning("⚠️ Creative JSON is empty or malformed")
+                                st.caption(f"Response length: {len(str(response_value))} chars")
                         except Exception as e:
-                            st.error(f"Creative error: {str(e)}")
+                            st.error(f"⚠️ Creative parsing failed: {str(e)}")
+                            st.caption("Check if 'response' column contains valid JSON with 'adcode' field")
                     else:
-                        st.warning("No creative data in 'response' column")
+                        st.warning("⚠️ No data in 'response' column for this flow")
+                        st.caption("The response field is empty or null")
                     
                     st.markdown('</div>', unsafe_allow_html=True)
                 
