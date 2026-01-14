@@ -642,10 +642,13 @@ def find_default_flow(df):
             kwd_domain_agg = df.groupby(['keyword_term', 'publisher_domain'])[sort_metric].sum().reset_index()
             best_kwd_domain = kwd_domain_agg.nlargest(1, sort_metric).iloc[0]
             
+            st.info(f"📊 Step 1 - Best combo: {best_kwd_domain['keyword_term']} + {best_kwd_domain['publisher_domain']} = {best_kwd_domain[sort_metric]} total {sort_metric}")
+            
             filtered = df[
                 (df['keyword_term'] == best_kwd_domain['keyword_term']) &
                 (df['publisher_domain'] == best_kwd_domain['publisher_domain'])
             ]
+            st.caption(f"  Filtered to {len(filtered)} views")
         else:
             # Fallback: just use keyword
             kwd_agg = df.groupby('keyword_term')[sort_metric].sum().reset_index()
@@ -656,7 +659,11 @@ def find_default_flow(df):
         if 'serp_template_name' in filtered.columns:
             serp_agg = filtered.groupby('serp_template_name')[sort_metric].sum().reset_index()
             best_serp = serp_agg.nlargest(1, sort_metric).iloc[0]['serp_template_name']
+            
+            st.info(f"📊 Step 2 - Best SERP: {best_serp[:50]}... = {serp_agg.iloc[0][sort_metric]} total {sort_metric}")
+            
             filtered = filtered[filtered['serp_template_name'] == best_serp]
+            st.caption(f"  Filtered to {len(filtered)} views")
         elif 'serp_template_id' in filtered.columns:
             serp_agg = filtered.groupby('serp_template_id')[sort_metric].sum().reset_index()
             best_serp = serp_agg.nlargest(1, sort_metric).iloc[0]['serp_template_id']
@@ -665,20 +672,48 @@ def find_default_flow(df):
         # Step 3: Find publisher_url with most of sort_metric
         if 'publisher_url' in filtered.columns:
             url_agg = filtered.groupby('publisher_url')[sort_metric].sum().reset_index()
-            best_url = url_agg.nlargest(1, sort_metric).iloc[0]['publisher_url']
+            url_agg = url_agg.sort_values(sort_metric, ascending=False)
+            
+            st.info(f"📊 Step 3 - Best URL: {url_agg.iloc[0]['publisher_url'][:50]}... = {url_agg.iloc[0][sort_metric]} total {sort_metric}")
+            st.caption(f"  (out of {len(url_agg)} unique URLs)")
+            
+            best_url = url_agg.iloc[0]['publisher_url']
             filtered = filtered[filtered['publisher_url'] == best_url]
+            st.caption(f"  Filtered to {len(filtered)} views with this URL")
         
-        # Step 4: From the best combination, get most recent view (MAX(ts))
-        # Don't filter by individual view metrics - just get latest view from best combo
-        if 'ts' in filtered.columns and len(filtered) > 0:
-            best_flow = filtered.nlargest(1, 'ts').iloc[0]
-        elif len(filtered) > 0:
-            best_flow = filtered.iloc[0]
+        # Step 4: From the best combination, get most recent view WITH the sort_metric > 0
+        if len(filtered) > 0:
+            # Show what we have before filtering
+            st.info(f"📊 Step 4 - Views in this exact combo:")
+            st.caption(f"  Total views: {len(filtered)}")
+            st.caption(f"  Views with {sort_metric} > 0: {len(filtered[filtered[sort_metric] > 0])}")
+            
+            # Filter to views that have the metric
+            if sort_metric == 'conversions':
+                filtered_with_data = filtered[filtered['conversions'] > 0]
+            elif sort_metric == 'clicks':
+                filtered_with_data = filtered[filtered['clicks'] > 0]
+            else:
+                filtered_with_data = filtered[filtered['impressions'] > 0]
+            
+            # If no views with data, fall back to all
+            if len(filtered_with_data) > 0:
+                filtered = filtered_with_data
+                st.success(f"✅ Using {len(filtered)} views with {sort_metric} > 0")
+            else:
+                st.warning(f"⚠️ No views with {sort_metric} > 0, using all {len(filtered)} views")
+            
+            # Get most recent
+            if 'ts' in filtered.columns:
+                best_flow = filtered.nlargest(1, 'ts').iloc[0]
+                st.info(f"📊 Selected view: {sort_metric}={best_flow[sort_metric]}, clicks={best_flow['clicks']}, conversions={best_flow['conversions']}")
+            else:
+                best_flow = filtered.iloc[0]
+            
+            return best_flow.to_dict()
         else:
-            # No data in filtered, return None
+            st.error("❌ No views in filtered data!")
             return None
-        
-        return best_flow.to_dict()
     
     except Exception as e:
         st.error(f"Error finding default flow: {str(e)}")
