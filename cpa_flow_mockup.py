@@ -259,7 +259,7 @@ except Exception as e:
     API_KEY = ""
 
 # Session state
-for key in ['data_a', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'similarities']:
+for key in ['data_a', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'similarities', 'last_campaign_key']:
     if key not in st.session_state:
         if key == 'view_mode':
             st.session_state[key] = 'basic'
@@ -942,7 +942,18 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
     if selected_advertiser and selected_advertiser != '-- Select Advertiser --':
         with col2:
             campaigns = ['-- Select Campaign --'] + sorted(df[df['Advertiser_Name'] == selected_advertiser]['Campaign_Name'].dropna().unique().tolist())
-            selected_campaign = st.selectbox("Campaign", campaigns)
+            selected_campaign = st.selectbox("Campaign", campaigns, key='campaign_selector')
+        
+        # Reset flow when campaign changes
+        campaign_key = f"{selected_advertiser}_{selected_campaign}"
+        if 'last_campaign_key' not in st.session_state:
+            st.session_state.last_campaign_key = None
+        
+        if st.session_state.last_campaign_key != campaign_key:
+            st.session_state.default_flow = None
+            st.session_state.current_flow = None
+            st.session_state.similarities = None
+            st.session_state.last_campaign_key = campaign_key
         
         if selected_campaign and selected_campaign != '-- Select Campaign --':
             campaign_df = df[(df['Advertiser_Name'] == selected_advertiser) & (df['Campaign_Name'] == selected_campaign)].copy()
@@ -989,25 +1000,15 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Sort by conversions and show top 20
                 agg_df = agg_df.sort_values('conversions', ascending=False).head(20)
                 
-                # Format display dataframe
+                # Format and style the dataframe
+                def style_row(row):
+                    ctr_style = 'background-color: #dcfce7; color: #16a34a; font-weight: 700' if row['CTR'] >= weighted_avg_ctr else 'background-color: #fee2e2; color: #dc2626; font-weight: 700'
+                    cvr_style = 'background-color: #dcfce7; color: #16a34a; font-weight: 700' if row['CVR'] >= weighted_avg_cvr else 'background-color: #fee2e2; color: #dc2626; font-weight: 700'
+                    return [''] * 5 + [ctr_style, cvr_style]
+                
+                # Rename columns
                 display_df = agg_df.copy()
                 display_df.columns = ['Publisher Domain', 'Keyword', 'Impressions', 'Clicks', 'Conversions', 'CTR %', 'CVR %']
-                
-                # Apply color coding function
-                def color_metrics(val, col_name, avg_val):
-                    if col_name in ['CTR %', 'CVR %']:
-                        if val >= avg_val:
-                            return 'background-color: #dcfce7; color: #16a34a; font-weight: 700'
-                        else:
-                            return 'background-color: #fee2e2; color: #dc2626; font-weight: 700'
-                    return ''
-                
-                # Style the dataframe
-                styled_df = display_df.style.apply(lambda x: [
-                    color_metrics(row['CTR %'], 'CTR %', weighted_avg_ctr) if col == 'CTR %' else
-                    color_metrics(row['CVR %'], 'CVR %', weighted_avg_cvr) if col == 'CVR %' else ''
-                    for col in display_df.columns
-                ], axis=1)
                 
                 # Format numbers
                 display_df['Impressions'] = display_df['Impressions'].apply(lambda x: f"{int(x):,}")
@@ -1016,7 +1017,17 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 display_df['CTR %'] = display_df['CTR %'].apply(lambda x: f"{x:.2f}%")
                 display_df['CVR %'] = display_df['CVR %'].apply(lambda x: f"{x:.2f}%")
                 
-                st.dataframe(display_df, use_container_width=True, hide_index=True)
+                # Apply styling
+                styled_df = display_df.style.apply(style_row, axis=1).set_properties(**{
+                    'background-color': 'white',
+                    'color': '#0f172a',
+                    'border': '1px solid #e2e8f0'
+                }).set_table_styles([
+                    {'selector': 'th', 'props': [('background-color', '#f1f5f9'), ('color', '#0f172a'), ('font-weight', '700')]},
+                    {'selector': '', 'props': [('background-color', 'white')]}
+                ])
+                
+                st.dataframe(styled_df, use_container_width=True, hide_index=True)
             else:
                 st.warning("Could not generate table - missing required columns")
             
