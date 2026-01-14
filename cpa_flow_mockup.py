@@ -1000,32 +1000,45 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Sort by conversions and show top 20
                 agg_df = agg_df.sort_values('conversions', ascending=False).head(20)
                 
-                # Format and style the dataframe
-                def style_row(row):
-                    ctr_style = 'background-color: #dcfce7; color: #16a34a; font-weight: 700' if row['CTR'] >= weighted_avg_ctr else 'background-color: #fee2e2; color: #dc2626; font-weight: 700'
-                    cvr_style = 'background-color: #dcfce7; color: #16a34a; font-weight: 700' if row['CVR'] >= weighted_avg_cvr else 'background-color: #fee2e2; color: #dc2626; font-weight: 700'
-                    return [''] * 5 + [ctr_style, cvr_style]
+                # Create styled dataframe BEFORE renaming
+                def highlight_metrics(row):
+                    styles = [''] * len(row)
+                    # CTR column (index 5)
+                    if row['CTR'] >= weighted_avg_ctr:
+                        styles[5] = 'background-color: #dcfce7; color: #16a34a; font-weight: 700'
+                    else:
+                        styles[5] = 'background-color: #fee2e2; color: #dc2626; font-weight: 700'
+                    # CVR column (index 6)
+                    if row['CVR'] >= weighted_avg_cvr:
+                        styles[6] = 'background-color: #dcfce7; color: #16a34a; font-weight: 700'
+                    else:
+                        styles[6] = 'background-color: #fee2e2; color: #dc2626; font-weight: 700'
+                    return styles
                 
-                # Rename columns
-                display_df = agg_df.copy()
-                display_df.columns = ['Publisher Domain', 'Keyword', 'Impressions', 'Clicks', 'Conversions', 'CTR %', 'CVR %']
+                # Apply styling first
+                styled_df = agg_df.style.apply(highlight_metrics, axis=1)
                 
-                # Format numbers
-                display_df['Impressions'] = display_df['Impressions'].apply(lambda x: f"{int(x):,}")
-                display_df['Clicks'] = display_df['Clicks'].apply(lambda x: f"{int(x):,}")
-                display_df['Conversions'] = display_df['Conversions'].apply(lambda x: f"{int(x):,}")
-                display_df['CTR %'] = display_df['CTR %'].apply(lambda x: f"{x:.2f}%")
-                display_df['CVR %'] = display_df['CVR %'].apply(lambda x: f"{x:.2f}%")
+                # Then format
+                styled_df = styled_df.format({
+                    'impressions': lambda x: f"{int(x):,}",
+                    'clicks': lambda x: f"{int(x):,}",
+                    'conversions': lambda x: f"{int(x):,}",
+                    'CTR': lambda x: f"{x:.2f}%",
+                    'CVR': lambda x: f"{x:.2f}%"
+                })
                 
-                # Apply styling
-                styled_df = display_df.style.apply(style_row, axis=1).set_properties(**{
+                # Set table styles
+                styled_df = styled_df.set_properties(**{
                     'background-color': 'white',
-                    'color': '#0f172a',
-                    'border': '1px solid #e2e8f0'
+                    'color': '#0f172a'
                 }).set_table_styles([
-                    {'selector': 'th', 'props': [('background-color', '#f1f5f9'), ('color', '#0f172a'), ('font-weight', '700')]},
-                    {'selector': '', 'props': [('background-color', 'white')]}
+                    {'selector': 'th', 'props': [('background-color', '#f1f5f9'), ('color', '#0f172a'), ('font-weight', '700'), ('text-align', 'left')]},
+                    {'selector': '', 'props': [('background-color', 'white')]},
+                    {'selector': 'td', 'props': [('padding', '10px')]}
                 ])
+                
+                # Rename columns for display
+                agg_df.columns = ['Publisher Domain', 'Keyword', 'Impressions', 'Clicks', 'Conversions', 'CTR %', 'CVR %']
                 
                 st.dataframe(styled_df, use_container_width=True, hide_index=True)
             else:
