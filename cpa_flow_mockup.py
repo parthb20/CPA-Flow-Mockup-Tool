@@ -980,10 +980,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             campaign_df['ctr'] = campaign_df.apply(lambda x: (x['clicks'] / x['impressions'] * 100) if x['impressions'] > 0 else 0, axis=1)
             campaign_df['cvr'] = campaign_df.apply(lambda x: (x['conversions'] / x['clicks'] * 100) if x['clicks'] > 0 else 0, axis=1)
             
-            # Add publisher_domain if not present
-            if 'publisher_domain' not in campaign_df.columns and 'publisher_url' in campaign_df.columns:
+            # Add publisher_domain from URL if not present
+            if 'publisher_url' in campaign_df.columns:
                 campaign_df['publisher_domain'] = campaign_df['publisher_url'].apply(
-                    lambda x: urlparse(str(x)).netloc if pd.notna(x) else ''
+                    lambda x: urlparse(str(x)).netloc if pd.notna(x) and str(x).strip() else ''
                 )
             
             total_impressions = campaign_df['impressions'].sum()
