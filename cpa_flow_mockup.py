@@ -989,49 +989,34 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Sort by conversions and show top 20
                 agg_df = agg_df.sort_values('conversions', ascending=False).head(20)
                 
-                # Create HTML table with color coding
-                table_html = """
-                <style>
-                .flow-table { width: 100%; background: white; border-collapse: collapse; border-radius: 8px; overflow: hidden; }
-                .flow-table th { background: #f1f5f9; color: #0f172a; padding: 12px; text-align: left; font-weight: 700; border-bottom: 2px solid #cbd5e1; }
-                .flow-table td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; color: #0f172a; }
-                .flow-table tr:hover { background: #f8fafc; }
-                .green-cell { background: #dcfce7 !important; color: #16a34a !important; font-weight: 700; }
-                .red-cell { background: #fee2e2 !important; color: #dc2626 !important; font-weight: 700; }
-                </style>
-                <table class="flow-table">
-                <thead>
-                    <tr>
-                        <th>Publisher Domain</th>
-                        <th>Keyword</th>
-                        <th style="text-align: right;">Impressions</th>
-                        <th style="text-align: right;">Clicks</th>
-                        <th style="text-align: right;">Conversions</th>
-                        <th style="text-align: center;">CTR %</th>
-                        <th style="text-align: center;">CVR %</th>
-                    </tr>
-                </thead>
-                <tbody>
-                """
+                # Format display dataframe
+                display_df = agg_df.copy()
+                display_df.columns = ['Publisher Domain', 'Keyword', 'Impressions', 'Clicks', 'Conversions', 'CTR %', 'CVR %']
                 
-                for _, row in agg_df.iterrows():
-                    ctr_class = 'green-cell' if row['CTR'] >= weighted_avg_ctr else 'red-cell'
-                    cvr_class = 'green-cell' if row['CVR'] >= weighted_avg_cvr else 'red-cell'
-                    
-                    table_html += f"""
-                    <tr>
-                        <td>{row['publisher_domain']}</td>
-                        <td>{row['keyword_term']}</td>
-                        <td style="text-align: right;">{int(row['impressions']):,}</td>
-                        <td style="text-align: right;">{int(row['clicks']):,}</td>
-                        <td style="text-align: right;">{int(row['conversions']):,}</td>
-                        <td class="{ctr_class}" style="text-align: center;">{row['CTR']:.2f}%</td>
-                        <td class="{cvr_class}" style="text-align: center;">{row['CVR']:.2f}%</td>
-                    </tr>
-                    """
+                # Apply color coding function
+                def color_metrics(val, col_name, avg_val):
+                    if col_name in ['CTR %', 'CVR %']:
+                        if val >= avg_val:
+                            return 'background-color: #dcfce7; color: #16a34a; font-weight: 700'
+                        else:
+                            return 'background-color: #fee2e2; color: #dc2626; font-weight: 700'
+                    return ''
                 
-                table_html += "</tbody></table>"
-                st.markdown(table_html, unsafe_allow_html=True)
+                # Style the dataframe
+                styled_df = display_df.style.apply(lambda x: [
+                    color_metrics(row['CTR %'], 'CTR %', weighted_avg_ctr) if col == 'CTR %' else
+                    color_metrics(row['CVR %'], 'CVR %', weighted_avg_cvr) if col == 'CVR %' else ''
+                    for col in display_df.columns
+                ], axis=1)
+                
+                # Format numbers
+                display_df['Impressions'] = display_df['Impressions'].apply(lambda x: f"{int(x):,}")
+                display_df['Clicks'] = display_df['Clicks'].apply(lambda x: f"{int(x):,}")
+                display_df['Conversions'] = display_df['Conversions'].apply(lambda x: f"{int(x):,}")
+                display_df['CTR %'] = display_df['CTR %'].apply(lambda x: f"{x:.2f}%")
+                display_df['CVR %'] = display_df['CVR %'].apply(lambda x: f"{x:.2f}%")
+                
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
             else:
                 st.warning("Could not generate table - missing required columns")
             
