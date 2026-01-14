@@ -637,46 +637,37 @@ def find_default_flow(df):
         else:
             sort_metric = 'impressions'
         
-        # Step 1: Find keyword_domain combination with most of the sort_metric
-        if 'publisher_domain' in df.columns:
-            kwd_domain_agg = df.groupby(['keyword_term', 'publisher_domain'])[sort_metric].sum().reset_index()
-            best_kwd_domain = kwd_domain_agg.nlargest(1, sort_metric).iloc[0]
-            
-            filtered = df[
-                (df['keyword_term'] == best_kwd_domain['keyword_term']) &
-                (df['publisher_domain'] == best_kwd_domain['publisher_domain'])
-            ]
-        else:
-            # Fallback: just use keyword
-            kwd_agg = df.groupby('keyword_term')[sort_metric].sum().reset_index()
-            best_kw = kwd_agg.nlargest(1, sort_metric).iloc[0]['keyword_term']
-            filtered = df[df['keyword_term'] == best_kw]
+        # Build combination key: keyword + domain + SERP (NOT URL yet)
+        group_cols = ['keyword_term', 'publisher_domain']
         
-        # Step 2: Find SERP template with most of sort_metric
-        if 'serp_template_name' in filtered.columns:
-            serp_agg = filtered.groupby('serp_template_name')[sort_metric].sum().reset_index()
-            best_serp = serp_agg.nlargest(1, sort_metric).iloc[0]['serp_template_name']
-            
-            filtered = filtered[filtered['serp_template_name'] == best_serp]
-        elif 'serp_template_id' in filtered.columns:
-            serp_agg = filtered.groupby('serp_template_id')[sort_metric].sum().reset_index()
-            best_serp = serp_agg.nlargest(1, sort_metric).iloc[0]['serp_template_id']
-            filtered = filtered[filtered['serp_template_id'] == best_serp]
+        if 'serp_template_name' in df.columns:
+            group_cols.append('serp_template_name')
+        elif 'serp_template_id' in df.columns:
+            group_cols.append('serp_template_id')
         
-        # Step 3: Find publisher_url with most of sort_metric
+        # Step 1: Aggregate by keyword + domain + SERP (in ONE step)
+        agg_df = df.groupby(group_cols, dropna=False)[sort_metric].sum().reset_index()
+        
+        # Find THE BEST keyword+domain+SERP combination
+        best_combo = agg_df.nlargest(1, sort_metric).iloc[0]
+        
+        # Filter original df to this keyword+domain+SERP combination
+        filtered = df.copy()
+        for col in group_cols:
+            filtered = filtered[filtered[col] == best_combo[col]]
+        
+        # Step 2: Within that combo, find URL with most metric
         if 'publisher_url' in filtered.columns:
-            url_agg = filtered.groupby('publisher_url')[sort_metric].sum().reset_index()
-            url_agg = url_agg.sort_values(sort_metric, ascending=False)
-            
-            best_url = url_agg.iloc[0]['publisher_url']
+            url_totals = filtered.groupby('publisher_url')[sort_metric].sum().reset_index()
+            best_url = url_totals.nlargest(1, sort_metric).iloc[0]['publisher_url']
             filtered = filtered[filtered['publisher_url'] == best_url]
         
-        # Step 4: Get most recent view from the best combination
+        # Step 3: From that exact keyword+domain+SERP+URL, get most recent view (MAX(ts))
         if len(filtered) > 0:
             if 'ts' in filtered.columns:
                 best_flow = filtered.nlargest(1, 'ts').iloc[0]
             else:
-                best_flow = filtered.iloc[0]
+                best_flow = filtered.nlargest(1, sort_metric).iloc[0]
             
             return best_flow.to_dict()
         else:
