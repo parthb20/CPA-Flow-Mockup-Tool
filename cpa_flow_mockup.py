@@ -246,25 +246,10 @@ st.markdown("""
         background: transparent !important;
     }
     
-    /* Dataframe styling - Force white background */
-    [data-testid="stDataFrame"],
-    [data-testid="stDataFrame"] > div,
-    [data-testid="stDataFrame"] table,
-    [data-testid="stDataFrame"] tbody,
-    [data-testid="stDataFrame"] tr,
-    [data-testid="stDataFrame"] td {
-        background-color: white !important;
-        color: #0f172a !important;
-    }
-    [data-testid="stDataFrame"] th,
-    [data-testid="stDataFrame"] thead {
+    /* Dataframe styling - Minimal override */
+    [data-testid="stDataFrame"] th {
         background-color: #f1f5f9 !important;
         color: #0f172a !important;
-        font-weight: 700 !important;
-    }
-    /* Override any dark theme */
-    .stDataFrame, .stDataFrame * {
-        background: white !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -375,31 +360,18 @@ def process_file_content(content):
                 with gzip.open(BytesIO(content), 'rb') as gz_file:
                     decompressed = gz_file.read()
                 
-                # Read CSV - try to detect if URLs are being split
-                # First, peek at the data
-                text_sample = decompressed[:10000].decode('utf-8', errors='ignore')
-                st.caption(f"📝 Sample of decompressed data (first 200 chars): {text_sample[:200]}")
+                # Read CSV with maximum field size to prevent truncation
+                import csv
+                csv.field_size_limit(1000000)  # Increase field size limit to 1MB
                 
-                # Read as CSV with comprehensive error handling
+                # Read as CSV
                 df = pd.read_csv(
                     BytesIO(decompressed), 
                     dtype=str, 
-                    on_bad_lines='skip',  # Skip malformed rows
+                    on_bad_lines='skip',
                     encoding='utf-8',
-                    engine='python',  # Python engine handles quotes better
-                    sep=',',  # Explicit separator
-                    quotechar='"',  # Standard quote character  
-                    quoting=1,  # QUOTE_ALL - everything in quotes
-                    doublequote=True,  # Handle "" as escaped quote
-                    escapechar=None,  # Don't use escape char
-                    skipinitialspace=False  # Keep spaces
+                    engine='python'
                 )
-                
-                # Check if publisher_url is complete
-                if 'publisher_url' in df.columns:
-                    sample_url = df['publisher_url'].iloc[0] if len(df) > 0 else 'N/A'
-                    st.caption(f"📎 Sample publisher_url: {sample_url}")
-                    st.caption(f"   Length: {len(str(sample_url))} chars")
                 return df
             except Exception as e:
                 st.error(f"❌ Error decompressing GZIP: {str(e)}")
@@ -1038,35 +1010,18 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Sort by conversions and show top 20
                 agg_df = agg_df.sort_values('conversions', ascending=False).head(20).reset_index(drop=True)
                 
-                # Create display dataframe
+                # Format for simple display without styling issues
                 display_df = pd.DataFrame({
                     'Publisher Domain': agg_df['publisher_domain'],
                     'Keyword': agg_df['keyword_term'],
-                    'Impressions': agg_df['impressions'].astype(int),
-                    'Clicks': agg_df['clicks'].astype(int),
-                    'Conversions': agg_df['conversions'].astype(int),
-                    'CTR %': agg_df['CTR'].apply(lambda x: f"{x:.2f}%"),
-                    'CVR %': agg_df['CVR'].apply(lambda x: f"{x:.2f}%")
+                    'Impressions': agg_df['impressions'].apply(lambda x: f"{int(x):,}"),
+                    'Clicks': agg_df['clicks'].apply(lambda x: f"{int(x):,}"),
+                    'Conversions': agg_df['conversions'].apply(lambda x: f"{int(x):,}"),
+                    'CTR %': agg_df['CTR'].apply(lambda x: f"{'🟢' if x >= weighted_avg_ctr else '🔴'} {x:.2f}%"),
+                    'CVR %': agg_df['CVR'].apply(lambda x: f"{'🟢' if x >= weighted_avg_cvr else '🔴'} {x:.2f}%")
                 })
                 
-                # Style function for highlighting
-                def highlight_performance(row):
-                    # Extract numeric values from formatted strings
-                    ctr_val = float(row['CTR %'].strip('%'))
-                    cvr_val = float(row['CVR %'].strip('%'))
-                    
-                    styles = [''] * len(row)
-                    # CTR column (index 5)
-                    styles[5] = 'background-color: #dcfce7; color: #16a34a; font-weight: bold' if ctr_val >= weighted_avg_ctr else 'background-color: #fee2e2; color: #dc2626; font-weight: bold'
-                    # CVR column (index 6)
-                    styles[6] = 'background-color: #dcfce7; color: #16a34a; font-weight: bold' if cvr_val >= weighted_avg_cvr else 'background-color: #fee2e2; color: #dc2626; font-weight: bold'
-                    
-                    return styles
-                
-                # Apply styling
-                styled = display_df.style.apply(highlight_performance, axis=1)
-                
-                st.dataframe(styled, height=600)
+                st.dataframe(display_df, height=600)
             else:
                 st.warning("Could not generate table - missing required columns")
             
