@@ -881,24 +881,33 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     display_h = int(container_height * scale)
     
     # ALWAYS fetch HTML and render as srcdoc (NO IFRAME SRC) - user requested HTML only
+    original_url = None
     if is_url:
         # For URLs, fetch HTML first, then render as srcdoc
+        original_url = content  # Save original URL
         try:
             response = requests.get(content, timeout=10, headers={
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             })
             if response.status_code == 200:
                 content = response.text
-                # Fix relative URLs
-                from urllib.parse import urljoin
-                base_url = content if is_url else ''
-                if base_url and isinstance(base_url, str) and base_url.startswith('http'):
+                # Fix relative URLs using the original URL as base
+                if original_url:
+                    from urllib.parse import urljoin
                     content = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
-                                   lambda m: f'src="{urljoin(base_url, m.group(1))}"', content)
+                                   lambda m: f'src="{urljoin(original_url, m.group(1))}"', content)
                     content = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
-                                   lambda m: f'href="{urljoin(base_url, m.group(1))}"', content)
-        except:
-            pass  # If fetch fails, use original content
+                                   lambda m: f'href="{urljoin(original_url, m.group(1))}"', content)
+            else:
+                # If fetch fails, return error placeholder
+                content = f'<div style="padding: 20px; text-align: center;"><p>Failed to load: HTTP {response.status_code}</p><p><a href="{original_url}" target="_blank">Open in new tab</a></p></div>'
+        except Exception as e:
+            # If fetch fails, show error
+            content = f'<div style="padding: 20px; text-align: center;"><p>Failed to load URL</p><p><a href="{original_url}" target="_blank">Open in new tab</a></p></div>'
+    
+    # Validate content - if empty or None, show placeholder
+    if not content or (isinstance(content, str) and len(content.strip()) == 0):
+        content = '<div style="padding: 20px; text-align: center; color: #666;"><p>No content available</p></div>'
     
     # Always embed HTML directly (no iframe src)
     iframe_content = content
@@ -968,9 +977,11 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     """
     
     # Properly escape HTML for srcdoc attribute
-    # srcdoc attribute uses double quotes, so we need to escape: &, <, >, "
-    # IMPORTANT: Escape & FIRST, then others, to avoid double-escaping
-    escaped = full_content.replace('&', '&amp;')  # Must be first
+    # Need to escape: & (but not if already in entity), <, >, "
+    # Use regex to escape & only if not already part of an entity
+    # First escape & that are NOT part of entities (lookahead to check)
+    escaped = re.sub(r'&(?!amp;|lt;|gt;|quot;|#\d+;)', '&amp;', full_content)
+    # Then escape <, >, "
     escaped = escaped.replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
     
     # Use transform scale for all devices
