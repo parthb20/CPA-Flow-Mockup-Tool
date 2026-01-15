@@ -1859,48 +1859,56 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             if response.status_code == 200:
                                 serp_html = response.text
                                 
-                                # Step 2: Replace ad content in SERP HTML using BeautifulSoup
+                                # Step 2: Replace ad content in SERP HTML
+                                # FIRST: Use regex to replace keyword in "Sponsored results for:" text (most reliable)
+                                if keyword:
+                                    # Replace any variation: "Sponsored results for: ..." or "Sponsored results for: '...'"
+                                    serp_html = re.sub(
+                                        r'Sponsored results for:\s*["\']?[^"\']*["\']?',
+                                        f'Sponsored results for: "{keyword}"',
+                                        serp_html,
+                                        flags=re.IGNORECASE,
+                                        count=1
+                                    )
+                                
+                                # THEN: Use BeautifulSoup for structured replacements
                                 from bs4 import BeautifulSoup
                                 soup = BeautifulSoup(serp_html, 'html.parser')
                                 
                                 replacement_made = False
                                 
-                                # STRATEGY: Find ad/sponsored container FIRST, then replace within it
-                                # Look for common ad container patterns
+                                # Find ad/sponsored container
                                 ad_container = None
-                                for pattern in [r'sponsored', r'ad-result', r'paid', r'ad-container', r'sponsor']:
+                                for pattern in [r'sponsored', r'ad-result', r'paid', r'ad-container', r'sponsor', r'ad-result']:
                                     ad_container = soup.find('div', class_=re.compile(pattern, re.IGNORECASE))
                                     if ad_container:
                                         break
                                 
-                                # If no container found, try finding by "Sponsored results for:" text
+                                # If no container found, try finding by text
                                 if not ad_container:
                                     for elem in soup.find_all(string=re.compile(r'Sponsored results for:', re.IGNORECASE)):
                                         parent = elem.parent
-                                        # Walk up to find container div
                                         while parent and parent.name != 'div':
                                             parent = parent.parent
                                         if parent:
                                             ad_container = parent
                                             break
                                 
-                                # 1. Replace keyword in "Sponsored results for:" text
-                                for elem in soup.find_all(string=re.compile(r'Sponsored results for:', re.IGNORECASE)):
-                                    parent = elem.parent
-                                    if parent:
-                                        # Use NavigableString properly
-                                        from bs4 import NavigableString
-                                        new_text = NavigableString(f'Sponsored results for: "{keyword}"')
-                                        elem.replace_with(new_text)
-                                        replacement_made = True
-                                        break  # Only replace first occurrence
-                                
-                                # 2-4. Replace title, desc, url WITHIN ad container if found, otherwise globally
+                                # Search scope: ad container if found, otherwise whole document
                                 search_scope = ad_container if ad_container else soup
                                 
-                                # 2. Replace ad title
+                                # Replace ad title - search more broadly
                                 if ad_title:
+                                    # Try multiple strategies
+                                    title_elem = None
+                                    # Strategy 1: Find by class containing "title"
                                     title_elem = search_scope.find(class_=re.compile(r'title', re.IGNORECASE))
+                                    # Strategy 2: Find heading tags (h1-h6) in ad container
+                                    if not title_elem:
+                                        title_elem = search_scope.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+                                    # Strategy 3: Find any element with "title" in id or class
+                                    if not title_elem:
+                                        title_elem = search_scope.find(attrs={'class': re.compile(r'title', re.IGNORECASE)})
                                     if not title_elem and ad_container:
                                         # Fallback: search globally
                                         title_elem = soup.find(class_=re.compile(r'title', re.IGNORECASE))
@@ -1909,29 +1917,31 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         title_elem.append(ad_title)
                                         replacement_made = True
                                 
-                                # 3. Replace ad description
+                                # Replace ad description
                                 if ad_desc:
-                                    desc_elem = search_scope.find(class_=re.compile(r'desc|description', re.IGNORECASE))
+                                    desc_elem = search_scope.find(class_=re.compile(r'desc|description|snippet', re.IGNORECASE))
+                                    if not desc_elem:
+                                        # Try finding paragraph or span in ad container
+                                        desc_elem = search_scope.find(['p', 'span'], class_=re.compile(r'desc|description|snippet', re.IGNORECASE))
                                     if not desc_elem and ad_container:
-                                        desc_elem = soup.find(class_=re.compile(r'desc|description', re.IGNORECASE))
+                                        desc_elem = soup.find(class_=re.compile(r'desc|description|snippet', re.IGNORECASE))
                                     if desc_elem:
                                         desc_elem.clear()
                                         desc_elem.append(ad_desc)
                                         replacement_made = True
                                 
-                                # 4. Replace ad display URL
+                                # Replace ad display URL
                                 if ad_display_url:
-                                    url_elem = search_scope.find(class_=re.compile(r'url|display.*url|ad.*url', re.IGNORECASE))
+                                    url_elem = search_scope.find(class_=re.compile(r'url|display.*url|ad.*url|link', re.IGNORECASE))
+                                    if not url_elem:
+                                        # Try finding link element
+                                        url_elem = search_scope.find('a', class_=re.compile(r'url|display', re.IGNORECASE))
                                     if not url_elem and ad_container:
                                         url_elem = soup.find(class_=re.compile(r'url|display.*url|ad.*url', re.IGNORECASE))
                                     if url_elem:
                                         url_elem.clear()
                                         url_elem.append(ad_display_url)
                                         replacement_made = True
-                                
-                                # Debug info
-                                if not replacement_made:
-                                    st.warning("⚠️ No matching elements found for replacement. Check SERP HTML structure.")
                                 
                                 # Convert back to HTML
                                 serp_html = str(soup)
@@ -1948,31 +1958,54 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 current_device_w = device_widths.get(device_all, 390)
                                 
                                 mobile_css = f'''
-                                <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+                                <meta name="viewport" content="width={current_device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
                                 <style>
-                                    * {{ box-sizing: border-box !important; }}
-                                    body {{ 
+                                    * {{ 
+                                        box-sizing: border-box !important; 
+                                        max-width: 100% !important;
+                                    }}
+                                    html, body {{ 
+                                        width: {current_device_w}px !important;
                                         max-width: {current_device_w}px !important; 
                                         overflow-x: hidden !important; 
                                         margin: 0 !important; 
                                         padding: 0 !important; 
+                                        font-size: 14px !important;
                                     }}
-                                    /* Allow text to wrap properly */
-                                    p, div, span, a, h1, h2, h3, h4, h5, h6, li {{
+                                    /* Force horizontal text flow */
+                                    body {{
+                                        writing-mode: horizontal-tb !important;
+                                        text-orientation: mixed !important;
+                                    }}
+                                    /* Allow text to wrap properly - CRITICAL */
+                                    p, div, span, a, h1, h2, h3, h4, h5, h6, li, td, th {{
                                         word-break: break-word !important;
                                         overflow-wrap: break-word !important;
                                         white-space: normal !important;
                                         max-width: 100% !important;
+                                        display: block !important;
                                     }}
                                     /* Override fixed widths */
                                     img, iframe, video {{
                                         max-width: 100% !important;
                                         height: auto !important;
                                     }}
-                                    /* Prevent horizontal scroll - remove min-width constraints */
-                                    [class*="container"], [class*="ad-result"], [class*="serp-result"], [class*="sponsored"] {{
+                                    /* CRITICAL: Remove ALL min-width constraints */
+                                    * {{
+                                        min-width: unset !important;
+                                    }}
+                                    /* Prevent horizontal scroll */
+                                    [class*="container"], [class*="ad-result"], [class*="serp-result"], [class*="sponsored"], 
+                                    [class*="result"], [class*="ad"], div, section, article {{
                                         max-width: 100% !important; 
                                         min-width: unset !important;
+                                        width: auto !important;
+                                    }}
+                                    /* Ensure tables don't break layout */
+                                    table {{
+                                        width: 100% !important;
+                                        max-width: 100% !important;
+                                        table-layout: auto !important;
                                     }}
                                 </style>
                                 '''
@@ -2002,12 +2035,20 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     with st.spinner("🔄 Using browser automation..."):
                                         page_html = capture_with_playwright(serp_url, device=device_all, timeout=60000)
                                         if page_html:
-                                            # Apply same replacements (reuse logic from above)
-                                            from bs4 import BeautifulSoup
-                                            from bs4 import NavigableString
-                                            soup = BeautifulSoup(page_html, 'html.parser')
+                                            # Apply same replacements using regex FIRST, then BeautifulSoup
+                                            # Replace keyword using regex (most reliable)
+                                            if keyword:
+                                                page_html = re.sub(
+                                                    r'Sponsored results for:\s*["\']?[^"\']*["\']?',
+                                                    f'Sponsored results for: "{keyword}"',
+                                                    page_html,
+                                                    flags=re.IGNORECASE,
+                                                    count=1
+                                                )
                                             
-                                            replacement_made = False
+                                            # Then use BeautifulSoup for structured replacements
+                                            from bs4 import BeautifulSoup
+                                            soup = BeautifulSoup(page_html, 'html.parser')
                                             
                                             # Find ad container
                                             ad_container = None
@@ -2025,44 +2066,40 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                         ad_container = parent
                                                         break
                                             
-                                            # Replace keyword
-                                            for elem in soup.find_all(string=re.compile(r'Sponsored results for:', re.IGNORECASE)):
-                                                parent = elem.parent
-                                                if parent:
-                                                    new_text = NavigableString(f'Sponsored results for: "{keyword}"')
-                                                    elem.replace_with(new_text)
-                                                    replacement_made = True
-                                                    break
-                                            
-                                            # Replace title, desc, url
                                             search_scope = ad_container if ad_container else soup
                                             
+                                            # Replace ad title
                                             if ad_title:
                                                 title_elem = search_scope.find(class_=re.compile(r'title', re.IGNORECASE))
+                                                if not title_elem:
+                                                    title_elem = search_scope.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
                                                 if not title_elem and ad_container:
                                                     title_elem = soup.find(class_=re.compile(r'title', re.IGNORECASE))
                                                 if title_elem:
                                                     title_elem.clear()
                                                     title_elem.append(ad_title)
-                                                    replacement_made = True
                                             
+                                            # Replace ad description
                                             if ad_desc:
-                                                desc_elem = search_scope.find(class_=re.compile(r'desc|description', re.IGNORECASE))
+                                                desc_elem = search_scope.find(class_=re.compile(r'desc|description|snippet', re.IGNORECASE))
+                                                if not desc_elem:
+                                                    desc_elem = search_scope.find(['p', 'span'], class_=re.compile(r'desc|description|snippet', re.IGNORECASE))
                                                 if not desc_elem and ad_container:
-                                                    desc_elem = soup.find(class_=re.compile(r'desc|description', re.IGNORECASE))
+                                                    desc_elem = soup.find(class_=re.compile(r'desc|description|snippet', re.IGNORECASE))
                                                 if desc_elem:
                                                     desc_elem.clear()
                                                     desc_elem.append(ad_desc)
-                                                    replacement_made = True
                                             
+                                            # Replace ad display URL
                                             if ad_display_url:
-                                                url_elem = search_scope.find(class_=re.compile(r'url|display.*url|ad.*url', re.IGNORECASE))
+                                                url_elem = search_scope.find(class_=re.compile(r'url|display.*url|ad.*url|link', re.IGNORECASE))
+                                                if not url_elem:
+                                                    url_elem = search_scope.find('a', class_=re.compile(r'url|display', re.IGNORECASE))
                                                 if not url_elem and ad_container:
                                                     url_elem = soup.find(class_=re.compile(r'url|display.*url|ad.*url', re.IGNORECASE))
                                                 if url_elem:
                                                     url_elem.clear()
                                                     url_elem.append(ad_display_url)
-                                                    replacement_made = True
                                             
                                             serp_html = str(soup)
                                             serp_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
@@ -2070,33 +2107,53 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                             serp_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
                                                               lambda m: f'href="{urljoin(serp_url, m.group(1))}"', serp_html)
                                             
-                                            # Add mobile-friendly CSS (same as above)
+                                            # Add mobile-friendly CSS (enhanced version)
                                             device_widths = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
                                             current_device_w = device_widths.get(device_all, 390)
                                             
                                             mobile_css = f'''
-                                            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+                                            <meta name="viewport" content="width={current_device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
                                             <style>
-                                                * {{ box-sizing: border-box !important; }}
-                                                body {{ 
+                                                * {{ 
+                                                    box-sizing: border-box !important; 
+                                                    max-width: 100% !important;
+                                                }}
+                                                html, body {{ 
+                                                    width: {current_device_w}px !important;
                                                     max-width: {current_device_w}px !important; 
                                                     overflow-x: hidden !important; 
                                                     margin: 0 !important; 
                                                     padding: 0 !important; 
+                                                    font-size: 14px !important;
                                                 }}
-                                                p, div, span, a, h1, h2, h3, h4, h5, h6, li {{
+                                                body {{
+                                                    writing-mode: horizontal-tb !important;
+                                                    text-orientation: mixed !important;
+                                                }}
+                                                p, div, span, a, h1, h2, h3, h4, h5, h6, li, td, th {{
                                                     word-break: break-word !important;
                                                     overflow-wrap: break-word !important;
                                                     white-space: normal !important;
                                                     max-width: 100% !important;
+                                                    display: block !important;
                                                 }}
                                                 img, iframe, video {{
                                                     max-width: 100% !important;
                                                     height: auto !important;
                                                 }}
-                                                [class*="container"], [class*="ad-result"], [class*="serp-result"], [class*="sponsored"] {{
+                                                * {{
+                                                    min-width: unset !important;
+                                                }}
+                                                [class*="container"], [class*="ad-result"], [class*="serp-result"], [class*="sponsored"], 
+                                                [class*="result"], [class*="ad"], div, section, article {{
                                                     max-width: 100% !important; 
                                                     min-width: unset !important;
+                                                    width: auto !important;
+                                                }}
+                                                table {{
+                                                    width: 100% !important;
+                                                    max-width: 100% !important;
+                                                    table-layout: auto !important;
                                                 }}
                                             </style>
                                             '''
@@ -2334,84 +2391,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 st.divider()
                 
-                # Calculate similarity scores
-                if 'similarities' not in st.session_state or st.session_state.similarities is None:
-                    if API_KEY:
-                        with st.spinner("🧠 Calculating similarity scores..."):
-                            st.session_state.similarities = calculate_similarities(current_flow)
-                    else:
-                        st.session_state.similarities = {}
-                
-                # Similarity Scores Below
-                st.markdown("### 📊 Similarity Scores")
-                
-                score_cols = st.columns(3)
-                
-                with score_cols[0]:
-                    st.markdown("#### 🔗 Keyword → Ad")
-                    if 'similarities' in st.session_state and st.session_state.similarities:
-                        data = st.session_state.similarities.get('kwd_to_ad', {})
-                        if 'error' not in data:
-                            score = data.get('final_score', 0)
-                            reason = data.get('reason', 'N/A')
-                            css_class, label, color = get_score_class(score)
-                            
-                            st.markdown(f'<div class="score-box {css_class}">{score:.1%}</div>', unsafe_allow_html=True)
-                            st.markdown(f"**{label} Match**")
-                            st.caption(reason)
-                            
-                            with st.expander("📊 Details"):
-                                for key, value in data.items():
-                                    if key not in ['final_score', 'band', 'reason'] and isinstance(value, (int, float)):
-                                        st.metric(key.replace('_', ' ').title(), f"{value:.1%}")
-                        else:
-                            st.error("API Error")
-                    else:
-                        st.info("Add API key to calculate")
-                
-                with score_cols[1]:
-                    st.markdown("#### 🔗 Ad → Page")
-                    if 'similarities' in st.session_state and st.session_state.similarities:
-                        data = st.session_state.similarities.get('ad_to_page', {})
-                        if data and 'error' not in data:
-                            score = data.get('final_score', 0)
-                            reason = data.get('reason', 'N/A')
-                            css_class, label, color = get_score_class(score)
-                            
-                            st.markdown(f'<div class="score-box {css_class}">{score:.1%}</div>', unsafe_allow_html=True)
-                            st.markdown(f"**{label} Match**")
-                            st.caption(reason)
-                            
-                            with st.expander("📊 Details"):
-                                for key, value in data.items():
-                                    if key not in ['final_score', 'band', 'reason'] and isinstance(value, (int, float)):
-                                        st.metric(key.replace('_', ' ').title(), f"{value:.1%}")
-                        else:
-                            st.info("Will calculate after landing page loads")
-                    else:
-                        st.info("Add API key to calculate")
-                
-                with score_cols[2]:
-                    st.markdown("#### 🔗 Keyword → Page")
-                    if 'similarities' in st.session_state and st.session_state.similarities:
-                        data = st.session_state.similarities.get('kwd_to_page', {})
-                        if data and 'error' not in data:
-                            score = data.get('final_score', 0)
-                            reason = data.get('reason', 'N/A')
-                            css_class, label, color = get_score_class(score)
-                            
-                            st.markdown(f'<div class="score-box {css_class}">{score:.1%}</div>', unsafe_allow_html=True)
-                            st.markdown(f"**{label} Match**")
-                            st.caption(reason)
-                            
-                            with st.expander("📊 Details"):
-                                for key, value in data.items():
-                                    if key not in ['final_score', 'band', 'reason'] and isinstance(value, (int, float)):
-                                        st.metric(key.replace('_', ' ').title(), f"{value:.1%}")
-                        else:
-                            st.info("Will calculate after landing page loads")
-                    else:
-                        st.info("Add API key to calculate")
+                # Similarity scores removed per user request
             
             else:
                 st.warning("No data available for this campaign")
