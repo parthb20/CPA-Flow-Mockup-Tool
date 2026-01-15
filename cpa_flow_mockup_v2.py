@@ -22,7 +22,7 @@ import tempfile
 import os
 
 # Page config - MUST be first Streamlit command
-st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊", layout="wide")
+st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊😗😗😗😏", layout="wide")
 
 # Try to import gdown (better for large files)
 try:
@@ -2472,3 +2472,4 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.warning("No data available for this campaign")
 else:
     st.error("❌ Could not load data - Check FILE_A_ID and file sharing settings")
+
