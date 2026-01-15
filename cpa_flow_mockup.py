@@ -1005,20 +1005,20 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                     head = soup.new_tag('head')
                     soup.insert(0, head)
             
-            # Add chrome styles to head - use isolated approach to avoid conflicts
+            # Add chrome styles to head - ISOLATE chrome from page content
             chrome_style = soup.new_tag('style')
             chrome_style.string = f"""
-                /* Chrome bars - isolated, high z-index to stay on top */
+                /* Chrome bars - ISOLATED namespace */
                 .device-chrome-wrapper {{
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    z-index: 2147483647;
-                    pointer-events: none;
+                    position: fixed !important;
+                    top: 0 !important;
+                    left: 0 !important;
+                    right: 0 !important;
+                    z-index: 2147483647 !important;
+                    pointer-events: none !important;
                 }}
-                .device-chrome-wrapper > * {{
-                    pointer-events: auto;
+                .device-chrome-wrapper * {{
+                    pointer-events: auto !important;
                 }}
                 .device-chrome {{ 
                     width: 100%; 
@@ -1026,25 +1026,33 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                     box-sizing: border-box;
                 }}
                 .device-bottom-nav {{ 
-                    position: fixed; 
-                    bottom: 0; 
-                    left: 0; 
-                    right: 0; 
-                    z-index: 2147483647; 
+                    position: fixed !important; 
+                    bottom: 0 !important; 
+                    left: 0 !important; 
+                    right: 0 !important; 
+                    z-index: 2147483647 !important; 
                     box-sizing: border-box;
-                    pointer-events: none;
+                    pointer-events: none !important;
                 }}
                 .device-bottom-nav > * {{
-                    pointer-events: auto;
+                    pointer-events: auto !important;
                 }}
-                /* Add spacing for chrome bars - use padding on html to avoid breaking body styles */
+                
+                /* CRITICAL: Don't let chrome affect page layout */
                 html {{
-                    padding-top: {chrome_height};
-                    padding-bottom: {'50px' if device == 'mobile' else '0'};
+                    padding-top: {chrome_height} !important;
+                    padding-bottom: {'50px' if device == 'mobile' else '0'} !important;
+                    /* Don't set width here - let body handle it */
                 }}
-                /* Ensure body content starts below chrome */
+                
+                /* Page content area - force constraints */
                 body {{
-                    min-height: calc(100vh - {chrome_height} - {'50px' if device == 'mobile' else '0px'});
+                    min-height: calc(100vh - {chrome_height} - {'50px' if device == 'mobile' else '0px'}) !important;
+                    width: {device_w}px !important;
+                    max-width: {device_w}px !important;
+                    overflow-x: hidden !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
                 }}
             """
             head.append(chrome_style)
@@ -2246,60 +2254,71 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 device_widths = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
                                 current_device_w = device_widths.get(device_all, 390)
                                 
-                                # More targeted CSS - preserve original styles, only fix vertical text
+                                # Add targeted CSS - CRITICAL: Add !important to force override
                                 mobile_css = f'''
                                 <meta name="viewport" content="width={current_device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
                                 <style>
-                                    /* Base styles - minimal impact, preserve original layout */
-                                    /* Only set width constraints, don't override margins/padding that might break layout */
+                                    /* Force document constraints */
                                     html {{ 
-                                        width: {current_device_w}px;
-                                        max-width: {current_device_w}px; 
-                                        overflow-x: hidden; 
+                                        width: {current_device_w}px !important;
+                                        max-width: {current_device_w}px !important;
+                                        overflow-x: hidden !important;
+                                        overflow-y: auto !important;
                                     }}
                                     body {{ 
-                                        width: {current_device_w}px;
-                                        max-width: {current_device_w}px; 
-                                        overflow-x: hidden; 
-                                        /* Don't override margin/padding - let original styles handle it */
+                                        width: {current_device_w}px !important;
+                                        max-width: {current_device_w}px !important;
+                                        overflow-x: hidden !important;
+                                        margin: 0 !important;
+                                        padding: 0 !important;
                                     }}
                                     
-                                    /* CRITICAL: Force horizontal text ONLY for SERP content areas - don't break existing styles */
-                                    [class*="result"]:not(.device-chrome):not(.device-bottom-nav),
-                                    [class*="ad"]:not(.device-chrome):not(.device-bottom-nav),
-                                    [class*="sponsored"]:not(.device-chrome):not(.device-bottom-nav),
-                                    [class*="serp"]:not(.device-chrome):not(.device-bottom-nav),
-                                    [class*="ad-result"]:not(.device-chrome):not(.device-bottom-nav),
-                                    [class*="serp-result"]:not(.device-chrome):not(.device-bottom-nav) {{
+                                    /* CRITICAL: Force horizontal text - highest specificity */
+                                    html, body, div, span, p, a, h1, h2, h3, h4, h5, h6, li, td, th {{
                                         writing-mode: horizontal-tb !important;
                                         text-orientation: mixed !important;
                                         direction: ltr !important;
+                                        display: block !important;  /* Force block display */
                                     }}
                                     
-                                    /* Text elements - fix vertical text but preserve other styles */
-                                    [class*="result"] p, [class*="result"] div, [class*="result"] span,
-                                    [class*="result"] a, [class*="result"] h1, [class*="result"] h2,
-                                    [class*="result"] h3, [class*="result"] h4, [class*="result"] h5,
-                                    [class*="result"] h6, [class*="ad"] p, [class*="ad"] div,
-                                    [class*="ad"] span, [class*="ad"] a {{
+                                    /* Force text wrapping */
+                                    * {{
                                         word-break: break-word !important;
                                         overflow-wrap: break-word !important;
                                         white-space: normal !important;
-                                        writing-mode: horizontal-tb !important;
-                                        text-orientation: mixed !important;
+                                        max-width: 100% !important;
                                     }}
                                     
-                                    /* Responsive images - don't break existing sizing */
-                                    img {{
-                                        max-width: 100%;
-                                        height: auto;
+                                    /* Override any flex/grid that might cause vertical layout */
+                                    [class*="vertical"], [style*="flex-direction: column"] {{
+                                        flex-direction: row !important;
+                                        display: block !important;
                                     }}
                                     
-                                    /* Prevent horizontal overflow in SERP containers */
-                                    [class*="ad-result"], [class*="serp-result"], 
-                                    [class*="sponsored"], [class*="result"] {{
-                                        max-width: 100%; 
-                                        overflow-x: hidden;
+                                    /* Responsive images */
+                                    img, iframe, video {{
+                                        max-width: 100% !important;
+                                        height: auto !important;
+                                    }}
+                                    
+                                    /* Remove min-width constraints that break mobile */
+                                    * {{
+                                        min-width: unset !important;
+                                    }}
+                                    
+                                    /* Ensure SERP containers don't break layout */
+                                    [class*="container"], [class*="ad-result"], [class*="serp-result"], 
+                                    [class*="sponsored"], [class*="result"], [class*="ad"], div, section, article {{
+                                        max-width: 100% !important; 
+                                        min-width: unset !important;
+                                        width: auto !important;
+                                    }}
+                                    
+                                    /* Tables */
+                                    table {{
+                                        width: 100% !important;
+                                        max-width: 100% !important;
+                                        table-layout: auto !important;
                                     }}
                                 </style>
                                 '''
@@ -2413,48 +2432,67 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 device_widths = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
                                                 current_device_w = device_widths.get(device_all, 390)
                                                 
+                                                # Add targeted CSS - CRITICAL: Add !important to force override
                                                 mobile_css = f'''
                                                 <meta name="viewport" content="width={current_device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
                                                 <style>
-                                                    * {{ 
-                                                        box-sizing: border-box !important; 
-                                                        max-width: 100% !important;
-                                                    }}
-                                                    html, body {{ 
+                                                    /* Force document constraints */
+                                                    html {{ 
                                                         width: {current_device_w}px !important;
-                                                        max-width: {current_device_w}px !important; 
-                                                        overflow-x: hidden !important; 
-                                                        margin: 0 !important; 
-                                                        padding: 0 !important; 
-                                                        font-size: 14px !important;
+                                                        max-width: {current_device_w}px !important;
+                                                        overflow-x: hidden !important;
+                                                        overflow-y: auto !important;
                                                     }}
-                                                    /* Force horizontal text flow - CRITICAL */
-                                                    html, body, * {{
+                                                    body {{ 
+                                                        width: {current_device_w}px !important;
+                                                        max-width: {current_device_w}px !important;
+                                                        overflow-x: hidden !important;
+                                                        margin: 0 !important;
+                                                        padding: 0 !important;
+                                                    }}
+                                                    
+                                                    /* CRITICAL: Force horizontal text - highest specificity */
+                                                    html, body, div, span, p, a, h1, h2, h3, h4, h5, h6, li, td, th {{
                                                         writing-mode: horizontal-tb !important;
                                                         text-orientation: mixed !important;
                                                         direction: ltr !important;
+                                                        display: block !important;  /* Force block display */
                                                     }}
-                                                    p, div, span, a, h1, h2, h3, h4, h5, h6, li, td, th, label, button {{
+                                                    
+                                                    /* Force text wrapping */
+                                                    * {{
                                                         word-break: break-word !important;
                                                         overflow-wrap: break-word !important;
                                                         white-space: normal !important;
                                                         max-width: 100% !important;
-                                                        writing-mode: horizontal-tb !important;
-                                                        text-orientation: mixed !important;
                                                     }}
+                                                    
+                                                    /* Override any flex/grid that might cause vertical layout */
+                                                    [class*="vertical"], [style*="flex-direction: column"] {{
+                                                        flex-direction: row !important;
+                                                        display: block !important;
+                                                    }}
+                                                    
+                                                    /* Responsive images */
                                                     img, iframe, video {{
                                                         max-width: 100% !important;
                                                         height: auto !important;
                                                     }}
+                                                    
+                                                    /* Remove min-width constraints that break mobile */
                                                     * {{
                                                         min-width: unset !important;
                                                     }}
-                                                    [class*="container"], [class*="ad-result"], [class*="serp-result"], [class*="sponsored"], 
-                                                    [class*="result"], [class*="ad"], div, section, article {{
+                                                    
+                                                    /* Ensure SERP containers don't break layout */
+                                                    [class*="container"], [class*="ad-result"], [class*="serp-result"], 
+                                                    [class*="sponsored"], [class*="result"], [class*="ad"], div, section, article {{
                                                         max-width: 100% !important; 
                                                         min-width: unset !important;
                                                         width: auto !important;
                                                     }}
+                                                    
+                                                    /* Tables */
                                                     table {{
                                                         width: 100% !important;
                                                         max-width: 100% !important;
