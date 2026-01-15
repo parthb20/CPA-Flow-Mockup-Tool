@@ -267,7 +267,7 @@ st.markdown("""
 
 # Config
 FILE_A_ID = "17_JKUhXfBYlWZZEKUStRgFQhL3Ty-YZu"  # Main data file
-FILE_B_ID = "1_mafJjhEGYcz6uZFmMgDk0oxUmhl9Z4piMfC9WuCDUw"  # SERP template mapping (creative_template_key → Final SERP URL)
+FILE_B_ID = "1K9btMZ4Oxc1bOJHqIUjw_dVepCwKlMs4"  # SERP template mapping (creative_template_key → Final SERP URL)
 
 try:
     API_KEY = st.secrets.get("FASTROUTER_API_KEY", st.secrets.get("OPENAI_API_KEY", "")).strip()
