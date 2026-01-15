@@ -2644,7 +2644,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                         flags=re.IGNORECASE,
                                                         count=1
                                                     )
-                        else:
+                                                else:
                                                     serp_html = f'<head>{mobile_css}</head>{serp_html}'
                                                 
                                                 # Use selected device (respect user choice)
@@ -2763,7 +2763,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             
                             # Show landing page URL
                             st.caption(f"📊 {len(keywords)} keywords available")
-                else:
+                    else:
                         # Basic mode - show keyword only
                         st.caption(f"**Keyword:** {current_kw}")
                     
@@ -2851,7 +2851,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                     preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                                     st.components.v1.html(preview_html, height=height, scrolling=False)
                                                     st.caption("🤖 Rendered via browser automation (bypassed 403)")
-else:
+                                                else:
                                                     # Playwright failed
                                                     st.warning("🚫 Site blocks access (403) - Playwright failed")
                                                     st.markdown(f"[🔗 Open in new tab]({adv_url})")
