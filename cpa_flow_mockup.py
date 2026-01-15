@@ -911,7 +911,8 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     </html>
     """
     
-    escaped = full_content.replace("'", "&apos;").replace('"', '&quot;')
+    # Only escape single quotes since srcdoc uses single quotes - double quotes are safe
+    escaped = full_content.replace("'", "&apos;")
     
     html_output = f"""
     <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
