@@ -976,14 +976,17 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     </html>
     """
     
-    # Simple approach - just return the HTML wrapped in a styled container
-    # Streamlit will render it directly, no iframe/base64/escaping needed
+    # Use srcdoc with single quotes for the attribute to avoid escaping internal double quotes
+    # This way we don't need to escape the HTML content at all
+    iframe_style = f"width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: center top; display: block; background: white;"
+    
+    # Escape single quotes in content since we're using single quotes for srcdoc attribute
+    escaped = full_content.replace("'", "&#39;")
+    
     html_output = f"""
     <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
-        <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.2); position: relative;">
-            <div style="width: {device_w}px; height: {container_height}px; transform: scale({scale}); transform-origin: top left; position: absolute; top: 0; left: 0;">
-                {full_content}
-            </div>
+        <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+            <iframe srcdoc='{escaped}' style="{iframe_style}"></iframe>
         </div>
     </div>
     """
