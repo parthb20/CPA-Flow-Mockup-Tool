@@ -967,10 +967,9 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     </html>
     """
     
-    # Properly escape HTML for srcdoc attribute
-    # srcdoc needs: & -> &amp;, < -> &lt;, > -> &gt;, " -> &quot;
-    # Use double quotes for attribute to avoid single quote issues
-    escaped = full_content.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
+    # Properly escape HTML for srcdoc attribute using Python's html.escape
+    # This handles & correctly (only escapes & that aren't already part of entities)
+    escaped = html.escape(full_content, quote=True)  # quote=True escapes " as &quot;
     
     # Use transform scale for all devices
     iframe_style = f"width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: center top; display: block; background: white;"
@@ -1000,7 +999,7 @@ def extract_text_from_screenshot(screenshot_url):
             text = pytesseract.image_to_string(img)
             return text.strip() if text else None
     except Exception as e:
-        st.warning(f"OCR failed: {str(e)[:50]}")
+        # Silent fail - don't show warning for OCR failures
         return None
     return None
 
@@ -1714,48 +1713,14 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 st.components.v1.html(preview_html, height=height, scrolling=False)
                                                 st.caption("🤖 Rendered via browser automation (bypassed 403)")
                                             else:
-                                                # Try screenshot API as fallback
-                                                if SCREENSHOT_API_KEY:
-                                                    from urllib.parse import quote
-                                                    screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(pub_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                                    screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                                    preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
-                                                    st.components.v1.html(preview_html, height=height, scrolling=False)
-                                                    st.caption("📸 Screenshot API")
-                                                    
-                                                    # Automatically extract text from screenshot
-                                                    if OCR_AVAILABLE:
-                                                        try:
-                                                            extracted_text = extract_text_from_screenshot(screenshot_url)
-                                                            if extracted_text:
-                                                                with st.expander("📝 Extracted Text from Screenshot"):
-                                                                    st.text(extracted_text[:1000])
-                                                        except Exception as ocr_err:
-                                                            pass  # Silent fail for OCR
-                                                else:
-                                                    st.warning("🚫 Site blocks access (403)")
-                                                    st.markdown(f"[🔗 Open in new tab]({pub_url})")
-                                    elif SCREENSHOT_API_KEY:
-                                        # No Playwright, use screenshot API
-                                        from urllib.parse import quote
-                                        screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(pub_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                        screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
-                                        st.components.v1.html(preview_html, height=height, scrolling=False)
-                                        st.caption("📸 Screenshot API")
-                                        
-                                        # Automatically extract text from screenshot
-                                        if OCR_AVAILABLE:
-                                            try:
-                                                extracted_text = extract_text_from_screenshot(screenshot_url)
-                                                if extracted_text:
-                                                    with st.expander("📝 Extracted Text from Screenshot"):
-                                                        st.text(extracted_text[:1000])
-                                            except Exception as ocr_err:
-                                                pass  # Silent fail for OCR
+                                                # Playwright failed - show error and link
+                                                st.warning("🚫 Site blocks access (403) - Playwright failed")
+                                                st.markdown(f"[🔗 Open in new tab]({pub_url})")
+                                                # Don't use Screenshot API as it's unreliable
                                     else:
+                                        # No Playwright available - show error and link
                                         st.warning("🚫 Site blocks access (403)")
-                                        st.info("Install Playwright or add SCREENSHOT_API_KEY")
+                                        st.info("💡 Install Playwright to bypass 403 errors: `pip install playwright && playwright install chromium`")
                                         st.markdown(f"[🔗 Open in new tab]({pub_url})")
                                 elif response.status_code == 200:
                                     # Use response.text which handles encoding automatically
@@ -2245,20 +2210,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                             st.components.v1.html(preview_html, height=height, scrolling=False)
                                             st.caption("📺 SERP (via Playwright)")
                                         else:
-                                            st.warning("⚠️ Playwright failed to load SERP. Trying screenshot API...")
-                                            # Try screenshot API if available
-                                            if SCREENSHOT_API_KEY:
-                                                from urllib.parse import quote
-                                                # Use device-specific viewport
-                                                viewports = {'mobile': (390, 844), 'tablet': (820, 1180), 'laptop': (1440, 900)}
-                                                vw, vh = viewports.get(device_all, (390, 844))
-                                                screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(serp_url)}&full_page=false&viewport_width={vw}&viewport_height={vh}&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                                screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                                preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
-                                                st.components.v1.html(preview_html, height=height, scrolling=False)
-                                                st.caption("📸 Screenshot API")
-                                            else:
-                                                st.error("⚠️ Could not load SERP. Install Playwright or add SCREENSHOT_API_KEY")
+                                            st.warning("⚠️ Playwright failed to load SERP")
+                                            st.info("💡 Playwright may need to be installed: `pip install playwright && playwright install chromium`")
+                                            st.markdown(f"[🔗 Open SERP in new tab]({serp_url})")
                                 else:
                                     st.error(f"HTTP {response.status_code} - Install Playwright for 403 bypass")
                             else:
@@ -2391,48 +2345,13 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 st.components.v1.html(preview_html, height=height, scrolling=False)
                                                 st.caption("🤖 Rendered via browser automation (bypassed 403)")
                                             else:
-                                                # Try screenshot API as fallback
-                                                if SCREENSHOT_API_KEY:
-                                                    from urllib.parse import quote
-                                                    screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(adv_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                                    screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                                    preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
-                                                    st.components.v1.html(preview_html, height=height, scrolling=False)
-                                                    st.caption("📸 Screenshot API")
-                                                    
-                                                    # Automatically extract text from screenshot
-                                                    if OCR_AVAILABLE:
-                                                        try:
-                                                            extracted_text = extract_text_from_screenshot(screenshot_url)
-                                                            if extracted_text:
-                                                                with st.expander("📝 Extracted Text from Screenshot"):
-                                                                    st.text(extracted_text[:1000])
-                                                        except Exception as ocr_err:
-                                                            pass  # Silent fail for OCR
-                                                else:
-                                                    st.warning("🚫 Site blocks access (403)")
-                                                    st.markdown(f"[🔗 Open in new tab]({adv_url})")
-                                    elif SCREENSHOT_API_KEY:
-                                        # No Playwright, use screenshot API
-                                        from urllib.parse import quote
-                                        screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(adv_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                        screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
-                                        st.components.v1.html(preview_html, height=height, scrolling=False)
-                                        st.caption("📸 Screenshot API")
-                                        
-                                        # Automatically extract text from screenshot
-                                        if OCR_AVAILABLE:
-                                            try:
-                                                extracted_text = extract_text_from_screenshot(screenshot_url)
-                                                if extracted_text:
-                                                    with st.expander("📝 Extracted Text from Screenshot"):
-                                                        st.text(extracted_text[:1000])
-                                            except Exception as ocr_err:
-                                                pass  # Silent fail for OCR
+                                                # Playwright failed - show error and link
+                                                st.warning("🚫 Site blocks access (403) - Playwright failed")
+                                                st.markdown(f"[🔗 Open in new tab]({adv_url})")
                                     else:
+                                        # No Playwright available - show error and link
                                         st.warning("🚫 Site blocks access (403)")
-                                        st.info("Install Playwright or add SCREENSHOT_API_KEY")
+                                        st.info("💡 Install Playwright to bypass 403 errors: `pip install playwright && playwright install chromium`")
                                         st.markdown(f"[🔗 Open landing page]({adv_url})")
                                 elif response.status_code == 200:
                                     # Use response.text which handles encoding automatically
