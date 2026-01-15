@@ -976,17 +976,12 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     </html>
     """
     
-    # Use base64 encoding to avoid ALL escaping issues
-    # Base64 encoding bypasses all HTML escaping problems - browser decodes it automatically
-    b64_html = base64.b64encode(full_content.encode('utf-8')).decode('ascii')
-    
-    # Use transform scale for all devices
-    iframe_style = f"width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: center top; display: block; background: white;"
-    
+    # Render HTML directly - no iframe needed, Streamlit handles it
+    # Just wrap the full_content in a container div for styling
     html_output = f"""
     <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
-        <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-            <iframe src="data:text/html;base64,{b64_html}" style="{iframe_style}"></iframe>
+        <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.2); transform: scale({scale}); transform-origin: center top;">
+            {full_content}
         </div>
     </div>
     """
