@@ -267,7 +267,8 @@ st.markdown("""
 
 # Config
 FILE_A_ID = "17_JKUhXfBYlWZZEKUStRgFQhL3Ty-YZu"  # Main data file
-FILE_B_ID = "1K9btMZ4Oxc1bOJHqIUjw_dVepCwKlMs4"  # SERP template mapping (creative_template_key → Final SERP URL)
+# SERP URL base - template key gets appended
+SERP_BASE_URL = "https://related.performmedia.com/search/?srprc=3&oscar=1&a=100&q=nada+vehicle+value+by+vin&mkt=perform&purl=forbes.com/home&tpid="
 
 try:
     API_KEY = st.secrets.get("FASTROUTER_API_KEY", st.secrets.get("OPENAI_API_KEY", "")).strip()
@@ -277,7 +278,7 @@ except Exception as e:
     SCREENSHOT_API_KEY = ""
 
 # Session state
-for key in ['data_a', 'data_b', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'similarities', 'last_campaign_key']:
+for key in ['data_a', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'similarities', 'last_campaign_key']:
     if key not in st.session_state:
         if key == 'view_mode':
             st.session_state[key] = 'basic'
@@ -1160,8 +1161,6 @@ if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
         try:
             st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
-            # Load File B (SERP template mapping)
-            st.session_state.data_b = load_csv_from_gdrive(FILE_B_ID)
             st.session_state.loading_done = True
         except Exception as e:
             st.error(f"❌ Error loading data")
@@ -1691,17 +1690,16 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
                         st.caption(f"**Template:** {serp_name}")
                     
-                    # Get SERP URL from File B lookup
-                    creative_key = current_flow.get('creative_template_key', '')
-                    serp_url = None
+                    # Construct SERP URL dynamically from serp_template_key
+                    serp_template_key = current_flow.get('serp_template_key', '')
                     
-                    if creative_key and st.session_state.data_b is not None:
-                        # Lookup in File B
-                        matching = st.session_state.data_b[st.session_state.data_b['creative_template_key'] == creative_key]
-                        if len(matching) > 0:
-                            serp_url = matching.iloc[0]['Final SERP URL']
+                    if serp_template_key and pd.notna(serp_template_key) and str(serp_template_key).strip():
+                        # Build SERP URL: base + template key
+                        serp_url = SERP_BASE_URL + str(serp_template_key)
+                    else:
+                        serp_url = None
                     
-                    if serp_url and pd.notna(serp_url) and str(serp_url).strip():
+                    if serp_url:
                         # Get ad details for replacement
                         ad_title = current_flow.get('ad_title', '')
                         ad_desc = current_flow.get('ad_description', '')
@@ -1719,8 +1717,21 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 if response.status_code == 200:
                                     serp_html = response.text
                                     
+                                    # Get keyword for replacement
+                                    keyword = current_flow.get('keyword_term', '')
+                                    
                                     # Replace ad content in SERP HTML
-                                    # Title: look for class containing "title"
+                                    # 1. Keyword in "Sponsored results for: ..." text
+                                    if 'Sponsored results for:' in serp_html or 'sponsored results for:' in serp_html:
+                                        serp_html = re.sub(
+                                            r'(Sponsored results for:|sponsored results for:)\s*["\']?([^"\'<>]*)["\']?',
+                                            f'\\1 "{keyword}"',
+                                            serp_html,
+                                            count=1,
+                                            flags=re.IGNORECASE
+                                        )
+                                    
+                                    # 2. Ad Title: look for class containing "title"
                                     serp_html = re.sub(
                                         r'(<[^>]*class="[^"]*title[^"]*"[^>]*>)([^<]*)(</[^>]*>)',
                                         f'\\1{ad_title}\\3',
@@ -1729,7 +1740,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         flags=re.IGNORECASE
                                     )
                                     
-                                    # Description: look for class containing "desc"
+                                    # 3. Ad Description: look for class containing "desc"
                                     serp_html = re.sub(
                                         r'(<[^>]*class="[^"]*desc[^"]*"[^>]*>)([^<]*)(</[^>]*>)',
                                         f'\\1{ad_desc}\\3',
@@ -1738,7 +1749,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         flags=re.IGNORECASE
                                     )
                                     
-                                    # URL: look for class containing "url"
+                                    # 4. Ad Display URL: look for class containing "url"
                                     serp_html = re.sub(
                                         r'(<[^>]*class="[^"]*url[^"]*"[^>]*>)([^<]*)(</[^>]*>)',
                                         f'\\1{ad_display_url}\\3',
