@@ -32,9 +32,9 @@ except:
     GDOWN_AVAILABLE = False
 
 # Try to import playwright (for 403 bypass)
+PLAYWRIGHT_AVAILABLE = False
 try:
     from playwright.sync_api import sync_playwright
-    PLAYWRIGHT_AVAILABLE = True
     
     # Auto-install browsers on first run (Streamlit Cloud)
     try:
@@ -44,11 +44,19 @@ try:
             subprocess.run(['playwright', 'install', 'chromium', '--with-deps'], 
                           capture_output=True, timeout=120)
     except Exception as e:
-        st.warning(f"Playwright browser install: {str(e)[:50]}")
-        pass  # If install fails, Playwright will gracefully fail later
+        pass  # Install might fail, test browser launch instead
+    
+    # Test if browser actually works
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            browser.close()
+            PLAYWRIGHT_AVAILABLE = True
+    except Exception as e:
+        PLAYWRIGHT_AVAILABLE = False
+        # Don't show warning on startup - will show when needed
 except Exception as e:
     PLAYWRIGHT_AVAILABLE = False
-    st.warning(f"Playwright not available: {str(e)[:50]}")
 
 # OCR for screenshot text extraction (optional)
 try:
@@ -765,7 +773,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     if device == 'mobile':
         device_w = 390
         container_height = 844
-        scale = 0.55  # Increased from 0.35 for better visibility
+        scale = 1.0  # No scaling - render at actual size to prevent text compression
         frame_style = "border-radius: 40px; border: 10px solid #000000;"
         
         # Mobile chrome
@@ -860,8 +868,13 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         bottom_nav = ""
         chrome_height = "52px"
     
-    display_w = int(device_w * scale)
-    display_h = int(container_height * scale)
+    # For mobile with scale=1.0, use actual device dimensions
+    if device == 'mobile' and scale == 1.0:
+        display_w = device_w  # 390px
+        display_h = container_height  # 844px
+    else:
+        display_w = int(device_w * scale)
+        display_h = int(container_height * scale)
     
     if is_url and not use_srcdoc:
         iframe_content = f'<iframe src="{content}" style="width: 100%; height: 100%; border: none;"></iframe>'
@@ -877,14 +890,46 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         <meta charset="utf-8">
         <style>
             * {{ box-sizing: border-box; }}
-            body {{ margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; width: {device_w}px; overflow-x: hidden; }}
+            html, body {{ 
+                margin: 0; 
+                padding: 0; 
+                width: {device_w}px; 
+                max-width: {device_w}px;
+                overflow-x: hidden; 
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+            }}
             .chrome {{ width: 100%; background: white; position: fixed; top: 0; left: 0; right: 0; z-index: 100; }}
-            .content {{ position: absolute; top: {chrome_height}; bottom: {'50px' if device == 'mobile' else '0'}; left: 0; right: 0; overflow-y: auto; overflow-x: hidden; width: 100%; max-width: {device_w}px; }}
+            .content {{ 
+                position: absolute; 
+                top: {chrome_height}; 
+                bottom: {'50px' if device == 'mobile' else '0'}; 
+                left: 0; 
+                right: 0; 
+                overflow-y: auto; 
+                overflow-x: hidden; 
+                width: 100%; 
+                max-width: {device_w}px; 
+            }}
             .bottom-nav {{ position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; }}
-            /* Prevent text from breaking vertically */
-            p, div, span, h1, h2, h3, h4, h5, h6, a, li {{ white-space: normal; word-wrap: break-word; word-break: normal; }}
-            /* Ensure proper text flow */
-            * {{ max-width: 100%; }}
+            /* Prevent vertical text - allow proper word breaking */
+            p, div, span, h1, h2, h3, h4, h5, h6, a, li {{ 
+                white-space: normal !important; 
+                word-wrap: break-word !important; 
+                word-break: break-word !important;  /* Changed from 'normal' - allows breaking */
+                overflow-wrap: break-word !important;
+                max-width: 100% !important;
+            }}
+            /* Ensure text flows horizontally */
+            body {{ 
+                writing-mode: horizontal-tb !important;
+                text-orientation: mixed !important;
+            }}
+            /* Constrain all direct children of content */
+            .content > * {{
+                max-width: 100% !important;
+                min-width: unset !important;
+                overflow-x: hidden !important;
+            }}
         </style>
     </head>
     <body>
@@ -897,10 +942,16 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     
     escaped = full_content.replace("'", "&apos;").replace('"', '&quot;')
     
+    # For mobile with scale=1.0, don't use transform
+    if device == 'mobile' and scale == 1.0:
+        iframe_style = f"width: {device_w}px; height: {container_height}px; border: none; display: block; background: white;"
+    else:
+        iframe_style = f"width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: center top; display: block; background: white;"
+    
     html_output = f"""
     <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
         <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-            <iframe srcdoc='{escaped}' style="width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"></iframe>
+            <iframe srcdoc='{escaped}' style="{iframe_style}"></iframe>
         </div>
     </div>
     """
@@ -949,8 +1000,17 @@ def unescape_adcode(adcode):
     
     return adcode
 
-def capture_with_playwright(url, device='mobile'):
-    """Capture page using Playwright with clean URL (bypasses many 403 errors)"""
+def capture_with_playwright(url, device='mobile', timeout=30000):
+    """Capture page using Playwright with clean URL (bypasses many 403 errors)
+    
+    Args:
+        url: URL to capture
+        device: 'mobile', 'tablet', or 'laptop'
+        timeout: Navigation timeout in ms (default 30000, use 60000 for SERP)
+    
+    Returns:
+        HTML content or None if failed
+    """
     if not PLAYWRIGHT_AVAILABLE:
         return None
     
@@ -1020,63 +1080,66 @@ def capture_with_playwright(url, device='mobile'):
             
             page = context.new_page()
             
-            # Comprehensive anti-detection scripts
-            page.add_init_script("""
-                // Hide webdriver property
-                Object.defineProperty(navigator, 'webdriver', {
-                    get: () => undefined
-                });
-                
-                // Override the permissions API
-                const originalQuery = window.navigator.permissions.query;
-                window.navigator.permissions.query = (parameters) => (
-                    parameters.name === 'notifications' ?
-                        Promise.resolve({ state: Notification.permission }) :
-                        originalQuery(parameters)
-                );
-                
-                // Mock plugins
-                Object.defineProperty(navigator, 'plugins', {
-                    get: () => [
-                        {
-                            0: {type: "application/x-google-chrome-pdf", suffixes: "pdf", description: "Portable Document Format"},
-                            description: "Portable Document Format",
-                            filename: "internal-pdf-viewer",
-                            length: 1,
-                            name: "Chrome PDF Plugin"
-                        }
-                    ]
-                });
-                
-                // Mock languages
-                Object.defineProperty(navigator, 'languages', {
-                    get: () => ['en-US', 'en']
-                });
-                
-                // Add chrome object for Chromium
-                if (!window.chrome) {
-                    window.chrome = {
-                        runtime: {},
-                        loadTimes: function() {},
-                        csi: function() {},
-                        app: {}
-                    };
-                }
-                
-                // Mock permissions
-                const originalPermissions = navigator.permissions;
-                Object.defineProperty(navigator, 'permissions', {
-                    get: () => ({
-                        query: async (params) => ({
-                            state: 'prompt',
-                            onchange: null
+            # Comprehensive anti-detection scripts (wrap in try-catch)
+            try:
+                page.add_init_script("""
+                    // Hide webdriver property
+                    Object.defineProperty(navigator, 'webdriver', {
+                        get: () => undefined
+                    });
+                    
+                    // Override the permissions API
+                    const originalQuery = window.navigator.permissions.query;
+                    window.navigator.permissions.query = (parameters) => (
+                        parameters.name === 'notifications' ?
+                            Promise.resolve({ state: Notification.permission }) :
+                            originalQuery(parameters)
+                    );
+                    
+                    // Mock plugins
+                    Object.defineProperty(navigator, 'plugins', {
+                        get: () => [
+                            {
+                                0: {type: "application/x-google-chrome-pdf", suffixes: "pdf", description: "Portable Document Format"},
+                                description: "Portable Document Format",
+                                filename: "internal-pdf-viewer",
+                                length: 1,
+                                name: "Chrome PDF Plugin"
+                            }
+                        ]
+                    });
+                    
+                    // Mock languages
+                    Object.defineProperty(navigator, 'languages', {
+                        get: () => ['en-US', 'en']
+                    });
+                    
+                    // Add chrome object for Chromium
+                    if (!window.chrome) {
+                        window.chrome = {
+                            runtime: {},
+                            loadTimes: function() {},
+                            csi: function() {},
+                            app: {}
+                        };
+                    }
+                    
+                    // Mock permissions
+                    const originalPermissions = navigator.permissions;
+                    Object.defineProperty(navigator, 'permissions', {
+                        get: () => ({
+                            query: async (params) => ({
+                                state: 'prompt',
+                                onchange: null
+                            })
                         })
-                    })
-                });
-            """)
+                    });
+                """)
+            except Exception as e:
+                pass  # Script injection failed, continue anyway
             
-            # Set timeout
-            page.set_default_navigation_timeout(30000)
+            # Set timeout (use provided timeout parameter)
+            page.set_default_navigation_timeout(timeout)
             
             # Handle dialogs automatically
             page.on("dialog", lambda dialog: dialog.dismiss())
@@ -1136,9 +1199,13 @@ def capture_with_playwright(url, device='mobile'):
                 return html_content
                 
             except Exception as e:
-                browser.close()
+                try:
+                    browser.close()
+                except:
+                    pass
                 return None
     except Exception as e:
+        # Return None on any error (caller will handle fallback)
         return None
 
 def parse_creative_html(response_str):
@@ -1760,10 +1827,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     # Construct SERP URL dynamically from serp_template_key
                     serp_template_key = current_flow.get('serp_template_key', '')
                     
-                    # Always show the constructed SERP URL as clickable link
+                    # Always show the constructed SERP URL (full URL + clickable link)
                     if serp_template_key:
                         final_serp_url = SERP_BASE_URL + str(serp_template_key)
-                        st.markdown(f"**Final SERP URL:** [🔗 {final_serp_url}]({final_serp_url})")
+                        st.text("Final SERP URL:")
+                        st.code(final_serp_url, language=None)
+                        st.markdown(f"[🔗 Open in new tab]({final_serp_url})")
                     
                     if serp_template_key and pd.notna(serp_template_key) and str(serp_template_key).strip():
                         # Build SERP URL: base + template key
@@ -1794,49 +1863,70 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 from bs4 import BeautifulSoup
                                 soup = BeautifulSoup(serp_html, 'html.parser')
                                 
-                                # Debug: Show what we're replacing
                                 replacement_made = False
                                 
-                                # 1. Replace keyword in "Sponsored results for:" text (all occurrences)
-                                for text_node in soup.find_all(string=True):
-                                    text_str = str(text_node)
-                                    if 'Sponsored results for:' in text_str or 'sponsored results for:' in text_str.lower():
-                                        new_text = re.sub(
-                                            r'(Sponsored results for:|sponsored results for:)\s*["\']?([^"\'<>]*)["\']?',
-                                            f'\\1 "{keyword}"',
-                                            text_str,
-                                            flags=re.IGNORECASE
-                                        )
-                                        if new_text != text_str:
-                                            text_node.replace_with(new_text)
-                                            replacement_made = True
+                                # STRATEGY: Find ad/sponsored container FIRST, then replace within it
+                                # Look for common ad container patterns
+                                ad_container = None
+                                for pattern in [r'sponsored', r'ad-result', r'paid', r'ad-container', r'sponsor']:
+                                    ad_container = soup.find('div', class_=re.compile(pattern, re.IGNORECASE))
+                                    if ad_container:
+                                        break
                                 
-                                # 2. Replace ad title - find ALL elements with title class, replace FIRST one
+                                # If no container found, try finding by "Sponsored results for:" text
+                                if not ad_container:
+                                    for elem in soup.find_all(string=re.compile(r'Sponsored results for:', re.IGNORECASE)):
+                                        parent = elem.parent
+                                        # Walk up to find container div
+                                        while parent and parent.name != 'div':
+                                            parent = parent.parent
+                                        if parent:
+                                            ad_container = parent
+                                            break
+                                
+                                # 1. Replace keyword in "Sponsored results for:" text
+                                for elem in soup.find_all(string=re.compile(r'Sponsored results for:', re.IGNORECASE)):
+                                    parent = elem.parent
+                                    if parent:
+                                        # Use NavigableString properly
+                                        from bs4 import NavigableString
+                                        new_text = NavigableString(f'Sponsored results for: "{keyword}"')
+                                        elem.replace_with(new_text)
+                                        replacement_made = True
+                                        break  # Only replace first occurrence
+                                
+                                # 2-4. Replace title, desc, url WITHIN ad container if found, otherwise globally
+                                search_scope = ad_container if ad_container else soup
+                                
+                                # 2. Replace ad title
                                 if ad_title:
-                                    title_elements = soup.find_all(class_=re.compile(r'title', re.IGNORECASE))
-                                    if title_elements:
-                                        # Replace the first title element's content
-                                        first_title = title_elements[0]
-                                        first_title.clear()
-                                        first_title.append(ad_title)
+                                    title_elem = search_scope.find(class_=re.compile(r'title', re.IGNORECASE))
+                                    if not title_elem and ad_container:
+                                        # Fallback: search globally
+                                        title_elem = soup.find(class_=re.compile(r'title', re.IGNORECASE))
+                                    if title_elem:
+                                        title_elem.clear()
+                                        title_elem.append(ad_title)
                                         replacement_made = True
                                 
-                                # 3. Replace ad description - find ALL elements with desc class, replace FIRST one
+                                # 3. Replace ad description
                                 if ad_desc:
-                                    desc_elements = soup.find_all(class_=re.compile(r'desc', re.IGNORECASE))
-                                    if desc_elements:
-                                        first_desc = desc_elements[0]
-                                        first_desc.clear()
-                                        first_desc.append(ad_desc)
+                                    desc_elem = search_scope.find(class_=re.compile(r'desc|description', re.IGNORECASE))
+                                    if not desc_elem and ad_container:
+                                        desc_elem = soup.find(class_=re.compile(r'desc|description', re.IGNORECASE))
+                                    if desc_elem:
+                                        desc_elem.clear()
+                                        desc_elem.append(ad_desc)
                                         replacement_made = True
                                 
-                                # 4. Replace ad display URL - find ALL elements with url class, replace FIRST one
+                                # 4. Replace ad display URL
                                 if ad_display_url:
-                                    url_elements = soup.find_all(class_=re.compile(r'url', re.IGNORECASE))
-                                    if url_elements:
-                                        first_url = url_elements[0]
-                                        first_url.clear()
-                                        first_url.append(ad_display_url)
+                                    url_elem = search_scope.find(class_=re.compile(r'url|display.*url|ad.*url', re.IGNORECASE))
+                                    if not url_elem and ad_container:
+                                        url_elem = soup.find(class_=re.compile(r'url|display.*url|ad.*url', re.IGNORECASE))
+                                    if url_elem:
+                                        url_elem.clear()
+                                        url_elem.append(ad_display_url)
                                         replacement_made = True
                                 
                                 # Debug info
@@ -1852,49 +1942,127 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 serp_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
                                                   lambda m: f'href="{urljoin(serp_url, m.group(1))}"', serp_html)
                                 
-                                # Add CSS to prevent vertical text wrapping
-                                serp_html = re.sub(r'<head>', f'<head><style>body, p, div, span, h1, h2, h3, h4, h5, h6, a, li {{ white-space: normal !important; word-wrap: break-word !important; word-break: normal !important; max-width: 100% !important; overflow-wrap: break-word !important; }}</style>', serp_html, flags=re.IGNORECASE)
+                                # Add mobile-friendly viewport and CSS to prevent vertical text
+                                # Get device width based on selected device
+                                device_widths = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
+                                current_device_w = device_widths.get(device_all, 390)
+                                
+                                mobile_css = f'''
+                                <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+                                <style>
+                                    * {{ box-sizing: border-box !important; }}
+                                    body {{ 
+                                        max-width: {current_device_w}px !important; 
+                                        overflow-x: hidden !important; 
+                                        margin: 0 !important; 
+                                        padding: 0 !important; 
+                                    }}
+                                    /* Allow text to wrap properly */
+                                    p, div, span, a, h1, h2, h3, h4, h5, h6, li {{
+                                        word-break: break-word !important;
+                                        overflow-wrap: break-word !important;
+                                        white-space: normal !important;
+                                        max-width: 100% !important;
+                                    }}
+                                    /* Override fixed widths */
+                                    img, iframe, video {{
+                                        max-width: 100% !important;
+                                        height: auto !important;
+                                    }}
+                                    /* Prevent horizontal scroll - remove min-width constraints */
+                                    [class*="container"], [class*="ad-result"], [class*="serp-result"], [class*="sponsored"] {{
+                                        max-width: 100% !important; 
+                                        min-width: unset !important;
+                                    }}
+                                </style>
+                                '''
+                                
+                                # Inject into head tag
+                                if re.search(r'<head>', serp_html, re.IGNORECASE):
+                                    serp_html = re.sub(
+                                        r'<head>',
+                                        f'<head>{mobile_css}',
+                                        serp_html,
+                                        flags=re.IGNORECASE,
+                                        count=1
+                                    )
+                                else:
+                                    # No head tag, add one
+                                    serp_html = f'<head>{mobile_css}</head>{serp_html}'
                                 
                                 # Step 3: Render modified HTML as iframe using srcdoc
+                                # Use selected device (respect user choice)
                                 preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
                                 st.components.v1.html(preview_html, height=height, scrolling=False)
                                 st.caption("📺 SERP with injected ad content")
                                 
                             elif response.status_code == 403:
-                                # Try Playwright as fallback
+                                # Try Playwright as fallback (with longer timeout for SERP)
                                 if PLAYWRIGHT_AVAILABLE:
                                     with st.spinner("🔄 Using browser automation..."):
-                                        page_html = capture_with_playwright(serp_url, device=device_all)
+                                        page_html = capture_with_playwright(serp_url, device=device_all, timeout=60000)
                                         if page_html:
-                                            # Apply same replacements
+                                            # Apply same replacements (reuse logic from above)
                                             from bs4 import BeautifulSoup
+                                            from bs4 import NavigableString
                                             soup = BeautifulSoup(page_html, 'html.parser')
                                             
-                                            # Same replacement logic as above
-                                            for text_node in soup.find_all(string=True):
-                                                if 'Sponsored results for:' in text_node or 'sponsored results for:' in text_node.lower():
-                                                    new_text = re.sub(
-                                                        r'(Sponsored results for:|sponsored results for:)\s*["\']?([^"\'<>]*)["\']?',
-                                                        f'\\1 "{keyword}"',
-                                                        text_node,
-                                                        flags=re.IGNORECASE
-                                                    )
-                                                    text_node.replace_with(new_text)
+                                            replacement_made = False
                                             
-                                            title_elements = soup.find_all(class_=re.compile(r'title', re.IGNORECASE))
-                                            if title_elements and ad_title:
-                                                title_elements[0].clear()
-                                                title_elements[0].append(ad_title)
+                                            # Find ad container
+                                            ad_container = None
+                                            for pattern in [r'sponsored', r'ad-result', r'paid', r'ad-container', r'sponsor']:
+                                                ad_container = soup.find('div', class_=re.compile(pattern, re.IGNORECASE))
+                                                if ad_container:
+                                                    break
                                             
-                                            desc_elements = soup.find_all(class_=re.compile(r'desc', re.IGNORECASE))
-                                            if desc_elements and ad_desc:
-                                                desc_elements[0].clear()
-                                                desc_elements[0].append(ad_desc)
+                                            if not ad_container:
+                                                for elem in soup.find_all(string=re.compile(r'Sponsored results for:', re.IGNORECASE)):
+                                                    parent = elem.parent
+                                                    while parent and parent.name != 'div':
+                                                        parent = parent.parent
+                                                    if parent:
+                                                        ad_container = parent
+                                                        break
                                             
-                                            url_elements = soup.find_all(class_=re.compile(r'url', re.IGNORECASE))
-                                            if url_elements and ad_display_url:
-                                                url_elements[0].clear()
-                                                url_elements[0].append(ad_display_url)
+                                            # Replace keyword
+                                            for elem in soup.find_all(string=re.compile(r'Sponsored results for:', re.IGNORECASE)):
+                                                parent = elem.parent
+                                                if parent:
+                                                    new_text = NavigableString(f'Sponsored results for: "{keyword}"')
+                                                    elem.replace_with(new_text)
+                                                    replacement_made = True
+                                                    break
+                                            
+                                            # Replace title, desc, url
+                                            search_scope = ad_container if ad_container else soup
+                                            
+                                            if ad_title:
+                                                title_elem = search_scope.find(class_=re.compile(r'title', re.IGNORECASE))
+                                                if not title_elem and ad_container:
+                                                    title_elem = soup.find(class_=re.compile(r'title', re.IGNORECASE))
+                                                if title_elem:
+                                                    title_elem.clear()
+                                                    title_elem.append(ad_title)
+                                                    replacement_made = True
+                                            
+                                            if ad_desc:
+                                                desc_elem = search_scope.find(class_=re.compile(r'desc|description', re.IGNORECASE))
+                                                if not desc_elem and ad_container:
+                                                    desc_elem = soup.find(class_=re.compile(r'desc|description', re.IGNORECASE))
+                                                if desc_elem:
+                                                    desc_elem.clear()
+                                                    desc_elem.append(ad_desc)
+                                                    replacement_made = True
+                                            
+                                            if ad_display_url:
+                                                url_elem = search_scope.find(class_=re.compile(r'url|display.*url|ad.*url', re.IGNORECASE))
+                                                if not url_elem and ad_container:
+                                                    url_elem = soup.find(class_=re.compile(r'url|display.*url|ad.*url', re.IGNORECASE))
+                                                if url_elem:
+                                                    url_elem.clear()
+                                                    url_elem.append(ad_display_url)
+                                                    replacement_made = True
                                             
                                             serp_html = str(soup)
                                             serp_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
@@ -1902,20 +2070,66 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                             serp_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
                                                               lambda m: f'href="{urljoin(serp_url, m.group(1))}"', serp_html)
                                             
+                                            # Add mobile-friendly CSS (same as above)
+                                            device_widths = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
+                                            current_device_w = device_widths.get(device_all, 390)
+                                            
+                                            mobile_css = f'''
+                                            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+                                            <style>
+                                                * {{ box-sizing: border-box !important; }}
+                                                body {{ 
+                                                    max-width: {current_device_w}px !important; 
+                                                    overflow-x: hidden !important; 
+                                                    margin: 0 !important; 
+                                                    padding: 0 !important; 
+                                                }}
+                                                p, div, span, a, h1, h2, h3, h4, h5, h6, li {{
+                                                    word-break: break-word !important;
+                                                    overflow-wrap: break-word !important;
+                                                    white-space: normal !important;
+                                                    max-width: 100% !important;
+                                                }}
+                                                img, iframe, video {{
+                                                    max-width: 100% !important;
+                                                    height: auto !important;
+                                                }}
+                                                [class*="container"], [class*="ad-result"], [class*="serp-result"], [class*="sponsored"] {{
+                                                    max-width: 100% !important; 
+                                                    min-width: unset !important;
+                                                }}
+                                            </style>
+                                            '''
+                                            
+                                            if re.search(r'<head>', serp_html, re.IGNORECASE):
+                                                serp_html = re.sub(
+                                                    r'<head>',
+                                                    f'<head>{mobile_css}',
+                                                    serp_html,
+                                                    flags=re.IGNORECASE,
+                                                    count=1
+                                                )
+                                            else:
+                                                serp_html = f'<head>{mobile_css}</head>{serp_html}'
+                                            
                                             preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
                                             st.components.v1.html(preview_html, height=height, scrolling=False)
                                             st.caption("📺 SERP (via Playwright)")
                                         else:
-                                            # Playwright failed, try screenshot API if available
+                                            st.warning("⚠️ Playwright failed to load SERP. Trying screenshot API...")
+                                            # Try screenshot API if available
                                             if SCREENSHOT_API_KEY:
                                                 from urllib.parse import quote
-                                                screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(serp_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
+                                                # Use device-specific viewport
+                                                viewports = {'mobile': (390, 844), 'tablet': (820, 1180), 'laptop': (1440, 900)}
+                                                vw, vh = viewports.get(device_all, (390, 844))
+                                                screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(serp_url)}&full_page=false&viewport_width={vw}&viewport_height={vh}&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
                                                 screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
                                                 preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
                                                 st.components.v1.html(preview_html, height=height, scrolling=False)
                                                 st.caption("📸 Screenshot API")
                                             else:
-                                                st.warning("⚠️ Could not load SERP. Install Playwright or add SCREENSHOT_API_KEY")
+                                                st.error("⚠️ Could not load SERP. Install Playwright or add SCREENSHOT_API_KEY")
                                 else:
                                     st.error(f"HTTP {response.status_code} - Install Playwright for 403 bypass")
                             else:
