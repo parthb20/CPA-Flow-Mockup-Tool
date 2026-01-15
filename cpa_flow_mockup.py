@@ -43,10 +43,21 @@ try:
         if not os.path.exists(os.path.expanduser('~/.cache/ms-playwright')):
             subprocess.run(['playwright', 'install', 'chromium', '--with-deps'], 
                           capture_output=True, timeout=120)
-    except:
+    except Exception as e:
+        st.warning(f"Playwright browser install: {str(e)[:50]}")
         pass  # If install fails, Playwright will gracefully fail later
-except:
+except Exception as e:
     PLAYWRIGHT_AVAILABLE = False
+    st.warning(f"Playwright not available: {str(e)[:50]}")
+
+# OCR for screenshot text extraction (optional)
+try:
+    from PIL import Image
+    import pytesseract
+    OCR_AVAILABLE = True
+except ImportError:
+    OCR_AVAILABLE = False
+    pytesseract = None
 
 # Custom CSS
 st.markdown("""
@@ -730,13 +741,14 @@ def find_default_flow(df):
         st.error(f"Error finding default flow: {str(e)}")
         return None
 
-def render_mini_device_preview(content, is_url=False, device='mobile'):
+def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdoc=False):
     """Render device preview with realistic chrome for mobile/tablet/laptop
     
     Args:
         content: URL or HTML content
         is_url: If True, tries iframe src first
         device: 'mobile', 'tablet', or 'laptop'
+        use_srcdoc: If True, use srcdoc for HTML (bypasses X-Frame-Options)
     """
     # Real device dimensions
     if device == 'mobile':
@@ -840,9 +852,10 @@ def render_mini_device_preview(content, is_url=False, device='mobile'):
     display_w = int(device_w * scale)
     display_h = int(container_height * scale)
     
-    if is_url:
+    if is_url and not use_srcdoc:
         iframe_content = f'<iframe src="{content}" style="width: 100%; height: 100%; border: none;"></iframe>'
     else:
+        # For HTML content or when use_srcdoc=True, embed directly
         iframe_content = content
     
     full_content = f"""
@@ -876,6 +889,25 @@ def render_mini_device_preview(content, is_url=False, device='mobile'):
     """
     
     return html_output, display_h + 30, is_url
+
+def extract_text_from_screenshot(screenshot_url):
+    """Extract text from screenshot using OCR"""
+    if not OCR_AVAILABLE:
+        return None
+    
+    try:
+        # Download screenshot
+        response = requests.get(screenshot_url, timeout=30)
+        if response.status_code == 200:
+            # Open image
+            img = Image.open(BytesIO(response.content))
+            # Extract text using OCR
+            text = pytesseract.image_to_string(img)
+            return text.strip() if text else None
+    except Exception as e:
+        st.warning(f"OCR failed: {str(e)[:50]}")
+        return None
+    return None
 
 def unescape_adcode(adcode):
     """
@@ -1037,8 +1069,12 @@ def capture_with_playwright(url, device='mobile'):
                 response = page.goto(clean_url, wait_until='domcontentloaded', timeout=30000)
                 
                 if not response or response.status >= 400:
-                    # Fallback to 'commit' if domcontentloaded times out
-                    page.goto(clean_url, wait_until='commit', timeout=15000)
+                    # Fallback to 'commit' if domcontentloaded times out or status error
+                    try:
+                        page.goto(clean_url, wait_until='commit', timeout=15000)
+                    except Exception as e:
+                        # If commit also fails, try 'load' as last resort
+                        page.goto(clean_url, wait_until='load', timeout=10000)
                 
                 # Add random human-like delay
                 time.sleep(random.uniform(1.5, 3.0))
@@ -1538,6 +1574,14 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                     preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
                                                     st.components.v1.html(preview_html, height=height, scrolling=False)
                                                     st.caption("📸 Screenshot API (browser automation failed)")
+                                                    
+                                                    # Try to extract text from screenshot
+                                                    if OCR_AVAILABLE:
+                                                        with st.spinner("🔍 Extracting text from screenshot..."):
+                                                            extracted_text = extract_text_from_screenshot(screenshot_url)
+                                                            if extracted_text:
+                                                                with st.expander("📝 Extracted Text"):
+                                                                    st.text(extracted_text[:500])
                                                 else:
                                                     st.warning("🚫 Site blocks access (403)")
                                                     st.markdown(f"[🔗 Open in new tab]({pub_url})")
@@ -1703,75 +1747,128 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         ad_title = current_flow.get('ad_title', '')
                         ad_desc = current_flow.get('ad_description', '')
                         ad_display_url = current_flow.get('ad_display_url', '')
+                        keyword = current_flow.get('keyword_term', '')
                         
-                        # Try iframe src first
+                        # NEW APPROACH: Fetch HTML FIRST, replace values, THEN render as iframe
                         try:
-                            preview_html, height, _ = render_mini_device_preview(serp_url, is_url=True, device=device_all)
-                            st.components.v1.html(preview_html, height=height, scrolling=False)
-                            st.caption("📺 Iframe")
-                        except:
-                            # Fallback: Fetch HTML and inject ad content
-                            try:
-                                response = requests.get(serp_url, timeout=15, headers={'User-Agent': 'Mozilla/5.0'})
-                                if response.status_code == 200:
-                                    serp_html = response.text
-                                    
-                                    # Get keyword for replacement
-                                    keyword = current_flow.get('keyword_term', '')
-                                    
-                                    # Replace ad content in SERP HTML
-                                    # Use BeautifulSoup for better element finding and replacement
-                                    from bs4 import BeautifulSoup
-                                    soup = BeautifulSoup(serp_html, 'html.parser')
-                                    
-                                    # 1. Replace keyword in "Sponsored results for:" text
-                                    for text_elem in soup.find_all(string=re.compile(r'Sponsored results for:', re.IGNORECASE)):
-                                        new_text = re.sub(
-                                            r'(Sponsored results for:)\s*["\']?([^"\'<>]*)["\']?',
-                                            f'\\1 "{keyword}"',
-                                            text_elem,
-                                            flags=re.IGNORECASE
-                                        )
-                                        text_elem.replace_with(new_text)
-                                    
-                                    # 2. Replace ad title (search deeply in nested elements)
-                                    for elem in soup.find_all(class_=re.compile(r'title', re.IGNORECASE)):
-                                        if elem.string:
-                                            elem.string = ad_title
-                                        elif elem.get_text(strip=True):
-                                            elem.clear()
-                                            elem.append(ad_title)
-                                    
-                                    # 3. Replace ad description (search deeply)
-                                    for elem in soup.find_all(class_=re.compile(r'desc', re.IGNORECASE)):
-                                        if elem.string:
-                                            elem.string = ad_desc
-                                        elif elem.get_text(strip=True):
-                                            elem.clear()
-                                            elem.append(ad_desc)
-                                    
-                                    # 4. Replace ad display URL (search deeply)
-                                    for elem in soup.find_all(class_=re.compile(r'url', re.IGNORECASE)):
-                                        if elem.string:
-                                            elem.string = ad_display_url
-                                        elif elem.get_text(strip=True):
-                                            elem.clear()
-                                            elem.append(ad_display_url)
-                                    
-                                    # Convert back to HTML
-                                    serp_html = str(soup)
-                                    
-                                    # Fix relative URLs
-                                    serp_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
-                                                      lambda m: f'src="{urljoin(serp_url, m.group(1))}"', serp_html)
-                                    
-                                    preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all)
-                                    st.components.v1.html(preview_html, height=height, scrolling=False)
-                                    st.caption("📄 HTML with ad content")
+                            # Step 1: Fetch SERP HTML
+                            response = requests.get(serp_url, timeout=15, headers={
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                                'Accept-Language': 'en-US,en;q=0.9'
+                            })
+                            
+                            if response.status_code == 200:
+                                serp_html = response.text
+                                
+                                # Step 2: Replace ad content in SERP HTML using BeautifulSoup
+                                from bs4 import BeautifulSoup
+                                soup = BeautifulSoup(serp_html, 'html.parser')
+                                
+                                # 1. Replace keyword in "Sponsored results for:" text (all occurrences)
+                                for text_node in soup.find_all(string=True):
+                                    if 'Sponsored results for:' in text_node or 'sponsored results for:' in text_node.lower():
+                                        parent = text_node.parent
+                                        if parent:
+                                            # Replace the text node
+                                            new_text = re.sub(
+                                                r'(Sponsored results for:|sponsored results for:)\s*["\']?([^"\'<>]*)["\']?',
+                                                f'\\1 "{keyword}"',
+                                                text_node,
+                                                flags=re.IGNORECASE
+                                            )
+                                            text_node.replace_with(new_text)
+                                
+                                # 2. Replace ad title - find FIRST element with title class and replace ALL text inside
+                                title_elements = soup.find_all(class_=re.compile(r'title', re.IGNORECASE))
+                                if title_elements and ad_title:
+                                    # Replace the first title element's content
+                                    first_title = title_elements[0]
+                                    first_title.clear()
+                                    first_title.append(ad_title)
+                                
+                                # 3. Replace ad description - find FIRST element with desc class
+                                desc_elements = soup.find_all(class_=re.compile(r'desc', re.IGNORECASE))
+                                if desc_elements and ad_desc:
+                                    first_desc = desc_elements[0]
+                                    first_desc.clear()
+                                    first_desc.append(ad_desc)
+                                
+                                # 4. Replace ad display URL - find FIRST element with url class
+                                url_elements = soup.find_all(class_=re.compile(r'url', re.IGNORECASE))
+                                if url_elements and ad_display_url:
+                                    first_url = url_elements[0]
+                                    first_url.clear()
+                                    first_url.append(ad_display_url)
+                                
+                                # Convert back to HTML
+                                serp_html = str(soup)
+                                
+                                # Fix relative URLs to absolute
+                                serp_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
+                                                  lambda m: f'src="{urljoin(serp_url, m.group(1))}"', serp_html)
+                                serp_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
+                                                  lambda m: f'href="{urljoin(serp_url, m.group(1))}"', serp_html)
+                                
+                                # Step 3: Render modified HTML as iframe using srcdoc
+                                preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
+                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                st.caption("📺 SERP with injected ad content")
+                                
+                            elif response.status_code == 403:
+                                # Try Playwright as fallback
+                                if PLAYWRIGHT_AVAILABLE:
+                                    with st.spinner("🔄 Using browser automation..."):
+                                        page_html = capture_with_playwright(serp_url, device=device_all)
+                                        if page_html:
+                                            # Apply same replacements
+                                            from bs4 import BeautifulSoup
+                                            soup = BeautifulSoup(page_html, 'html.parser')
+                                            
+                                            # Same replacement logic as above
+                                            for text_node in soup.find_all(string=True):
+                                                if 'Sponsored results for:' in text_node or 'sponsored results for:' in text_node.lower():
+                                                    new_text = re.sub(
+                                                        r'(Sponsored results for:|sponsored results for:)\s*["\']?([^"\'<>]*)["\']?',
+                                                        f'\\1 "{keyword}"',
+                                                        text_node,
+                                                        flags=re.IGNORECASE
+                                                    )
+                                                    text_node.replace_with(new_text)
+                                            
+                                            title_elements = soup.find_all(class_=re.compile(r'title', re.IGNORECASE))
+                                            if title_elements and ad_title:
+                                                title_elements[0].clear()
+                                                title_elements[0].append(ad_title)
+                                            
+                                            desc_elements = soup.find_all(class_=re.compile(r'desc', re.IGNORECASE))
+                                            if desc_elements and ad_desc:
+                                                desc_elements[0].clear()
+                                                desc_elements[0].append(ad_desc)
+                                            
+                                            url_elements = soup.find_all(class_=re.compile(r'url', re.IGNORECASE))
+                                            if url_elements and ad_display_url:
+                                                url_elements[0].clear()
+                                                url_elements[0].append(ad_display_url)
+                                            
+                                            serp_html = str(soup)
+                                            serp_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
+                                                              lambda m: f'src="{urljoin(serp_url, m.group(1))}"', serp_html)
+                                            serp_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
+                                                              lambda m: f'href="{urljoin(serp_url, m.group(1))}"', serp_html)
+                                            
+                                            preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
+                                            st.components.v1.html(preview_html, height=height, scrolling=False)
+                                            st.caption("📺 SERP (via Playwright)")
+                                        else:
+                                            st.error("Failed to load SERP via Playwright")
                                 else:
-                                    st.error(f"HTTP {response.status_code}")
-                            except Exception as e:
-                                st.error(f"Load failed: {str(e)[:50]}")
+                                    st.error(f"HTTP {response.status_code} - Install Playwright for 403 bypass")
+                            else:
+                                st.error(f"HTTP {response.status_code}")
+                                
+                        except Exception as e:
+                            st.error(f"Load failed: {str(e)[:100]}")
                     else:
                         st.warning("⚠️ No SERP URL found in mapping")
                     
@@ -1906,6 +2003,14 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                     preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
                                                     st.components.v1.html(preview_html, height=height, scrolling=False)
                                                     st.caption("📸 Screenshot API (browser automation failed)")
+                                                    
+                                                    # Try to extract text from screenshot
+                                                    if OCR_AVAILABLE:
+                                                        with st.spinner("🔍 Extracting text from screenshot..."):
+                                                            extracted_text = extract_text_from_screenshot(screenshot_url)
+                                                            if extracted_text:
+                                                                with st.expander("📝 Extracted Text"):
+                                                                    st.text(extracted_text[:500])
                                                 else:
                                                     st.warning("🚫 Site blocks access (403)")
                                                     st.markdown(f"[🔗 Open in new tab]({adv_url})")
@@ -1917,6 +2022,14 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
                                         st.components.v1.html(preview_html, height=height, scrolling=False)
                                         st.caption("📸 Screenshot API (HTTP 403)")
+                                        
+                                        # Try to extract text from screenshot
+                                        if OCR_AVAILABLE:
+                                            with st.spinner("🔍 Extracting text from screenshot..."):
+                                                extracted_text = extract_text_from_screenshot(screenshot_url)
+                                                if extracted_text:
+                                                    with st.expander("📝 Extracted Text"):
+                                                        st.text(extracted_text[:500])
                                     else:
                                         st.warning("🚫 Site blocks access (403)")
                                         st.info("Install Playwright or add SCREENSHOT_API_KEY")
