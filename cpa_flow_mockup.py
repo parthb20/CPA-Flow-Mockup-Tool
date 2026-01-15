@@ -1568,7 +1568,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                       lambda m: f'src="{urljoin(pub_url, m.group(1))}"', page_html)
                                     page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
                                                       lambda m: f'href="{urljoin(pub_url, m.group(1))}"', page_html)
-                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device1)
+                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                     st.components.v1.html(preview_html, height=height, scrolling=False)
                                     st.caption("📄 HTML")
                                 else:
@@ -1706,7 +1706,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         
                         # Try iframe src first
                         try:
-                            preview_html, height, _ = render_mini_device_preview(serp_url, is_url=True, device=device3)
+                            preview_html, height, _ = render_mini_device_preview(serp_url, is_url=True, device=device_all)
                             st.components.v1.html(preview_html, height=height, scrolling=False)
                             st.caption("📺 Iframe")
                         except:
@@ -1765,7 +1765,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     serp_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
                                                       lambda m: f'src="{urljoin(serp_url, m.group(1))}"', serp_html)
                                     
-                                    preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device3)
+                                    preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all)
                                     st.components.v1.html(preview_html, height=height, scrolling=False)
                                     st.caption("📄 HTML with ad content")
                                 else:
@@ -1835,14 +1835,16 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         st.caption(f"**Keyword:** {current_kw}")
                     
                     # Get landing URL and check clicks from current_flow
-                    flow_clicks = safe_float(current_flow.get('clicks', 0))
+                    # Use same logic as display (safe_int) for consistency
+                    flow_clicks = safe_int(current_flow.get('clicks', 0))
                     
                     # Show landing URL info in basic mode
                     if st.session_state.view_mode == 'basic' and adv_url and pd.notna(adv_url):
                         url_display = str(adv_url)[:60] + "..." if len(str(adv_url)) > 60 else str(adv_url)
                         st.caption(f"**Landing URL:** {url_display}")
                     
-                    if flow_clicks == 0:
+                    # Check if clicks > 0 (same check as display uses)
+                    if flow_clicks <= 0:
                         # This specific view has no clicks
                         st.warning("⚠️ **No Ad Clicks**")
                         st.caption("This view has 0 clicks - user didn't click the ad.")
