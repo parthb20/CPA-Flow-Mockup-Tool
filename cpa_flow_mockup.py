@@ -879,11 +879,34 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     display_w = int(device_w * scale)
     display_h = int(container_height * scale)
     
+    # Validate and prepare content
+    if not content or (isinstance(content, str) and len(content.strip()) == 0):
+        content = '<div style="padding: 20px; text-align: center; color: #666;">No content available</div>'
+    
     if is_url and not use_srcdoc:
         iframe_content = f'<iframe src="{content}" style="width: 100%; height: 100%; border: none;"></iframe>'
     else:
-        # For HTML content or when use_srcdoc=True, embed directly
-        iframe_content = content
+        # For HTML content - if it's already a full document, extract body content
+        # Otherwise use as-is
+        content_str = str(content).strip()
+        if content_str.startswith('<!DOCTYPE') or content_str.startswith('<html'):
+            # Extract body content from full HTML document
+            try:
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(content_str, 'html.parser')
+                body = soup.find('body')
+                if body:
+                    iframe_content = str(body)
+                    # Remove <body> tags, keep inner content
+                    iframe_content = iframe_content.replace('<body>', '').replace('</body>', '')
+                else:
+                    iframe_content = content_str
+            except:
+                # If parsing fails, use as-is
+                iframe_content = content_str
+        else:
+            # Fragment or partial HTML - use as-is
+            iframe_content = content_str
     
     full_content = f"""
     <!DOCTYPE html>
@@ -911,6 +934,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     </html>
     """
     
+    # Escape single quotes for srcdoc attribute (use &apos; which is safer than &#39;)
     # Only escape single quotes since srcdoc uses single quotes - double quotes are safe
     escaped = full_content.replace("'", "&apos;")
     
