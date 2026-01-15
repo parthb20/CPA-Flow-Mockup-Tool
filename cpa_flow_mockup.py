@@ -1302,7 +1302,7 @@ def parse_creative_html(response_str):
 
 
 # Simple title at top (Streamlit handles styling)
-st.title("📊 CPA Flow Analysis v2")
+st.title("📊 CPA Flow Analysis v2 - UPDATED")
 
 # ============================================
 # FORCE CLEAR SIMILARITY SCORES - REMOVED FEATURE
@@ -2472,4 +2472,5 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.warning("No data available for this campaign")
 else:
     st.error("❌ Could not load data - Check FILE_A_ID and file sharing settings")
+
 
