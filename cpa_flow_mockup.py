@@ -976,12 +976,17 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     </html>
     """
     
-    # Render HTML directly - no iframe needed, Streamlit handles it
-    # Just wrap the full_content in a container div for styling
+    # Escape for srcdoc - only escape double quotes, NOT HTML tags
+    # HTML tags MUST remain as-is for browsers to parse them
+    escaped = full_content.replace('"', '&quot;')
+    
+    # Use iframe with srcdoc (proper escaping)
+    iframe_style = f"width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: center top; display: block; background: white;"
+    
     html_output = f"""
     <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
-        <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.2); transform: scale({scale}); transform-origin: center top;">
-            {full_content}
+        <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+            <iframe srcdoc="{escaped}" style="{iframe_style}"></iframe>
         </div>
     </div>
     """
