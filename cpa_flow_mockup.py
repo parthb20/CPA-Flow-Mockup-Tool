@@ -784,31 +784,31 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         scale = 0.25  # Smaller previews like before
         frame_style = "border-radius: 40px; border: 10px solid #000000;"
         
-        # Mobile chrome
+        # Mobile chrome - use single quotes to avoid escaping issues
         device_chrome = """
-        <div style="background: #000; color: white; padding: 6px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500;">
+        <div style='background: #000; color: white; padding: 6px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500;'>
             <div>9:41</div>
-            <div style="display: flex; gap: 4px; align-items: center;">
+            <div style='display: flex; gap: 4px; align-items: center;'>
                 <span>📶</span>
                 <span>📡</span>
                 <span>🔋</span>
             </div>
         </div>
-        <div style="background: #f7f7f7; border-bottom: 1px solid #d1d1d1; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
-            <div style="flex: 1; background: white; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; border: 1px solid #e0e0e0;">
-                <span style="font-size: 16px;">🔒</span>
-                <span style="color: #666; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">URL</span>
-                <span style="font-size: 16px;">🔄</span>
+        <div style='background: #f7f7f7; border-bottom: 1px solid #d1d1d1; padding: 8px 12px; display: flex; align-items: center; gap: 8px;'>
+            <div style='flex: 1; background: white; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; border: 1px solid #e0e0e0;'>
+                <span style='font-size: 16px;'>🔒</span>
+                <span style='color: #666; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;'>URL</span>
+                <span style='font-size: 16px;'>🔄</span>
             </div>
         </div>
         """
         
         bottom_nav = """
-        <div style="position: fixed; bottom: 0; left: 0; right: 0; background: #f7f7f7; border-top: 1px solid #d1d1d1; padding: 8px; display: flex; justify-content: space-around; align-items: center;">
-            <div style="text-align: center; font-size: 20px;">◀️</div>
-            <div style="text-align: center; font-size: 20px;">▶️</div>
-            <div style="text-align: center; font-size: 20px;">↻</div>
-            <div style="text-align: center; font-size: 20px;">⊞</div>
+        <div style='position: fixed; bottom: 0; left: 0; right: 0; background: #f7f7f7; border-top: 1px solid #d1d1d1; padding: 8px; display: flex; justify-content: space-around; align-items: center;'>
+            <div style='text-align: center; font-size: 20px;'>◀️</div>
+            <div style='text-align: center; font-size: 20px;'>▶️</div>
+            <div style='text-align: center; font-size: 20px;'>↻</div>
+            <div style='text-align: center; font-size: 20px;'>⊞</div>
         </div>
         """
         chrome_height = "90px"
@@ -819,29 +819,29 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         scale = 0.25
         frame_style = "border-radius: 16px; border: 12px solid #1f2937;"
         
-        # Tablet chrome
+        # Tablet chrome - use single quotes
         device_chrome = """
-        <div style="background: #000; color: white; padding: 8px 24px; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 500;">
-            <div style="display: flex; gap: 12px;">
+        <div style='background: #000; color: white; padding: 8px 24px; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 500;'>
+            <div style='display: flex; gap: 12px;'>
                 <span>9:41 AM</span>
                 <span>Wed Jan 13</span>
             </div>
-            <div style="display: flex; gap: 8px; align-items: center;">
+            <div style='display: flex; gap: 8px; align-items: center;'>
                 <span>📶</span>
                 <span>📡</span>
                 <span>🔋</span>
             </div>
         </div>
-        <div style="background: #f0f0f0; border-bottom: 1px solid #d0d0d0; padding: 12px 16px; display: flex; align-items: center; gap: 12px;">
-            <span style="font-size: 20px;">◀️</span>
-            <span style="font-size: 20px;">▶️</span>
-            <span style="font-size: 20px;">↻</span>
-            <div style="flex: 1; background: white; border-radius: 10px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; border: 1px solid #e0e0e0;">
-                <span style="font-size: 18px;">🔒</span>
-                <span style="color: #666; font-size: 15px; flex: 1;">URL</span>
+        <div style='background: #f0f0f0; border-bottom: 1px solid #d0d0d0; padding: 12px 16px; display: flex; align-items: center; gap: 12px;'>
+            <span style='font-size: 20px;'>◀️</span>
+            <span style='font-size: 20px;'>▶️</span>
+            <span style='font-size: 20px;'>↻</span>
+            <div style='flex: 1; background: white; border-radius: 10px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; border: 1px solid #e0e0e0;'>
+                <span style='font-size: 18px;'>🔒</span>
+                <span style='color: #666; font-size: 15px; flex: 1;'>URL</span>
             </div>
-            <span style="font-size: 20px;">⊞</span>
-            <span style="font-size: 20px;">⋮</span>
+            <span style='font-size: 20px;'>⊞</span>
+            <span style='font-size: 20px;'>⋮</span>
         </div>
         """
         bottom_nav = ""
@@ -853,24 +853,24 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         scale = 0.2
         frame_style = "border-radius: 8px; border: 6px solid #374151;"
         
-        # Laptop chrome
+        # Laptop chrome - use single quotes
         device_chrome = """
-        <div style="background: #e8e8e8; padding: 12px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #d0d0d0;">
-            <div style="display: flex; gap: 8px;">
-                <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f57;"></div>
-                <div style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e;"></div>
-                <div style="width: 12px; height: 12px; border-radius: 50%; background: #28c840;"></div>
+        <div style='background: #e8e8e8; padding: 12px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #d0d0d0;'>
+            <div style='display: flex; gap: 8px;'>
+                <div style='width: 12px; height: 12px; border-radius: 50%; background: #ff5f57;'></div>
+                <div style='width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e;'></div>
+                <div style='width: 12px; height: 12px; border-radius: 50%; background: #28c840;'></div>
             </div>
-            <span style="font-size: 18px; margin-left: 8px;">◀️</span>
-            <span style="font-size: 18px;">▶️</span>
-            <span style="font-size: 18px; margin-right: 8px;">↻</span>
-            <div style="flex: 1; background: white; border-radius: 6px; padding: 8px 16px; display: flex; align-items: center; gap: 12px; border: 1px solid #d0d0d0;">
-                <span style="font-size: 16px;">🔒</span>
-                <span style="color: #333; font-size: 14px; flex: 1;">https://URL</span>
-                <span style="font-size: 16px;">⭐</span>
+            <span style='font-size: 18px; margin-left: 8px;'>◀️</span>
+            <span style='font-size: 18px;'>▶️</span>
+            <span style='font-size: 18px; margin-right: 8px;'>↻</span>
+            <div style='flex: 1; background: white; border-radius: 6px; padding: 8px 16px; display: flex; align-items: center; gap: 12px; border: 1px solid #d0d0d0;'>
+                <span style='font-size: 16px;'>🔒</span>
+                <span style='color: #333; font-size: 14px; flex: 1;'>https://URL</span>
+                <span style='font-size: 16px;'>⭐</span>
             </div>
-            <span style="font-size: 18px; margin-left: 8px;">⊞</span>
-            <span style="font-size: 18px;">⋮</span>
+            <span style='font-size: 18px; margin-left: 8px;'>⊞</span>
+            <span style='font-size: 18px;'>⋮</span>
         </div>
         """
         bottom_nav = ""
@@ -976,13 +976,10 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     </html>
     """
     
-    # Properly escape HTML for srcdoc attribute
-    # Need to escape: & (but not if already in entity), <, >, "
-    # Use regex to escape & only if not already part of an entity
-    # First escape & that are NOT part of entities (lookahead to check)
-    escaped = re.sub(r'&(?!amp;|lt;|gt;|quot;|#\d+;)', '&amp;', full_content)
-    # Then escape <, >, "
-    escaped = escaped.replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
+    # Use base64 encoding to avoid ALL escaping issues - srcdoc expects HTML, not escaped entities
+    # Base64 encoding is the cleanest solution - no escaping needed at all
+    import base64
+    b64_html = base64.b64encode(full_content.encode('utf-8')).decode('utf-8')
     
     # Use transform scale for all devices
     iframe_style = f"width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: center top; display: block; background: white;"
@@ -990,7 +987,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     html_output = f"""
     <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
         <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-            <iframe srcdoc="{escaped}" style="{iframe_style}"></iframe>
+            <iframe src="data:text/html;base64,{b64_html}" style="{iframe_style}"></iframe>
         </div>
     </div>
     """
