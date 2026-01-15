@@ -2442,57 +2442,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         st.error(f"❌ HTTP {response.status_code}")
                                 except Exception as e:
                                     st.error(f"❌ {str(e)[:100]}")
-                                                    try:
-                                                        from urllib.parse import quote
-                                                        screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(adv_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                                        screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
-                                                        st.components.v1.html(preview_html, height=height, scrolling=False)
-                                                        st.caption("📸 Screenshot API")
-                                                    except Exception as scr_err:
-                                                        st.warning("🚫 Site blocks access (403) - All methods failed")
-                                                        st.markdown(f"[🔗 Open in new tab]({adv_url})")
-                                                else:
-                                                    st.warning("🚫 Site blocks access (403) - Playwright failed")
-                                                    st.markdown(f"[🔗 Open in new tab]({adv_url})")
-                                    elif SCREENSHOT_API_KEY:
-                                        # No Playwright, use Screenshot API
-                                        try:
-                                            from urllib.parse import quote
-                                            screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(adv_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                            screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
-                                            st.components.v1.html(preview_html, height=height, scrolling=False)
-                                            st.caption("📸 Screenshot API")
-                                        except Exception as scr_err:
-                                            st.warning("🚫 Site blocks access (403)")
-                                            st.markdown(f"[🔗 Open landing page]({adv_url})")
-                                    else:
-                                        # No Playwright and no Screenshot API
-                                        st.warning("🚫 Site blocks access (403)")
-                                        st.info("💡 Install Playwright or add SCREENSHOT_API_KEY to bypass 403 errors")
-                                        st.markdown(f"[🔗 Open landing page]({adv_url})")
-                                elif response.status_code == 200:
-                                    # Use response.text which handles encoding automatically
-                                    page_html = response.text
-                                    
-                                    # Force UTF-8 in HTML
-                                    if '<head>' in page_html:
-                                        page_html = page_html.replace('<head>', '<head><meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">', 1)
-                                    else:
-                                        page_html = '<head><meta charset="utf-8"></head>' + page_html
-                                    
-                                    page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
-                                                      lambda m: f'src="{urljoin(adv_url, m.group(1))}"', page_html)
-                                    page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
-                                                      lambda m: f'href="{urljoin(adv_url, m.group(1))}"', page_html)
-                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                    st.components.v1.html(preview_html, height=height, scrolling=False)
-                                    st.caption("📄 HTML")
-                                else:
-                                    st.error(f"❌ HTTP {response.status_code}")
-                            except Exception as e:
-                                st.error(f"❌ {str(e)[:100]}")
                         else:
                             # Has clicks but no valid URL
                             st.warning("⚠️ **No Landing Page URL in Data**")
