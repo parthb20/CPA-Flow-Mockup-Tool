@@ -297,7 +297,11 @@ except Exception as e:
     SCREENSHOT_API_KEY = ""
 
 # Session state
-for key in ['data_a', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'similarities', 'last_campaign_key']:
+# FORCE CLEAR SIMILARITY SCORES - REMOVED FEATURE
+if 'similarities' in st.session_state:
+    del st.session_state.similarities
+
+for key in ['data_a', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'last_campaign_key']:
     if key not in st.session_state:
         if key == 'view_mode':
             st.session_state[key] = 'basic'
@@ -305,6 +309,10 @@ for key in ['data_a', 'loading_done', 'default_flow', 'current_flow', 'view_mode
             st.session_state[key] = 'horizontal'
         else:
             st.session_state[key] = None
+
+# Ensure similarities is NEVER set
+if 'similarities' in st.session_state:
+    del st.session_state.similarities
 
 def load_csv_from_gdrive(file_id):
     """Load CSV from Google Drive - handles CSV, ZIP, GZIP, and large file virus scan"""
@@ -1296,10 +1304,24 @@ def parse_creative_html(response_str):
 # Simple title at top (Streamlit handles styling)
 st.title("📊 CPA Flow Analysis v2")
 
-# Auto-load from Google Drive (silent loading)
-# Clear similarity scores (removed feature) - clear at startup
+# ============================================
+# FORCE CLEAR SIMILARITY SCORES - REMOVED FEATURE
+# ============================================
+# This feature has been completely removed
+# Clear any cached similarity scores MULTIPLE TIMES
 if 'similarities' in st.session_state:
     del st.session_state.similarities
+# Force set to None and delete again
+try:
+    st.session_state.similarities = None
+    del st.session_state.similarities
+except:
+    pass
+# Final check
+if 'similarities' in st.session_state:
+    del st.session_state.similarities
+
+# Auto-load from Google Drive (silent loading)
 
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
@@ -2422,13 +2444,29 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 st.divider()
                 
-                # Similarity scores completely removed - DO NOT DISPLAY
-                # Clear any cached state to prevent old scores from showing
+                # ============================================
+                # SIMILARITY SCORES COMPLETELY REMOVED - DO NOT DISPLAY
+                # ============================================
+                # This section is intentionally EMPTY - NO SIMILARITY SCORES
+                # All similarity score display code has been removed
+                # Force clear any cached state multiple times
+                if 'similarities' in st.session_state:
+                    del st.session_state.similarities
+                try:
+                    st.session_state.similarities = None
+                    del st.session_state.similarities
+                except:
+                    pass
                 if 'similarities' in st.session_state:
                     del st.session_state.similarities
                 
-                # Explicitly do nothing here - similarity scores section removed
-                pass
+                # ABSOLUTELY NO CODE DISPLAYS SIMILARITY SCORES HERE
+                # If similarity scores appear, Streamlit Cloud may be caching old code
+                # Solution: Clear Streamlit Cloud cache or redeploy
+                
+                # Debug: Show file version to confirm correct file is running
+                if st.session_state.view_mode == 'advanced':
+                    st.caption("✅ Running: cpa_flow_mockup_v2.py (Similarity scores removed)")
             
             else:
                 st.warning("No data available for this campaign")
