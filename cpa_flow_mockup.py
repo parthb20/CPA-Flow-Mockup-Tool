@@ -2226,6 +2226,92 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         url_elem.append(ad_display_url)
                                         replacement_made = True
                                 
+                                # CRITICAL: Fix HTML structure BEFORE converting to string
+                                # This fixes vertical text issues at the HTML level, not just CSS
+                                
+                                # Find all elements that might cause vertical text
+                                problematic_elements = soup.find_all(['div', 'p', 'span', 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+                                
+                                for elem in problematic_elements:
+                                    # Remove inline styles that cause vertical text
+                                    if elem.get('style'):
+                                        style = elem['style']
+                                        # Remove writing-mode, text-orientation, direction that cause vertical text
+                                        style = re.sub(r'writing-mode\s*:\s*[^;]+;?', '', style, flags=re.IGNORECASE)
+                                        style = re.sub(r'text-orientation\s*:\s*[^;]+;?', '', style, flags=re.IGNORECASE)
+                                        style = re.sub(r'direction\s*:\s*rtl;?', '', style, flags=re.IGNORECASE)
+                                        # Remove flex-direction: column that causes vertical stacking
+                                        style = re.sub(r'flex-direction\s*:\s*column;?', 'flex-direction: row;', style, flags=re.IGNORECASE)
+                                        elem['style'] = style
+                                    
+                                    # Fix flex containers that might stack vertically
+                                    classes = elem.get('class', [])
+                                    if classes:
+                                        classes_str = ' '.join(classes)
+                                        # If element has flex and might be vertical, ensure it's horizontal
+                                        if 'flex' in classes_str.lower() or elem.get('style', '').find('flex') != -1:
+                                            if not elem.get('style') or 'flex-direction' not in elem.get('style', ''):
+                                                current_style = elem.get('style', '')
+                                                elem['style'] = f'{current_style}; flex-direction: row !important;'.strip('; ')
+                                
+                                # Fix CTA buttons - ensure they're not broken by flex layouts
+                                cta_buttons = soup.find_all(['button', 'a'], class_=re.compile(r'button|cta|arrow|click|action', re.IGNORECASE))
+                                for btn in cta_buttons:
+                                    # Ensure button text flows horizontally
+                                    if btn.get('style'):
+                                        btn['style'] = btn['style'] + '; writing-mode: horizontal-tb !important; display: inline-block !important;'
+                                    else:
+                                        btn['style'] = 'writing-mode: horizontal-tb !important; display: inline-block !important;'
+                                    
+                                    # Fix any child elements (like arrow icons)
+                                    for child in btn.find_all(['span', 'svg', 'i']):
+                                        if child.get('style'):
+                                            child['style'] = child['style'] + '; display: inline !important;'
+                                        else:
+                                            child['style'] = 'display: inline !important;'
+                                
+                                # CRITICAL: Fix HTML structure BEFORE converting to string
+                                # This fixes vertical text issues at the HTML level, not just CSS
+                                
+                                # Find all elements that might cause vertical text
+                                problematic_elements = soup.find_all(['div', 'p', 'span', 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li'])
+                                
+                                for elem in problematic_elements:
+                                    # Remove inline styles that cause vertical text
+                                    if elem.get('style'):
+                                        style = elem['style']
+                                        # Remove writing-mode, text-orientation, direction that cause vertical text
+                                        style = re.sub(r'writing-mode\s*:\s*[^;]+;?', '', style, flags=re.IGNORECASE)
+                                        style = re.sub(r'text-orientation\s*:\s*[^;]+;?', '', style, flags=re.IGNORECASE)
+                                        style = re.sub(r'direction\s*:\s*rtl;?', '', style, flags=re.IGNORECASE)
+                                        # Remove flex-direction: column that causes vertical stacking
+                                        style = re.sub(r'flex-direction\s*:\s*column;?', 'flex-direction: row;', style, flags=re.IGNORECASE)
+                                        elem['style'] = style
+                                    
+                                    # Fix flex containers that might stack vertically
+                                    classes = elem.get('class', [])
+                                    if classes:
+                                        classes_str = ' '.join(classes)
+                                        # If element has flex and might be vertical, ensure it's horizontal
+                                        if 'flex' in classes_str.lower() or (elem.get('style', '') and 'flex' in elem.get('style', '')):
+                                            current_style = elem.get('style', '')
+                                            if 'flex-direction' not in current_style:
+                                                elem['style'] = f'{current_style}; flex-direction: row !important;'.strip('; ')
+                                
+                                # Fix CTA buttons - ensure they're not broken by flex layouts
+                                cta_buttons = soup.find_all(['button', 'a'], class_=re.compile(r'button|cta|arrow|click|action|wrap', re.IGNORECASE))
+                                for btn in cta_buttons:
+                                    # Ensure button text flows horizontally
+                                    current_style = btn.get('style', '')
+                                    if 'writing-mode' not in current_style:
+                                        btn['style'] = f'{current_style}; writing-mode: horizontal-tb !important; display: inline-block !important;'.strip('; ')
+                                    
+                                    # Fix any child elements (like arrow icons)
+                                    for child in btn.find_all(['span', 'svg', 'i', 'div']):
+                                        child_style = child.get('style', '')
+                                        if 'display' not in child_style or 'inline' not in child_style:
+                                            child['style'] = f'{child_style}; display: inline !important;'.strip('; ')
+                                
                                 # Convert back to HTML - BeautifulSoup preserves all attributes by default
                                 # Use str() to maintain original structure (don't use prettify() as it reformats)
                                 serp_html = str(soup)
@@ -2247,11 +2333,11 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 device_widths = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
                                 current_device_w = device_widths.get(device_all, 390)
                                 
-                                # Add targeted CSS - ONLY fix vertical text, preserve layout
+                                # Add targeted CSS - NUCLEAR OPTION to fix vertical text
                                 mobile_css = f'''
                                 <meta name="viewport" content="width={current_device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
                                 <style>
-                                    /* Document constraints - minimal */
+                                    /* Document constraints */
                                     html {{ 
                                         width: {current_device_w}px !important;
                                         max-width: {current_device_w}px !important;
@@ -2263,71 +2349,11 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         overflow-x: hidden !important;
                                     }}
                                     
-                                    /* CRITICAL: Force horizontal text ONLY - don't break display */
-                                    html, body {{
+                                    /* NUCLEAR: Force horizontal text on EVERYTHING */
+                                    * {{
                                         writing-mode: horizontal-tb !important;
                                         text-orientation: mixed !important;
                                         direction: ltr !important;
-                                    }}
-                                    
-                                    /* Text elements - fix vertical text but preserve display type */
-                                    p, span, a, h1, h2, h3, h4, h5, h6, li, td, th, label, button, div {{
-                                        writing-mode: horizontal-tb !important;
-                                        text-orientation: mixed !important;
-                                        direction: ltr !important;
-                                        word-break: break-word !important;
-                                        overflow-wrap: break-word !important;
-                                        white-space: normal !important;
-                                    }}
-                                    
-                                    /* Override inline styles that cause vertical text - highest specificity */
-                                    [style*="writing-mode: vertical"], 
-                                    [style*="writing-mode:vertical"],
-                                    [style*="text-orientation: upright"],
-                                    [style*="text-orientation:upright"],
-                                    [style*="direction: rtl"] {{
-                                        writing-mode: horizontal-tb !important;
-                                        text-orientation: mixed !important;
-                                        direction: ltr !important;
-                                    }}
-                                    
-                                    /* Target SERP-specific elements that might have vertical text */
-                                    [class*="result"] *, [class*="ad"] *, [class*="sponsored"] * {{
-                                        writing-mode: horizontal-tb !important;
-                                        text-orientation: mixed !important;
-                                        direction: ltr !important;
-                                    }}
-                                    
-                                    /* CRITICAL: Target SERP structure directly - override flexbox vertical layout */
-                                    .wrapper, .wrapper *, .content-wrap, .content-wrap *,
-                                    .title, .title *, .desc, .desc *, .url, .url *,
-                                    .outer_wrap, .outer_wrap *, .header_text, .header_text * {{
-                                        writing-mode: horizontal-tb !important;
-                                        text-orientation: mixed !important;
-                                        direction: ltr !important;
-                                        display: block !important;
-                                        white-space: normal !important;
-                                        word-break: break-word !important;
-                                        overflow-wrap: break-word !important;
-                                    }}
-                                    
-                                    /* Override flexbox that causes vertical stacking */
-                                    .content-wrap {{
-                                        flex-direction: row !important;
-                                        flex-wrap: wrap !important;
-                                        align-items: flex-start !important;
-                                    }}
-                                    
-                                    /* Ensure text elements are inline-block, not vertical */
-                                    .title, .desc, .url {{
-                                        display: block !important;
-                                        width: 100% !important;
-                                    }}
-                                    
-                                    /* Force links to display horizontally */
-                                    .title a, .desc a, .url a {{
-                                        display: inline !important;
-                                        white-space: normal !important;
                                     }}
                                     
                                     /* Responsive images */
@@ -2335,53 +2361,85 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         max-width: 100% !important;
                                         height: auto !important;
                                     }}
-                                    
-                                    /* Prevent horizontal overflow */
-                                    * {{
-                                        max-width: 100% !important;
-                                    }}
                                 </style>
                                 <script>
-                                    // Force horizontal text after page load - override inline styles
+                                    // AGGRESSIVE: Override all inline styles AFTER page loads
                                     (function() {{
-                                        function fixVerticalText() {{
-                                            // Find all elements with vertical text
-                                            const allElements = document.querySelectorAll('*');
-                                            allElements.forEach(el => {{
-                                                const style = window.getComputedStyle(el);
-                                                if (style.writingMode === 'vertical-rl' || style.writingMode === 'vertical-lr' || 
-                                                    style.textOrientation === 'upright' || style.direction === 'rtl') {{
-                                                    el.style.setProperty('writing-mode', 'horizontal-tb', 'important');
-                                                    el.style.setProperty('text-orientation', 'mixed', 'important');
-                                                    el.style.setProperty('direction', 'ltr', 'important');
+                                        function forceHorizontal() {{
+                                            // Get ALL elements
+                                            document.querySelectorAll('*').forEach(el => {{
+                                                // Force horizontal text via inline style (highest priority)
+                                                el.style.setProperty('writing-mode', 'horizontal-tb', 'important');
+                                                el.style.setProperty('text-orientation', 'mixed', 'important');
+                                                el.style.setProperty('direction', 'ltr', 'important');
+                                                
+                                                // Remove any flex/grid that might cause vertical stacking
+                                                const computed = window.getComputedStyle(el);
+                                                if (computed.display === 'flex' || computed.display === 'inline-flex') {{
+                                                    if (computed.flexDirection === 'column' || computed.flexDirection === 'column-reverse') {{
+                                                        el.style.setProperty('flex-direction', 'row', 'important');
+                                                    }}
                                                 }}
                                             }});
                                         }}
-                                        // Run immediately and after DOM loads
+                                        
+                                        // Run immediately
+                                        forceHorizontal();
+                                        
+                                        // Run after DOM loads
                                         if (document.readyState === 'loading') {{
-                                            document.addEventListener('DOMContentLoaded', fixVerticalText);
-                                        }} else {{
-                                            fixVerticalText();
+                                            document.addEventListener('DOMContentLoaded', forceHorizontal);
                                         }}
-                                        // Also run after a short delay to catch dynamically loaded content
-                                        setTimeout(fixVerticalText, 100);
-                                        setTimeout(fixVerticalText, 500);
+                                        
+                                        // Run multiple times to catch dynamic content
+                                        setTimeout(forceHorizontal, 50);
+                                        setTimeout(forceHorizontal, 100);
+                                        setTimeout(forceHorizontal, 300);
+                                        setTimeout(forceHorizontal, 500);
+                                        setTimeout(forceHorizontal, 1000);
                                     }})();
                                 </script>
                                 '''
                                 
-                                # Inject into head tag - preserve existing head content
-                                if re.search(r'<head>', serp_html, re.IGNORECASE):
-                                    serp_html = re.sub(
-                                        r'<head>',
-                                        f'<head>{mobile_css}',
-                                        serp_html,
-                                        flags=re.IGNORECASE,
-                                        count=1
-                                    )
+                                # CRITICAL: Inject CSS at the VERY BEGINNING of <head> to override SERP's CSS
+                                # Parse again to ensure we can inject at the start
+                                soup_final = BeautifulSoup(serp_html, 'html.parser')
+                                head = soup_final.find('head')
+                                
+                                if head:
+                                    # Extract CSS from mobile_css (remove <style> tags if present)
+                                    css_content = mobile_css
+                                    if '<style>' in css_content:
+                                        css_content = css_content.split('<style>')[1].split('</style>')[0]
+                                    
+                                    # Create style tag with our CSS
+                                    style_tag = soup_final.new_tag('style')
+                                    style_tag.string = css_content
+                                    
+                                    # Insert at the VERY BEGINNING of head (before any other styles)
+                                    head.insert(0, style_tag)
+                                    
+                                    # Also add viewport meta at the start if not present
+                                    if not soup_final.find('meta', attrs={'name': 'viewport'}):
+                                        viewport = soup_final.new_tag('meta', attrs={
+                                            'name': 'viewport',
+                                            'content': f'width={current_device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'
+                                        })
+                                        head.insert(0, viewport)
+                                    
+                                    serp_html = str(soup_final)
                                 else:
-                                    # No head tag, add one
-                                    serp_html = f'<head>{mobile_css}</head>{serp_html}'
+                                    # No head tag, inject CSS before <body> or at start
+                                    if re.search(r'<body', serp_html, re.IGNORECASE):
+                                        serp_html = re.sub(
+                                            r'<body',
+                                            f'<head>{mobile_css}</head><body',
+                                            serp_html,
+                                            flags=re.IGNORECASE,
+                                            count=1
+                                        )
+                                    else:
+                                        serp_html = f'<head>{mobile_css}</head>{serp_html}'
                                 
                                 # Step 3: Render FULL HTML document (not extracted body) - chrome bars will be added by render_mini_device_preview
                                 preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
@@ -2475,15 +2533,15 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 serp_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
                                                                   lambda m: f'href="{urljoin(serp_url, m.group(1))}"', serp_html)
                                                 
-                                                # Add mobile-friendly CSS (enhanced version)
+                                                # Add mobile-friendly CSS - NUCLEAR OPTION
                                                 device_widths = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
                                                 current_device_w = device_widths.get(device_all, 390)
                                                 
-                                                # Add targeted CSS - ONLY fix vertical text, preserve layout
+                                                # Add targeted CSS - NUCLEAR OPTION to fix vertical text
                                                 mobile_css = f'''
                                                 <meta name="viewport" content="width={current_device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
                                                 <style>
-                                                    /* Document constraints - minimal */
+                                                    /* Document constraints */
                                                     html {{ 
                                                         width: {current_device_w}px !important;
                                                         max-width: {current_device_w}px !important;
@@ -2495,71 +2553,11 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                         overflow-x: hidden !important;
                                                     }}
                                                     
-                                                    /* CRITICAL: Force horizontal text ONLY - don't break display */
-                                                    html, body {{
+                                                    /* NUCLEAR: Force horizontal text on EVERYTHING */
+                                                    * {{
                                                         writing-mode: horizontal-tb !important;
                                                         text-orientation: mixed !important;
                                                         direction: ltr !important;
-                                                    }}
-                                                    
-                                                    /* Text elements - fix vertical text but preserve display type */
-                                                    p, span, a, h1, h2, h3, h4, h5, h6, li, td, th, label, button, div {{
-                                                        writing-mode: horizontal-tb !important;
-                                                        text-orientation: mixed !important;
-                                                        direction: ltr !important;
-                                                        word-break: break-word !important;
-                                                        overflow-wrap: break-word !important;
-                                                        white-space: normal !important;
-                                                    }}
-                                                    
-                                                    /* Override inline styles that cause vertical text - highest specificity */
-                                                    [style*="writing-mode: vertical"], 
-                                                    [style*="writing-mode:vertical"],
-                                                    [style*="text-orientation: upright"],
-                                                    [style*="text-orientation:upright"],
-                                                    [style*="direction: rtl"] {{
-                                                        writing-mode: horizontal-tb !important;
-                                                        text-orientation: mixed !important;
-                                                        direction: ltr !important;
-                                                    }}
-                                                    
-                                                    /* Target SERP-specific elements that might have vertical text */
-                                                    [class*="result"] *, [class*="ad"] *, [class*="sponsored"] * {{
-                                                        writing-mode: horizontal-tb !important;
-                                                        text-orientation: mixed !important;
-                                                        direction: ltr !important;
-                                                    }}
-                                                    
-                                                    /* CRITICAL: Target SERP structure directly - override flexbox vertical layout */
-                                                    .wrapper, .wrapper *, .content-wrap, .content-wrap *,
-                                                    .title, .title *, .desc, .desc *, .url, .url *,
-                                                    .outer_wrap, .outer_wrap *, .header_text, .header_text * {{
-                                                        writing-mode: horizontal-tb !important;
-                                                        text-orientation: mixed !important;
-                                                        direction: ltr !important;
-                                                        display: block !important;
-                                                        white-space: normal !important;
-                                                        word-break: break-word !important;
-                                                        overflow-wrap: break-word !important;
-                                                    }}
-                                                    
-                                                    /* Override flexbox that causes vertical stacking */
-                                                    .content-wrap {{
-                                                        flex-direction: row !important;
-                                                        flex-wrap: wrap !important;
-                                                        align-items: flex-start !important;
-                                                    }}
-                                                    
-                                                    /* Ensure text elements are inline-block, not vertical */
-                                                    .title, .desc, .url {{
-                                                        display: block !important;
-                                                        width: 100% !important;
-                                                    }}
-                                                    
-                                                    /* Force links to display horizontally */
-                                                    .title a, .desc a, .url a {{
-                                                        display: inline !important;
-                                                        white-space: normal !important;
                                                     }}
                                                     
                                                     /* Responsive images */
@@ -2567,71 +2565,42 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                         max-width: 100% !important;
                                                         height: auto !important;
                                                     }}
-                                                    
-                                                    /* Prevent horizontal overflow */
-                                                    * {{
-                                                        max-width: 100% !important;
-                                                    }}
                                                 </style>
                                                 <script>
-                                                    // Force horizontal text after page load - override inline styles AND SERP classes
+                                                    // AGGRESSIVE: Override all inline styles AFTER page loads
                                                     (function() {{
-                                                        function fixVerticalText() {{
-                                                            // Fix all elements with vertical text
-                                                            const allElements = document.querySelectorAll('*');
-                                                            allElements.forEach(el => {{
-                                                                const style = window.getComputedStyle(el);
-                                                                if (style.writingMode === 'vertical-rl' || style.writingMode === 'vertical-lr' || 
-                                                                    style.textOrientation === 'upright' || style.direction === 'rtl') {{
-                                                                    el.style.setProperty('writing-mode', 'horizontal-tb', 'important');
-                                                                    el.style.setProperty('text-orientation', 'mixed', 'important');
-                                                                    el.style.setProperty('direction', 'ltr', 'important');
+                                                        function forceHorizontal() {{
+                                                            // Get ALL elements
+                                                            document.querySelectorAll('*').forEach(el => {{
+                                                                // Force horizontal text via inline style (highest priority)
+                                                                el.style.setProperty('writing-mode', 'horizontal-tb', 'important');
+                                                                el.style.setProperty('text-orientation', 'mixed', 'important');
+                                                                el.style.setProperty('direction', 'ltr', 'important');
+                                                                
+                                                                // Remove any flex/grid that might cause vertical stacking
+                                                                const computed = window.getComputedStyle(el);
+                                                                if (computed.display === 'flex' || computed.display === 'inline-flex') {{
+                                                                    if (computed.flexDirection === 'column' || computed.flexDirection === 'column-reverse') {{
+                                                                        el.style.setProperty('flex-direction', 'row', 'important');
+                                                                    }}
                                                                 }}
                                                             }});
-                                                            
-                                                            // CRITICAL: Target SERP-specific classes directly
-                                                            const serpClasses = ['.wrapper', '.content-wrap', '.title', '.desc', '.url', 
-                                                                                 '.outer_wrap', '.header_text'];
-                                                            serpClasses.forEach(selector => {{
-                                                                try {{
-                                                                    const elements = document.querySelectorAll(selector);
-                                                                    elements.forEach(el => {{
-                                                                        el.style.setProperty('writing-mode', 'horizontal-tb', 'important');
-                                                                        el.style.setProperty('text-orientation', 'mixed', 'important');
-                                                                        el.style.setProperty('direction', 'ltr', 'important');
-                                                                        el.style.setProperty('display', 'block', 'important');
-                                                                        el.style.setProperty('white-space', 'normal', 'important');
-                                                                        
-                                                                        // Fix child elements
-                                                                        const children = el.querySelectorAll('*');
-                                                                        children.forEach(child => {{
-                                                                            child.style.setProperty('writing-mode', 'horizontal-tb', 'important');
-                                                                            child.style.setProperty('text-orientation', 'mixed', 'important');
-                                                                            child.style.setProperty('direction', 'ltr', 'important');
-                                                                        }});
-                                                                    }});
-                                                                }} catch(e) {{}}
-                                                            }});
-                                                            
-                                                            // Fix flexbox containers that might cause vertical stacking
-                                                            const flexContainers = document.querySelectorAll('.content-wrap');
-                                                            flexContainers.forEach(el => {{
-                                                                el.style.setProperty('flex-direction', 'row', 'important');
-                                                                el.style.setProperty('flex-wrap', 'wrap', 'important');
-                                                            }});
                                                         }}
-                                                        // Run immediately and after DOM loads
+                                                        
+                                                        // Run immediately
+                                                        forceHorizontal();
+                                                        
+                                                        // Run after DOM loads
                                                         if (document.readyState === 'loading') {{
-                                                            document.addEventListener('DOMContentLoaded', fixVerticalText);
-                                                        }} else {{
-                                                            fixVerticalText();
+                                                            document.addEventListener('DOMContentLoaded', forceHorizontal);
                                                         }}
-                                                        // Also run after delays to catch dynamically loaded content
-                                                        setTimeout(fixVerticalText, 50);
-                                                        setTimeout(fixVerticalText, 100);
-                                                        setTimeout(fixVerticalText, 300);
-                                                        setTimeout(fixVerticalText, 500);
-                                                        setTimeout(fixVerticalText, 1000);
+                                                        
+                                                        // Run multiple times to catch dynamic content
+                                                        setTimeout(forceHorizontal, 50);
+                                                        setTimeout(forceHorizontal, 100);
+                                                        setTimeout(forceHorizontal, 300);
+                                                        setTimeout(forceHorizontal, 500);
+                                                        setTimeout(forceHorizontal, 1000);
                                                     }})();
                                                 </script>
                                                 '''
