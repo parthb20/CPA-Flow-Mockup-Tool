@@ -1297,6 +1297,10 @@ def parse_creative_html(response_str):
 st.title("📊 CPA Flow Analysis v2")
 
 # Auto-load from Google Drive (silent loading)
+# Clear similarity scores (removed feature) - clear at startup
+if 'similarities' in st.session_state:
+    del st.session_state.similarities
+
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
         try:
@@ -1341,7 +1345,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
         if st.session_state.last_campaign_key != campaign_key:
             st.session_state.default_flow = None
             st.session_state.current_flow = None
-            st.session_state.similarities = None
+            # Similarity scores removed - clear any cached state
+            if 'similarities' in st.session_state:
+                del st.session_state.similarities
             st.session_state.last_campaign_key = campaign_key
         
         if selected_campaign and selected_campaign != '-- Select Campaign --':
@@ -2416,7 +2422,13 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 st.divider()
                 
-                # Similarity scores removed per user request
+                # Similarity scores completely removed - DO NOT DISPLAY
+                # Clear any cached state to prevent old scores from showing
+                if 'similarities' in st.session_state:
+                    del st.session_state.similarities
+                
+                # Explicitly do nothing here - similarity scores section removed
+                pass
             
             else:
                 st.warning("No data available for this campaign")
