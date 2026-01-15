@@ -781,7 +781,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     if device == 'mobile':
         device_w = 390  # Standard mobile width
         container_height = 844
-        scale = 0.70  # Increased width for better visibility
+        scale = 0.55  # Balanced scale for good visibility
         frame_style = "border-radius: 40px; border: 10px solid #000000;"
         
         # Mobile chrome - reduced padding to minimize space above URL bar
@@ -886,22 +886,58 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     if is_url and not use_srcdoc:
         iframe_content = f'<iframe src="{content}" style="width: 100%; height: 100%; border: none;"></iframe>'
     else:
-        # For HTML content - if it's already a full document, extract body content
-        # Otherwise use as-is
+        # For HTML content - preserve structure properly
         content_str = str(content).strip()
         if content_str.startswith('<!DOCTYPE') or content_str.startswith('<html'):
-            # Extract body content from full HTML document
+            # Extract body content AND preserve head styles/scripts
             try:
                 from bs4 import BeautifulSoup
                 soup = BeautifulSoup(content_str, 'html.parser')
+                
+                # Get body content - preserve inner HTML structure
                 body = soup.find('body')
+                body_content = ''
                 if body:
-                    iframe_content = str(body)
-                    # Remove <body> tags, keep inner content
-                    iframe_content = iframe_content.replace('<body>', '').replace('</body>', '')
+                    # Get inner HTML properly using decode_contents (preserves all HTML)
+                    body_content = body.decode_contents()
                 else:
-                    iframe_content = content_str
-            except:
+                    # No body tag found, check if entire content is body-like
+                    # Try to find main content area
+                    main = soup.find('main') or soup.find('div', class_=lambda x: x and ('main' in x.lower() or 'content' in x.lower()))
+                    if main:
+                        body_content = main.decode_contents()
+                    else:
+                        # Fallback: use entire content but remove html/head tags
+                        body_content = content_str
+                        # Remove DOCTYPE, html, head tags if present
+                        body_content = re.sub(r'<!DOCTYPE[^>]*>', '', body_content, flags=re.IGNORECASE)
+                        body_content = re.sub(r'<html[^>]*>', '', body_content, flags=re.IGNORECASE)
+                        body_content = re.sub(r'</html>', '', body_content, flags=re.IGNORECASE)
+                        body_content = re.sub(r'<head>.*?</head>', '', body_content, flags=re.IGNORECASE | re.DOTALL)
+                
+                # Extract and preserve head styles/scripts for inline injection
+                head = soup.find('head')
+                head_styles = ''
+                if head:
+                    # Extract all style tags and link tags (for CSS)
+                    styles = head.find_all('style')
+                    links = head.find_all('link', rel='stylesheet')
+                    scripts = head.find_all('script')
+                    
+                    # Combine all styles
+                    for style in styles:
+                        if style.string:
+                            head_styles += f'<style>{style.string}</style>'
+                    for link in links:
+                        head_styles += str(link)
+                    for script in scripts:
+                        if script.string:
+                            head_styles += f'<script>{script.string}</script>'
+                
+                # Combine head styles with body content
+                iframe_content = head_styles + body_content if head_styles else body_content
+                
+            except Exception as e:
                 # If parsing fails, use as-is
                 iframe_content = content_str
         else:
