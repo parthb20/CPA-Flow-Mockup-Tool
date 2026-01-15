@@ -976,10 +976,9 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     </html>
     """
     
-    # Use base64 encoding to avoid ALL escaping issues - srcdoc expects HTML, not escaped entities
-    # Base64 encoding is the cleanest solution - no escaping needed at all
-    import base64
-    b64_html = base64.b64encode(full_content.encode('utf-8')).decode('utf-8')
+    # Use base64 encoding to avoid ALL escaping issues
+    # Base64 encoding bypasses all HTML escaping problems - browser decodes it automatically
+    b64_html = base64.b64encode(full_content.encode('utf-8')).decode('ascii')
     
     # Use transform scale for all devices
     iframe_style = f"width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: center top; display: block; background: white;"
