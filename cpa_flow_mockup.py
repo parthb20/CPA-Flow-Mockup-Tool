@@ -520,7 +520,7 @@ def call_similarity_api(prompt):
             return {
                 "error": True,
                 "status_code": response.status_code,
-                "body": response.text
+                "body": response.text if response.text else ""
             }
 
         raw = response.json()['choices'][0]['message']['content']
@@ -564,7 +564,8 @@ def fetch_page_content(url):
     try:
         response = requests.get(url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
         if response.status_code == 200:
-            return extract_text_from_html(response.text)
+            html_text = response.text if response.text else ""
+            return extract_text_from_html(html_text)
     except:
         pass
     
@@ -1143,6 +1144,8 @@ def extract_text_from_screenshot(screenshot_url):
         response = requests.get(screenshot_url, timeout=30)
         if response.status_code == 200:
             # Open image
+            if response.content is None:
+                return None
             img = Image.open(BytesIO(response.content))
             # Extract text using OCR
             text = pytesseract.image_to_string(img)
@@ -1166,7 +1169,8 @@ def unescape_adcode(adcode):
         except:
             # If that fails, try manual unicode escape decoding
             try:
-                adcode = adcode.encode('utf-8').decode('unicode_escape')
+                if adcode is not None:
+                    adcode = adcode.encode('utf-8').decode('unicode_escape')
             except:
                 pass
     
@@ -1947,7 +1951,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         st.markdown(f"[🔗 Open in new tab]({pub_url})")
                                 elif response.status_code == 200:
                                     # Use response.text which handles encoding automatically
-                                    page_html = response.text
+                                    page_html = response.text if response.text else ""
+                                    if not page_html:
+                                        st.warning("⚠️ Empty response from page")
+                                        page_html = '<html><body><p>Empty response</p></body></html>'
                                     
                                     # Force UTF-8 in HTML
                                     if '<head>' in page_html:
@@ -2706,7 +2713,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                             st.markdown(f"[🔗 Open landing page]({adv_url})")
                                     elif response.status_code == 200:
                                         # Use response.text which handles encoding automatically
-                                        page_html = response.text
+                                        page_html = response.text if response.text else ""
+                                        if not page_html:
+                                            st.warning("⚠️ Empty response from landing page")
+                                            page_html = '<html><body><p>Empty response</p></body></html>'
                                         
                                         # Force UTF-8 in HTML
                                         if '<head>' in page_html:
