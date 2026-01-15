@@ -781,34 +781,34 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     if device == 'mobile':
         device_w = 390
         container_height = 844
-        scale = 0.25  # Smaller previews like before
+        scale = 0.55  # Increased from 0.35 for better visibility
         frame_style = "border-radius: 40px; border: 10px solid #000000;"
         
-        # Mobile chrome - use single quotes to avoid escaping issues
+        # Mobile chrome
         device_chrome = """
-        <div style='background: #000; color: white; padding: 6px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500;'>
+        <div style="background: #000; color: white; padding: 6px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500;">
             <div>9:41</div>
-            <div style='display: flex; gap: 4px; align-items: center;'>
+            <div style="display: flex; gap: 4px; align-items: center;">
                 <span>📶</span>
                 <span>📡</span>
                 <span>🔋</span>
             </div>
         </div>
-        <div style='background: #f7f7f7; border-bottom: 1px solid #d1d1d1; padding: 8px 12px; display: flex; align-items: center; gap: 8px;'>
-            <div style='flex: 1; background: white; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; border: 1px solid #e0e0e0;'>
-                <span style='font-size: 16px;'>🔒</span>
-                <span style='color: #666; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;'>URL</span>
-                <span style='font-size: 16px;'>🔄</span>
+        <div style="background: #f7f7f7; border-bottom: 1px solid #d1d1d1; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
+            <div style="flex: 1; background: white; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; border: 1px solid #e0e0e0;">
+                <span style="font-size: 16px;">🔒</span>
+                <span style="color: #666; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">URL</span>
+                <span style="font-size: 16px;">🔄</span>
             </div>
         </div>
         """
         
         bottom_nav = """
-        <div style='position: fixed; bottom: 0; left: 0; right: 0; background: #f7f7f7; border-top: 1px solid #d1d1d1; padding: 8px; display: flex; justify-content: space-around; align-items: center;'>
-            <div style='text-align: center; font-size: 20px;'>◀️</div>
-            <div style='text-align: center; font-size: 20px;'>▶️</div>
-            <div style='text-align: center; font-size: 20px;'>↻</div>
-            <div style='text-align: center; font-size: 20px;'>⊞</div>
+        <div style="position: fixed; bottom: 0; left: 0; right: 0; background: #f7f7f7; border-top: 1px solid #d1d1d1; padding: 8px; display: flex; justify-content: space-around; align-items: center;">
+            <div style="text-align: center; font-size: 20px;">◀️</div>
+            <div style="text-align: center; font-size: 20px;">▶️</div>
+            <div style="text-align: center; font-size: 20px;">↻</div>
+            <div style="text-align: center; font-size: 20px;">⊞</div>
         </div>
         """
         chrome_height = "90px"
@@ -819,29 +819,29 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         scale = 0.25
         frame_style = "border-radius: 16px; border: 12px solid #1f2937;"
         
-        # Tablet chrome - use single quotes
+        # Tablet chrome
         device_chrome = """
-        <div style='background: #000; color: white; padding: 8px 24px; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 500;'>
-            <div style='display: flex; gap: 12px;'>
+        <div style="background: #000; color: white; padding: 8px 24px; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 500;">
+            <div style="display: flex; gap: 12px;">
                 <span>9:41 AM</span>
                 <span>Wed Jan 13</span>
             </div>
-            <div style='display: flex; gap: 8px; align-items: center;'>
+            <div style="display: flex; gap: 8px; align-items: center;">
                 <span>📶</span>
                 <span>📡</span>
                 <span>🔋</span>
             </div>
         </div>
-        <div style='background: #f0f0f0; border-bottom: 1px solid #d0d0d0; padding: 12px 16px; display: flex; align-items: center; gap: 12px;'>
-            <span style='font-size: 20px;'>◀️</span>
-            <span style='font-size: 20px;'>▶️</span>
-            <span style='font-size: 20px;'>↻</span>
-            <div style='flex: 1; background: white; border-radius: 10px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; border: 1px solid #e0e0e0;'>
-                <span style='font-size: 18px;'>🔒</span>
-                <span style='color: #666; font-size: 15px; flex: 1;'>URL</span>
+        <div style="background: #f0f0f0; border-bottom: 1px solid #d0d0d0; padding: 12px 16px; display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 20px;">◀️</span>
+            <span style="font-size: 20px;">▶️</span>
+            <span style="font-size: 20px;">↻</span>
+            <div style="flex: 1; background: white; border-radius: 10px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; border: 1px solid #e0e0e0;">
+                <span style="font-size: 18px;">🔒</span>
+                <span style="color: #666; font-size: 15px; flex: 1;">URL</span>
             </div>
-            <span style='font-size: 20px;'>⊞</span>
-            <span style='font-size: 20px;'>⋮</span>
+            <span style="font-size: 20px;">⊞</span>
+            <span style="font-size: 20px;">⋮</span>
         </div>
         """
         bottom_nav = ""
@@ -853,193 +853,37 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         scale = 0.2
         frame_style = "border-radius: 8px; border: 6px solid #374151;"
         
-        # Laptop chrome - use single quotes
+        # Laptop chrome
         device_chrome = """
-        <div style='background: #e8e8e8; padding: 12px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #d0d0d0;'>
-            <div style='display: flex; gap: 8px;'>
-                <div style='width: 12px; height: 12px; border-radius: 50%; background: #ff5f57;'></div>
-                <div style='width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e;'></div>
-                <div style='width: 12px; height: 12px; border-radius: 50%; background: #28c840;'></div>
+        <div style="background: #e8e8e8; padding: 12px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #d0d0d0;">
+            <div style="display: flex; gap: 8px;">
+                <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f57;"></div>
+                <div style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e;"></div>
+                <div style="width: 12px; height: 12px; border-radius: 50%; background: #28c840;"></div>
             </div>
-            <span style='font-size: 18px; margin-left: 8px;'>◀️</span>
-            <span style='font-size: 18px;'>▶️</span>
-            <span style='font-size: 18px; margin-right: 8px;'>↻</span>
-            <div style='flex: 1; background: white; border-radius: 6px; padding: 8px 16px; display: flex; align-items: center; gap: 12px; border: 1px solid #d0d0d0;'>
-                <span style='font-size: 16px;'>🔒</span>
-                <span style='color: #333; font-size: 14px; flex: 1;'>https://URL</span>
-                <span style='font-size: 16px;'>⭐</span>
+            <span style="font-size: 18px; margin-left: 8px;">◀️</span>
+            <span style="font-size: 18px;">▶️</span>
+            <span style="font-size: 18px; margin-right: 8px;">↻</span>
+            <div style="flex: 1; background: white; border-radius: 6px; padding: 8px 16px; display: flex; align-items: center; gap: 12px; border: 1px solid #d0d0d0;">
+                <span style="font-size: 16px;">🔒</span>
+                <span style="color: #333; font-size: 14px; flex: 1;">https://URL</span>
+                <span style="font-size: 16px;">⭐</span>
             </div>
-            <span style='font-size: 18px; margin-left: 8px;'>⊞</span>
-            <span style='font-size: 18px;'>⋮</span>
+            <span style="font-size: 18px; margin-left: 8px;">⊞</span>
+            <span style="font-size: 18px;">⋮</span>
         </div>
         """
         bottom_nav = ""
         chrome_height = "52px"
     
-    # Calculate display dimensions based on scale
     display_w = int(device_w * scale)
     display_h = int(container_height * scale)
     
-    # Fetch HTML with robust error handling and multiple fallback strategies
-    original_url = None
-    fetch_success = False
-    
-    if is_url:
-        original_url = content  # Save original URL
-        
-        # Strategy 1: Try regular fetch first (with retry)
-        for attempt in range(3):
-            try:
-                response = requests.get(content, timeout=20, headers={
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.9'
-                })
-                if response.status_code == 200 and len(response.text) > 500:  # Must have substantial content
-                    content = response.text
-                    # Fix relative URLs using the original URL as base
-                    from urllib.parse import urljoin
-                    content = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
-                                   lambda m: f'src="{urljoin(original_url, m.group(1))}"', content)
-                    content = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
-                                   lambda m: f'href="{urljoin(original_url, m.group(1))}"', content)
-                    fetch_success = True
-                    break
-            except Exception as e:
-                if attempt == 2:  # Last attempt
-                    pass
-                else:
-                    time.sleep(1)
-        
-        # Strategy 2: If fetch failed, try Playwright
-        if not fetch_success and PLAYWRIGHT_AVAILABLE:
-            try:
-                page_html = capture_with_playwright(original_url, device=device)
-                if page_html and len(page_html) > 500:  # Must have substantial content
-                    content = page_html
-                    fetch_success = True
-            except:
-                pass
-        
-        # Strategy 3: If both failed, use Screenshot API as image
-        if not fetch_success and SCREENSHOT_API_KEY:
-            try:
-                from urllib.parse import quote
-                viewports = {'mobile': (390, 844), 'tablet': (820, 1180), 'laptop': (1440, 900)}
-                vw, vh = viewports.get(device, (390, 844))
-                screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(original_url)}&full_page=false&viewport_width={vw}&viewport_height={vh}&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                
-                # Render as image instead of HTML
-                content = f'''
-                <html>
-                <head>
-                    <meta charset="utf-8">
-                    <style>
-                        body {{ margin: 0; padding: 0; background: white; }}
-                        img {{ width: 100%; height: auto; display: block; }}
-                    </style>
-                </head>
-                <body>
-                    <img src="{screenshot_url}" alt="Page screenshot" />
-                </body>
-                </html>
-                '''
-                fetch_success = True
-            except:
-                pass
-        
-        # Strategy 4: If ALL failed, show styled error with link
-        if not fetch_success:
-            content = f'''
-            <html>
-            <head>
-                <meta charset="utf-8">
-                <style>
-                    body {{
-                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        color: white;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        min-height: 100vh;
-                        margin: 0;
-                        padding: 20px;
-                        text-align: center;
-                    }}
-                    .error-box {{
-                        background: rgba(255, 255, 255, 0.1);
-                        backdrop-filter: blur(10px);
-                        border: 2px solid rgba(255, 255, 255, 0.2);
-                        border-radius: 16px;
-                        padding: 40px;
-                        max-width: 500px;
-                    }}
-                    h2 {{ margin: 0 0 20px 0; font-size: 24px; }}
-                    p {{ margin: 10px 0; line-height: 1.6; opacity: 0.9; }}
-                    a {{
-                        display: inline-block;
-                        margin-top: 20px;
-                        padding: 12px 24px;
-                        background: white;
-                        color: #667eea;
-                        text-decoration: none;
-                        border-radius: 8px;
-                        font-weight: 600;
-                        transition: transform 0.2s;
-                    }}
-                    a:hover {{ transform: scale(1.05); }}
-                </style>
-            </head>
-            <body>
-                <div class="error-box">
-                    <h2>🔒 Content Unavailable</h2>
-                    <p>This page cannot be embedded due to security restrictions.</p>
-                    <p style="font-size: 14px; opacity: 0.7;">Common causes: X-Frame-Options, CSP, 403 Forbidden</p>
-                    <a href="{original_url}" target="_blank">🔗 Open in New Tab</a>
-                </div>
-            </body>
-            </html>
-            '''
-    
-    # Validate content - if empty or None, show placeholder with styling
-    if not content or (isinstance(content, str) and len(content.strip()) == 0):
-        content = '<html><body style="padding: 20px; text-align: center; color: #666; font-family: Arial, sans-serif; background: white; min-height: 100vh; display: flex; align-items: center; justify-content: center;"><div><h3>No content available</h3><p>The content could not be loaded.</p></div></body></html>'
-    
-    # Always embed HTML directly (no iframe src)
-    # Ensure content is wrapped in proper HTML structure if it's just an image or fragment
-    if not content.strip().startswith('<!DOCTYPE') and not content.strip().startswith('<html'):
-        # If content is just an image tag or fragment, wrap it properly
-        if '<img' in content and '</html>' not in content:
-            content = f'''<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width={device_w}, initial-scale=1.0">
-    <style>
-        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-        html, body {{ width: 100%; height: 100%; overflow: hidden; }}
-        img {{ width: 100%; height: auto; display: block; }}
-    </style>
-</head>
-<body>
-    {content}
-</body>
-</html>'''
-        else:
-            # Wrap other fragments
-            content = f'''<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width={device_w}, initial-scale=1.0">
-</head>
-<body>
-    {content}
-</body>
-</html>'''
-    
-    iframe_content = content
+    if is_url and not use_srcdoc:
+        iframe_content = f'<iframe src="{content}" style="width: 100%; height: 100%; border: none;"></iframe>'
+    else:
+        # For HTML content or when use_srcdoc=True, embed directly
+        iframe_content = content
     
     full_content = f"""
     <!DOCTYPE html>
@@ -1049,52 +893,14 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         <meta charset="utf-8">
         <style>
             * {{ box-sizing: border-box; }}
-            html, body {{ 
-                margin: 0; 
-                padding: 0; 
-                width: {device_w}px; 
-                max-width: {device_w}px;
-                overflow-x: hidden; 
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
-            }}
+            body {{ margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; width: {device_w}px; overflow-x: hidden; }}
             .chrome {{ width: 100%; background: white; position: fixed; top: 0; left: 0; right: 0; z-index: 100; }}
-            .content {{ 
-                position: absolute; 
-                top: {chrome_height}; 
-                bottom: {'50px' if device == 'mobile' else '0'}; 
-                left: 0; 
-                right: 0; 
-                overflow-y: auto; 
-                overflow-x: hidden; 
-                width: 100%; 
-                max-width: {device_w}px; 
-            }}
+            .content {{ position: absolute; top: {chrome_height}; bottom: {'50px' if device == 'mobile' else '0'}; left: 0; right: 0; overflow-y: auto; overflow-x: hidden; width: 100%; max-width: {device_w}px; }}
             .bottom-nav {{ position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; }}
-            /* Prevent vertical text - allow proper word breaking */
-            p, div, span, h1, h2, h3, h4, h5, h6, a, li {{ 
-                white-space: normal !important; 
-                word-wrap: break-word !important; 
-                word-break: break-word !important;  /* Changed from 'normal' - allows breaking */
-                overflow-wrap: break-word !important;
-                max-width: 100% !important;
-            }}
-            /* Ensure text flows horizontally - CRITICAL */
-            html, body, * {{ 
-                writing-mode: horizontal-tb !important;
-                text-orientation: mixed !important;
-                direction: ltr !important;
-            }}
-            /* Constrain all direct children of content */
-            .content > * {{
-                max-width: 100% !important;
-                min-width: unset !important;
-                overflow-x: hidden !important;
-            }}
-            /* Force horizontal text on all text elements */
-            p, div, span, h1, h2, h3, h4, h5, h6, a, li, label, button {{
-                writing-mode: horizontal-tb !important;
-                text-orientation: mixed !important;
-            }}
+            /* Prevent text from breaking vertically */
+            p, div, span, h1, h2, h3, h4, h5, h6, a, li {{ white-space: normal; word-wrap: break-word; word-break: normal; }}
+            /* Ensure proper text flow */
+            * {{ max-width: 100%; }}
         </style>
     </head>
     <body>
@@ -1105,29 +911,12 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     </html>
     """
     
-    # DEBUG: In advanced mode, show what HTML is being rendered
-    if st.session_state.get('view_mode') == 'advanced':
-        with st.expander("🔍 DEBUG: Preview HTML (first 1000 chars)"):
-            st.code(full_content[:1000], language='html')
-            st.caption(f"Total length: {len(full_content)} chars")
+    escaped = full_content.replace("'", "&apos;").replace('"', '&quot;')
     
-    # Use srcdoc if requested (better compatibility), otherwise use base64 data URI
-    if use_srcdoc:
-        # For srcdoc: Use SINGLE quotes for attribute, escape ONLY single quotes in content
-        # This preserves double quotes in CSS/HTML attributes which are needed
-        escaped_content = full_content.replace("'", "&#39;")
-        # Use single quotes for srcdoc attribute - this allows double quotes in content to work
-        iframe_html = f'<iframe srcdoc=\'{escaped_content}\' style="width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: center top; display: block; background: white;"></iframe>'
-    else:
-        # Use base64 encoding to avoid ALL escaping issues
-        b64_html = base64.b64encode(full_content.encode('utf-8')).decode('ascii')
-        iframe_html = f'<iframe src="data:text/html;base64,{b64_html}" style="width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: center top; display: block; background: white;"></iframe>'
-    
-    # Use transform scale for all devices
     html_output = f"""
     <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
         <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-            {iframe_html}
+            <iframe srcdoc='{escaped}' style="width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"></iframe>
         </div>
     </div>
     """
@@ -1661,7 +1450,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 """)
                 
                 if st.session_state.view_mode == 'basic':
-                    st.success("✨ Auto Selected based on best performance")
+                    st.success("✨ Auto-selected based on best performance")
                 else:
                     st.success("✨ Use filters above to change flow")
                 
@@ -2720,4 +2509,3 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.warning("No data available for this campaign")
 else:
     st.error("❌ Could not load data - Check FILE_A_ID and file sharing settings")
-
