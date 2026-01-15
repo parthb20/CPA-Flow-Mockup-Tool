@@ -1351,11 +1351,13 @@ def capture_with_playwright(url, device='mobile', timeout=30000):
                 # Small delay after scroll
                 time.sleep(0.5)
                 
-                # Get HTML
+                # Get HTML - ensure it's not None
                 html_content = page.content()
+                if html_content is None:
+                    html_content = ''
                 
                 browser.close()
-                return html_content
+                return html_content if html_content else None
                 
             except Exception as e:
                 try:
@@ -2090,7 +2092,11 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             })
                             
                             if response.status_code == 200:
-                                serp_html = response.text
+                                # Ensure response.text is not None
+                                serp_html = response.text if response.text else ''
+                                if not serp_html:
+                                    st.warning("⚠️ SERP page returned empty content")
+                                    serp_html = f'<html><body><p>Empty response from SERP URL</p></body></html>'
                                 
                                 # Step 2: Replace ad content in SERP HTML
                                 # FIRST: Use regex to replace keyword in "Sponsored results for:" text (most reliable)
@@ -2108,6 +2114,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                             break
                                 
                                 # THEN: Use BeautifulSoup for structured replacements
+                                # Ensure serp_html is a valid string
+                                if not serp_html or not isinstance(serp_html, str):
+                                    raise ValueError("SERP HTML is not a valid string")
+                                
                                 from bs4 import BeautifulSoup
                                 soup = BeautifulSoup(serp_html, 'html.parser')
                                 
@@ -2293,148 +2303,161 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 if PLAYWRIGHT_AVAILABLE:
                                     with st.spinner("🔄 Using browser automation..."):
                                         page_html = capture_with_playwright(serp_url, device=device_all, timeout=60000)
-                                        if page_html:
-                                            # Apply same replacements using regex FIRST, then BeautifulSoup
-                                            # Replace keyword using regex (most reliable)
-                                            if keyword:
-                                                page_html = re.sub(
-                                                    r'Sponsored results for:\s*["\']?[^"\']*["\']?',
-                                                    f'Sponsored results for: "{keyword}"',
-                                                    page_html,
-                                                    flags=re.IGNORECASE,
-                                                    count=1
-                                                )
-                                            
-                                            # Then use BeautifulSoup for structured replacements
-                                            from bs4 import BeautifulSoup
-                                            soup = BeautifulSoup(page_html, 'html.parser')
-                                            
-                                            # Find ad container
-                                            ad_container = None
-                                            for pattern in [r'sponsored', r'ad-result', r'paid', r'ad-container', r'sponsor']:
-                                                ad_container = soup.find('div', class_=re.compile(pattern, re.IGNORECASE))
-                                                if ad_container:
-                                                    break
-                                            
-                                            if not ad_container:
-                                                for elem in soup.find_all(string=re.compile(r'Sponsored results for:', re.IGNORECASE)):
-                                                    parent = elem.parent
-                                                    while parent and parent.name != 'div':
-                                                        parent = parent.parent
-                                                    if parent:
-                                                        ad_container = parent
+                                        if page_html and isinstance(page_html, str) and len(page_html.strip()) > 0:
+                                            try:
+                                                # Apply same replacements using regex FIRST, then BeautifulSoup
+                                                # Replace keyword using regex (most reliable)
+                                                if keyword:
+                                                    page_html = re.sub(
+                                                        r'Sponsored results for:\s*["\']?[^"\']*["\']?',
+                                                        f'Sponsored results for: "{keyword}"',
+                                                        page_html,
+                                                        flags=re.IGNORECASE,
+                                                        count=1
+                                                    )
+                                                
+                                                # Then use BeautifulSoup for structured replacements
+                                                # Ensure page_html is a valid string
+                                                if not page_html or not isinstance(page_html, str) or len(page_html.strip()) == 0:
+                                                    raise ValueError("Page HTML from Playwright is not a valid string")
+                                                
+                                                from bs4 import BeautifulSoup
+                                                soup = BeautifulSoup(page_html, 'html.parser')
+                                                
+                                                # Find ad container
+                                                ad_container = None
+                                                for pattern in [r'sponsored', r'ad-result', r'paid', r'ad-container', r'sponsor']:
+                                                    ad_container = soup.find('div', class_=re.compile(pattern, re.IGNORECASE))
+                                                    if ad_container:
                                                         break
-                                            
-                                            search_scope = ad_container if ad_container else soup
-                                            
-                                            # Replace ad title
-                                            if ad_title:
-                                                title_elem = search_scope.find(class_=re.compile(r'title', re.IGNORECASE))
-                                                if not title_elem:
-                                                    title_elem = search_scope.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
-                                                if not title_elem and ad_container:
-                                                    title_elem = soup.find(class_=re.compile(r'title', re.IGNORECASE))
-                                                if title_elem:
-                                                    title_elem.clear()
-                                                    title_elem.append(ad_title)
-                                            
-                                            # Replace ad description
-                                            if ad_desc:
-                                                desc_elem = search_scope.find(class_=re.compile(r'desc|description|snippet', re.IGNORECASE))
-                                                if not desc_elem:
-                                                    desc_elem = search_scope.find(['p', 'span'], class_=re.compile(r'desc|description|snippet', re.IGNORECASE))
-                                                if not desc_elem and ad_container:
-                                                    desc_elem = soup.find(class_=re.compile(r'desc|description|snippet', re.IGNORECASE))
-                                                if desc_elem:
-                                                    desc_elem.clear()
-                                                    desc_elem.append(ad_desc)
-                                            
-                                            # Replace ad display URL
-                                            if ad_display_url:
-                                                url_elem = search_scope.find(class_=re.compile(r'url|display.*url|ad.*url|link', re.IGNORECASE))
-                                                if not url_elem:
-                                                    url_elem = search_scope.find('a', class_=re.compile(r'url|display', re.IGNORECASE))
-                                                if not url_elem and ad_container:
-                                                    url_elem = soup.find(class_=re.compile(r'url|display.*url|ad.*url', re.IGNORECASE))
-                                                if url_elem:
-                                                    url_elem.clear()
-                                                    url_elem.append(ad_display_url)
-                                            
-                                            serp_html = str(soup)
-                                            serp_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
-                                                              lambda m: f'src="{urljoin(serp_url, m.group(1))}"', serp_html)
-                                            serp_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
-                                                              lambda m: f'href="{urljoin(serp_url, m.group(1))}"', serp_html)
-                                            
-                                            # Add mobile-friendly CSS (enhanced version)
-                                            device_widths = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
-                                            current_device_w = device_widths.get(device_all, 390)
-                                            
-                                            mobile_css = f'''
-                                            <meta name="viewport" content="width={current_device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-                                            <style>
-                                                * {{ 
-                                                    box-sizing: border-box !important; 
-                                                    max-width: 100% !important;
-                                                }}
-                                                html, body {{ 
-                                                    width: {current_device_w}px !important;
-                                                    max-width: {current_device_w}px !important; 
-                                                    overflow-x: hidden !important; 
-                                                    margin: 0 !important; 
-                                                    padding: 0 !important; 
-                                                    font-size: 14px !important;
-                                                }}
-                                                /* Force horizontal text flow - CRITICAL */
-                                                html, body, * {{
-                                                    writing-mode: horizontal-tb !important;
-                                                    text-orientation: mixed !important;
-                                                    direction: ltr !important;
-                                                }}
-                                                p, div, span, a, h1, h2, h3, h4, h5, h6, li, td, th, label, button {{
-                                                    word-break: break-word !important;
-                                                    overflow-wrap: break-word !important;
-                                                    white-space: normal !important;
-                                                    max-width: 100% !important;
-                                                    writing-mode: horizontal-tb !important;
-                                                    text-orientation: mixed !important;
-                                                }}
-                                                img, iframe, video {{
-                                                    max-width: 100% !important;
-                                                    height: auto !important;
-                                                }}
-                                                * {{
-                                                    min-width: unset !important;
-                                                }}
-                                                [class*="container"], [class*="ad-result"], [class*="serp-result"], [class*="sponsored"], 
-                                                [class*="result"], [class*="ad"], div, section, article {{
-                                                    max-width: 100% !important; 
-                                                    min-width: unset !important;
-                                                    width: auto !important;
-                                                }}
-                                                table {{
-                                                    width: 100% !important;
-                                                    max-width: 100% !important;
-                                                    table-layout: auto !important;
-                                                }}
-                                            </style>
-                                            '''
-                                            
-                                            if re.search(r'<head>', serp_html, re.IGNORECASE):
-                                                serp_html = re.sub(
-                                                    r'<head>',
-                                                    f'<head>{mobile_css}',
-                                                    serp_html,
-                                                    flags=re.IGNORECASE,
-                                                    count=1
-                                                )
-                                            else:
-                                                serp_html = f'<head>{mobile_css}</head>{serp_html}'
-                                            
-                                            # Use selected device (respect user choice)
-                                            preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
-                                            st.components.v1.html(preview_html, height=height, scrolling=False)
-                                            st.caption("📺 SERP (via Playwright)")
+                                                
+                                                if not ad_container:
+                                                    for elem in soup.find_all(string=re.compile(r'Sponsored results for:', re.IGNORECASE)):
+                                                        parent = elem.parent
+                                                        while parent and parent.name != 'div':
+                                                            parent = parent.parent
+                                                        if parent:
+                                                            ad_container = parent
+                                                            break
+                                                
+                                                search_scope = ad_container if ad_container else soup
+                                                
+                                                # Replace ad title
+                                                if ad_title:
+                                                    title_elem = search_scope.find(class_=re.compile(r'title', re.IGNORECASE))
+                                                    if not title_elem:
+                                                        title_elem = search_scope.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+                                                    if not title_elem and ad_container:
+                                                        title_elem = soup.find(class_=re.compile(r'title', re.IGNORECASE))
+                                                    if title_elem:
+                                                        title_elem.clear()
+                                                        title_elem.append(ad_title)
+                                                
+                                                # Replace ad description
+                                                if ad_desc:
+                                                    desc_elem = search_scope.find(class_=re.compile(r'desc|description|snippet', re.IGNORECASE))
+                                                    if not desc_elem:
+                                                        desc_elem = search_scope.find(['p', 'span'], class_=re.compile(r'desc|description|snippet', re.IGNORECASE))
+                                                    if not desc_elem and ad_container:
+                                                        desc_elem = soup.find(class_=re.compile(r'desc|description|snippet', re.IGNORECASE))
+                                                    if desc_elem:
+                                                        desc_elem.clear()
+                                                        desc_elem.append(ad_desc)
+                                                
+                                                # Replace ad display URL
+                                                if ad_display_url:
+                                                    url_elem = search_scope.find(class_=re.compile(r'url|display.*url|ad.*url|link', re.IGNORECASE))
+                                                    if not url_elem:
+                                                        url_elem = search_scope.find('a', class_=re.compile(r'url|display', re.IGNORECASE))
+                                                    if not url_elem and ad_container:
+                                                        url_elem = soup.find(class_=re.compile(r'url|display.*url|ad.*url', re.IGNORECASE))
+                                                    if url_elem:
+                                                        url_elem.clear()
+                                                        url_elem.append(ad_display_url)
+                                                
+                                                serp_html = str(soup)
+                                                serp_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
+                                                                  lambda m: f'src="{urljoin(serp_url, m.group(1))}"', serp_html)
+                                                serp_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
+                                                                  lambda m: f'href="{urljoin(serp_url, m.group(1))}"', serp_html)
+                                                
+                                                # Add mobile-friendly CSS (enhanced version)
+                                                device_widths = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
+                                                current_device_w = device_widths.get(device_all, 390)
+                                                
+                                                mobile_css = f'''
+                                                <meta name="viewport" content="width={current_device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+                                                <style>
+                                                    * {{ 
+                                                        box-sizing: border-box !important; 
+                                                        max-width: 100% !important;
+                                                    }}
+                                                    html, body {{ 
+                                                        width: {current_device_w}px !important;
+                                                        max-width: {current_device_w}px !important; 
+                                                        overflow-x: hidden !important; 
+                                                        margin: 0 !important; 
+                                                        padding: 0 !important; 
+                                                        font-size: 14px !important;
+                                                    }}
+                                                    /* Force horizontal text flow - CRITICAL */
+                                                    html, body, * {{
+                                                        writing-mode: horizontal-tb !important;
+                                                        text-orientation: mixed !important;
+                                                        direction: ltr !important;
+                                                    }}
+                                                    p, div, span, a, h1, h2, h3, h4, h5, h6, li, td, th, label, button {{
+                                                        word-break: break-word !important;
+                                                        overflow-wrap: break-word !important;
+                                                        white-space: normal !important;
+                                                        max-width: 100% !important;
+                                                        writing-mode: horizontal-tb !important;
+                                                        text-orientation: mixed !important;
+                                                    }}
+                                                    img, iframe, video {{
+                                                        max-width: 100% !important;
+                                                        height: auto !important;
+                                                    }}
+                                                    * {{
+                                                        min-width: unset !important;
+                                                    }}
+                                                    [class*="container"], [class*="ad-result"], [class*="serp-result"], [class*="sponsored"], 
+                                                    [class*="result"], [class*="ad"], div, section, article {{
+                                                        max-width: 100% !important; 
+                                                        min-width: unset !important;
+                                                        width: auto !important;
+                                                    }}
+                                                    table {{
+                                                        width: 100% !important;
+                                                        max-width: 100% !important;
+                                                        table-layout: auto !important;
+                                                    }}
+                                                </style>
+                                                '''
+                                                
+                                                if re.search(r'<head>', serp_html, re.IGNORECASE):
+                                                    serp_html = re.sub(
+                                                        r'<head>',
+                                                        f'<head>{mobile_css}',
+                                                        serp_html,
+                                                        flags=re.IGNORECASE,
+                                                        count=1
+                                                    )
+                                                else:
+                                                    serp_html = f'<head>{mobile_css}</head>{serp_html}'
+                                                
+                                                # Use selected device (respect user choice)
+                                                preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
+                                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                st.caption("📺 SERP (via Playwright)")
+                                            except Exception as play_err:
+                                                # Error processing Playwright HTML
+                                                st.warning(f"⚠️ Error processing SERP HTML: {str(play_err)[:100]}")
+                                                if SCREENSHOT_API_KEY:
+                                                    # Fall through to Screenshot API
+                                                    pass
+                                                else:
+                                                    st.markdown(f"[🔗 Open SERP in new tab]({serp_url})")
                                         else:
                                             # Playwright failed - try Screenshot API
                                             if SCREENSHOT_API_KEY:
@@ -2475,7 +2498,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 st.error(f"HTTP {response.status_code}")
                                 
                         except Exception as e:
-                            st.error(f"Load failed: {str(e)[:100]}")
+                            error_msg = str(e) if e else "Unknown error"
+                            st.error(f"Load failed: {error_msg[:100]}")
+                            # Debug info in advanced mode
+                            if st.session_state.view_mode == 'advanced':
+                                import traceback
+                                st.code(traceback.format_exc()[:500])
                     else:
                         st.warning("⚠️ No SERP URL found in mapping")
                     
