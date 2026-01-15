@@ -2205,10 +2205,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     if desc_elem:
                                         # Preserve existing attributes (style, class, id, data-*, etc.)
                                         # Only replace text content, keep all attributes
-                                        desc_elem.string = None  # Clear text nodes
-                                        for child in list(desc_elem.children):
-                                            if child.name is None:  # Text node
-                                                child.extract()
+                                        desc_elem.clear()  # Clear all content
                                         desc_elem.append(ad_desc)
                                         replacement_made = True
                                 
@@ -2224,10 +2221,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         # Preserve existing attributes (style, class, id, href, data-*, etc.)
                                         # BeautifulSoup preserves attributes automatically
                                         # Only replace text content, keep all attributes including href
-                                        url_elem.string = None  # Clear text nodes
-                                        for child in list(url_elem.children):
-                                            if child.name is None:  # Text node
-                                                child.extract()
+                                        url_elem.clear()  # Clear all content
                                         url_elem.append(ad_display_url)
                                         replacement_made = True
                                 
