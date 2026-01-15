@@ -781,7 +781,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     if device == 'mobile':
         device_w = 390
         container_height = 844
-        scale = 0.55  # Increased from 0.35 for better visibility
+        scale = 0.70  # Increased width for better visibility
         frame_style = "border-radius: 40px; border: 10px solid #000000;"
         
         # Mobile chrome
@@ -2070,8 +2070,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     serp_html = f'<head>{mobile_css}</head>{serp_html}'
                                 
                                 # Step 3: Render modified HTML as iframe using srcdoc
-                                # Use laptop device for SERP to prevent vertical text (SERP designed for desktop width)
-                                preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device='laptop', use_srcdoc=True)
+                                # Use selected device (respect user choice)
+                                preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
                                 st.components.v1.html(preview_html, height=height, scrolling=False)
                                 st.caption("📺 SERP with injected ad content")
                                 
@@ -2218,8 +2218,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                             else:
                                                 serp_html = f'<head>{mobile_css}</head>{serp_html}'
                                             
-                                            # Use laptop device for SERP to prevent vertical text
-                                            preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device='laptop', use_srcdoc=True)
+                                            # Use selected device (respect user choice)
+                                            preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
                                             st.components.v1.html(preview_html, height=height, scrolling=False)
                                             st.caption("📺 SERP (via Playwright)")
                                         else:
@@ -2246,7 +2246,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
     <img src="{screenshot_url}" alt="SERP screenshot" onerror="this.parentElement.innerHTML='<div style=\\'padding: 20px; text-align: center; color: #666;\\'>Image failed to load</div>';" />
 </body>
 </html>'''
-                                                    preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device='laptop', use_srcdoc=True)
+                                                    preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
                                                     st.components.v1.html(preview_html, height=height, scrolling=False)
                                                     st.caption("📸 Screenshot API")
                                                 except Exception as scr_err:
