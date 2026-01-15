@@ -958,7 +958,12 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         <style>
             body {{ margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }}
             .device-chrome {{ width: 100%; background: white; }}
-            .content-area {{ height: calc(100vh - {'90px' if device == 'mobile' else '60px' if device == 'tablet' else '52px'}); overflow-y: auto; }}
+            .content-area {{ 
+                height: calc(100vh - {'90px' if device == 'mobile' else '60px' if device == 'tablet' else '52px'}); 
+                overflow-y: auto; 
+                overflow-x: hidden;
+                -webkit-overflow-scrolling: touch; /* Smooth scrolling on mobile */
+            }}
             /* Don't interfere with template's own CSS - let it handle responsive design */
         </style>
     </head>
@@ -1038,20 +1043,23 @@ def generate_serp_mockup(flow_data, serp_templates):
                 count=1
             )
             
-            # Replace title (inside <div class="title">)
+            # Replace title (inside <div class="title">) - preserve inner HTML structure
+            # Match opening tag, any inner content, and closing tag, but preserve attributes
             html = re.sub(
-                r'(<div class="title">)[^<]*(</div>)', 
+                r'(<div[^>]*class=["\']title["\'][^>]*>)[^<]*(</div>)', 
                 f'\\1{ad_title}\\2', 
                 html, 
-                count=1
+                count=1,
+                flags=re.IGNORECASE
             )
             
-            # Replace description (inside <div class="desc">)
+            # Replace description (inside <div class="desc">) - preserve inner HTML structure
             html = re.sub(
-                r'(<div class="desc">)[^<]*(</div>)', 
+                r'(<div[^>]*class=["\']desc["\'][^>]*>)[^<]*(</div>)', 
                 f'\\1{ad_desc}\\2', 
                 html, 
-                count=1
+                count=1,
+                flags=re.IGNORECASE
             )
             
             return html
@@ -2155,13 +2163,23 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                             
                                             title_elements = soup.find_all(class_=re.compile(r'title', re.IGNORECASE))
                                             if title_elements and ad_title:
-                                                title_elements[0].clear()
-                                                title_elements[0].append(ad_title)
+                                                first_title = title_elements[0]
+                                                # Only remove text nodes, keep all HTML elements that might have styling
+                                                from bs4 import NavigableString
+                                                for child in list(first_title.children):
+                                                    if isinstance(child, NavigableString):
+                                                        child.extract()
+                                                first_title.append(ad_title)
                                             
                                             desc_elements = soup.find_all(class_=re.compile(r'desc', re.IGNORECASE))
                                             if desc_elements and ad_desc:
-                                                desc_elements[0].clear()
-                                                desc_elements[0].append(ad_desc)
+                                                first_desc = desc_elements[0]
+                                                # Only remove text nodes, keep all HTML elements that might have styling
+                                                from bs4 import NavigableString
+                                                for child in list(first_desc.children):
+                                                    if isinstance(child, NavigableString):
+                                                        child.extract()
+                                                first_desc.append(ad_desc)
                                             
                                             url_elements = soup.find_all(class_=re.compile(r'url', re.IGNORECASE))
                                             if url_elements and ad_display_url:
