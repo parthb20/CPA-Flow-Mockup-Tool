@@ -1135,22 +1135,34 @@ def create_screenshot_html(screenshot_url, device='mobile', referer_domain=None)
     
     return screenshot_html
 
-def get_component_key(prefix, url, device, flow_data=None):
-    """Generate a unique key for Streamlit components based on content
+def inject_unique_id(html_content, prefix, url, device, flow_data=None):
+    """Inject a unique identifier comment into HTML to force re-rendering
     
     This ensures components re-render when content changes, preventing persistence issues.
+    Streamlit components don't support key parameter, so we embed unique ID in HTML.
     """
     import hashlib
-    key_parts = [prefix, str(url), str(device)]
+    import time
+    key_parts = [prefix, str(url), str(device), str(time.time())]
     if flow_data:
         # Include relevant flow data in key
         key_parts.append(str(flow_data.get('publisher_url', '')))
         key_parts.append(str(flow_data.get('serp_template_key', '')))
         key_parts.append(str(flow_data.get('ad_display_url', '')))
     key_string = '_'.join(key_parts)
-    # Create a short hash for the key
-    key_hash = hashlib.md5(key_string.encode()).hexdigest()[:12]
-    return f"{prefix}_{key_hash}"
+    # Create a short hash for the unique ID
+    unique_id = hashlib.md5(key_string.encode()).hexdigest()[:12]
+    # Inject as comment at the start of HTML (handle leading whitespace)
+    stripped = html_content.lstrip()
+    leading_ws = html_content[:len(html_content) - len(stripped)]
+    
+    if stripped.startswith('<!DOCTYPE'):
+        html_content = leading_ws + f'<!-- unique_id:{unique_id} -->\n' + stripped
+    elif stripped.startswith('<html'):
+        html_content = leading_ws + f'<!-- unique_id:{unique_id} -->\n' + stripped
+    else:
+        html_content = leading_ws + f'<!-- unique_id:{unique_id} -->\n' + stripped
+    return html_content
 
 def extract_text_from_screenshot(screenshot_url):
     """Extract text from screenshot using OCR"""
@@ -1792,8 +1804,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             # Try iframe src (preferred)
                             try:
                                 preview_html, height, _ = render_mini_device_preview(pub_url, is_url=True, device=device_all)
-                                component_key = get_component_key('pub_iframe', pub_url, device_all, current_flow)
-                                st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
+                                preview_html = inject_unique_id(preview_html, 'pub_iframe', pub_url, device_all, current_flow)
+                                st.components.v1.html(preview_html, height=height, scrolling=False)
                                 st.caption("📺 Iframe")
                             except:
                                 iframe_blocked = True  # Failed, use HTML
@@ -1827,8 +1839,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                             page_html = capture_with_playwright(pub_url, device=device_all)
                                             if page_html:
                                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                                component_key = get_component_key('pub_playwright', pub_url, device_all, current_flow)
-                                                st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
+                                                preview_html = inject_unique_id(preview_html, 'pub_playwright', pub_url, device_all, current_flow)
+                                                st.components.v1.html(preview_html, height=height, scrolling=False)
                                                 st.caption("🤖 Rendered via browser automation (bypassed 403)")
                                             else:
                                                 # Try screenshot API as fallback
@@ -1838,8 +1850,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                     if screenshot_url:
                                                         screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                                         preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                                        component_key = get_component_key('pub_screenshot', pub_url, device_all, current_flow)
-                                                        st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
+                                                        preview_html = inject_unique_id(preview_html, 'pub_screenshot', pub_url, device_all, current_flow)
+                                                        st.components.v1.html(preview_html, height=height, scrolling=False)
                                                         st.caption("📸 Screenshot (thum.io)")
                                                     
                                                     # Automatically extract text from screenshot
@@ -1861,8 +1873,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         if screenshot_url:
                                             screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                             preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                            component_key = get_component_key('pub_screenshot', pub_url, device_all, current_flow)
-                                            st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
+                                            preview_html = inject_unique_id(preview_html, 'pub_screenshot', pub_url, device_all, current_flow)
+                                            st.components.v1.html(preview_html, height=height, scrolling=False)
                                             st.caption("📸 Screenshot (thum.io)")
                                         
                                         # Automatically extract text from screenshot
@@ -1894,8 +1906,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
                                                       lambda m: f'href="{urljoin(pub_url, m.group(1))}"', page_html)
                                     preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                    component_key = get_component_key('pub_html', pub_url, device_all, current_flow)
-                                    st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
+                                    preview_html = inject_unique_id(preview_html, 'pub_html', pub_url, device_all, current_flow)
+                                    st.components.v1.html(preview_html, height=height, scrolling=False)
                                     st.caption("📄 HTML")
                                 else:
                                     st.error(f"❌ HTTP {response.status_code}")
@@ -2052,6 +2064,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         
                         # Render using device preview
                         preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
+                        preview_html = inject_unique_id(preview_html, 'serp_template', serp_url or '', device_all, current_flow)
                         st.components.v1.html(preview_html, height=height, scrolling=False)
                         st.caption("📺 SERP (from template)")
                     
@@ -2148,8 +2161,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 
                                 # Step 3: Render modified HTML as iframe using srcdoc
                                 preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
-                                component_key = get_component_key('serp_injected', serp_url, device_all, current_flow)
-                                st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
+                                preview_html = inject_unique_id(preview_html, 'serp_injected', serp_url, device_all, current_flow)
+                                st.components.v1.html(preview_html, height=height, scrolling=False)
                                 st.caption("📺 SERP with injected ad content")
                                 
                             elif response.status_code == 403:
@@ -2212,8 +2225,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                             )
                                             
                                             preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
-                                            component_key = get_component_key('serp_playwright', serp_url, device_all, current_flow)
-                                            st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
+                                            preview_html = inject_unique_id(preview_html, 'serp_playwright', serp_url, device_all, current_flow)
+                                            st.components.v1.html(preview_html, height=height, scrolling=False)
                                             st.caption("📺 SERP (via Playwright)")
                                         else:
                                             # Playwright failed, try screenshot API if available
@@ -2223,8 +2236,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 if screenshot_url:
                                                     screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                                     preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                                    component_key = get_component_key('serp_screenshot', serp_url, device_all, current_flow)
-                                                    st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
+                                                    preview_html = inject_unique_id(preview_html, 'serp_screenshot', serp_url, device_all, current_flow)
+                                                    st.components.v1.html(preview_html, height=height, scrolling=False)
                                                     st.caption("📸 Screenshot (thum.io)")
                                             else:
                                                 st.warning("⚠️ Could not load SERP. Install Playwright or configure thum.io (add THUMIO_REFERER_DOMAIN or SCREENSHOT_API_KEY to secrets)")
@@ -2326,8 +2339,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             # Try iframe src
                             try:
                                 preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all)
-                                component_key = get_component_key('landing_iframe', adv_url, device_all, current_flow)
-                                st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
+                                preview_html = inject_unique_id(preview_html, 'landing_iframe', adv_url, device_all, current_flow)
+                                st.components.v1.html(preview_html, height=height, scrolling=False)
                                 st.caption("📺 Iframe")
                             except:
                                 iframe_blocked = True
@@ -2359,8 +2372,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                             page_html = capture_with_playwright(adv_url, device=device_all)
                                             if page_html:
                                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                                component_key = get_component_key('landing_playwright', adv_url, device_all, current_flow)
-                                                st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
+                                                preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
+                                                st.components.v1.html(preview_html, height=height, scrolling=False)
                                                 st.caption("🤖 Rendered via browser automation (bypassed 403)")
                                             else:
                                                 # Try screenshot API as fallback (thum.io)
@@ -2368,8 +2381,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 if screenshot_url:
                                                     screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                                     preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                                    component_key = get_component_key('landing_screenshot', adv_url, device_all, current_flow)
-                                                    st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
+                                                    preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
+                                                    st.components.v1.html(preview_html, height=height, scrolling=False)
                                                     st.caption("📸 Screenshot (thum.io)")
                                                     
                                                     # Automatically extract text from screenshot
@@ -2390,8 +2403,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         if screenshot_url:
                                             screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                             preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                            component_key = get_component_key('landing_screenshot', adv_url, device_all, current_flow)
-                                            st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
+                                            preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
+                                            st.components.v1.html(preview_html, height=height, scrolling=False)
                                             st.caption("📸 Screenshot (thum.io)")
                                         
                                         # Automatically extract text from screenshot
@@ -2422,8 +2435,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
                                                       lambda m: f'href="{urljoin(adv_url, m.group(1))}"', page_html)
                                     preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                    component_key = get_component_key('landing_html', adv_url, device_all, current_flow)
-                                    st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
+                                    preview_html = inject_unique_id(preview_html, 'landing_html', adv_url, device_all, current_flow)
+                                    st.components.v1.html(preview_html, height=height, scrolling=False)
                                     st.caption("📄 HTML")
                                 else:
                                     st.error(f"❌ HTTP {response.status_code}")
