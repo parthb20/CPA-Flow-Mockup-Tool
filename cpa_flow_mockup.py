@@ -1398,6 +1398,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Flow Display based on layout
                 st.markdown("### 🔄 Flow Journey")
                 
+                # Single device selector for ALL cards
+                device_all = st.radio("Device for all previews:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='device_all', index=0)
+                
                 if st.session_state.flow_layout == 'horizontal':
                     # Equal width columns for 4 cards + 3 arrows
                     stage_cols = st.columns([1, 0.1, 1, 0.1, 1, 0.1, 1])
@@ -1410,9 +1413,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 with stage_1_container:
                     st.markdown('<div class="stage-card">', unsafe_allow_html=True)
                     st.markdown('<div class="stage-title">📰 Publisher URL</div>', unsafe_allow_html=True)
-                    
-                    # Device selector
-                    device1 = st.radio("Device:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev_pub', index=0, label_visibility="collapsed")
                     
                     # Only show edit details in advanced mode
                     if st.session_state.view_mode == 'advanced':
@@ -1492,7 +1492,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         if not iframe_blocked:
                             # Try iframe src (preferred)
                             try:
-                                preview_html, height, _ = render_mini_device_preview(pub_url, is_url=True, device=device1)
+                                preview_html, height, _ = render_mini_device_preview(pub_url, is_url=True, device=device_all)
                                 st.components.v1.html(preview_html, height=height, scrolling=False)
                                 st.caption("📺 Iframe")
                             except:
@@ -1524,9 +1524,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     # Try Playwright first (free, bypasses many 403s)
                                     if PLAYWRIGHT_AVAILABLE:
                                         with st.spinner("🔄 Trying browser automation..."):
-                                            page_html = capture_with_playwright(pub_url, device=device1)
+                                            page_html = capture_with_playwright(pub_url, device=device_all)
                                             if page_html:
-                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device1)
+                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                                 st.components.v1.html(preview_html, height=height, scrolling=False)
                                                 st.caption("🤖 Rendered via browser automation (bypassed 403)")
                                             else:
@@ -1535,7 +1535,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                     from urllib.parse import quote
                                                     screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(pub_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
                                                     screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                                    preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device1)
+                                                    preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
                                                     st.components.v1.html(preview_html, height=height, scrolling=False)
                                                     st.caption("📸 Screenshot API (browser automation failed)")
                                                 else:
@@ -1546,7 +1546,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         from urllib.parse import quote
                                         screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(pub_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
                                         screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device1)
+                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
                                         st.components.v1.html(preview_html, height=height, scrolling=False)
                                         st.caption("📸 Screenshot API (HTTP 403)")
                                     else:
@@ -1599,9 +1599,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 with stage_2_container:
                     st.markdown('<div class="stage-card">', unsafe_allow_html=True)
                     st.markdown('<div class="stage-title">🎨 Creative</div>', unsafe_allow_html=True)
-                    
-                    # Device selector
-                    device2 = st.radio("Device:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev_creative', index=0, label_visibility="collapsed")
                     
                     # Show details
                     creative_id = current_flow.get('creative_id', 'N/A')
@@ -1659,9 +1656,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     st.markdown('<div class="stage-card">', unsafe_allow_html=True)
                     st.markdown('<div class="stage-title">📄 SERP</div>', unsafe_allow_html=True)
                     
-                    # Device selector
-                    device3 = st.radio("Device:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev_serp', index=0, label_visibility="collapsed")
-                    
                     if st.session_state.view_mode == 'advanced':
                         with st.expander("⚙️ Edit Details", expanded=False):
                             # SERP template dropdown
@@ -1693,6 +1687,11 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     # Construct SERP URL dynamically from serp_template_key
                     serp_template_key = current_flow.get('serp_template_key', '')
                     
+                    # Always show the constructed SERP URL
+                    if serp_template_key:
+                        final_serp_url = SERP_BASE_URL + str(serp_template_key)
+                        st.caption(f"**Final SERP URL:** {final_serp_url[:70]}...")
+                    
                     if serp_template_key and pd.notna(serp_template_key) and str(serp_template_key).strip():
                         # Build SERP URL: base + template key
                         serp_url = SERP_BASE_URL + str(serp_template_key)
@@ -1721,42 +1720,46 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     keyword = current_flow.get('keyword_term', '')
                                     
                                     # Replace ad content in SERP HTML
-                                    # 1. Keyword in "Sponsored results for: ..." text
-                                    if 'Sponsored results for:' in serp_html or 'sponsored results for:' in serp_html:
-                                        serp_html = re.sub(
-                                            r'(Sponsored results for:|sponsored results for:)\s*["\']?([^"\'<>]*)["\']?',
+                                    # Use BeautifulSoup for better element finding and replacement
+                                    from bs4 import BeautifulSoup
+                                    soup = BeautifulSoup(serp_html, 'html.parser')
+                                    
+                                    # 1. Replace keyword in "Sponsored results for:" text
+                                    for text_elem in soup.find_all(string=re.compile(r'Sponsored results for:', re.IGNORECASE)):
+                                        new_text = re.sub(
+                                            r'(Sponsored results for:)\s*["\']?([^"\'<>]*)["\']?',
                                             f'\\1 "{keyword}"',
-                                            serp_html,
-                                            count=1,
+                                            text_elem,
                                             flags=re.IGNORECASE
                                         )
+                                        text_elem.replace_with(new_text)
                                     
-                                    # 2. Ad Title: look for class containing "title"
-                                    serp_html = re.sub(
-                                        r'(<[^>]*class="[^"]*title[^"]*"[^>]*>)([^<]*)(</[^>]*>)',
-                                        f'\\1{ad_title}\\3',
-                                        serp_html,
-                                        count=1,
-                                        flags=re.IGNORECASE
-                                    )
+                                    # 2. Replace ad title (search deeply in nested elements)
+                                    for elem in soup.find_all(class_=re.compile(r'title', re.IGNORECASE)):
+                                        if elem.string:
+                                            elem.string = ad_title
+                                        elif elem.get_text(strip=True):
+                                            elem.clear()
+                                            elem.append(ad_title)
                                     
-                                    # 3. Ad Description: look for class containing "desc"
-                                    serp_html = re.sub(
-                                        r'(<[^>]*class="[^"]*desc[^"]*"[^>]*>)([^<]*)(</[^>]*>)',
-                                        f'\\1{ad_desc}\\3',
-                                        serp_html,
-                                        count=1,
-                                        flags=re.IGNORECASE
-                                    )
+                                    # 3. Replace ad description (search deeply)
+                                    for elem in soup.find_all(class_=re.compile(r'desc', re.IGNORECASE)):
+                                        if elem.string:
+                                            elem.string = ad_desc
+                                        elif elem.get_text(strip=True):
+                                            elem.clear()
+                                            elem.append(ad_desc)
                                     
-                                    # 4. Ad Display URL: look for class containing "url"
-                                    serp_html = re.sub(
-                                        r'(<[^>]*class="[^"]*url[^"]*"[^>]*>)([^<]*)(</[^>]*>)',
-                                        f'\\1{ad_display_url}\\3',
-                                        serp_html,
-                                        count=1,
-                                        flags=re.IGNORECASE
-                                    )
+                                    # 4. Replace ad display URL (search deeply)
+                                    for elem in soup.find_all(class_=re.compile(r'url', re.IGNORECASE)):
+                                        if elem.string:
+                                            elem.string = ad_display_url
+                                        elif elem.get_text(strip=True):
+                                            elem.clear()
+                                            elem.append(ad_display_url)
+                                    
+                                    # Convert back to HTML
+                                    serp_html = str(soup)
                                     
                                     # Fix relative URLs
                                     serp_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
@@ -1793,9 +1796,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 with stage_4_container:
                     st.markdown('<div class="stage-card">', unsafe_allow_html=True)
                     st.markdown('<div class="stage-title">🎯 Landing Page</div>', unsafe_allow_html=True)
-                    
-                    # Device selector
-                    device4 = st.radio("Device:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='dev_landing', index=0, label_visibility="collapsed")
                     
                     # Get landing page URL
                     adv_url = current_flow.get('reporting_destination_url', '')
@@ -1834,8 +1834,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         # Basic mode - show keyword only
                         st.caption(f"**Keyword:** {current_kw}")
                     
-                    # Get landing URL and check clicks
-                    flow_clicks = safe_int(current_flow.get('clicks', 0))
+                    # Get landing URL and check clicks from current_flow
+                    flow_clicks = safe_float(current_flow.get('clicks', 0))
                     
                     # Show landing URL info in basic mode
                     if st.session_state.view_mode == 'basic' and adv_url and pd.notna(adv_url):
@@ -1860,7 +1860,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         if not iframe_blocked:
                             # Try iframe src
                             try:
-                                preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device4)
+                                preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all)
                                 st.components.v1.html(preview_html, height=height, scrolling=False)
                                 st.caption("📺 Iframe")
                             except:
@@ -1890,9 +1890,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     # Try Playwright first (free, bypasses many 403s)
                                     if PLAYWRIGHT_AVAILABLE:
                                         with st.spinner("🔄 Trying browser automation..."):
-                                            page_html = capture_with_playwright(adv_url, device=device4)
+                                            page_html = capture_with_playwright(adv_url, device=device_all)
                                             if page_html:
-                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device4)
+                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                                 st.components.v1.html(preview_html, height=height, scrolling=False)
                                                 st.caption("🤖 Rendered via browser automation (bypassed 403)")
                                             else:
@@ -1901,7 +1901,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                     from urllib.parse import quote
                                                     screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(adv_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
                                                     screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                                    preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device4)
+                                                    preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
                                                     st.components.v1.html(preview_html, height=height, scrolling=False)
                                                     st.caption("📸 Screenshot API (browser automation failed)")
                                                 else:
@@ -1912,7 +1912,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         from urllib.parse import quote
                                         screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(adv_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
                                         screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device4)
+                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
                                         st.components.v1.html(preview_html, height=height, scrolling=False)
                                         st.caption("📸 Screenshot API (HTTP 403)")
                                     else:
@@ -1933,7 +1933,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                       lambda m: f'src="{urljoin(adv_url, m.group(1))}"', page_html)
                                     page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
                                                       lambda m: f'href="{urljoin(adv_url, m.group(1))}"', page_html)
-                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device4)
+                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                     st.components.v1.html(preview_html, height=height, scrolling=False)
                                     st.caption("📄 HTML")
                                 else:
