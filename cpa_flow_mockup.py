@@ -779,14 +779,14 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     """
     # Real device dimensions
     if device == 'mobile':
-        device_w = 390
+        device_w = 500  # Increased width from 390 to 500 for better text flow
         container_height = 844
         scale = 0.70  # Increased width for better visibility
         frame_style = "border-radius: 40px; border: 10px solid #000000;"
         
-        # Mobile chrome
+        # Mobile chrome - reduced padding to minimize space above URL bar
         device_chrome = """
-        <div style="background: #000; color: white; padding: 6px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500;">
+        <div style="background: #000; color: white; padding: 4px 16px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500;">
             <div>9:41</div>
             <div style="display: flex; gap: 4px; align-items: center;">
                 <span>📶</span>
@@ -794,8 +794,8 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                 <span>🔋</span>
             </div>
         </div>
-        <div style="background: #f7f7f7; border-bottom: 1px solid #d1d1d1; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
-            <div style="flex: 1; background: white; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; border: 1px solid #e0e0e0;">
+        <div style="background: #f7f7f7; border-bottom: 1px solid #d1d1d1; padding: 6px 10px; display: flex; align-items: center; gap: 8px;">
+            <div style="flex: 1; background: white; border-radius: 8px; padding: 6px 10px; display: flex; align-items: center; gap: 8px; border: 1px solid #e0e0e0;">
                 <span style="font-size: 16px;">🔒</span>
                 <span style="color: #666; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">URL</span>
                 <span style="font-size: 16px;">🔄</span>
@@ -811,7 +811,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
             <div style="text-align: center; font-size: 20px;">⊞</div>
         </div>
         """
-        chrome_height = "90px"
+        chrome_height = "70px"  # Reduced from 90px to minimize space above content
         
     elif device == 'tablet':
         device_w = 820
@@ -1868,12 +1868,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     # Construct SERP URL dynamically from serp_template_key
                     serp_template_key = current_flow.get('serp_template_key', '')
                     
-                    # Always show the constructed SERP URL (full URL + clickable link)
+                    # Always show the constructed SERP URL (show URL directly, no black text)
                     if serp_template_key:
                         final_serp_url = SERP_BASE_URL + str(serp_template_key)
-                        st.text("Final SERP URL:")
-                        st.code(final_serp_url, language=None)
-                        st.markdown(f"[🔗 Open in new tab]({final_serp_url})")
+                        st.markdown(f"**SERP URL:** {final_serp_url}")
                     
                     if serp_template_key and pd.notna(serp_template_key) and str(serp_template_key).strip():
                         # Build SERP URL: base + template key
@@ -1998,8 +1996,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 
                                 # Add mobile-friendly viewport and CSS to prevent vertical text
                                 # Get device width based on selected device
-                                device_widths = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
-                                current_device_w = device_widths.get(device_all, 390)
+                                device_widths = {'mobile': 500, 'tablet': 820, 'laptop': 1440}  # Increased mobile width
+                                current_device_w = device_widths.get(device_all, 500)
                                 
                                 mobile_css = f'''
                                 <meta name="viewport" content="width={current_device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -2016,20 +2014,29 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         padding: 0 !important; 
                                         font-size: 14px !important;
                                     }}
-                                    /* Force horizontal text flow - CRITICAL */
+                                    /* Force horizontal text flow - CRITICAL - STRONGER RULES */
                                     html, body, * {{
                                         writing-mode: horizontal-tb !important;
                                         text-orientation: mixed !important;
                                         direction: ltr !important;
+                                        text-align: left !important;
                                     }}
-                                    /* Allow text to wrap properly - CRITICAL */
-                                    p, div, span, a, h1, h2, h3, h4, h5, h6, li, td, th, label, button {{
+                                    /* Allow text to wrap properly - CRITICAL - STRONGER RULES */
+                                    p, div, span, a, h1, h2, h3, h4, h5, h6, li, td, th, label, button, strong, em, b, i {{
                                         word-break: break-word !important;
                                         overflow-wrap: break-word !important;
                                         white-space: normal !important;
                                         max-width: 100% !important;
                                         writing-mode: horizontal-tb !important;
                                         text-orientation: mixed !important;
+                                        display: inline-block !important;
+                                        width: auto !important;
+                                    }}
+                                    /* Force all text containers to horizontal */
+                                    [class*="result"], [class*="ad"], [class*="sponsored"], [class*="serp"] {{
+                                        writing-mode: horizontal-tb !important;
+                                        text-orientation: mixed !important;
+                                        white-space: normal !important;
                                     }}
                                     /* Override fixed widths */
                                     img, iframe, video {{
@@ -2154,8 +2161,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                               lambda m: f'href="{urljoin(serp_url, m.group(1))}"', serp_html)
                                             
                                             # Add mobile-friendly CSS (enhanced version)
-                                            device_widths = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
-                                            current_device_w = device_widths.get(device_all, 390)
+                                            device_widths = {'mobile': 500, 'tablet': 820, 'laptop': 1440}  # Increased mobile width
+                                            current_device_w = device_widths.get(device_all, 500)
                                             
                                             mobile_css = f'''
                                             <meta name="viewport" content="width={current_device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
