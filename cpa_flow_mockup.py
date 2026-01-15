@@ -2626,9 +2626,26 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                             # No Playwright, use Screenshot API
                                             try:
                                                 from urllib.parse import quote
-                                                screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(adv_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                                screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                                preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                                viewports = {'mobile': (390, 844), 'tablet': (820, 1180), 'laptop': (1440, 900)}
+                                                vw, vh = viewports.get(device_all, (390, 844))
+                                                screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(adv_url)}&full_page=false&viewport_width={vw}&viewport_height={vh}&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
+                                                # Create proper HTML document for screenshot
+                                                screenshot_html = f'''<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width={vw}, initial-scale=1.0">
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        html, body {{ width: 100%; height: 100%; overflow: hidden; background: white; }}
+        img {{ width: 100%; height: auto; display: block; }}
+    </style>
+</head>
+<body>
+    <img src="{screenshot_url}" alt="Page screenshot" onerror="this.parentElement.innerHTML='<div style=\\'padding: 20px; text-align: center; color: #666;\\'>Image failed to load</div>';" />
+</body>
+</html>'''
+                                                preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
                                                 st.components.v1.html(preview_html, height=height, scrolling=False)
                                                 st.caption("📸 Screenshot API")
                                             except Exception as scr_err:
