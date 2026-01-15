@@ -2144,6 +2144,27 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 serp_html = re.sub(r'direction\s*:\s*rtl[^;"]*;?', '', serp_html, flags=re.IGNORECASE)
                                 serp_html = re.sub(r'flex-direction\s*:\s*column[^;"]*;?', 'flex-direction: row;', serp_html, flags=re.IGNORECASE)
                                 
+                                # NUCLEAR: Strip vertical text from ALL <style> tags in the HTML
+                                def strip_vertical_from_styles(html):
+                                    """Remove writing-mode: vertical from all <style> tags"""
+                                    style_pattern = r'(<style[^>]*>)(.*?)(</style>)'
+                                    
+                                    def clean_style(match):
+                                        opening = match.group(1)
+                                        css = match.group(2)
+                                        closing = match.group(3)
+                                        
+                                        # Remove all writing-mode: vertical declarations
+                                        css = re.sub(r'writing-mode\s*:\s*vertical[^;};]*', 'writing-mode: horizontal-tb', css, flags=re.IGNORECASE)
+                                        css = re.sub(r'text-orientation\s*:\s*upright[^;};]*', 'text-orientation: mixed', css, flags=re.IGNORECASE)
+                                        css = re.sub(r'direction\s*:\s*rtl[^;};]*', 'direction: ltr', css, flags=re.IGNORECASE)
+                                        
+                                        return opening + css + closing
+                                    
+                                    return re.sub(style_pattern, clean_style, html, flags=re.DOTALL | re.IGNORECASE)
+                                
+                                serp_html = strip_vertical_from_styles(serp_html)
+                                
                                 # THEN: Use BeautifulSoup for structured replacements
                                 # Ensure serp_html is a valid string
                                 if serp_html is None:
@@ -2337,94 +2358,57 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 device_widths = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
                                 current_device_w = device_widths.get(device_all, 390)
                                 
-                                # Add NUCLEAR CSS - strip and override everything
+                                # Add ULTIMATE NUCLEAR CSS - highest priority
                                 mobile_css = f'''
                                 <meta name="viewport" content="width={current_device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-                                <style>
-                                    /* Document constraints */
-                                    html, body {{ 
+                                <style id="force-horizontal-override">
+                                    /* ULTIMATE PRIORITY - Override everything */
+                                    * {{
+                                        writing-mode: horizontal-tb !important;
+                                        text-orientation: mixed !important;
+                                        direction: ltr !important;
+                                    }}
+                                    
+                                    /* Body constraints */
+                                    html, body {{
                                         width: {current_device_w}px !important;
                                         max-width: {current_device_w}px !important;
                                         overflow-x: hidden !important;
-                                        margin: 0 !important;
-                                        padding: 0 !important;
                                     }}
-                                    
-                                    /* NUCLEAR: Override ALL elements - highest specificity */
-                                    html *, body *, div *, span *, p *, a *, h1 *, h2 *, h3 *, h4 *, h5 *, h6 * {{
-                                        writing-mode: horizontal-tb !important;
-                                        text-orientation: mixed !important;
-                                        direction: ltr !important;
-                                        unicode-bidi: normal !important;
-                                    }}
-                                    
-                                    /* Target any element with style attribute */
-                                    [style] {{
-                                        writing-mode: horizontal-tb !important;
-                                        text-orientation: mixed !important;
-                                        direction: ltr !important;
-                                    }}
-                                    
-                                    /* Responsive */
-                                    img, iframe, video {{ max-width: 100% !important; height: auto !important; }}
-                                    * {{ max-width: 100% !important; box-sizing: border-box !important; }}
                                 </style>
                                 <script>
-                                    // NUCLEAR JavaScript - run BEFORE page renders
+                                    // NUCLEAR: Inject CSS IMMEDIATELY before any other scripts run
                                     (function() {{
-                                        // Override style getters/setters
-                                        const originalSetAttribute = Element.prototype.setAttribute;
-                                        Element.prototype.setAttribute = function(name, value) {{
-                                            if (name === 'style' && typeof value === 'string') {{
-                                                value = value.replace(/writing-mode:\\s*vertical[^;]*/gi, 'writing-mode: horizontal-tb');
-                                                value = value.replace(/text-orientation:\\s*upright[^;]*/gi, 'text-orientation: mixed');
-                                                value = value.replace(/direction:\\s*rtl[^;]*/gi, 'direction: ltr');
+                                        const style = document.createElement('style');
+                                        style.id = 'emergency-horizontal';
+                                        style.textContent = `
+                                            * {{
+                                                writing-mode: horizontal-tb !important;
+                                                text-orientation: mixed !important;
+                                                direction: ltr !important;
                                             }}
-                                            return originalSetAttribute.call(this, name, value);
-                                        }};
+                                        `;
+                                        document.documentElement.insertBefore(style, document.documentElement.firstChild);
                                         
-                                        function nukeverything() {{
-                                            const all = document.querySelectorAll('*');
-                                            all.forEach(el => {{
-                                                // Force via JavaScript style (overrides inline styles)
-                                                el.style.writingMode = 'horizontal-tb';
-                                                el.style.textOrientation = 'mixed';
-                                                el.style.direction = 'ltr';
-                                                
-                                                // Remove problematic attributes
-                                                if (el.hasAttribute('style')) {{
-                                                    let style = el.getAttribute('style');
-                                                    style = style.replace(/writing-mode:\\s*vertical[^;]*/gi, '');
-                                                    style = style.replace(/text-orientation:\\s*upright[^;]*/gi, '');
-                                                    style = style.replace(/direction:\\s*rtl[^;]*/gi, '');
-                                                    el.setAttribute('style', style);
-                                                }}
+                                        // Force all elements immediately
+                                        function forceHorizontal() {{
+                                            document.querySelectorAll('*').forEach(el => {{
+                                                el.style.setProperty('writing-mode', 'horizontal-tb', 'important');
+                                                el.style.setProperty('text-orientation', 'mixed', 'important');
+                                                el.style.setProperty('direction', 'ltr', 'important');
                                             }});
                                         }}
                                         
-                                        // Run immediately (before CSS loads)
-                                        nukeverything();
+                                        // Run NOW
+                                        forceHorizontal();
                                         
-                                        // Run after DOM ready
-                                        if (document.readyState === 'loading') {{
-                                            document.addEventListener('DOMContentLoaded', nukeverything);
-                                        }} else {{
-                                            nukeverything();
-                                        }}
-                                        
-                                        // Run multiple times aggressively
-                                        [0, 10, 50, 100, 200, 500, 1000].forEach(delay => {{
-                                            setTimeout(nukeverything, delay);
-                                        }});
-                                        
-                                        // Watch for DOM changes
-                                        const observer = new MutationObserver(nukeverything);
-                                        observer.observe(document.documentElement, {{
-                                            childList: true,
-                                            subtree: true,
-                                            attributes: true,
-                                            attributeFilter: ['style', 'class']
-                                        }});
+                                        // Run every 100ms for 2 seconds
+                                        let count = 0;
+                                        const interval = setInterval(() => {{
+                                            forceHorizontal();
+                                            count++;
+                                            if (count > 20) clearInterval(interval);
+                                        }}, 100);
                                     }})();
                                 </script>
                                 '''
@@ -2497,6 +2481,27 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 page_html = re.sub(r'text-orientation\s*:\s*upright[^;"]*;?', '', page_html, flags=re.IGNORECASE)
                                                 page_html = re.sub(r'direction\s*:\s*rtl[^;"]*;?', '', page_html, flags=re.IGNORECASE)
                                                 page_html = re.sub(r'flex-direction\s*:\s*column[^;"]*;?', 'flex-direction: row;', page_html, flags=re.IGNORECASE)
+                                                
+                                                # NUCLEAR: Strip vertical text from ALL <style> tags in the HTML
+                                                def strip_vertical_from_styles(html):
+                                                    """Remove writing-mode: vertical from all <style> tags"""
+                                                    style_pattern = r'(<style[^>]*>)(.*?)(</style>)'
+                                                    
+                                                    def clean_style(match):
+                                                        opening = match.group(1)
+                                                        css = match.group(2)
+                                                        closing = match.group(3)
+                                                        
+                                                        # Remove all writing-mode: vertical declarations
+                                                        css = re.sub(r'writing-mode\s*:\s*vertical[^;};]*', 'writing-mode: horizontal-tb', css, flags=re.IGNORECASE)
+                                                        css = re.sub(r'text-orientation\s*:\s*upright[^;};]*', 'text-orientation: mixed', css, flags=re.IGNORECASE)
+                                                        css = re.sub(r'direction\s*:\s*rtl[^;};]*', 'direction: ltr', css, flags=re.IGNORECASE)
+                                                        
+                                                        return opening + css + closing
+                                                    
+                                                    return re.sub(style_pattern, clean_style, html, flags=re.DOTALL | re.IGNORECASE)
+                                                
+                                                page_html = strip_vertical_from_styles(page_html)
                                                 
                                                 # Then use BeautifulSoup for structured replacements
                                                 # Ensure page_html is a valid string
@@ -2571,94 +2576,57 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 device_widths = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
                                                 current_device_w = device_widths.get(device_all, 390)
                                                 
-                                                # Add NUCLEAR CSS - strip and override everything
+                                                # Add ULTIMATE NUCLEAR CSS - highest priority
                                                 mobile_css = f'''
                                                 <meta name="viewport" content="width={current_device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-                                                <style>
-                                                    /* Document constraints */
-                                                    html, body {{ 
+                                                <style id="force-horizontal-override">
+                                                    /* ULTIMATE PRIORITY - Override everything */
+                                                    * {{
+                                                        writing-mode: horizontal-tb !important;
+                                                        text-orientation: mixed !important;
+                                                        direction: ltr !important;
+                                                    }}
+                                                    
+                                                    /* Body constraints */
+                                                    html, body {{
                                                         width: {current_device_w}px !important;
                                                         max-width: {current_device_w}px !important;
                                                         overflow-x: hidden !important;
-                                                        margin: 0 !important;
-                                                        padding: 0 !important;
                                                     }}
-                                                    
-                                                    /* NUCLEAR: Override ALL elements - highest specificity */
-                                                    html *, body *, div *, span *, p *, a *, h1 *, h2 *, h3 *, h4 *, h5 *, h6 * {{
-                                                        writing-mode: horizontal-tb !important;
-                                                        text-orientation: mixed !important;
-                                                        direction: ltr !important;
-                                                        unicode-bidi: normal !important;
-                                                    }}
-                                                    
-                                                    /* Target any element with style attribute */
-                                                    [style] {{
-                                                        writing-mode: horizontal-tb !important;
-                                                        text-orientation: mixed !important;
-                                                        direction: ltr !important;
-                                                    }}
-                                                    
-                                                    /* Responsive */
-                                                    img, iframe, video {{ max-width: 100% !important; height: auto !important; }}
-                                                    * {{ max-width: 100% !important; box-sizing: border-box !important; }}
                                                 </style>
                                                 <script>
-                                                    // NUCLEAR JavaScript - run BEFORE page renders
+                                                    // NUCLEAR: Inject CSS IMMEDIATELY before any other scripts run
                                                     (function() {{
-                                                        // Override style getters/setters
-                                                        const originalSetAttribute = Element.prototype.setAttribute;
-                                                        Element.prototype.setAttribute = function(name, value) {{
-                                                            if (name === 'style' && typeof value === 'string') {{
-                                                                value = value.replace(/writing-mode:\\s*vertical[^;]*/gi, 'writing-mode: horizontal-tb');
-                                                                value = value.replace(/text-orientation:\\s*upright[^;]*/gi, 'text-orientation: mixed');
-                                                                value = value.replace(/direction:\\s*rtl[^;]*/gi, 'direction: ltr');
+                                                        const style = document.createElement('style');
+                                                        style.id = 'emergency-horizontal';
+                                                        style.textContent = `
+                                                            * {{
+                                                                writing-mode: horizontal-tb !important;
+                                                                text-orientation: mixed !important;
+                                                                direction: ltr !important;
                                                             }}
-                                                            return originalSetAttribute.call(this, name, value);
-                                                        }};
+                                                        `;
+                                                        document.documentElement.insertBefore(style, document.documentElement.firstChild);
                                                         
-                                                        function nukeverything() {{
-                                                            const all = document.querySelectorAll('*');
-                                                            all.forEach(el => {{
-                                                                // Force via JavaScript style (overrides inline styles)
-                                                                el.style.writingMode = 'horizontal-tb';
-                                                                el.style.textOrientation = 'mixed';
-                                                                el.style.direction = 'ltr';
-                                                                
-                                                                // Remove problematic attributes
-                                                                if (el.hasAttribute('style')) {{
-                                                                    let style = el.getAttribute('style');
-                                                                    style = style.replace(/writing-mode:\\s*vertical[^;]*/gi, '');
-                                                                    style = style.replace(/text-orientation:\\s*upright[^;]*/gi, '');
-                                                                    style = style.replace(/direction:\\s*rtl[^;]*/gi, '');
-                                                                    el.setAttribute('style', style);
-                                                                }}
+                                                        // Force all elements immediately
+                                                        function forceHorizontal() {{
+                                                            document.querySelectorAll('*').forEach(el => {{
+                                                                el.style.setProperty('writing-mode', 'horizontal-tb', 'important');
+                                                                el.style.setProperty('text-orientation', 'mixed', 'important');
+                                                                el.style.setProperty('direction', 'ltr', 'important');
                                                             }});
                                                         }}
                                                         
-                                                        // Run immediately (before CSS loads)
-                                                        nukeverything();
+                                                        // Run NOW
+                                                        forceHorizontal();
                                                         
-                                                        // Run after DOM ready
-                                                        if (document.readyState === 'loading') {{
-                                                            document.addEventListener('DOMContentLoaded', nukeverything);
-                                                        }} else {{
-                                                            nukeverything();
-                                                        }}
-                                                        
-                                                        // Run multiple times aggressively
-                                                        [0, 10, 50, 100, 200, 500, 1000].forEach(delay => {{
-                                                            setTimeout(nukeverything, delay);
-                                                        }});
-                                                        
-                                                        // Watch for DOM changes
-                                                        const observer = new MutationObserver(nukeverything);
-                                                        observer.observe(document.documentElement, {{
-                                                            childList: true,
-                                                            subtree: true,
-                                                            attributes: true,
-                                                            attributeFilter: ['style', 'class']
-                                                        }});
+                                                        // Run every 100ms for 2 seconds
+                                                        let count = 0;
+                                                        const interval = setInterval(() => {{
+                                                            forceHorizontal();
+                                                            count++;
+                                                            if (count > 20) clearInterval(interval);
+                                                        }}, 100);
                                                     }})();
                                                 </script>
                                                 '''
@@ -2675,9 +2643,30 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                     serp_html = f'<head>{mobile_css}</head>{serp_html}'
                                                 
                                                 # Use selected device (respect user choice)
-                                                preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
-                                                st.components.v1.html(preview_html, height=height, scrolling=False)
-                                                st.caption("📺 SERP (via Playwright)")
+                                                try:
+                                                    preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
+                                                    st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                    st.caption("📺 SERP (via Playwright)")
+                                                except Exception as render_err:
+                                                    # If all else fails, use screenshot for SERP
+                                                    if SCREENSHOT_API_KEY:
+                                                        try:
+                                                            from urllib.parse import quote
+                                                            vw, vh = (390, 844) if device_all == 'mobile' else (820, 1180) if device_all == 'tablet' else (1440, 900)
+                                                            screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(serp_url)}&full_page=false&viewport_width={vw}&viewport_height={vh}&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
+                                                            
+                                                            screenshot_html = f'''<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width={vw}">
+<style>* {{margin:0;padding:0}} img {{width:100%;height:auto}}</style>
+</head><body><img src="{screenshot_url}" alt="SERP"/></body></html>'''
+                                                            
+                                                            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
+                                                            st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                            st.caption("📸 SERP Screenshot (CSS override failed)")
+                                                        except:
+                                                            st.warning("Could not render SERP")
+                                                    else:
+                                                        st.warning("Could not render SERP - CSS override failed")
                                             except Exception as play_err:
                                                 # Error processing Playwright HTML
                                                 st.warning(f"⚠️ Error processing SERP HTML: {str(play_err)[:100]}")
