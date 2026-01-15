@@ -1113,9 +1113,12 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     
     # Use srcdoc if requested (better compatibility), otherwise use base64 data URI
     if use_srcdoc:
-        # Escape single quotes for srcdoc attribute (use single quotes for attribute, escape single quotes in content)
-        escaped_content = full_content.replace("'", "&#39;")
-        iframe_html = f'<iframe srcdoc=\'{escaped_content}\' style="width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: center top; display: block; background: white;"></iframe>'
+        # For srcdoc, we need to escape quotes properly
+        # Replace single quotes with HTML entity, but preserve the structure
+        # Also escape double quotes that might break the attribute
+        escaped_content = full_content.replace("'", "&#39;").replace('"', "&quot;")
+        # Use double quotes for srcdoc attribute and escape content properly
+        iframe_html = f'<iframe srcdoc="{escaped_content}" style="width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: center top; display: block; background: white;"></iframe>'
     else:
         # Use base64 encoding to avoid ALL escaping issues
         b64_html = base64.b64encode(full_content.encode('utf-8')).decode('ascii')
