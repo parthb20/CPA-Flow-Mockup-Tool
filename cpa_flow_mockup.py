@@ -2349,109 +2349,109 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     # Check if clicks > 0 - use the flow's clicks value (same as shown in info box)
                     if clicks_value > 0:
                         if has_valid_url:
-                        # Has clicks - show landing page
-                        # Check if site blocks iframe embedding
-                        try:
-                            head_response = requests.head(adv_url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'})
-                            x_frame = head_response.headers.get('X-Frame-Options', '').upper()
-                            csp = head_response.headers.get('Content-Security-Policy', '')
-                            
-                            iframe_blocked = ('DENY' in x_frame or 'SAMEORIGIN' in x_frame or 'frame-ancestors' in csp.lower())
-                        except:
-                            iframe_blocked = False
-                        
-                        if not iframe_blocked:
-                            # Try iframe src
+                            # Has clicks - show landing page
+                            # Check if site blocks iframe embedding
                             try:
-                                preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all)
-                                st.components.v1.html(preview_html, height=height, scrolling=False)
-                                st.caption("📺 Iframe")
+                                head_response = requests.head(adv_url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'})
+                                x_frame = head_response.headers.get('X-Frame-Options', '').upper()
+                                csp = head_response.headers.get('Content-Security-Policy', '')
+                                
+                                iframe_blocked = ('DENY' in x_frame or 'SAMEORIGIN' in x_frame or 'frame-ancestors' in csp.lower())
                             except:
-                                iframe_blocked = True
-                        
-                        if iframe_blocked:
-                            # Auto-fallback to HTML fetch with enhanced headers
-                            try:
-                                headers = {
-                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                                    'Accept-Language': 'en-US,en;q=0.9',
-                                    'Accept-Encoding': 'gzip, deflate, br',
-                                    'DNT': '1',
-                                    'Connection': 'keep-alive',
-                                    'Upgrade-Insecure-Requests': '1',
-                                    'Sec-Fetch-Dest': 'document',
-                                    'Sec-Fetch-Mode': 'navigate',
-                                    'Sec-Fetch-Site': 'none',
-                                    'Cache-Control': 'max-age=0'
-                                }
-                                
-                                session = requests.Session()
-                                response = session.get(adv_url, timeout=15, headers=headers, allow_redirects=True)
-                                
-                                if response.status_code == 403:
-                                    # Try Playwright first (free, bypasses many 403s)
-                                    if PLAYWRIGHT_AVAILABLE:
-                                        with st.spinner("🔄 Trying browser automation..."):
-                                            page_html = capture_with_playwright(adv_url, device=device_all)
-                                            if page_html:
-                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                                st.components.v1.html(preview_html, height=height, scrolling=False)
-                                                st.caption("🤖 Rendered via browser automation (bypassed 403)")
-                                            else:
-                                                # Playwright failed - try Screenshot API
-                                                if SCREENSHOT_API_KEY:
-                                                    try:
-                                                        from urllib.parse import quote
-                                                        screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(adv_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                                        screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
-                                                        st.components.v1.html(preview_html, height=height, scrolling=False)
-                                                        st.caption("📸 Screenshot API")
-                                                    except Exception as scr_err:
-                                                        st.warning("🚫 Site blocks access (403) - All methods failed")
-                                                        st.markdown(f"[🔗 Open in new tab]({adv_url})")
-                                                else:
-                                                    st.warning("🚫 Site blocks access (403) - Playwright failed")
-                                                    st.markdown(f"[🔗 Open in new tab]({adv_url})")
-                                    elif SCREENSHOT_API_KEY:
-                                        # No Playwright, use Screenshot API
-                                        try:
-                                            from urllib.parse import quote
-                                            screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(adv_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                            screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
-                                            st.components.v1.html(preview_html, height=height, scrolling=False)
-                                            st.caption("📸 Screenshot API")
-                                        except Exception as scr_err:
-                                            st.warning("🚫 Site blocks access (403)")
-                                            st.markdown(f"[🔗 Open landing page]({adv_url})")
-                                    else:
-                                        # No Playwright and no Screenshot API
-                                        st.warning("🚫 Site blocks access (403)")
-                                        st.info("💡 Install Playwright or add SCREENSHOT_API_KEY to bypass 403 errors")
-                                        st.markdown(f"[🔗 Open landing page]({adv_url})")
-                                elif response.status_code == 200:
-                                    # Use response.text which handles encoding automatically
-                                    page_html = response.text
-                                    
-                                    # Force UTF-8 in HTML
-                                    if '<head>' in page_html:
-                                        page_html = page_html.replace('<head>', '<head><meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">', 1)
-                                    else:
-                                        page_html = '<head><meta charset="utf-8"></head>' + page_html
-                                    
-                                    page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
-                                                      lambda m: f'src="{urljoin(adv_url, m.group(1))}"', page_html)
-                                    page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
-                                                      lambda m: f'href="{urljoin(adv_url, m.group(1))}"', page_html)
-                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                iframe_blocked = False
+                            
+                            if not iframe_blocked:
+                                # Try iframe src
+                                try:
+                                    preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all)
                                     st.components.v1.html(preview_html, height=height, scrolling=False)
-                                    st.caption("📄 HTML")
-                                else:
-                                    st.error(f"❌ HTTP {response.status_code}")
-                            except Exception as e:
-                                st.error(f"❌ {str(e)[:100]}")
+                                    st.caption("📺 Iframe")
+                                except:
+                                    iframe_blocked = True
+                            
+                            if iframe_blocked:
+                                # Auto-fallback to HTML fetch with enhanced headers
+                                try:
+                                    headers = {
+                                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                                        'Accept-Language': 'en-US,en;q=0.9',
+                                        'Accept-Encoding': 'gzip, deflate, br',
+                                        'DNT': '1',
+                                        'Connection': 'keep-alive',
+                                        'Upgrade-Insecure-Requests': '1',
+                                        'Sec-Fetch-Dest': 'document',
+                                        'Sec-Fetch-Mode': 'navigate',
+                                        'Sec-Fetch-Site': 'none',
+                                        'Cache-Control': 'max-age=0'
+                                    }
+                                    
+                                    session = requests.Session()
+                                    response = session.get(adv_url, timeout=15, headers=headers, allow_redirects=True)
+                                    
+                                    if response.status_code == 403:
+                                        # Try Playwright first (free, bypasses many 403s)
+                                        if PLAYWRIGHT_AVAILABLE:
+                                            with st.spinner("🔄 Trying browser automation..."):
+                                                page_html = capture_with_playwright(adv_url, device=device_all)
+                                                if page_html:
+                                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                                    st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                    st.caption("🤖 Rendered via browser automation (bypassed 403)")
+                                                else:
+                                                    # Playwright failed - try Screenshot API
+                                                    if SCREENSHOT_API_KEY:
+                                                        try:
+                                                            from urllib.parse import quote
+                                                            screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(adv_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
+                                                            screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
+                                                            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                                            st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                            st.caption("📸 Screenshot API")
+                                                        except Exception as scr_err:
+                                                            st.warning("🚫 Site blocks access (403) - All methods failed")
+                                                            st.markdown(f"[🔗 Open in new tab]({adv_url})")
+                                                    else:
+                                                        st.warning("🚫 Site blocks access (403) - Playwright failed")
+                                                        st.markdown(f"[🔗 Open in new tab]({adv_url})")
+                                        elif SCREENSHOT_API_KEY:
+                                            # No Playwright, use Screenshot API
+                                            try:
+                                                from urllib.parse import quote
+                                                screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(adv_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
+                                                screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
+                                                preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                st.caption("📸 Screenshot API")
+                                            except Exception as scr_err:
+                                                st.warning("🚫 Site blocks access (403)")
+                                                st.markdown(f"[🔗 Open landing page]({adv_url})")
+                                        else:
+                                            # No Playwright and no Screenshot API
+                                            st.warning("🚫 Site blocks access (403)")
+                                            st.info("💡 Install Playwright or add SCREENSHOT_API_KEY to bypass 403 errors")
+                                            st.markdown(f"[🔗 Open landing page]({adv_url})")
+                                    elif response.status_code == 200:
+                                        # Use response.text which handles encoding automatically
+                                        page_html = response.text
+                                        
+                                        # Force UTF-8 in HTML
+                                        if '<head>' in page_html:
+                                            page_html = page_html.replace('<head>', '<head><meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">', 1)
+                                        else:
+                                            page_html = '<head><meta charset="utf-8"></head>' + page_html
+                                        
+                                        page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
+                                                          lambda m: f'src="{urljoin(adv_url, m.group(1))}"', page_html)
+                                        page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
+                                                          lambda m: f'href="{urljoin(adv_url, m.group(1))}"', page_html)
+                                        preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                        st.components.v1.html(preview_html, height=height, scrolling=False)
+                                        st.caption("📄 HTML")
+                                    else:
+                                        st.error(f"❌ HTTP {response.status_code}")
+                                except Exception as e:
+                                    st.error(f"❌ {str(e)[:100]}")
                         else:
                             # Has clicks but no valid URL
                             st.warning("⚠️ **No Landing Page URL in Data**")
