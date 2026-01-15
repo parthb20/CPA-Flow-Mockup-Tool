@@ -32,9 +32,9 @@ except:
     GDOWN_AVAILABLE = False
 
 # Try to import playwright (for 403 bypass)
+PLAYWRIGHT_AVAILABLE = False
 try:
     from playwright.sync_api import sync_playwright
-    PLAYWRIGHT_AVAILABLE = True
     
     # Auto-install browsers on first run (Streamlit Cloud)
     try:
@@ -44,11 +44,19 @@ try:
             subprocess.run(['playwright', 'install', 'chromium', '--with-deps'], 
                           capture_output=True, timeout=120)
     except Exception as e:
-        st.warning(f"Playwright browser install: {str(e)[:50]}")
-        pass  # If install fails, Playwright will gracefully fail later
+        pass  # Install might fail, test browser launch instead
+    
+    # Test if browser actually works
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            browser.close()
+            PLAYWRIGHT_AVAILABLE = True
+    except Exception as e:
+        PLAYWRIGHT_AVAILABLE = False
+        # Don't show warning on startup - will show when needed
 except Exception as e:
     PLAYWRIGHT_AVAILABLE = False
-    st.warning(f"Playwright not available: {str(e)[:50]}")
 
 # OCR for screenshot text extraction (optional)
 try:
@@ -195,8 +203,11 @@ st.markdown("""
         border-radius: 12px;
         padding: 16px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        min-height: 600px;
         height: 100%;
         transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
     }
     
     .stage-card:hover {
@@ -289,7 +300,11 @@ except Exception as e:
     SCREENSHOT_API_KEY = ""
 
 # Session state
-for key in ['data_a', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'similarities', 'last_campaign_key']:
+# FORCE CLEAR SIMILARITY SCORES - REMOVED FEATURE
+if 'similarities' in st.session_state:
+    del st.session_state.similarities
+
+for key in ['data_a', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'last_campaign_key']:
     if key not in st.session_state:
         if key == 'view_mode':
             st.session_state[key] = 'basic'
@@ -297,6 +312,10 @@ for key in ['data_a', 'loading_done', 'default_flow', 'current_flow', 'view_mode
             st.session_state[key] = 'horizontal'
         else:
             st.session_state[key] = None
+
+# Ensure similarities is NEVER set
+if 'similarities' in st.session_state:
+    del st.session_state.similarities
 
 def load_csv_from_gdrive(file_id):
     """Load CSV from Google Drive - handles CSV, ZIP, GZIP, and large file virus scan"""
@@ -765,34 +784,34 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     if device == 'mobile':
         device_w = 390
         container_height = 844
-        scale = 0.55  # Increased from 0.35 for better visibility
+        scale = 0.55  # Balanced size (390px → 214px display)
         frame_style = "border-radius: 40px; border: 10px solid #000000;"
         
-        # Mobile chrome
+        # Mobile chrome - use single quotes to avoid escaping issues
         device_chrome = """
-        <div style="background: #000; color: white; padding: 6px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500;">
+        <div style='background: #000; color: white; padding: 6px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500;'>
             <div>9:41</div>
-            <div style="display: flex; gap: 4px; align-items: center;">
+            <div style='display: flex; gap: 4px; align-items: center;'>
                 <span>📶</span>
                 <span>📡</span>
                 <span>🔋</span>
             </div>
         </div>
-        <div style="background: #f7f7f7; border-bottom: 1px solid #d1d1d1; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
-            <div style="flex: 1; background: white; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; border: 1px solid #e0e0e0;">
-                <span style="font-size: 16px;">🔒</span>
-                <span style="color: #666; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">URL</span>
-                <span style="font-size: 16px;">🔄</span>
+        <div style='background: #f7f7f7; border-bottom: 1px solid #d1d1d1; padding: 8px 12px; display: flex; align-items: center; gap: 8px;'>
+            <div style='flex: 1; background: white; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; border: 1px solid #e0e0e0;'>
+                <span style='font-size: 16px;'>🔒</span>
+                <span style='color: #666; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;'>URL</span>
+                <span style='font-size: 16px;'>🔄</span>
             </div>
         </div>
         """
         
         bottom_nav = """
-        <div style="position: fixed; bottom: 0; left: 0; right: 0; background: #f7f7f7; border-top: 1px solid #d1d1d1; padding: 8px; display: flex; justify-content: space-around; align-items: center;">
-            <div style="text-align: center; font-size: 20px;">◀️</div>
-            <div style="text-align: center; font-size: 20px;">▶️</div>
-            <div style="text-align: center; font-size: 20px;">↻</div>
-            <div style="text-align: center; font-size: 20px;">⊞</div>
+        <div style='position: fixed; bottom: 0; left: 0; right: 0; background: #f7f7f7; border-top: 1px solid #d1d1d1; padding: 8px; display: flex; justify-content: space-around; align-items: center;'>
+            <div style='text-align: center; font-size: 20px;'>◀️</div>
+            <div style='text-align: center; font-size: 20px;'>▶️</div>
+            <div style='text-align: center; font-size: 20px;'>↻</div>
+            <div style='text-align: center; font-size: 20px;'>⊞</div>
         </div>
         """
         chrome_height = "90px"
@@ -800,32 +819,32 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     elif device == 'tablet':
         device_w = 820
         container_height = 1180
-        scale = 0.25
+        scale = 0.35  # Balanced size (820px → 287px display)
         frame_style = "border-radius: 16px; border: 12px solid #1f2937;"
         
-        # Tablet chrome
+        # Tablet chrome - use single quotes
         device_chrome = """
-        <div style="background: #000; color: white; padding: 8px 24px; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 500;">
-            <div style="display: flex; gap: 12px;">
+        <div style='background: #000; color: white; padding: 8px 24px; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 500;'>
+            <div style='display: flex; gap: 12px;'>
                 <span>9:41 AM</span>
                 <span>Wed Jan 13</span>
             </div>
-            <div style="display: flex; gap: 8px; align-items: center;">
+            <div style='display: flex; gap: 8px; align-items: center;'>
                 <span>📶</span>
                 <span>📡</span>
                 <span>🔋</span>
             </div>
         </div>
-        <div style="background: #f0f0f0; border-bottom: 1px solid #d0d0d0; padding: 12px 16px; display: flex; align-items: center; gap: 12px;">
-            <span style="font-size: 20px;">◀️</span>
-            <span style="font-size: 20px;">▶️</span>
-            <span style="font-size: 20px;">↻</span>
-            <div style="flex: 1; background: white; border-radius: 10px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; border: 1px solid #e0e0e0;">
-                <span style="font-size: 18px;">🔒</span>
-                <span style="color: #666; font-size: 15px; flex: 1;">URL</span>
+        <div style='background: #f0f0f0; border-bottom: 1px solid #d0d0d0; padding: 12px 16px; display: flex; align-items: center; gap: 12px;'>
+            <span style='font-size: 20px;'>◀️</span>
+            <span style='font-size: 20px;'>▶️</span>
+            <span style='font-size: 20px;'>↻</span>
+            <div style='flex: 1; background: white; border-radius: 10px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; border: 1px solid #e0e0e0;'>
+                <span style='font-size: 18px;'>🔒</span>
+                <span style='color: #666; font-size: 15px; flex: 1;'>URL</span>
             </div>
-            <span style="font-size: 20px;">⊞</span>
-            <span style="font-size: 20px;">⋮</span>
+            <span style='font-size: 20px;'>⊞</span>
+            <span style='font-size: 20px;'>⋮</span>
         </div>
         """
         bottom_nav = ""
@@ -834,40 +853,67 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     else:  # laptop
         device_w = 1440
         container_height = 900
-        scale = 0.2
+        scale = 0.50  # Increased for readability (1440px → 720px display)
         frame_style = "border-radius: 8px; border: 6px solid #374151;"
         
-        # Laptop chrome
+        # Laptop chrome - use single quotes
         device_chrome = """
-        <div style="background: #e8e8e8; padding: 12px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #d0d0d0;">
-            <div style="display: flex; gap: 8px;">
-                <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f57;"></div>
-                <div style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e;"></div>
-                <div style="width: 12px; height: 12px; border-radius: 50%; background: #28c840;"></div>
+        <div style='background: #e8e8e8; padding: 12px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #d0d0d0;'>
+            <div style='display: flex; gap: 8px;'>
+                <div style='width: 12px; height: 12px; border-radius: 50%; background: #ff5f57;'></div>
+                <div style='width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e;'></div>
+                <div style='width: 12px; height: 12px; border-radius: 50%; background: #28c840;'></div>
             </div>
-            <span style="font-size: 18px; margin-left: 8px;">◀️</span>
-            <span style="font-size: 18px;">▶️</span>
-            <span style="font-size: 18px; margin-right: 8px;">↻</span>
-            <div style="flex: 1; background: white; border-radius: 6px; padding: 8px 16px; display: flex; align-items: center; gap: 12px; border: 1px solid #d0d0d0;">
-                <span style="font-size: 16px;">🔒</span>
-                <span style="color: #333; font-size: 14px; flex: 1;">https://URL</span>
-                <span style="font-size: 16px;">⭐</span>
+            <span style='font-size: 18px; margin-left: 8px;'>◀️</span>
+            <span style='font-size: 18px;'>▶️</span>
+            <span style='font-size: 18px; margin-right: 8px;'>↻</span>
+            <div style='flex: 1; background: white; border-radius: 6px; padding: 8px 16px; display: flex; align-items: center; gap: 12px; border: 1px solid #d0d0d0;'>
+                <span style='font-size: 16px;'>🔒</span>
+                <span style='color: #333; font-size: 14px; flex: 1;'>https://URL</span>
+                <span style='font-size: 16px;'>⭐</span>
             </div>
-            <span style="font-size: 18px; margin-left: 8px;">⊞</span>
-            <span style="font-size: 18px;">⋮</span>
+            <span style='font-size: 18px; margin-left: 8px;'>⊞</span>
+            <span style='font-size: 18px;'>⋮</span>
         </div>
         """
         bottom_nav = ""
         chrome_height = "52px"
     
+    # Calculate display dimensions based on scale
     display_w = int(device_w * scale)
     display_h = int(container_height * scale)
     
-    if is_url and not use_srcdoc:
-        iframe_content = f'<iframe src="{content}" style="width: 100%; height: 100%; border: none;"></iframe>'
-    else:
-        # For HTML content or when use_srcdoc=True, embed directly
-        iframe_content = content
+    # ALWAYS fetch HTML and render as srcdoc (NO IFRAME SRC) - user requested HTML only
+    original_url = None
+    if is_url:
+        # For URLs, fetch HTML first, then render as srcdoc
+        original_url = content  # Save original URL
+        try:
+            response = requests.get(content, timeout=10, headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            })
+            if response.status_code == 200:
+                content = response.text
+                # Fix relative URLs using the original URL as base
+                if original_url:
+                    from urllib.parse import urljoin
+                    content = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
+                                   lambda m: f'src="{urljoin(original_url, m.group(1))}"', content)
+                    content = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
+                                   lambda m: f'href="{urljoin(original_url, m.group(1))}"', content)
+            else:
+                # If fetch fails, return error placeholder
+                content = f'<div style="padding: 20px; text-align: center;"><p>Failed to load: HTTP {response.status_code}</p><p><a href="{original_url}" target="_blank">Open in new tab</a></p></div>'
+        except Exception as e:
+            # If fetch fails, show error
+            content = f'<div style="padding: 20px; text-align: center;"><p>Failed to load URL</p><p><a href="{original_url}" target="_blank">Open in new tab</a></p></div>'
+    
+    # Validate content - if empty or None, show placeholder with styling
+    if not content or (isinstance(content, str) and len(content.strip()) == 0):
+        content = '<html><body style="padding: 20px; text-align: center; color: #666; font-family: Arial, sans-serif;"><h3>No content available</h3><p>The content could not be loaded.</p></body></html>'
+    
+    # Always embed HTML directly (no iframe src)
+    iframe_content = content
     
     full_content = f"""
     <!DOCTYPE html>
@@ -877,14 +923,52 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         <meta charset="utf-8">
         <style>
             * {{ box-sizing: border-box; }}
-            body {{ margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; width: {device_w}px; overflow-x: hidden; }}
+            html, body {{ 
+                margin: 0; 
+                padding: 0; 
+                width: {device_w}px; 
+                max-width: {device_w}px;
+                overflow-x: hidden; 
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+            }}
             .chrome {{ width: 100%; background: white; position: fixed; top: 0; left: 0; right: 0; z-index: 100; }}
-            .content {{ position: absolute; top: {chrome_height}; bottom: {'50px' if device == 'mobile' else '0'}; left: 0; right: 0; overflow-y: auto; overflow-x: hidden; width: 100%; max-width: {device_w}px; }}
+            .content {{ 
+                position: absolute; 
+                top: {chrome_height}; 
+                bottom: {'50px' if device == 'mobile' else '0'}; 
+                left: 0; 
+                right: 0; 
+                overflow-y: auto; 
+                overflow-x: hidden; 
+                width: 100%; 
+                max-width: {device_w}px; 
+            }}
             .bottom-nav {{ position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; }}
-            /* Prevent text from breaking vertically */
-            p, div, span, h1, h2, h3, h4, h5, h6, a, li {{ white-space: normal; word-wrap: break-word; word-break: normal; }}
-            /* Ensure proper text flow */
-            * {{ max-width: 100%; }}
+            /* Prevent vertical text - allow proper word breaking */
+            p, div, span, h1, h2, h3, h4, h5, h6, a, li {{ 
+                white-space: normal !important; 
+                word-wrap: break-word !important; 
+                word-break: break-word !important;  /* Changed from 'normal' - allows breaking */
+                overflow-wrap: break-word !important;
+                max-width: 100% !important;
+            }}
+            /* Ensure text flows horizontally - CRITICAL */
+            html, body, * {{ 
+                writing-mode: horizontal-tb !important;
+                text-orientation: mixed !important;
+                direction: ltr !important;
+            }}
+            /* Constrain all direct children of content */
+            .content > * {{
+                max-width: 100% !important;
+                min-width: unset !important;
+                overflow-x: hidden !important;
+            }}
+            /* Force horizontal text on all text elements */
+            p, div, span, h1, h2, h3, h4, h5, h6, a, li, label, button {{
+                writing-mode: horizontal-tb !important;
+                text-orientation: mixed !important;
+            }}
         </style>
     </head>
     <body>
@@ -895,12 +979,17 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     </html>
     """
     
-    escaped = full_content.replace("'", "&apos;").replace('"', '&quot;')
+    # Use base64 encoding to avoid ALL escaping issues
+    # Base64 encoding bypasses all HTML escaping problems - browser decodes it automatically
+    b64_html = base64.b64encode(full_content.encode('utf-8')).decode('ascii')
+    
+    # Use transform scale for all devices
+    iframe_style = f"width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: center top; display: block; background: white;"
     
     html_output = f"""
     <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
         <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-            <iframe srcdoc='{escaped}' style="width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"></iframe>
+            <iframe src="data:text/html;base64,{b64_html}" style="{iframe_style}"></iframe>
         </div>
     </div>
     """
@@ -922,7 +1011,7 @@ def extract_text_from_screenshot(screenshot_url):
             text = pytesseract.image_to_string(img)
             return text.strip() if text else None
     except Exception as e:
-        st.warning(f"OCR failed: {str(e)[:50]}")
+        # Silent fail - don't show warning for OCR failures
         return None
     return None
 
@@ -949,8 +1038,17 @@ def unescape_adcode(adcode):
     
     return adcode
 
-def capture_with_playwright(url, device='mobile'):
-    """Capture page using Playwright with clean URL (bypasses many 403 errors)"""
+def capture_with_playwright(url, device='mobile', timeout=30000):
+    """Capture page using Playwright with clean URL (bypasses many 403 errors)
+    
+    Args:
+        url: URL to capture
+        device: 'mobile', 'tablet', or 'laptop'
+        timeout: Navigation timeout in ms (default 30000, use 60000 for SERP)
+    
+    Returns:
+        HTML content or None if failed
+    """
     if not PLAYWRIGHT_AVAILABLE:
         return None
     
@@ -1020,63 +1118,66 @@ def capture_with_playwright(url, device='mobile'):
             
             page = context.new_page()
             
-            # Comprehensive anti-detection scripts
-            page.add_init_script("""
-                // Hide webdriver property
-                Object.defineProperty(navigator, 'webdriver', {
-                    get: () => undefined
-                });
-                
-                // Override the permissions API
-                const originalQuery = window.navigator.permissions.query;
-                window.navigator.permissions.query = (parameters) => (
-                    parameters.name === 'notifications' ?
-                        Promise.resolve({ state: Notification.permission }) :
-                        originalQuery(parameters)
-                );
-                
-                // Mock plugins
-                Object.defineProperty(navigator, 'plugins', {
-                    get: () => [
-                        {
-                            0: {type: "application/x-google-chrome-pdf", suffixes: "pdf", description: "Portable Document Format"},
-                            description: "Portable Document Format",
-                            filename: "internal-pdf-viewer",
-                            length: 1,
-                            name: "Chrome PDF Plugin"
-                        }
-                    ]
-                });
-                
-                // Mock languages
-                Object.defineProperty(navigator, 'languages', {
-                    get: () => ['en-US', 'en']
-                });
-                
-                // Add chrome object for Chromium
-                if (!window.chrome) {
-                    window.chrome = {
-                        runtime: {},
-                        loadTimes: function() {},
-                        csi: function() {},
-                        app: {}
-                    };
-                }
-                
-                // Mock permissions
-                const originalPermissions = navigator.permissions;
-                Object.defineProperty(navigator, 'permissions', {
-                    get: () => ({
-                        query: async (params) => ({
-                            state: 'prompt',
-                            onchange: null
+            # Comprehensive anti-detection scripts (wrap in try-catch)
+            try:
+                page.add_init_script("""
+                    // Hide webdriver property
+                    Object.defineProperty(navigator, 'webdriver', {
+                        get: () => undefined
+                    });
+                    
+                    // Override the permissions API
+                    const originalQuery = window.navigator.permissions.query;
+                    window.navigator.permissions.query = (parameters) => (
+                        parameters.name === 'notifications' ?
+                            Promise.resolve({ state: Notification.permission }) :
+                            originalQuery(parameters)
+                    );
+                    
+                    // Mock plugins
+                    Object.defineProperty(navigator, 'plugins', {
+                        get: () => [
+                            {
+                                0: {type: "application/x-google-chrome-pdf", suffixes: "pdf", description: "Portable Document Format"},
+                                description: "Portable Document Format",
+                                filename: "internal-pdf-viewer",
+                                length: 1,
+                                name: "Chrome PDF Plugin"
+                            }
+                        ]
+                    });
+                    
+                    // Mock languages
+                    Object.defineProperty(navigator, 'languages', {
+                        get: () => ['en-US', 'en']
+                    });
+                    
+                    // Add chrome object for Chromium
+                    if (!window.chrome) {
+                        window.chrome = {
+                            runtime: {},
+                            loadTimes: function() {},
+                            csi: function() {},
+                            app: {}
+                        };
+                    }
+                    
+                    // Mock permissions
+                    const originalPermissions = navigator.permissions;
+                    Object.defineProperty(navigator, 'permissions', {
+                        get: () => ({
+                            query: async (params) => ({
+                                state: 'prompt',
+                                onchange: null
+                            })
                         })
-                    })
-                });
-            """)
+                    });
+                """)
+            except Exception as e:
+                pass  # Script injection failed, continue anyway
             
-            # Set timeout
-            page.set_default_navigation_timeout(30000)
+            # Set timeout (use provided timeout parameter)
+            page.set_default_navigation_timeout(timeout)
             
             # Handle dialogs automatically
             page.on("dialog", lambda dialog: dialog.dismiss())
@@ -1136,9 +1237,13 @@ def capture_with_playwright(url, device='mobile'):
                 return html_content
                 
             except Exception as e:
-                browser.close()
+                try:
+                    browser.close()
+                except:
+                    pass
                 return None
     except Exception as e:
+        # Return None on any error (caller will handle fallback)
         return None
 
 def parse_creative_html(response_str):
@@ -1209,7 +1314,25 @@ def parse_creative_html(response_str):
 # Simple title at top (Streamlit handles styling)
 st.title("📊 CPA Flow Analysis v2")
 
+# ============================================
+# FORCE CLEAR SIMILARITY SCORES - REMOVED FEATURE
+# ============================================
+# This feature has been completely removed
+# Clear any cached similarity scores MULTIPLE TIMES
+if 'similarities' in st.session_state:
+    del st.session_state.similarities
+# Force set to None and delete again
+try:
+    st.session_state.similarities = None
+    del st.session_state.similarities
+except:
+    pass
+# Final check
+if 'similarities' in st.session_state:
+    del st.session_state.similarities
+
 # Auto-load from Google Drive (silent loading)
+
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
         try:
@@ -1254,7 +1377,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
         if st.session_state.last_campaign_key != campaign_key:
             st.session_state.default_flow = None
             st.session_state.current_flow = None
-            st.session_state.similarities = None
+            # Similarity scores removed - clear any cached state
+            if 'similarities' in st.session_state:
+                del st.session_state.similarities
             st.session_state.last_campaign_key = campaign_key
         
         if selected_campaign and selected_campaign != '-- Select Campaign --':
@@ -1424,8 +1549,25 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 current_serp = current_flow.get('serp_template_name', serps[0] if serps else '')
                 final_filtered = url_filtered[url_filtered['serp_template_name'] == current_serp] if serps else url_filtered
                 
+                # Preserve original clicks/conversions before updating (for landing page check)
+                original_clicks = safe_int(current_flow.get('clicks', 0), default=0)
+                original_conversions = safe_int(current_flow.get('conversions', 0), default=0)
+                
                 if len(final_filtered) > 0:
                     current_flow.update(final_filtered.iloc[0].to_dict())
+                    # Restore aggregated clicks/conversions if we have filtered data
+                    if len(final_filtered) > 1:
+                        agg_clicks = safe_int(final_filtered['clicks'].sum(), default=0)
+                        agg_conversions = safe_int(final_filtered['conversions'].sum(), default=0)
+                        if agg_clicks > 0:
+                            current_flow['clicks'] = agg_clicks
+                        if agg_conversions > 0:
+                            current_flow['conversions'] = agg_conversions
+                    elif original_clicks > 0:
+                        # Keep original if single row has 0
+                        current_flow['clicks'] = original_clicks
+                    if original_conversions > 0:
+                        current_flow['conversions'] = original_conversions
                 
                 # Update session state
                 st.session_state.current_flow = current_flow
@@ -1491,7 +1633,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     url_filtered = dom_filtered[dom_filtered['publisher_url'] == urls[0]] if urls else dom_filtered
                                     if len(url_filtered) > 0:
                                         current_flow.update(url_filtered.iloc[0].to_dict())
-                                    st.session_state.similarities = None  # Reset scores
+                                    # Similarity scores removed
                                     st.rerun()
                             
                             # URL selector
@@ -1511,7 +1653,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     final_filtered = url_filtered
                                     if len(final_filtered) > 0:
                                         current_flow.update(final_filtered.iloc[0].to_dict())
-                                    st.session_state.similarities = None  # Reset scores
+                                    # Similarity scores removed
                                     st.rerun()
                             
                             # Show count
@@ -1583,48 +1725,37 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 st.components.v1.html(preview_html, height=height, scrolling=False)
                                                 st.caption("🤖 Rendered via browser automation (bypassed 403)")
                                             else:
-                                                # Try screenshot API as fallback
+                                                # Playwright failed - try Screenshot API
                                                 if SCREENSHOT_API_KEY:
-                                                    from urllib.parse import quote
-                                                    screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(pub_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                                    screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                                    preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
-                                                    st.components.v1.html(preview_html, height=height, scrolling=False)
-                                                    st.caption("📸 Screenshot API")
-                                                    
-                                                    # Automatically extract text from screenshot
-                                                    if OCR_AVAILABLE:
-                                                        try:
-                                                            extracted_text = extract_text_from_screenshot(screenshot_url)
-                                                            if extracted_text:
-                                                                with st.expander("📝 Extracted Text from Screenshot"):
-                                                                    st.text(extracted_text[:1000])
-                                                        except Exception as ocr_err:
-                                                            pass  # Silent fail for OCR
+                                                    try:
+                                                        from urllib.parse import quote
+                                                        screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(pub_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
+                                                        screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
+                                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                                        st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                        st.caption("📸 Screenshot API")
+                                                    except Exception as scr_err:
+                                                        st.warning("🚫 Site blocks access (403) - All methods failed")
+                                                        st.markdown(f"[🔗 Open in new tab]({pub_url})")
                                                 else:
-                                                    st.warning("🚫 Site blocks access (403)")
+                                                    st.warning("🚫 Site blocks access (403) - Playwright failed")
                                                     st.markdown(f"[🔗 Open in new tab]({pub_url})")
                                     elif SCREENSHOT_API_KEY:
-                                        # No Playwright, use screenshot API
-                                        from urllib.parse import quote
-                                        screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(pub_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                        screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
-                                        st.components.v1.html(preview_html, height=height, scrolling=False)
-                                        st.caption("📸 Screenshot API")
-                                        
-                                        # Automatically extract text from screenshot
-                                        if OCR_AVAILABLE:
-                                            try:
-                                                extracted_text = extract_text_from_screenshot(screenshot_url)
-                                                if extracted_text:
-                                                    with st.expander("📝 Extracted Text from Screenshot"):
-                                                        st.text(extracted_text[:1000])
-                                            except Exception as ocr_err:
-                                                pass  # Silent fail for OCR
+                                        # No Playwright, use Screenshot API
+                                        try:
+                                            from urllib.parse import quote
+                                            screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(pub_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
+                                            screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
+                                            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                            st.components.v1.html(preview_html, height=height, scrolling=False)
+                                            st.caption("📸 Screenshot API")
+                                        except Exception as scr_err:
+                                            st.warning("🚫 Site blocks access (403)")
+                                            st.markdown(f"[🔗 Open in new tab]({pub_url})")
                                     else:
+                                        # No Playwright and no Screenshot API
                                         st.warning("🚫 Site blocks access (403)")
-                                        st.info("Install Playwright or add SCREENSHOT_API_KEY")
+                                        st.info("💡 Install Playwright or add SCREENSHOT_API_KEY to bypass 403 errors")
                                         st.markdown(f"[🔗 Open in new tab]({pub_url})")
                                 elif response.status_code == 200:
                                     # Use response.text which handles encoding automatically
@@ -1686,6 +1817,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             st.caption("*Auto-selected based on flow*")
                     else:
                         st.caption(f"**Size:** {creative_size}")
+                        st.caption(f"**Keyword:** {current_kw}")
                     
                     # Get response column (creative data)
                     response_value = current_flow.get('response', None)
@@ -1745,7 +1877,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     final_filtered = url_filtered[url_filtered['serp_template_name'] == selected_serp]
                                     if len(final_filtered) > 0:
                                         current_flow.update(final_filtered.iloc[0].to_dict())
-                                    st.session_state.similarities = None  # Reset scores
+                                    # Similarity scores removed
                                     st.rerun()
                             
                                 # Show ad details
@@ -1760,10 +1892,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     # Construct SERP URL dynamically from serp_template_key
                     serp_template_key = current_flow.get('serp_template_key', '')
                     
-                    # Always show the constructed SERP URL as clickable link
+                    # Always show the constructed SERP URL (full URL + clickable link)
                     if serp_template_key:
                         final_serp_url = SERP_BASE_URL + str(serp_template_key)
-                        st.markdown(f"**Final SERP URL:** [🔗 {final_serp_url}]({final_serp_url})")
+                        st.text("Final SERP URL:")
+                        st.code(final_serp_url, language=None)
+                        st.markdown(f"[🔗 Open in new tab]({final_serp_url})")
                     
                     if serp_template_key and pd.notna(serp_template_key) and str(serp_template_key).strip():
                         # Build SERP URL: base + template key
@@ -1778,7 +1912,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         ad_display_url = current_flow.get('ad_display_url', '')
                         keyword = current_flow.get('keyword_term', '')
                         
-                        # NEW APPROACH: Fetch HTML FIRST, replace values, THEN render as iframe
+                        # ALWAYS fetch HTML FIRST, replace values, THEN render (NO IFRAME SRC)
                         try:
                             # Step 1: Fetch SERP HTML
                             response = requests.get(serp_url, timeout=15, headers={
@@ -1790,58 +1924,92 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             if response.status_code == 200:
                                 serp_html = response.text
                                 
-                                # Step 2: Replace ad content in SERP HTML using BeautifulSoup
+                                # Step 2: Replace ad content in SERP HTML
+                                # FIRST: Use regex to replace keyword in "Sponsored results for:" text (most reliable)
+                                if keyword:
+                                    # Replace any variation: "Sponsored results for: ..." or "Sponsored results for: '...'"
+                                    # Try multiple patterns to catch all variations
+                                    patterns = [
+                                        (r'Sponsored results for:\s*["\']?[^"\']*["\']?', f'Sponsored results for: "{keyword}"'),
+                                        (r'Sponsored results for:\s*[^<]*', f'Sponsored results for: "{keyword}"'),
+                                        (r'Sponsored results for[^:]*:\s*["\']?[^"\']*["\']?', f'Sponsored results for: "{keyword}"'),
+                                    ]
+                                    for pattern, replacement in patterns:
+                                        if re.search(pattern, serp_html, re.IGNORECASE):
+                                            serp_html = re.sub(pattern, replacement, serp_html, flags=re.IGNORECASE, count=1)
+                                            break
+                                
+                                # THEN: Use BeautifulSoup for structured replacements
                                 from bs4 import BeautifulSoup
                                 soup = BeautifulSoup(serp_html, 'html.parser')
                                 
-                                # Debug: Show what we're replacing
                                 replacement_made = False
                                 
-                                # 1. Replace keyword in "Sponsored results for:" text (all occurrences)
-                                for text_node in soup.find_all(string=True):
-                                    text_str = str(text_node)
-                                    if 'Sponsored results for:' in text_str or 'sponsored results for:' in text_str.lower():
-                                        new_text = re.sub(
-                                            r'(Sponsored results for:|sponsored results for:)\s*["\']?([^"\'<>]*)["\']?',
-                                            f'\\1 "{keyword}"',
-                                            text_str,
-                                            flags=re.IGNORECASE
-                                        )
-                                        if new_text != text_str:
-                                            text_node.replace_with(new_text)
-                                            replacement_made = True
+                                # Find ad/sponsored container
+                                ad_container = None
+                                for pattern in [r'sponsored', r'ad-result', r'paid', r'ad-container', r'sponsor', r'ad-result']:
+                                    ad_container = soup.find('div', class_=re.compile(pattern, re.IGNORECASE))
+                                    if ad_container:
+                                        break
                                 
-                                # 2. Replace ad title - find ALL elements with title class, replace FIRST one
+                                # If no container found, try finding by text
+                                if not ad_container:
+                                    for elem in soup.find_all(string=re.compile(r'Sponsored results for:', re.IGNORECASE)):
+                                        parent = elem.parent
+                                        while parent and parent.name != 'div':
+                                            parent = parent.parent
+                                        if parent:
+                                            ad_container = parent
+                                            break
+                                
+                                # Search scope: ad container if found, otherwise whole document
+                                search_scope = ad_container if ad_container else soup
+                                
+                                # Replace ad title - search more broadly
                                 if ad_title:
-                                    title_elements = soup.find_all(class_=re.compile(r'title', re.IGNORECASE))
-                                    if title_elements:
-                                        # Replace the first title element's content
-                                        first_title = title_elements[0]
-                                        first_title.clear()
-                                        first_title.append(ad_title)
+                                    # Try multiple strategies
+                                    title_elem = None
+                                    # Strategy 1: Find by class containing "title"
+                                    title_elem = search_scope.find(class_=re.compile(r'title', re.IGNORECASE))
+                                    # Strategy 2: Find heading tags (h1-h6) in ad container
+                                    if not title_elem:
+                                        title_elem = search_scope.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+                                    # Strategy 3: Find any element with "title" in id or class
+                                    if not title_elem:
+                                        title_elem = search_scope.find(attrs={'class': re.compile(r'title', re.IGNORECASE)})
+                                    if not title_elem and ad_container:
+                                        # Fallback: search globally
+                                        title_elem = soup.find(class_=re.compile(r'title', re.IGNORECASE))
+                                    if title_elem:
+                                        title_elem.clear()
+                                        title_elem.append(ad_title)
                                         replacement_made = True
                                 
-                                # 3. Replace ad description - find ALL elements with desc class, replace FIRST one
+                                # Replace ad description
                                 if ad_desc:
-                                    desc_elements = soup.find_all(class_=re.compile(r'desc', re.IGNORECASE))
-                                    if desc_elements:
-                                        first_desc = desc_elements[0]
-                                        first_desc.clear()
-                                        first_desc.append(ad_desc)
+                                    desc_elem = search_scope.find(class_=re.compile(r'desc|description|snippet', re.IGNORECASE))
+                                    if not desc_elem:
+                                        # Try finding paragraph or span in ad container
+                                        desc_elem = search_scope.find(['p', 'span'], class_=re.compile(r'desc|description|snippet', re.IGNORECASE))
+                                    if not desc_elem and ad_container:
+                                        desc_elem = soup.find(class_=re.compile(r'desc|description|snippet', re.IGNORECASE))
+                                    if desc_elem:
+                                        desc_elem.clear()
+                                        desc_elem.append(ad_desc)
                                         replacement_made = True
                                 
-                                # 4. Replace ad display URL - find ALL elements with url class, replace FIRST one
+                                # Replace ad display URL
                                 if ad_display_url:
-                                    url_elements = soup.find_all(class_=re.compile(r'url', re.IGNORECASE))
-                                    if url_elements:
-                                        first_url = url_elements[0]
-                                        first_url.clear()
-                                        first_url.append(ad_display_url)
+                                    url_elem = search_scope.find(class_=re.compile(r'url|display.*url|ad.*url|link', re.IGNORECASE))
+                                    if not url_elem:
+                                        # Try finding link element
+                                        url_elem = search_scope.find('a', class_=re.compile(r'url|display', re.IGNORECASE))
+                                    if not url_elem and ad_container:
+                                        url_elem = soup.find(class_=re.compile(r'url|display.*url|ad.*url', re.IGNORECASE))
+                                    if url_elem:
+                                        url_elem.clear()
+                                        url_elem.append(ad_display_url)
                                         replacement_made = True
-                                
-                                # Debug info
-                                if not replacement_made:
-                                    st.warning("⚠️ No matching elements found for replacement. Check SERP HTML structure.")
                                 
                                 # Convert back to HTML
                                 serp_html = str(soup)
@@ -1852,49 +2020,157 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 serp_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
                                                   lambda m: f'href="{urljoin(serp_url, m.group(1))}"', serp_html)
                                 
-                                # Add CSS to prevent vertical text wrapping
-                                serp_html = re.sub(r'<head>', f'<head><style>body, p, div, span, h1, h2, h3, h4, h5, h6, a, li {{ white-space: normal !important; word-wrap: break-word !important; word-break: normal !important; max-width: 100% !important; overflow-wrap: break-word !important; }}</style>', serp_html, flags=re.IGNORECASE)
+                                # Add mobile-friendly viewport and CSS to prevent vertical text
+                                # Get device width based on selected device
+                                device_widths = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
+                                current_device_w = device_widths.get(device_all, 390)
+                                
+                                mobile_css = f'''
+                                <meta name="viewport" content="width={current_device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+                                <style>
+                                    * {{ 
+                                        box-sizing: border-box !important; 
+                                        max-width: 100% !important;
+                                    }}
+                                    html, body {{ 
+                                        width: {current_device_w}px !important;
+                                        max-width: {current_device_w}px !important; 
+                                        overflow-x: hidden !important; 
+                                        margin: 0 !important; 
+                                        padding: 0 !important; 
+                                        font-size: 14px !important;
+                                    }}
+                                    /* Force horizontal text flow - CRITICAL */
+                                    html, body, * {{
+                                        writing-mode: horizontal-tb !important;
+                                        text-orientation: mixed !important;
+                                        direction: ltr !important;
+                                    }}
+                                    /* Allow text to wrap properly - CRITICAL */
+                                    p, div, span, a, h1, h2, h3, h4, h5, h6, li, td, th, label, button {{
+                                        word-break: break-word !important;
+                                        overflow-wrap: break-word !important;
+                                        white-space: normal !important;
+                                        max-width: 100% !important;
+                                        writing-mode: horizontal-tb !important;
+                                        text-orientation: mixed !important;
+                                    }}
+                                    /* Override fixed widths */
+                                    img, iframe, video {{
+                                        max-width: 100% !important;
+                                        height: auto !important;
+                                    }}
+                                    /* CRITICAL: Remove ALL min-width constraints */
+                                    * {{
+                                        min-width: unset !important;
+                                    }}
+                                    /* Prevent horizontal scroll */
+                                    [class*="container"], [class*="ad-result"], [class*="serp-result"], [class*="sponsored"], 
+                                    [class*="result"], [class*="ad"], div, section, article {{
+                                        max-width: 100% !important; 
+                                        min-width: unset !important;
+                                        width: auto !important;
+                                    }}
+                                    /* Ensure tables don't break layout */
+                                    table {{
+                                        width: 100% !important;
+                                        max-width: 100% !important;
+                                        table-layout: auto !important;
+                                    }}
+                                </style>
+                                '''
+                                
+                                # Inject into head tag
+                                if re.search(r'<head>', serp_html, re.IGNORECASE):
+                                    serp_html = re.sub(
+                                        r'<head>',
+                                        f'<head>{mobile_css}',
+                                        serp_html,
+                                        flags=re.IGNORECASE,
+                                        count=1
+                                    )
+                                else:
+                                    # No head tag, add one
+                                    serp_html = f'<head>{mobile_css}</head>{serp_html}'
                                 
                                 # Step 3: Render modified HTML as iframe using srcdoc
-                                preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
+                                # Use selected device (respect user choice)
+                                # Use laptop device for SERP to prevent vertical text (SERP needs wider viewport)
+                                preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device='laptop', use_srcdoc=True)
                                 st.components.v1.html(preview_html, height=height, scrolling=False)
                                 st.caption("📺 SERP with injected ad content")
                                 
                             elif response.status_code == 403:
-                                # Try Playwright as fallback
+                                # Try Playwright as fallback (with longer timeout for SERP)
                                 if PLAYWRIGHT_AVAILABLE:
                                     with st.spinner("🔄 Using browser automation..."):
-                                        page_html = capture_with_playwright(serp_url, device=device_all)
+                                        page_html = capture_with_playwright(serp_url, device=device_all, timeout=60000)
                                         if page_html:
-                                            # Apply same replacements
+                                            # Apply same replacements using regex FIRST, then BeautifulSoup
+                                            # Replace keyword using regex (most reliable)
+                                            if keyword:
+                                                page_html = re.sub(
+                                                    r'Sponsored results for:\s*["\']?[^"\']*["\']?',
+                                                    f'Sponsored results for: "{keyword}"',
+                                                    page_html,
+                                                    flags=re.IGNORECASE,
+                                                    count=1
+                                                )
+                                            
+                                            # Then use BeautifulSoup for structured replacements
                                             from bs4 import BeautifulSoup
                                             soup = BeautifulSoup(page_html, 'html.parser')
                                             
-                                            # Same replacement logic as above
-                                            for text_node in soup.find_all(string=True):
-                                                if 'Sponsored results for:' in text_node or 'sponsored results for:' in text_node.lower():
-                                                    new_text = re.sub(
-                                                        r'(Sponsored results for:|sponsored results for:)\s*["\']?([^"\'<>]*)["\']?',
-                                                        f'\\1 "{keyword}"',
-                                                        text_node,
-                                                        flags=re.IGNORECASE
-                                                    )
-                                                    text_node.replace_with(new_text)
+                                            # Find ad container
+                                            ad_container = None
+                                            for pattern in [r'sponsored', r'ad-result', r'paid', r'ad-container', r'sponsor']:
+                                                ad_container = soup.find('div', class_=re.compile(pattern, re.IGNORECASE))
+                                                if ad_container:
+                                                    break
                                             
-                                            title_elements = soup.find_all(class_=re.compile(r'title', re.IGNORECASE))
-                                            if title_elements and ad_title:
-                                                title_elements[0].clear()
-                                                title_elements[0].append(ad_title)
+                                            if not ad_container:
+                                                for elem in soup.find_all(string=re.compile(r'Sponsored results for:', re.IGNORECASE)):
+                                                    parent = elem.parent
+                                                    while parent and parent.name != 'div':
+                                                        parent = parent.parent
+                                                    if parent:
+                                                        ad_container = parent
+                                                        break
                                             
-                                            desc_elements = soup.find_all(class_=re.compile(r'desc', re.IGNORECASE))
-                                            if desc_elements and ad_desc:
-                                                desc_elements[0].clear()
-                                                desc_elements[0].append(ad_desc)
+                                            search_scope = ad_container if ad_container else soup
                                             
-                                            url_elements = soup.find_all(class_=re.compile(r'url', re.IGNORECASE))
-                                            if url_elements and ad_display_url:
-                                                url_elements[0].clear()
-                                                url_elements[0].append(ad_display_url)
+                                            # Replace ad title
+                                            if ad_title:
+                                                title_elem = search_scope.find(class_=re.compile(r'title', re.IGNORECASE))
+                                                if not title_elem:
+                                                    title_elem = search_scope.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+                                                if not title_elem and ad_container:
+                                                    title_elem = soup.find(class_=re.compile(r'title', re.IGNORECASE))
+                                                if title_elem:
+                                                    title_elem.clear()
+                                                    title_elem.append(ad_title)
+                                            
+                                            # Replace ad description
+                                            if ad_desc:
+                                                desc_elem = search_scope.find(class_=re.compile(r'desc|description|snippet', re.IGNORECASE))
+                                                if not desc_elem:
+                                                    desc_elem = search_scope.find(['p', 'span'], class_=re.compile(r'desc|description|snippet', re.IGNORECASE))
+                                                if not desc_elem and ad_container:
+                                                    desc_elem = soup.find(class_=re.compile(r'desc|description|snippet', re.IGNORECASE))
+                                                if desc_elem:
+                                                    desc_elem.clear()
+                                                    desc_elem.append(ad_desc)
+                                            
+                                            # Replace ad display URL
+                                            if ad_display_url:
+                                                url_elem = search_scope.find(class_=re.compile(r'url|display.*url|ad.*url|link', re.IGNORECASE))
+                                                if not url_elem:
+                                                    url_elem = search_scope.find('a', class_=re.compile(r'url|display', re.IGNORECASE))
+                                                if not url_elem and ad_container:
+                                                    url_elem = soup.find(class_=re.compile(r'url|display.*url|ad.*url', re.IGNORECASE))
+                                                if url_elem:
+                                                    url_elem.clear()
+                                                    url_elem.append(ad_display_url)
                                             
                                             serp_html = str(soup)
                                             serp_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
@@ -1902,22 +2178,80 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                             serp_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
                                                               lambda m: f'href="{urljoin(serp_url, m.group(1))}"', serp_html)
                                             
-                                            preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
+                                            # Add mobile-friendly CSS (enhanced version)
+                                            device_widths = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
+                                            current_device_w = device_widths.get(device_all, 390)
+                                            
+                                            mobile_css = f'''
+                                            <meta name="viewport" content="width={current_device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+                                            <style>
+                                                * {{ 
+                                                    box-sizing: border-box !important; 
+                                                    max-width: 100% !important;
+                                                }}
+                                                html, body {{ 
+                                                    width: {current_device_w}px !important;
+                                                    max-width: {current_device_w}px !important; 
+                                                    overflow-x: hidden !important; 
+                                                    margin: 0 !important; 
+                                                    padding: 0 !important; 
+                                                    font-size: 14px !important;
+                                                }}
+                                                /* Force horizontal text flow - CRITICAL */
+                                                html, body, * {{
+                                                    writing-mode: horizontal-tb !important;
+                                                    text-orientation: mixed !important;
+                                                    direction: ltr !important;
+                                                }}
+                                                p, div, span, a, h1, h2, h3, h4, h5, h6, li, td, th, label, button {{
+                                                    word-break: break-word !important;
+                                                    overflow-wrap: break-word !important;
+                                                    white-space: normal !important;
+                                                    max-width: 100% !important;
+                                                    writing-mode: horizontal-tb !important;
+                                                    text-orientation: mixed !important;
+                                                }}
+                                                img, iframe, video {{
+                                                    max-width: 100% !important;
+                                                    height: auto !important;
+                                                }}
+                                                * {{
+                                                    min-width: unset !important;
+                                                }}
+                                                [class*="container"], [class*="ad-result"], [class*="serp-result"], [class*="sponsored"], 
+                                                [class*="result"], [class*="ad"], div, section, article {{
+                                                    max-width: 100% !important; 
+                                                    min-width: unset !important;
+                                                    width: auto !important;
+                                                }}
+                                                table {{
+                                                    width: 100% !important;
+                                                    max-width: 100% !important;
+                                                    table-layout: auto !important;
+                                                }}
+                                            </style>
+                                            '''
+                                            
+                                            if re.search(r'<head>', serp_html, re.IGNORECASE):
+                                                serp_html = re.sub(
+                                                    r'<head>',
+                                                    f'<head>{mobile_css}',
+                                                    serp_html,
+                                                    flags=re.IGNORECASE,
+                                                    count=1
+                                                )
+                                            else:
+                                                serp_html = f'<head>{mobile_css}</head>{serp_html}'
+                                            
+                                            # Use laptop device for SERP to prevent vertical text (SERP needs wider viewport)
+                                            preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device='laptop', use_srcdoc=True)
                                             st.components.v1.html(preview_html, height=height, scrolling=False)
                                             st.caption("📺 SERP (via Playwright)")
                                         else:
-                                            # Playwright failed, try screenshot API if available
-                                            if SCREENSHOT_API_KEY:
-                                                from urllib.parse import quote
-                                                screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(serp_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                                screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                                preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
-                                                st.components.v1.html(preview_html, height=height, scrolling=False)
-                                                st.caption("📸 Screenshot API")
-                                            else:
-                                                st.warning("⚠️ Could not load SERP. Install Playwright or add SCREENSHOT_API_KEY")
-                                else:
-                                    st.error(f"HTTP {response.status_code} - Install Playwright for 403 bypass")
+                                            st.warning("⚠️ Playwright failed to load SERP")
+                                            st.markdown(f"[🔗 Open SERP in new tab]({serp_url})")
+                                    else:
+                                        st.error(f"HTTP {response.status_code} - Install Playwright for 403 bypass")
                             else:
                                 st.error(f"HTTP {response.status_code}")
                                 
@@ -1976,7 +2310,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                             url_filtered = dom_filtered[dom_filtered['publisher_url'] == urls[0]]
                                             if len(url_filtered) > 0:
                                                 current_flow.update(url_filtered.iloc[0].to_dict())
-                                st.session_state.similarities = None  # Reset scores
+                                # Similarity scores removed
                                 st.rerun()
                             
                             # Show landing page URL
@@ -1986,22 +2320,28 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         st.caption(f"**Keyword:** {current_kw}")
                     
                     # Get landing URL and check clicks from current_flow
-                    # Use same logic as display (safe_int) for consistency
-                    flow_clicks = safe_int(current_flow.get('clicks', 0))
+                    # Use same logic as display (safe_int) for consistency - get from original flow, not filtered
+                    flow_clicks = current_flow.get('clicks', 0)
+                    clicks_value = safe_int(flow_clicks, default=0)
+                    
+                    # Debug: Show what we have
+                    if st.session_state.view_mode == 'advanced':
+                        st.caption(f"🔍 Debug: clicks={clicks_value}, URL={'present' if (adv_url and pd.notna(adv_url) and str(adv_url).strip()) else 'missing/empty'}")
                     
                     # Show landing URL info in basic mode
                     if st.session_state.view_mode == 'basic' and adv_url and pd.notna(adv_url):
                         url_display = str(adv_url)[:60] + "..." if len(str(adv_url)) > 60 else str(adv_url)
                         st.caption(f"**Landing URL:** {url_display}")
                     
-                    # Check if clicks > 0 (same check as display uses)
-                    if flow_clicks <= 0:
-                        # This specific view has no clicks
-                        st.warning("⚠️ **No Ad Clicks**")
-                        st.caption("This view has 0 clicks - user didn't click the ad.")
-                    elif adv_url and pd.notna(adv_url) and str(adv_url).strip():
-                        # Check if site blocks iframe embedding
-                        try:
+                    # Check if we have a valid landing URL
+                    has_valid_url = adv_url and pd.notna(adv_url) and str(adv_url).strip() and str(adv_url).lower() != 'nan'
+                    
+                    # Check if clicks > 0 - use the flow's clicks value (same as shown in info box)
+                    if clicks_value > 0:
+                        if has_valid_url:
+                            # Has clicks - show landing page
+                            # Check if site blocks iframe embedding
+                            try:
                             head_response = requests.head(adv_url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'})
                             x_frame = head_response.headers.get('X-Frame-Options', '').upper()
                             csp = head_response.headers.get('Content-Security-Policy', '')
@@ -2049,48 +2389,37 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 st.components.v1.html(preview_html, height=height, scrolling=False)
                                                 st.caption("🤖 Rendered via browser automation (bypassed 403)")
                                             else:
-                                                # Try screenshot API as fallback
+                                                # Playwright failed - try Screenshot API
                                                 if SCREENSHOT_API_KEY:
-                                                    from urllib.parse import quote
-                                                    screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(adv_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                                    screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                                    preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
-                                                    st.components.v1.html(preview_html, height=height, scrolling=False)
-                                                    st.caption("📸 Screenshot API")
-                                                    
-                                                    # Automatically extract text from screenshot
-                                                    if OCR_AVAILABLE:
-                                                        try:
-                                                            extracted_text = extract_text_from_screenshot(screenshot_url)
-                                                            if extracted_text:
-                                                                with st.expander("📝 Extracted Text from Screenshot"):
-                                                                    st.text(extracted_text[:1000])
-                                                        except Exception as ocr_err:
-                                                            pass  # Silent fail for OCR
+                                                    try:
+                                                        from urllib.parse import quote
+                                                        screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(adv_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
+                                                        screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
+                                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                                        st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                        st.caption("📸 Screenshot API")
+                                                    except Exception as scr_err:
+                                                        st.warning("🚫 Site blocks access (403) - All methods failed")
+                                                        st.markdown(f"[🔗 Open in new tab]({adv_url})")
                                                 else:
-                                                    st.warning("🚫 Site blocks access (403)")
+                                                    st.warning("🚫 Site blocks access (403) - Playwright failed")
                                                     st.markdown(f"[🔗 Open in new tab]({adv_url})")
                                     elif SCREENSHOT_API_KEY:
-                                        # No Playwright, use screenshot API
-                                        from urllib.parse import quote
-                                        screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(adv_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                        screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
-                                        st.components.v1.html(preview_html, height=height, scrolling=False)
-                                        st.caption("📸 Screenshot API")
-                                        
-                                        # Automatically extract text from screenshot
-                                        if OCR_AVAILABLE:
-                                            try:
-                                                extracted_text = extract_text_from_screenshot(screenshot_url)
-                                                if extracted_text:
-                                                    with st.expander("📝 Extracted Text from Screenshot"):
-                                                        st.text(extracted_text[:1000])
-                                            except Exception as ocr_err:
-                                                pass  # Silent fail for OCR
+                                        # No Playwright, use Screenshot API
+                                        try:
+                                            from urllib.parse import quote
+                                            screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(adv_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
+                                            screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
+                                            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                            st.components.v1.html(preview_html, height=height, scrolling=False)
+                                            st.caption("📸 Screenshot API")
+                                        except Exception as scr_err:
+                                            st.warning("🚫 Site blocks access (403)")
+                                            st.markdown(f"[🔗 Open landing page]({adv_url})")
                                     else:
+                                        # No Playwright and no Screenshot API
                                         st.warning("🚫 Site blocks access (403)")
-                                        st.info("Install Playwright or add SCREENSHOT_API_KEY")
+                                        st.info("💡 Install Playwright or add SCREENSHOT_API_KEY to bypass 403 errors")
                                         st.markdown(f"[🔗 Open landing page]({adv_url})")
                                 elif response.status_code == 200:
                                     # Use response.text which handles encoding automatically
@@ -2113,91 +2442,42 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     st.error(f"❌ HTTP {response.status_code}")
                             except Exception as e:
                                 st.error(f"❌ {str(e)[:100]}")
+                        else:
+                            # Has clicks but no valid URL
+                            st.warning("⚠️ **No Landing Page URL in Data**")
+                            st.caption("This flow has clicks but the landing URL is missing from the data.")
                     else:
-                        st.warning("No landing page URL")
+                        # No clicks
+                        st.info("ℹ️ **No Ad Clicks**")
+                        st.caption("This view has 0 clicks - user didn't reach the landing page.")
                     
                     st.markdown('</div>', unsafe_allow_html=True)
                 
                 st.divider()
                 
-                # Calculate similarity scores
-                if 'similarities' not in st.session_state or st.session_state.similarities is None:
-                    if API_KEY:
-                        with st.spinner("🧠 Calculating similarity scores..."):
-                            st.session_state.similarities = calculate_similarities(current_flow)
-                    else:
-                        st.session_state.similarities = {}
+                # ============================================
+                # SIMILARITY SCORES COMPLETELY REMOVED - DO NOT DISPLAY
+                # ============================================
+                # This section is intentionally EMPTY - NO SIMILARITY SCORES
+                # All similarity score display code has been removed
+                # Force clear any cached state multiple times
+                if 'similarities' in st.session_state:
+                    del st.session_state.similarities
+                try:
+                    st.session_state.similarities = None
+                    del st.session_state.similarities
+                except:
+                    pass
+                if 'similarities' in st.session_state:
+                    del st.session_state.similarities
                 
-                # Similarity Scores Below
-                st.markdown("### 📊 Similarity Scores")
+                # ABSOLUTELY NO CODE DISPLAYS SIMILARITY SCORES HERE
+                # If similarity scores appear, Streamlit Cloud may be caching old code
+                # Solution: Clear Streamlit Cloud cache or redeploy
                 
-                score_cols = st.columns(3)
-                
-                with score_cols[0]:
-                    st.markdown("#### 🔗 Keyword → Ad")
-                    if 'similarities' in st.session_state and st.session_state.similarities:
-                        data = st.session_state.similarities.get('kwd_to_ad', {})
-                        if 'error' not in data:
-                            score = data.get('final_score', 0)
-                            reason = data.get('reason', 'N/A')
-                            css_class, label, color = get_score_class(score)
-                            
-                            st.markdown(f'<div class="score-box {css_class}">{score:.1%}</div>', unsafe_allow_html=True)
-                            st.markdown(f"**{label} Match**")
-                            st.caption(reason)
-                            
-                            with st.expander("📊 Details"):
-                                for key, value in data.items():
-                                    if key not in ['final_score', 'band', 'reason'] and isinstance(value, (int, float)):
-                                        st.metric(key.replace('_', ' ').title(), f"{value:.1%}")
-                        else:
-                            st.error("API Error")
-                    else:
-                        st.info("Add API key to calculate")
-                
-                with score_cols[1]:
-                    st.markdown("#### 🔗 Ad → Page")
-                    if 'similarities' in st.session_state and st.session_state.similarities:
-                        data = st.session_state.similarities.get('ad_to_page', {})
-                        if data and 'error' not in data:
-                            score = data.get('final_score', 0)
-                            reason = data.get('reason', 'N/A')
-                            css_class, label, color = get_score_class(score)
-                            
-                            st.markdown(f'<div class="score-box {css_class}">{score:.1%}</div>', unsafe_allow_html=True)
-                            st.markdown(f"**{label} Match**")
-                            st.caption(reason)
-                            
-                            with st.expander("📊 Details"):
-                                for key, value in data.items():
-                                    if key not in ['final_score', 'band', 'reason'] and isinstance(value, (int, float)):
-                                        st.metric(key.replace('_', ' ').title(), f"{value:.1%}")
-                        else:
-                            st.info("Will calculate after landing page loads")
-                    else:
-                        st.info("Add API key to calculate")
-                
-                with score_cols[2]:
-                    st.markdown("#### 🔗 Keyword → Page")
-                    if 'similarities' in st.session_state and st.session_state.similarities:
-                        data = st.session_state.similarities.get('kwd_to_page', {})
-                        if data and 'error' not in data:
-                            score = data.get('final_score', 0)
-                            reason = data.get('reason', 'N/A')
-                            css_class, label, color = get_score_class(score)
-                            
-                            st.markdown(f'<div class="score-box {css_class}">{score:.1%}</div>', unsafe_allow_html=True)
-                            st.markdown(f"**{label} Match**")
-                            st.caption(reason)
-                            
-                            with st.expander("📊 Details"):
-                                for key, value in data.items():
-                                    if key not in ['final_score', 'band', 'reason'] and isinstance(value, (int, float)):
-                                        st.metric(key.replace('_', ' ').title(), f"{value:.1%}")
-                        else:
-                            st.info("Will calculate after landing page loads")
-                    else:
-                        st.info("Add API key to calculate")
+                # Debug: Show file version to confirm correct file is running
+                if st.session_state.view_mode == 'advanced':
+                    st.caption("✅ Running: cpa_flow_mockup_v2.py (Similarity scores removed)")
             
             else:
                 st.warning("No data available for this campaign")
