@@ -864,15 +864,13 @@ def unescape_adcode(adcode):
     return adcode
 
 def capture_with_playwright(url, device='mobile'):
-    """Capture page using Playwright (bypasses many 403 errors)"""
+    """Capture page using Playwright with clean URL (bypasses many 403 errors)"""
     if not PLAYWRIGHT_AVAILABLE:
         return None
     
     try:
-        # Clean URL - remove tracking params (everything after ?)
-        from urllib.parse import urlparse, urlunparse
-        parsed = urlparse(url)
-        clean_url = urlunparse((parsed.scheme, parsed.netloc, parsed.path, '', '', ''))
+        # Clean URL - remove ALL query params (everything after ?)
+        clean_url = url.split('?')[0] if '?' in url else url
         
         # Device viewports
         viewports = {
@@ -882,36 +880,48 @@ def capture_with_playwright(url, device='mobile'):
         }
         
         with sync_playwright() as p:
-            # Launch with anti-detection
+            # Launch browser with anti-bot flags
             browser = p.chromium.launch(
                 headless=True,
-                args=['--disable-blink-features=AutomationControlled']
+                args=[
+                    '--disable-blink-features=AutomationControlled',
+                    '--disable-dev-shm-usage',
+                    '--no-sandbox'
+                ]
             )
             
+            # Create context with realistic settings
             context = browser.new_context(
                 viewport=viewports[device],
                 user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 locale='en-US',
-                timezone_id='America/New_York'
+                timezone_id='America/New_York',
+                color_scheme='light'
             )
             
             page = context.new_page()
             
-            # Hide webdriver detection
+            # Anti-detection script
             page.add_init_script("""
                 Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+                Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+                Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});
             """)
             
-            # Navigate with clean URL (no tracking params)
-            page.goto(clean_url, wait_until='domcontentloaded', timeout=20000)
-            page.wait_for_timeout(3000)  # Wait for page to settle
+            # Navigate to clean URL (NO tracking params)
+            page.goto(clean_url, wait_until='networkidle', timeout=25000)
             
-            # Get HTML
+            # Wait for content to load
+            page.wait_for_timeout(2000)
+            
+            # Get HTML content
             html_content = page.content()
             
             browser.close()
+            
             return html_content
     except Exception as e:
+        # Return None on any error (will fallback to screenshot)
         return None
 
 def parse_creative_html(response_str):
@@ -1380,19 +1390,14 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         st.info("Install Playwright or add SCREENSHOT_API_KEY")
                                         st.markdown(f"[🔗 Open in new tab]({pub_url})")
                                 elif response.status_code == 200:
-                                    # Detect and use proper encoding
-                                    if response.encoding:
-                                        page_html = response.content.decode(response.encoding, errors='replace')
-                                    else:
-                                        # Try UTF-8 first, fallback to latin-1
-                                        try:
-                                            page_html = response.content.decode('utf-8')
-                                        except:
-                                            page_html = response.content.decode('latin-1', errors='replace')
+                                    # Use response.text which handles encoding automatically
+                                    page_html = response.text
                                     
-                                    # Add charset meta tag if missing
-                                    if '<meta charset' not in page_html.lower():
-                                        page_html = page_html.replace('<head>', '<head><meta charset="utf-8">', 1)
+                                    # Force UTF-8 in HTML
+                                    if '<head>' in page_html:
+                                        page_html = page_html.replace('<head>', '<head><meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">', 1)
+                                    else:
+                                        page_html = '<head><meta charset="utf-8"></head>' + page_html
                                     
                                     # Fix relative URLs
                                     page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
@@ -1693,18 +1698,14 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         st.info("Install Playwright or add SCREENSHOT_API_KEY")
                                         st.markdown(f"[🔗 Open landing page]({adv_url})")
                                 elif response.status_code == 200:
-                                    # Detect and use proper encoding
-                                    if response.encoding:
-                                        page_html = response.content.decode(response.encoding, errors='replace')
-                                    else:
-                                        try:
-                                            page_html = response.content.decode('utf-8')
-                                        except:
-                                            page_html = response.content.decode('latin-1', errors='replace')
+                                    # Use response.text which handles encoding automatically
+                                    page_html = response.text
                                     
-                                    # Add charset meta tag if missing
-                                    if '<meta charset' not in page_html.lower():
-                                        page_html = page_html.replace('<head>', '<head><meta charset="utf-8">', 1)
+                                    # Force UTF-8 in HTML
+                                    if '<head>' in page_html:
+                                        page_html = page_html.replace('<head>', '<head><meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">', 1)
+                                    else:
+                                        page_html = '<head><meta charset="utf-8"></head>' + page_html
                                     
                                     page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
                                                       lambda m: f'src="{urljoin(adv_url, m.group(1))}"', page_html)
