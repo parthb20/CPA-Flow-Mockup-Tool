@@ -792,7 +792,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                 <span>📶</span>
                 <span>📡</span>
                 <span>🔋</span>
-            </div>
+    </div>
         </div>
         <div style="background: #f7f7f7; border-bottom: 1px solid #d1d1d1; padding: 6px 10px; display: flex; align-items: center; gap: 8px;">
             <div style="flex: 1; background: white; border-radius: 8px; padding: 6px 10px; display: flex; align-items: center; gap: 8px; border: 1px solid #e0e0e0;">
@@ -889,62 +889,157 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         # For HTML content - preserve structure properly
         content_str = str(content).strip()
         if content_str.startswith('<!DOCTYPE') or content_str.startswith('<html'):
-            # Extract body content AND preserve head styles/scripts
-            try:
-                from bs4 import BeautifulSoup
-                soup = BeautifulSoup(content_str, 'html.parser')
-                
-                # Get body content - preserve inner HTML structure
-                body = soup.find('body')
-                body_content = ''
-                if body:
-                    # Get inner HTML properly using decode_contents (preserves all HTML)
-                    body_content = body.decode_contents()
-                else:
-                    # No body tag found, check if entire content is body-like
-                    # Try to find main content area
-                    main = soup.find('main') or soup.find('div', class_=lambda x: x and ('main' in x.lower() or 'content' in x.lower()))
-                    if main:
-                        body_content = main.decode_contents()
-                    else:
-                        # Fallback: use entire content but remove html/head tags
-                        body_content = content_str
-                        # Remove DOCTYPE, html, head tags if present
-                        body_content = re.sub(r'<!DOCTYPE[^>]*>', '', body_content, flags=re.IGNORECASE)
-                        body_content = re.sub(r'<html[^>]*>', '', body_content, flags=re.IGNORECASE)
-                        body_content = re.sub(r'</html>', '', body_content, flags=re.IGNORECASE)
-                        body_content = re.sub(r'<head>.*?</head>', '', body_content, flags=re.IGNORECASE | re.DOTALL)
-                
-                # Extract and preserve head styles/scripts for inline injection
-                head = soup.find('head')
-                head_styles = ''
-                if head:
-                    # Extract all style tags and link tags (for CSS)
-                    styles = head.find_all('style')
-                    links = head.find_all('link', rel='stylesheet')
-                    scripts = head.find_all('script')
-                    
-                    # Combine all styles
-                    for style in styles:
-                        if style.string:
-                            head_styles += f'<style>{style.string}</style>'
-                    for link in links:
-                        head_styles += str(link)
-                    for script in scripts:
-                        if script.string:
-                            head_styles += f'<script>{script.string}</script>'
-                
-                # Combine head styles with body content
-                iframe_content = head_styles + body_content if head_styles else body_content
-                
-            except Exception as e:
-                # If parsing fails, use as-is
+            # For full HTML documents, check if we should keep full structure or extract body
+            # If use_srcdoc=True, we're likely rendering SERP which needs full document structure
+            if use_srcdoc:
+                # Keep FULL document structure - don't extract body
+                # This preserves all CSS and structure
                 iframe_content = content_str
+            else:
+                # Extract body content AND preserve head styles/scripts
+                try:
+                    from bs4 import BeautifulSoup
+                    soup = BeautifulSoup(content_str, 'html.parser')
+                    
+                    # Get body content - preserve inner HTML structure
+                    body = soup.find('body')
+                    body_content = ''
+                    if body:
+                        # Get inner HTML properly using decode_contents (preserves all HTML)
+                        body_content = body.decode_contents()
+                    else:
+                        # No body tag found, check if entire content is body-like
+                        # Try to find main content area
+                        main = soup.find('main') or soup.find('div', class_=lambda x: x and ('main' in x.lower() or 'content' in x.lower()))
+                        if main:
+                            body_content = main.decode_contents()
+                        else:
+                            # Fallback: use entire content but remove html/head tags
+                            body_content = content_str
+                            # Remove DOCTYPE, html, head tags if present
+                            body_content = re.sub(r'<!DOCTYPE[^>]*>', '', body_content, flags=re.IGNORECASE)
+                            body_content = re.sub(r'<html[^>]*>', '', body_content, flags=re.IGNORECASE)
+                            body_content = re.sub(r'</html>', '', body_content, flags=re.IGNORECASE)
+                            body_content = re.sub(r'<head>.*?</head>', '', body_content, flags=re.IGNORECASE | re.DOTALL)
+                    
+                    # Extract and preserve head styles/scripts for inline injection
+                    head = soup.find('head')
+                    head_styles = ''
+                    if head:
+                        # Extract all style tags and link tags (for CSS)
+                        styles = head.find_all('style')
+                        links = head.find_all('link', rel='stylesheet')
+                        scripts = head.find_all('script')
+                        
+                        # Combine all styles
+                        for style in styles:
+                            if style.string:
+                                head_styles += f'<style>{style.string}</style>'
+                        for link in links:
+                            head_styles += str(link)
+                        for script in scripts:
+                            if script.string:
+                                head_styles += f'<script>{script.string}</script>'
+                    
+                    # Combine head styles with body content
+                    iframe_content = head_styles + body_content if head_styles else body_content
+                    
+                except Exception as e:
+                    # If parsing fails, use as-is
+                    iframe_content = content_str
         else:
             # Fragment or partial HTML - use as-is
             iframe_content = content_str
     
-    full_content = f"""
+    # Check if iframe_content is a full HTML document (for SERP with use_srcdoc)
+    is_full_document = iframe_content.strip().startswith('<!DOCTYPE') or iframe_content.strip().startswith('<html')
+    
+    if is_full_document:
+        # Inject chrome bars INTO the existing document (don't wrap it)
+        try:
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(iframe_content, 'html.parser')
+            
+            # Find or create body
+            body = soup.find('body')
+            if not body:
+                # No body tag, create one
+                html_tag = soup.find('html')
+                if html_tag:
+                    body = soup.new_tag('body')
+                    html_tag.append(body)
+                    # Move all content into body
+                    for child in list(html_tag.children):
+                        if child.name != 'body':
+                            body.append(child.extract())
+                else:
+                    # No html tag either, wrap everything
+                    body = soup.new_tag('body')
+                    soup.append(body)
+            
+            # Inject chrome CSS into head
+            head = soup.find('head')
+            if not head:
+                html_tag = soup.find('html')
+                if html_tag:
+                    head = soup.new_tag('head')
+                    html_tag.insert(0, head)
+                else:
+                    head = soup.new_tag('head')
+                    soup.insert(0, head)
+            
+            # Add chrome styles to head
+            chrome_style = soup.new_tag('style')
+            chrome_style.string = f"""
+                .device-chrome {{ width: 100%; background: white; position: fixed; top: 0; left: 0; right: 0; z-index: 10000; }}
+                .device-content {{ margin-top: {chrome_height}; margin-bottom: {'50px' if device == 'mobile' else '0'}; }}
+                .device-bottom-nav {{ position: fixed; bottom: 0; left: 0; right: 0; z-index: 10000; }}
+                body {{ padding-top: {chrome_height} !important; padding-bottom: {'50px' if device == 'mobile' else '0'} !important; }}
+            """
+            head.append(chrome_style)
+            
+            # Insert chrome bars at start of body
+            chrome_div = soup.new_tag('div', attrs={'class': 'device-chrome'})
+            chrome_div.append(BeautifulSoup(device_chrome, 'html.parser'))
+            body.insert(0, chrome_div)
+            
+            # Insert bottom nav if mobile
+            if device == 'mobile':
+                bottom_div = soup.new_tag('div', attrs={'class': 'device-bottom-nav'})
+                bottom_div.append(BeautifulSoup(bottom_nav, 'html.parser'))
+                body.append(bottom_div)
+            
+            full_content = str(soup)
+        except:
+            # Fallback to wrapping if injection fails
+            full_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta name="viewport" content="width={device_w}, initial-scale=1.0">
+        <meta charset="utf-8">
+        <style>
+            * {{ box-sizing: border-box; }}
+            body {{ margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; width: {device_w}px; overflow-x: hidden; }}
+            .chrome {{ width: 100%; background: white; position: fixed; top: 0; left: 0; right: 0; z-index: 100; }}
+            .content {{ position: absolute; top: {chrome_height}; bottom: {'50px' if device == 'mobile' else '0'}; left: 0; right: 0; overflow-y: auto; overflow-x: hidden; width: 100%; max-width: {device_w}px; }}
+            .bottom-nav {{ position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; }}
+            /* Prevent text from breaking vertically */
+            p, div, span, h1, h2, h3, h4, h5, h6, a, li {{ white-space: normal; word-wrap: break-word; word-break: normal; }}
+            /* Ensure proper text flow */
+            * {{ max-width: 100%; }}
+        </style>
+    </head>
+    <body>
+        <div class="chrome">{device_chrome}</div>
+        <div class="content">{iframe_content}</div>
+        {f'<div class="bottom-nav">{bottom_nav}</div>' if device == 'mobile' else ''}
+    </body>
+    </html>
+    """
+    else:
+        # Fragment or extracted body - wrap normally
+        full_content = f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -1403,7 +1498,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     'impressions': 'sum',
                     'clicks': 'sum',
                     'conversions': 'sum'
-                }).reset_index()
+            }).reset_index()
                 
                 agg_df['CTR'] = agg_df.apply(lambda x: (x['clicks']/x['impressions']*100) if x['impressions']>0 else 0, axis=1)
                 agg_df['CVR'] = agg_df.apply(lambda x: (x['conversions']/x['clicks']*100) if x['clicks']>0 else 0, axis=1)
@@ -1577,7 +1672,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     s5.metric("CVR", f"{(stats_df['conversions']/stats_df['clicks']*100 if stats_df['clicks'] > 0 else 0):.2f}%")
                     
                     st.divider()
-                
+                    
                 # Flow Display based on layout
                 st.markdown("### 🔄 Flow Journey")
                 
@@ -1622,7 +1717,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     if len(url_filtered) > 0:
                                         current_flow.update(url_filtered.iloc[0].to_dict())
                                     # Similarity scores removed
-                                    st.rerun()
+                            st.rerun()
                             
                             # URL selector
                             if urls:
@@ -1642,7 +1737,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     if len(final_filtered) > 0:
                                         current_flow.update(final_filtered.iloc[0].to_dict())
                                     # Similarity scores removed
-                                    st.rerun()
+                            st.rerun()
                             
                             # Show count
                             st.caption(f"📊 {len(urls)} URLs available")
@@ -1832,9 +1927,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     st.markdown("""
                     <div style='text-align: center; font-size: 40px; color: #3b82f6; margin: 20px 0; font-weight: 700;'>
                         ↓
-                    </div>
-                    """, unsafe_allow_html=True)
-                
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
                 # Stage 2: Creative
                 stage_2_container = stage_cols[2] if stage_cols else st.container()
                 with stage_2_container:
@@ -1883,13 +1978,13 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         st.markdown("""
                         <div style='display: flex; align-items: center; justify-content: center; height: 100%;'>
                             <div style='font-size: 36px; color: #3b82f6; font-weight: 700;'>→</div>
-                        </div>
+                                    </div>
                         """, unsafe_allow_html=True)
                 else:
                     st.markdown("""
                     <div style='text-align: center; font-size: 40px; color: #3b82f6; margin: 20px 0; font-weight: 700;'>
                         ↓
-                    </div>
+                                </div>
                     """, unsafe_allow_html=True)
                 
                 # Stage 3: SERP
@@ -1921,10 +2016,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 st.caption(f"**Title:** {current_flow.get('ad_title', 'N/A')[:30]}...")
                                 st.caption(f"**Display URL:** {current_flow.get('ad_display_url', 'N/A')[:30]}...")
                                 st.caption(f"📊 {len(serps)} templates available")
-                    else:
-                        # Basic mode - show template name only
-                        serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
-                        st.caption(f"**Template:** {serp_name}")
+                            else:
+                                # Basic mode - show template name only
+                                serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
+                                st.caption(f"**Template:** {serp_name}")
                     
                     # Construct SERP URL dynamically from serp_template_key
                     serp_template_key = current_flow.get('serp_template_key', '')
@@ -2046,7 +2141,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         url_elem.append(ad_display_url)
                                         replacement_made = True
                                 
-                                # Convert back to HTML
+                                # Convert back to HTML - KEEP FULL DOCUMENT STRUCTURE
                                 serp_html = str(soup)
                                 
                                 # Fix relative URLs to absolute
@@ -2055,67 +2150,56 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 serp_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
                                                   lambda m: f'href="{urljoin(serp_url, m.group(1))}"', serp_html)
                                 
-                                # Add mobile-friendly viewport and CSS to prevent vertical text
+                                # Add targeted CSS to prevent vertical text - SCOPE TO SERP CONTENT ONLY
                                 # Get device width based on selected device
                                 device_widths = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
                                 current_device_w = device_widths.get(device_all, 390)
                                 
+                                # More targeted CSS - only affects SERP content, not chrome bars
                                 mobile_css = f'''
                                 <meta name="viewport" content="width={current_device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
                                 <style>
-                                    * {{ 
-                                        box-sizing: border-box !important; 
-                                        max-width: 100% !important;
-                                    }}
+                                    /* Base styles - minimal, don't break existing layout */
                                     html, body {{ 
                                         width: {current_device_w}px !important;
                                         max-width: {current_device_w}px !important; 
                                         overflow-x: hidden !important; 
                                         margin: 0 !important; 
-                                        padding: 0 !important; 
-                                        font-size: 14px !important;
+                                        padding: 0 !important;
                                     }}
-                                    /* Force horizontal text flow - CRITICAL - STRONGER RULES */
-                                    html, body, * {{
+                                    
+                                    /* CRITICAL: Force horizontal text ONLY for SERP content areas */
+                                    body > *:not(script):not(style),
+                                    [class*="result"], [class*="ad"], [class*="sponsored"], [class*="serp"],
+                                    [class*="ad-result"], [class*="serp-result"] {{
                                         writing-mode: horizontal-tb !important;
                                         text-orientation: mixed !important;
                                         direction: ltr !important;
-                                        text-align: left !important;
                                     }}
-                                    /* Allow text to wrap properly - CRITICAL - STRONGER RULES */
+                                    
+                                    /* Text elements - allow wrapping but preserve display */
                                     p, div, span, a, h1, h2, h3, h4, h5, h6, li, td, th, label, button, strong, em, b, i {{
                                         word-break: break-word !important;
                                         overflow-wrap: break-word !important;
                                         white-space: normal !important;
-                                        max-width: 100% !important;
                                         writing-mode: horizontal-tb !important;
                                         text-orientation: mixed !important;
-                                        display: inline-block !important;
-                                        width: auto !important;
                                     }}
-                                    /* Force all text containers to horizontal */
-                                    [class*="result"], [class*="ad"], [class*="sponsored"], [class*="serp"] {{
-                                        writing-mode: horizontal-tb !important;
-                                        text-orientation: mixed !important;
-                                        white-space: normal !important;
-                                    }}
-                                    /* Override fixed widths */
+                                    
+                                    /* Responsive images */
                                     img, iframe, video {{
                                         max-width: 100% !important;
                                         height: auto !important;
                                     }}
-                                    /* CRITICAL: Remove ALL min-width constraints */
-                                    * {{
-                                        min-width: unset !important;
-                                    }}
-                                    /* Prevent horizontal scroll */
-                                    [class*="container"], [class*="ad-result"], [class*="serp-result"], [class*="sponsored"], 
-                                    [class*="result"], [class*="ad"], div, section, article {{
+                                    
+                                    /* Prevent horizontal overflow */
+                                    [class*="container"], [class*="ad-result"], [class*="serp-result"], 
+                                    [class*="sponsored"], [class*="result"], [class*="ad"] {{
                                         max-width: 100% !important; 
-                                        min-width: unset !important;
-                                        width: auto !important;
+                                        overflow-x: hidden !important;
                                     }}
-                                    /* Ensure tables don't break layout */
+                                    
+                                    /* Tables */
                                     table {{
                                         width: 100% !important;
                                         max-width: 100% !important;
@@ -2124,7 +2208,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 </style>
                                 '''
                                 
-                                # Inject into head tag
+                                # Inject into head tag - preserve existing head content
                                 if re.search(r'<head>', serp_html, re.IGNORECASE):
                                     serp_html = re.sub(
                                         r'<head>',
@@ -2137,8 +2221,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     # No head tag, add one
                                     serp_html = f'<head>{mobile_css}</head>{serp_html}'
                                 
-                                # Step 3: Render modified HTML as iframe using srcdoc
-                                # Use selected device (respect user choice)
+                                # Step 3: Render FULL HTML document (not extracted body) - chrome bars will be added by render_mini_device_preview
                                 preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
                                 st.components.v1.html(preview_html, height=height, scrolling=False)
                                 st.caption("📺 SERP with injected ad content")
@@ -2347,9 +2430,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     st.markdown("""
                     <div style='text-align: center; font-size: 40px; color: #3b82f6; margin: 20px 0; font-weight: 700;'>
                         ↓
-                    </div>
-                    """, unsafe_allow_html=True)
-                
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
                 # Stage 4: Landing Page
                 stage_4_container = stage_cols[6] if stage_cols else st.container()
                 with stage_4_container:
