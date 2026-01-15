@@ -1487,7 +1487,7 @@ if not st.session_state.loading_done:
             st.session_state.loading_done = True
         except Exception as e:
             st.error(f"❌ Error loading data")
-            st.session_state.loading_done = True
+        st.session_state.loading_done = True
 
 # View mode toggle
 view_col1, view_col2, view_col3 = st.columns([1, 1, 4])
@@ -2298,6 +2298,38 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         direction: ltr !important;
                                     }}
                                     
+                                    /* CRITICAL: Target SERP structure directly - override flexbox vertical layout */
+                                    .wrapper, .wrapper *, .content-wrap, .content-wrap *,
+                                    .title, .title *, .desc, .desc *, .url, .url *,
+                                    .outer_wrap, .outer_wrap *, .header_text, .header_text * {{
+                                        writing-mode: horizontal-tb !important;
+                                        text-orientation: mixed !important;
+                                        direction: ltr !important;
+                                        display: block !important;
+                                        white-space: normal !important;
+                                        word-break: break-word !important;
+                                        overflow-wrap: break-word !important;
+                                    }}
+                                    
+                                    /* Override flexbox that causes vertical stacking */
+                                    .content-wrap {{
+                                        flex-direction: row !important;
+                                        flex-wrap: wrap !important;
+                                        align-items: flex-start !important;
+                                    }}
+                                    
+                                    /* Ensure text elements are inline-block, not vertical */
+                                    .title, .desc, .url {{
+                                        display: block !important;
+                                        width: 100% !important;
+                                    }}
+                                    
+                                    /* Force links to display horizontally */
+                                    .title a, .desc a, .url a {{
+                                        display: inline !important;
+                                        white-space: normal !important;
+                                    }}
+                                    
                                     /* Responsive images */
                                     img, iframe, video {{
                                         max-width: 100% !important;
@@ -2498,6 +2530,38 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                         direction: ltr !important;
                                                     }}
                                                     
+                                                    /* CRITICAL: Target SERP structure directly - override flexbox vertical layout */
+                                                    .wrapper, .wrapper *, .content-wrap, .content-wrap *,
+                                                    .title, .title *, .desc, .desc *, .url, .url *,
+                                                    .outer_wrap, .outer_wrap *, .header_text, .header_text * {{
+                                                        writing-mode: horizontal-tb !important;
+                                                        text-orientation: mixed !important;
+                                                        direction: ltr !important;
+                                                        display: block !important;
+                                                        white-space: normal !important;
+                                                        word-break: break-word !important;
+                                                        overflow-wrap: break-word !important;
+                                                    }}
+                                                    
+                                                    /* Override flexbox that causes vertical stacking */
+                                                    .content-wrap {{
+                                                        flex-direction: row !important;
+                                                        flex-wrap: wrap !important;
+                                                        align-items: flex-start !important;
+                                                    }}
+                                                    
+                                                    /* Ensure text elements are inline-block, not vertical */
+                                                    .title, .desc, .url {{
+                                                        display: block !important;
+                                                        width: 100% !important;
+                                                    }}
+                                                    
+                                                    /* Force links to display horizontally */
+                                                    .title a, .desc a, .url a {{
+                                                        display: inline !important;
+                                                        white-space: normal !important;
+                                                    }}
+                                                    
                                                     /* Responsive images */
                                                     img, iframe, video {{
                                                         max-width: 100% !important;
@@ -2510,10 +2574,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                     }}
                                                 </style>
                                                 <script>
-                                                    // Force horizontal text after page load - override inline styles
+                                                    // Force horizontal text after page load - override inline styles AND SERP classes
                                                     (function() {{
                                                         function fixVerticalText() {{
-                                                            // Find all elements with vertical text
+                                                            // Fix all elements with vertical text
                                                             const allElements = document.querySelectorAll('*');
                                                             allElements.forEach(el => {{
                                                                 const style = window.getComputedStyle(el);
@@ -2524,6 +2588,37 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                                     el.style.setProperty('direction', 'ltr', 'important');
                                                                 }}
                                                             }});
+                                                            
+                                                            // CRITICAL: Target SERP-specific classes directly
+                                                            const serpClasses = ['.wrapper', '.content-wrap', '.title', '.desc', '.url', 
+                                                                                 '.outer_wrap', '.header_text'];
+                                                            serpClasses.forEach(selector => {{
+                                                                try {{
+                                                                    const elements = document.querySelectorAll(selector);
+                                                                    elements.forEach(el => {{
+                                                                        el.style.setProperty('writing-mode', 'horizontal-tb', 'important');
+                                                                        el.style.setProperty('text-orientation', 'mixed', 'important');
+                                                                        el.style.setProperty('direction', 'ltr', 'important');
+                                                                        el.style.setProperty('display', 'block', 'important');
+                                                                        el.style.setProperty('white-space', 'normal', 'important');
+                                                                        
+                                                                        // Fix child elements
+                                                                        const children = el.querySelectorAll('*');
+                                                                        children.forEach(child => {{
+                                                                            child.style.setProperty('writing-mode', 'horizontal-tb', 'important');
+                                                                            child.style.setProperty('text-orientation', 'mixed', 'important');
+                                                                            child.style.setProperty('direction', 'ltr', 'important');
+                                                                        }});
+                                                                    }});
+                                                                }} catch(e) {{}}
+                                                            }});
+                                                            
+                                                            // Fix flexbox containers that might cause vertical stacking
+                                                            const flexContainers = document.querySelectorAll('.content-wrap');
+                                                            flexContainers.forEach(el => {{
+                                                                el.style.setProperty('flex-direction', 'row', 'important');
+                                                                el.style.setProperty('flex-wrap', 'wrap', 'important');
+                                                            }});
                                                         }}
                                                         // Run immediately and after DOM loads
                                                         if (document.readyState === 'loading') {{
@@ -2531,9 +2626,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                         }} else {{
                                                             fixVerticalText();
                                                         }}
-                                                        // Also run after a short delay to catch dynamically loaded content
+                                                        // Also run after delays to catch dynamically loaded content
+                                                        setTimeout(fixVerticalText, 50);
                                                         setTimeout(fixVerticalText, 100);
+                                                        setTimeout(fixVerticalText, 300);
                                                         setTimeout(fixVerticalText, 500);
+                                                        setTimeout(fixVerticalText, 1000);
                                                     }})();
                                                 </script>
                                                 '''
@@ -2546,7 +2644,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                         flags=re.IGNORECASE,
                                                         count=1
                                                     )
-                                                else:
+                        else:
                                                     serp_html = f'<head>{mobile_css}</head>{serp_html}'
                                                 
                                                 # Use selected device (respect user choice)
@@ -2665,7 +2763,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             
                             # Show landing page URL
                             st.caption(f"📊 {len(keywords)} keywords available")
-                    else:
+                else:
                         # Basic mode - show keyword only
                         st.caption(f"**Keyword:** {current_kw}")
                     
@@ -2753,7 +2851,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                     preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                                     st.components.v1.html(preview_html, height=height, scrolling=False)
                                                     st.caption("🤖 Rendered via browser automation (bypassed 403)")
-                                                else:
+else:
                                                     # Playwright failed
                                                     st.warning("🚫 Site blocks access (403) - Playwright failed")
                                                     st.markdown(f"[🔗 Open in new tab]({adv_url})")
