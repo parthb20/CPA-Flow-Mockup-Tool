@@ -779,7 +779,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     """
     # Real device dimensions
     if device == 'mobile':
-        device_w = 500  # Increased width from 390 to 500 for better text flow
+        device_w = 390  # Standard mobile width
         container_height = 844
         scale = 0.70  # Increased width for better visibility
         frame_style = "border-radius: 40px; border: 10px solid #000000;"
@@ -1996,8 +1996,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 
                                 # Add mobile-friendly viewport and CSS to prevent vertical text
                                 # Get device width based on selected device
-                                device_widths = {'mobile': 500, 'tablet': 820, 'laptop': 1440}  # Increased mobile width
-                                current_device_w = device_widths.get(device_all, 500)
+                                device_widths = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
+                                current_device_w = device_widths.get(device_all, 390)
                                 
                                 mobile_css = f'''
                                 <meta name="viewport" content="width={current_device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -2161,8 +2161,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                               lambda m: f'href="{urljoin(serp_url, m.group(1))}"', serp_html)
                                             
                                             # Add mobile-friendly CSS (enhanced version)
-                                            device_widths = {'mobile': 500, 'tablet': 820, 'laptop': 1440}  # Increased mobile width
-                                            current_device_w = device_widths.get(device_all, 500)
+                                            device_widths = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
+                                            current_device_w = device_widths.get(device_all, 390)
                                             
                                             mobile_css = f'''
                                             <meta name="viewport" content="width={current_device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
