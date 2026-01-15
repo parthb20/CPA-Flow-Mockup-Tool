@@ -1007,6 +1007,38 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         content = '<html><body style="padding: 20px; text-align: center; color: #666; font-family: Arial, sans-serif; background: white; min-height: 100vh; display: flex; align-items: center; justify-content: center;"><div><h3>No content available</h3><p>The content could not be loaded.</p></div></body></html>'
     
     # Always embed HTML directly (no iframe src)
+    # Ensure content is wrapped in proper HTML structure if it's just an image or fragment
+    if not content.strip().startswith('<!DOCTYPE') and not content.strip().startswith('<html'):
+        # If content is just an image tag or fragment, wrap it properly
+        if '<img' in content and '</html>' not in content:
+            content = f'''<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width={device_w}, initial-scale=1.0">
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        html, body {{ width: 100%; height: 100%; overflow: hidden; }}
+        img {{ width: 100%; height: auto; display: block; }}
+    </style>
+</head>
+<body>
+    {content}
+</body>
+</html>'''
+        else:
+            # Wrap other fragments
+            content = f'''<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width={device_w}, initial-scale=1.0">
+</head>
+<body>
+    {content}
+</body>
+</html>'''
+    
     iframe_content = content
     
     full_content = f"""
@@ -1079,17 +1111,21 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
             st.code(full_content[:1000], language='html')
             st.caption(f"Total length: {len(full_content)} chars")
     
-    # Use base64 encoding to avoid ALL escaping issues
-    # Base64 encoding bypasses all HTML escaping problems - browser decodes it automatically
-    b64_html = base64.b64encode(full_content.encode('utf-8')).decode('ascii')
+    # Use srcdoc if requested (better compatibility), otherwise use base64 data URI
+    if use_srcdoc:
+        # Escape single quotes for srcdoc attribute (use single quotes for attribute, escape single quotes in content)
+        escaped_content = full_content.replace("'", "&#39;")
+        iframe_html = f'<iframe srcdoc=\'{escaped_content}\' style="width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: center top; display: block; background: white;"></iframe>'
+    else:
+        # Use base64 encoding to avoid ALL escaping issues
+        b64_html = base64.b64encode(full_content.encode('utf-8')).decode('ascii')
+        iframe_html = f'<iframe src="data:text/html;base64,{b64_html}" style="width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: center top; display: block; background: white;"></iframe>'
     
     # Use transform scale for all devices
-    iframe_style = f"width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: center top; display: block; background: white;"
-    
     html_output = f"""
     <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
         <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-            <iframe src="data:text/html;base64,{b64_html}" style="{iframe_style}"></iframe>
+            {iframe_html}
         </div>
     </div>
     """
@@ -1844,9 +1880,26 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 if SCREENSHOT_API_KEY:
                                                     try:
                                                         from urllib.parse import quote
-                                                        screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(pub_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                                        screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                                        viewports = {'mobile': (390, 844), 'tablet': (820, 1180), 'laptop': (1440, 900)}
+                                                        vw, vh = viewports.get(device_all, (390, 844))
+                                                        screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(pub_url)}&full_page=false&viewport_width={vw}&viewport_height={vh}&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
+                                                        # Create proper HTML document for screenshot
+                                                        screenshot_html = f'''<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width={vw}, initial-scale=1.0">
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        html, body {{ width: 100%; height: 100%; overflow: hidden; background: white; }}
+        img {{ width: 100%; height: auto; display: block; }}
+    </style>
+</head>
+<body>
+    <img src="{screenshot_url}" alt="Page screenshot" onerror="this.parentElement.innerHTML='<div style=\\'padding: 20px; text-align: center; color: #666;\\'>Image failed to load</div>';" />
+</body>
+</html>'''
+                                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
                                                         st.components.v1.html(preview_html, height=height, scrolling=False)
                                                         st.caption("📸 Screenshot API")
                                                     except Exception as scr_err:
@@ -1859,9 +1912,26 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         # No Playwright, use Screenshot API
                                         try:
                                             from urllib.parse import quote
-                                            screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(pub_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                            screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                            viewports = {'mobile': (390, 844), 'tablet': (820, 1180), 'laptop': (1440, 900)}
+                                            vw, vh = viewports.get(device_all, (390, 844))
+                                            screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(pub_url)}&full_page=false&viewport_width={vw}&viewport_height={vh}&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
+                                            # Create proper HTML document for screenshot
+                                            screenshot_html = f'''<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width={vw}, initial-scale=1.0">
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        html, body {{ width: 100%; height: 100%; overflow: hidden; background: white; }}
+        img {{ width: 100%; height: auto; display: block; }}
+    </style>
+</head>
+<body>
+    <img src="{screenshot_url}" alt="Page screenshot" onerror="this.parentElement.innerHTML='<div style=\\'padding: 20px; text-align: center; color: #666;\\'>Image failed to load</div>';" />
+</body>
+</html>'''
+                                            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
                                             st.components.v1.html(preview_html, height=height, scrolling=False)
                                             st.caption("📸 Screenshot API")
                                         except Exception as scr_err:
@@ -2369,8 +2439,23 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                     viewports = {'mobile': (390, 844), 'tablet': (820, 1180), 'laptop': (1440, 900)}
                                                     vw, vh = viewports.get(device_all, (390, 844))
                                                     screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(serp_url)}&full_page=false&viewport_width={vw}&viewport_height={vh}&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                                    screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                                    preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                                    # Create proper HTML document for screenshot
+                                                    screenshot_html = f'''<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width={vw}, initial-scale=1.0">
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        html, body {{ width: 100%; height: 100%; overflow: hidden; background: white; }}
+        img {{ width: 100%; height: auto; display: block; }}
+    </style>
+</head>
+<body>
+    <img src="{screenshot_url}" alt="SERP screenshot" onerror="this.parentElement.innerHTML='<div style=\\'padding: 20px; text-align: center; color: #666;\\'>Image failed to load</div>';" />
+</body>
+</html>'''
+                                                    preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device='laptop', use_srcdoc=True)
                                                     st.components.v1.html(preview_html, height=height, scrolling=False)
                                                     st.caption("📸 Screenshot API")
                                                 except Exception as scr_err:
