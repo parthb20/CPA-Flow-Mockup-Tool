@@ -955,26 +955,9 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         <meta name="viewport" content="width={device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <meta charset="utf-8">
         <style>
-            * {{ box-sizing: border-box; }}
-            body {{ margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; width: {device_w}px; overflow-x: hidden; }}
+            body {{ margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }}
             .device-chrome {{ width: 100%; background: white; }}
-            .content-area {{ height: calc(100vh - {'90px' if device == 'mobile' else '60px' if device == 'tablet' else '52px'}); overflow-y: auto; overflow-x: hidden; }}
-            /* Prevent text from breaking vertically - ensure horizontal flow */
-            body, p, div, span, h1, h2, h3, h4, h5, h6, a, li, td, th {{
-                white-space: normal !important;
-                word-wrap: break-word !important;
-                word-break: normal !important;
-                writing-mode: horizontal-tb !important;
-                text-orientation: mixed !important;
-            }}
-            /* Ensure proper text flow and prevent vertical stacking */
-            * {{ max-width: 100%; }}
-            /* Fix for SERP content - ensure horizontal layout */
-            .ad-container, .result, .search-result {{
-                display: block !important;
-                width: 100% !important;
-                max-width: 100% !important;
-            }}
+            .content-area {{ height: calc(100vh - {'90px' if device == 'mobile' else '60px' if device == 'tablet' else '52px'}); overflow-y: auto; }}
         </style>
     </head>
     <body>
@@ -2053,10 +2036,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     
                     # If template generation worked, use it
                     if serp_html and serp_html.strip():
-                        # Apply additional CSS fixes to prevent vertical text
+                        # Minimal CSS fix - only prevent vertical text, don't constrain width
                         serp_html = re.sub(
                             r'<head>',
-                            '<head><style>body, p, div, span, h1, h2, h3, h4, h5, h6, a, li, td, th { white-space: normal !important; word-wrap: break-word !important; word-break: normal !important; writing-mode: horizontal-tb !important; text-orientation: mixed !important; } * { max-width: 100% !important; } .ad-container, .result, .search-result { display: block !important; width: 100% !important; }</style>',
+                            '<head><style>body, p, div, span, h1, h2, h3, h4, h5, h6, a, li, td, th { writing-mode: horizontal-tb !important; text-orientation: mixed !important; }</style>',
                             serp_html,
                             flags=re.IGNORECASE,
                             count=1
@@ -2153,7 +2136,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 # Add CSS to prevent vertical text wrapping
                                 serp_html = re.sub(
                                     r'<head>',
-                                    '<head><style>body, p, div, span, h1, h2, h3, h4, h5, h6, a, li, td, th { white-space: normal !important; word-wrap: break-word !important; word-break: normal !important; writing-mode: horizontal-tb !important; text-orientation: mixed !important; } * { max-width: 100% !important; } .ad-container, .result, .search-result { display: block !important; width: 100% !important; }</style>',
+                                    '<head><style>body, p, div, span, h1, h2, h3, h4, h5, h6, a, li, td, th { writing-mode: horizontal-tb !important; text-orientation: mixed !important; }</style>',
                                     serp_html,
                                     flags=re.IGNORECASE,
                                     count=1
@@ -2218,7 +2201,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                             # Add CSS to prevent vertical text wrapping
                                             serp_html = re.sub(
                                                 r'<head>',
-                                                '<head><style>body, p, div, span, h1, h2, h3, h4, h5, h6, a, li, td, th { white-space: normal !important; word-wrap: break-word !important; word-break: normal !important; writing-mode: horizontal-tb !important; text-orientation: mixed !important; } * { max-width: 100% !important; } .ad-container, .result, .search-result { display: block !important; width: 100% !important; }</style>',
+                                                '<head><style>body, p, div, span, h1, h2, h3, h4, h5, h6, a, li, td, th { writing-mode: horizontal-tb !important; text-orientation: mixed !important; }</style>',
                                                 serp_html,
                                                 flags=re.IGNORECASE,
                                                 count=1
