@@ -948,6 +948,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         # For HTML content or when use_srcdoc=True, embed directly
         iframe_content = content
     
+    # Match the old render_device_preview approach - minimal wrapper, preserve original template styling
     full_content = f"""
     <!DOCTYPE html>
     <html>
@@ -958,6 +959,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
             body {{ margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }}
             .device-chrome {{ width: 100%; background: white; }}
             .content-area {{ height: calc(100vh - {'90px' if device == 'mobile' else '60px' if device == 'tablet' else '52px'}); overflow-y: auto; }}
+            /* Don't interfere with template's own CSS - let it handle responsive design */
         </style>
     </head>
     <body>
@@ -1014,14 +1016,12 @@ def generate_serp_mockup(flow_data, serp_templates):
             else:
                 return ""
             
-            # Fix CSS media queries that cause rendering issues
+            # Only fix deprecated media queries - don't modify layout CSS
+            # These replacements help with older CSS but don't affect responsive design
             html = html.replace('min-device-width', 'min-width')
             html = html.replace('max-device-width', 'max-width')
             html = html.replace('min-device-height', 'min-height')
             html = html.replace('max-device-height', 'max-height')
-            
-            # Remove problematic min-height constraints that cause blank space
-            html = re.sub(r'min-height\s*:\s*calc\(100[sv][vh]h?[^)]*\)\s*;?', '', html, flags=re.IGNORECASE)
             
             # Replace keyword in the header text
             html = re.sub(
@@ -2036,16 +2036,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     
                     # If template generation worked, use it
                     if serp_html and serp_html.strip():
-                        # Minimal CSS fix - only prevent vertical text, don't constrain width
-                        serp_html = re.sub(
-                            r'<head>',
-                            '<head><style>body, p, div, span, h1, h2, h3, h4, h5, h6, a, li, td, th { writing-mode: horizontal-tb !important; text-orientation: mixed !important; }</style>',
-                            serp_html,
-                            flags=re.IGNORECASE,
-                            count=1
-                        )
-                        
-                        # Render using device preview
+                        # Render using device preview - preserve original template styling completely
                         preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
                         preview_html = inject_unique_id(preview_html, 'serp_template', serp_url or '', device_all, current_flow)
                         st.components.v1.html(preview_html, height=height, scrolling=False)
@@ -2064,12 +2055,11 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             if response.status_code == 200:
                                 serp_html = response.text
                                 
-                                # Apply CSS fixes FIRST to prevent vertical text
+                                # Only fix deprecated media queries - preserve original layout CSS
                                 serp_html = serp_html.replace('min-device-width', 'min-width')
                                 serp_html = serp_html.replace('max-device-width', 'max-width')
                                 serp_html = serp_html.replace('min-device-height', 'min-height')
                                 serp_html = serp_html.replace('max-device-height', 'max-height')
-                                serp_html = re.sub(r'min-height\s*:\s*calc\(100[sv][vh]h?[^)]*\)\s*;?', '', serp_html, flags=re.IGNORECASE)
                                 
                                 # Step 2: Replace ad content in SERP HTML using BeautifulSoup
                                 from bs4 import BeautifulSoup
@@ -2134,13 +2124,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                   lambda m: f'href="{urljoin(serp_url, m.group(1))}"', serp_html)
                                 
                                 # Add CSS to prevent vertical text wrapping
-                                serp_html = re.sub(
-                                    r'<head>',
-                                    '<head><style>body, p, div, span, h1, h2, h3, h4, h5, h6, a, li, td, th { writing-mode: horizontal-tb !important; text-orientation: mixed !important; }</style>',
-                                    serp_html,
-                                    flags=re.IGNORECASE,
-                                    count=1
-                                )
+                                # Don't inject CSS - preserve original template styling
                                 
                                 # Step 3: Render modified HTML as iframe using srcdoc
                                 preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
