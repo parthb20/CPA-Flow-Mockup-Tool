@@ -1175,7 +1175,10 @@ def unescape_adcode(adcode):
                 pass
     
     # Then unescape HTML entities if any
-    adcode = html.unescape(adcode)
+    if adcode is not None:
+        adcode = html.unescape(adcode)
+    else:
+        return ""
     
     return adcode
 
@@ -2138,8 +2141,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 
                                 # THEN: Use BeautifulSoup for structured replacements
                                 # Ensure serp_html is a valid string
-                                if not serp_html or not isinstance(serp_html, str):
-                                    raise ValueError("SERP HTML is not a valid string")
+                                if serp_html is None:
+                                    raise ValueError("SERP HTML is None")
+                                if not isinstance(serp_html, str):
+                                    raise ValueError(f"SERP HTML is not a string, got {type(serp_html)}")
+                                if len(serp_html.strip()) == 0:
+                                    raise ValueError("SERP HTML is empty")
                                 
                                 from bs4 import BeautifulSoup
                                 soup = BeautifulSoup(serp_html, 'html.parser')
@@ -2341,8 +2348,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 
                                                 # Then use BeautifulSoup for structured replacements
                                                 # Ensure page_html is a valid string
-                                                if not page_html or not isinstance(page_html, str) or len(page_html.strip()) == 0:
-                                                    raise ValueError("Page HTML from Playwright is not a valid string")
+                                                if page_html is None:
+                                                    raise ValueError("Page HTML from Playwright is None")
+                                                if not isinstance(page_html, str):
+                                                    raise ValueError(f"Page HTML is not a string, got {type(page_html)}")
+                                                if len(page_html.strip()) == 0:
+                                                    raise ValueError("Page HTML from Playwright is empty")
                                                 
                                                 from bs4 import BeautifulSoup
                                                 soup = BeautifulSoup(page_html, 'html.parser')
@@ -2521,12 +2532,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 st.error(f"HTTP {response.status_code}")
                                 
                         except Exception as e:
+                            import traceback
                             error_msg = str(e) if e else "Unknown error"
-                            st.error(f"Load failed: {error_msg[:100]}")
-                            # Debug info in advanced mode
-                            if st.session_state.view_mode == 'advanced':
-                                import traceback
-                                st.code(traceback.format_exc()[:500])
+                            error_type = type(e).__name__
+                            st.error(f"Load failed: {error_type}: {error_msg[:100]}")
+                            # Always show full traceback to help debug
+                            st.code(f"Full error:\n{traceback.format_exc()}", language='python')
                     else:
                         st.warning("⚠️ No SERP URL found in mapping")
                     
