@@ -1077,6 +1077,81 @@ def generate_serp_mockup(flow_data, serp_templates):
     
     return ""
 
+def create_screenshot_html(screenshot_url, device='mobile', referer_domain=None):
+    """Create HTML for screenshot with proper referer handling
+    
+    For referer-based thum.io keys, the browser automatically sends the referer header
+    when loading images. The referer will be the Streamlit app URL, so ensure
+    THUMIO_REFERER_DOMAIN matches your Streamlit app domain (e.g., 'app-name.streamlit.app').
+    
+    Note: When images are loaded in iframes with srcdoc, the referer may be null.
+    This function uses JavaScript to load images, which should preserve the referer.
+    """
+    vw = 390 if device == 'mobile' else 820 if device == 'tablet' else 1440
+    
+    # If we have a referer domain, use fetch API to load image with proper referer
+    if referer_domain:
+        screenshot_html = f'''<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width={vw}">
+<style>* {{margin:0;padding:0}} img {{width:100%;height:auto;display:block;}} .error {{padding: 20px; text-align: center; color: #666;}} .loading {{padding: 20px; text-align: center; color: #999;}}</style>
+</head><body>
+<div class="loading">Loading screenshot...</div>
+<script>
+(function() {{
+    const img = document.createElement('img');
+    img.style.width = '100%';
+    img.style.height = 'auto';
+    img.style.display = 'block';
+    img.onload = function() {{
+        document.body.innerHTML = '';
+        document.body.appendChild(img);
+    }};
+    img.onerror = function() {{
+        // Try direct load as fallback
+        const fallbackImg = new Image();
+        fallbackImg.style.width = '100%';
+        fallbackImg.style.height = 'auto';
+        fallbackImg.style.display = 'block';
+        fallbackImg.onload = function() {{
+            document.body.innerHTML = '';
+            document.body.appendChild(fallbackImg);
+        }};
+        fallbackImg.onerror = function() {{
+            document.body.innerHTML = '<div class="error">Image failed to load</div>';
+        }};
+        fallbackImg.src = '{screenshot_url}';
+    }};
+    img.src = '{screenshot_url}';
+    img.crossOrigin = 'anonymous';
+}})();
+</script>
+</body></html>'''
+    else:
+        # Standard img tag for auth token-based keys
+        screenshot_html = f'''<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width={vw}">
+<style>* {{margin:0;padding:0}} img {{width:100%;height:auto;display:block;}} .error {{padding: 20px; text-align: center; color: #666;}}</style>
+</head><body><img src="{screenshot_url}" alt="Page screenshot" onerror="this.parentElement.innerHTML='<div class=\\'error\\'>Image failed to load</div>';" /></body></html>'''
+    
+    return screenshot_html
+
+def get_component_key(prefix, url, device, flow_data=None):
+    """Generate a unique key for Streamlit components based on content
+    
+    This ensures components re-render when content changes, preventing persistence issues.
+    """
+    import hashlib
+    key_parts = [prefix, str(url), str(device)]
+    if flow_data:
+        # Include relevant flow data in key
+        key_parts.append(str(flow_data.get('publisher_url', '')))
+        key_parts.append(str(flow_data.get('serp_template_key', '')))
+        key_parts.append(str(flow_data.get('ad_display_url', '')))
+    key_string = '_'.join(key_parts)
+    # Create a short hash for the key
+    key_hash = hashlib.md5(key_string.encode()).hexdigest()[:12]
+    return f"{prefix}_{key_hash}"
+
 def extract_text_from_screenshot(screenshot_url):
     """Extract text from screenshot using OCR"""
     if not OCR_AVAILABLE:
@@ -1717,7 +1792,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             # Try iframe src (preferred)
                             try:
                                 preview_html, height, _ = render_mini_device_preview(pub_url, is_url=True, device=device_all)
-                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                component_key = get_component_key('pub_iframe', pub_url, device_all, current_flow)
+                                st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
                                 st.caption("📺 Iframe")
                             except:
                                 iframe_blocked = True  # Failed, use HTML
@@ -1751,7 +1827,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                             page_html = capture_with_playwright(pub_url, device=device_all)
                                             if page_html:
                                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                component_key = get_component_key('pub_playwright', pub_url, device_all, current_flow)
+                                                st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
                                                 st.caption("🤖 Rendered via browser automation (bypassed 403)")
                                             else:
                                                 # Try screenshot API as fallback
@@ -1759,13 +1836,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                     from urllib.parse import quote
                                                     screenshot_url = get_screenshot_url(pub_url, device=device_all, full_page=False)
                                                     if screenshot_url:
-                                                        vw = 390 if device_all == 'mobile' else 820 if device_all == 'tablet' else 1440
-                                                        screenshot_html = f'''<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width={vw}">
-<style>* {{margin:0;padding:0}} img {{width:100%;height:auto}}</style>
-</head><body><img src="{screenshot_url}" alt="Page screenshot" onerror="this.parentElement.innerHTML='<div style=\\'padding: 20px; text-align: center; color: #666;\\'>Image failed to load</div>';" /></body></html>'''
+                                                        screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                                         preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                                        st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                        component_key = get_component_key('pub_screenshot', pub_url, device_all, current_flow)
+                                                        st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
                                                         st.caption("📸 Screenshot (thum.io)")
                                                     
                                                     # Automatically extract text from screenshot
@@ -1785,13 +1859,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         from urllib.parse import quote
                                         screenshot_url = get_screenshot_url(pub_url, device=device_all, full_page=False)
                                         if screenshot_url:
-                                            vw = 390 if device_all == 'mobile' else 820 if device_all == 'tablet' else 1440
-                                            screenshot_html = f'''<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width={vw}">
-<style>* {{margin:0;padding:0}} img {{width:100%;height:auto}}</style>
-</head><body><img src="{screenshot_url}" alt="Page screenshot" onerror="this.parentElement.innerHTML='<div style=\\'padding: 20px; text-align: center; color: #666;\\'>Image failed to load</div>';" /></body></html>'''
+                                            screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                             preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                            st.components.v1.html(preview_html, height=height, scrolling=False)
+                                            component_key = get_component_key('pub_screenshot', pub_url, device_all, current_flow)
+                                            st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
                                             st.caption("📸 Screenshot (thum.io)")
                                         
                                         # Automatically extract text from screenshot
@@ -1823,7 +1894,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
                                                       lambda m: f'href="{urljoin(pub_url, m.group(1))}"', page_html)
                                     preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                    st.components.v1.html(preview_html, height=height, scrolling=False)
+                                    component_key = get_component_key('pub_html', pub_url, device_all, current_flow)
+                                    st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
                                     st.caption("📄 HTML")
                                 else:
                                     st.error(f"❌ HTTP {response.status_code}")
@@ -2076,7 +2148,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 
                                 # Step 3: Render modified HTML as iframe using srcdoc
                                 preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
-                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                component_key = get_component_key('serp_injected', serp_url, device_all, current_flow)
+                                st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
                                 st.caption("📺 SERP with injected ad content")
                                 
                             elif response.status_code == 403:
@@ -2139,7 +2212,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                             )
                                             
                                             preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
-                                            st.components.v1.html(preview_html, height=height, scrolling=False)
+                                            component_key = get_component_key('serp_playwright', serp_url, device_all, current_flow)
+                                            st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
                                             st.caption("📺 SERP (via Playwright)")
                                         else:
                                             # Playwright failed, try screenshot API if available
@@ -2147,13 +2221,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 from urllib.parse import quote
                                                 screenshot_url = get_screenshot_url(serp_url, device=device_all, full_page=False)
                                                 if screenshot_url:
-                                                    vw = 390 if device_all == 'mobile' else 820 if device_all == 'tablet' else 1440
-                                                    screenshot_html = f'''<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width={vw}">
-<style>* {{margin:0;padding:0}} img {{width:100%;height:auto}}</style>
-</head><body><img src="{screenshot_url}" alt="SERP screenshot" onerror="this.parentElement.innerHTML='<div style=\\'padding: 20px; text-align: center; color: #666;\\'>Image failed to load</div>';" /></body></html>'''
+                                                    screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                                     preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                                    st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                    component_key = get_component_key('serp_screenshot', serp_url, device_all, current_flow)
+                                                    st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
                                                     st.caption("📸 Screenshot (thum.io)")
                                             else:
                                                 st.warning("⚠️ Could not load SERP. Install Playwright or configure thum.io (add THUMIO_REFERER_DOMAIN or SCREENSHOT_API_KEY to secrets)")
@@ -2255,7 +2326,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             # Try iframe src
                             try:
                                 preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all)
-                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                component_key = get_component_key('landing_iframe', adv_url, device_all, current_flow)
+                                st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
                                 st.caption("📺 Iframe")
                             except:
                                 iframe_blocked = True
@@ -2287,19 +2359,17 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                             page_html = capture_with_playwright(adv_url, device=device_all)
                                             if page_html:
                                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                component_key = get_component_key('landing_playwright', adv_url, device_all, current_flow)
+                                                st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
                                                 st.caption("🤖 Rendered via browser automation (bypassed 403)")
                                             else:
                                                 # Try screenshot API as fallback (thum.io)
                                                 screenshot_url = get_screenshot_url(adv_url, device=device_all, full_page=False)
                                                 if screenshot_url:
-                                                    vw = 390 if device_all == 'mobile' else 820 if device_all == 'tablet' else 1440
-                                                    screenshot_html = f'''<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width={vw}">
-<style>* {{margin:0;padding:0}} img {{width:100%;height:auto}}</style>
-</head><body><img src="{screenshot_url}" alt="Page screenshot" onerror="this.parentElement.innerHTML='<div style=\\'padding: 20px; text-align: center; color: #666;\\'>Image failed to load</div>';" /></body></html>'''
+                                                    screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                                     preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                                    st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                    component_key = get_component_key('landing_screenshot', adv_url, device_all, current_flow)
+                                                    st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
                                                     st.caption("📸 Screenshot (thum.io)")
                                                     
                                                     # Automatically extract text from screenshot
@@ -2318,13 +2388,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         # No Playwright, try screenshot API (thum.io)
                                         screenshot_url = get_screenshot_url(adv_url, device=device_all, full_page=False)
                                         if screenshot_url:
-                                            vw = 390 if device_all == 'mobile' else 820 if device_all == 'tablet' else 1440
-                                            screenshot_html = f'''<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width={vw}">
-<style>* {{margin:0;padding:0}} img {{width:100%;height:auto}}</style>
-</head><body><img src="{screenshot_url}" alt="Page screenshot" onerror="this.parentElement.innerHTML='<div style=\\'padding: 20px; text-align: center; color: #666;\\'>Image failed to load</div>';" /></body></html>'''
+                                            screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                             preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                            st.components.v1.html(preview_html, height=height, scrolling=False)
+                                            component_key = get_component_key('landing_screenshot', adv_url, device_all, current_flow)
+                                            st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
                                             st.caption("📸 Screenshot (thum.io)")
                                         
                                         # Automatically extract text from screenshot
@@ -2355,7 +2422,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
                                                       lambda m: f'href="{urljoin(adv_url, m.group(1))}"', page_html)
                                     preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                    st.components.v1.html(preview_html, height=height, scrolling=False)
+                                    component_key = get_component_key('landing_html', adv_url, device_all, current_flow)
+                                    st.components.v1.html(preview_html, height=height, scrolling=False, key=component_key)
                                     st.caption("📄 HTML")
                                 else:
                                     st.error(f"❌ HTTP {response.status_code}")
