@@ -545,6 +545,17 @@ def fetch_page_content(url):
         except:
             pass
     
+    # Try 3: Screenshot OCR if available (for 403 blocks)
+    if OCR_AVAILABLE and SCREENSHOT_API_KEY:
+        try:
+            from urllib.parse import quote
+            screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(url)}&full_page=true&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
+            extracted_text = extract_text_from_screenshot(screenshot_url)
+            if extracted_text:
+                return extracted_text[:3000]  # Limit for API
+        except:
+            pass
+    
     return ""
 
 def calculate_similarities(flow_data):
@@ -863,11 +874,17 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     <html>
     <head>
         <meta name="viewport" content="width={device_w}, initial-scale=1.0">
+        <meta charset="utf-8">
         <style>
-            body {{ margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }}
+            * {{ box-sizing: border-box; }}
+            body {{ margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; width: {device_w}px; overflow-x: hidden; }}
             .chrome {{ width: 100%; background: white; position: fixed; top: 0; left: 0; right: 0; z-index: 100; }}
-            .content {{ position: absolute; top: {chrome_height}; bottom: {'50px' if device == 'mobile' else '0'}; left: 0; right: 0; overflow-y: auto; }}
+            .content {{ position: absolute; top: {chrome_height}; bottom: {'50px' if device == 'mobile' else '0'}; left: 0; right: 0; overflow-y: auto; overflow-x: hidden; width: 100%; max-width: {device_w}px; }}
             .bottom-nav {{ position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; }}
+            /* Prevent text from breaking vertically */
+            p, div, span, h1, h2, h3, h4, h5, h6, a, li {{ white-space: normal; word-wrap: break-word; word-break: normal; }}
+            /* Ensure proper text flow */
+            * {{ max-width: 100%; }}
         </style>
     </head>
     <body>
@@ -1566,7 +1583,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 st.components.v1.html(preview_html, height=height, scrolling=False)
                                                 st.caption("🤖 Rendered via browser automation (bypassed 403)")
                                             else:
-                                                # Playwright failed, try screenshot API
+                                                # Try screenshot API as fallback
                                                 if SCREENSHOT_API_KEY:
                                                     from urllib.parse import quote
                                                     screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(pub_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
@@ -1743,10 +1760,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     # Construct SERP URL dynamically from serp_template_key
                     serp_template_key = current_flow.get('serp_template_key', '')
                     
-                    # Always show the constructed SERP URL
+                    # Always show the constructed SERP URL as clickable link
                     if serp_template_key:
                         final_serp_url = SERP_BASE_URL + str(serp_template_key)
-                        st.caption(f"**Final SERP URL:** {final_serp_url[:70]}...")
+                        st.markdown(f"**Final SERP URL:** [🔗 {final_serp_url}]({final_serp_url})")
                     
                     if serp_template_key and pd.notna(serp_template_key) and str(serp_template_key).strip():
                         # Build SERP URL: base + template key
@@ -1835,6 +1852,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 serp_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
                                                   lambda m: f'href="{urljoin(serp_url, m.group(1))}"', serp_html)
                                 
+                                # Add CSS to prevent vertical text wrapping
+                                serp_html = re.sub(r'<head>', f'<head><style>body, p, div, span, h1, h2, h3, h4, h5, h6, a, li {{ white-space: normal !important; word-wrap: break-word !important; word-break: normal !important; max-width: 100% !important; overflow-wrap: break-word !important; }}</style>', serp_html, flags=re.IGNORECASE)
+                                
                                 # Step 3: Render modified HTML as iframe using srcdoc
                                 preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
                                 st.components.v1.html(preview_html, height=height, scrolling=False)
@@ -1886,7 +1906,16 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                             st.components.v1.html(preview_html, height=height, scrolling=False)
                                             st.caption("📺 SERP (via Playwright)")
                                         else:
-                                            st.error("Failed to load SERP via Playwright")
+                                            # Playwright failed, try screenshot API if available
+                                            if SCREENSHOT_API_KEY:
+                                                from urllib.parse import quote
+                                                screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(serp_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
+                                                screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
+                                                preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                st.caption("📸 Screenshot API")
+                                            else:
+                                                st.warning("⚠️ Could not load SERP. Install Playwright or add SCREENSHOT_API_KEY")
                                 else:
                                     st.error(f"HTTP {response.status_code} - Install Playwright for 403 bypass")
                             else:
@@ -2020,7 +2049,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 st.components.v1.html(preview_html, height=height, scrolling=False)
                                                 st.caption("🤖 Rendered via browser automation (bypassed 403)")
                                             else:
-                                                # Playwright failed, try screenshot API
+                                                # Try screenshot API as fallback
                                                 if SCREENSHOT_API_KEY:
                                                     from urllib.parse import quote
                                                     screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(adv_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
