@@ -781,7 +781,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     if device == 'mobile':
         device_w = 390
         container_height = 844
-        scale = 0.3  # Smaller previews like before
+        scale = 0.25  # Smaller previews like before
         frame_style = "border-radius: 40px; border: 10px solid #000000;"
         
         # Mobile chrome
@@ -967,18 +967,18 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     </html>
     """
     
-    # Escape for srcdoc (use proper HTML escaping)
-    escaped = full_content.replace("'", "&#39;").replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;')
-    # Actually, srcdoc needs the HTML as-is, just escape quotes
-    escaped = full_content.replace("'", "&#39;").replace('"', '&quot;')
+    # Properly escape HTML for srcdoc attribute
+    # srcdoc needs: & -> &amp;, < -> &lt;, > -> &gt;, " -> &quot;
+    # Use double quotes for attribute to avoid single quote issues
+    escaped = full_content.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
     
-    # Use transform scale for all devices (including mobile with scale=0.3)
+    # Use transform scale for all devices
     iframe_style = f"width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: center top; display: block; background: white;"
     
     html_output = f"""
     <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
         <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-            <iframe srcdoc='{escaped}' style="{iframe_style}"></iframe>
+            <iframe srcdoc="{escaped}" style="{iframe_style}"></iframe>
         </div>
     </div>
     """
@@ -1538,8 +1538,25 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 current_serp = current_flow.get('serp_template_name', serps[0] if serps else '')
                 final_filtered = url_filtered[url_filtered['serp_template_name'] == current_serp] if serps else url_filtered
                 
+                # Preserve original clicks/conversions before updating (for landing page check)
+                original_clicks = safe_int(current_flow.get('clicks', 0), default=0)
+                original_conversions = safe_int(current_flow.get('conversions', 0), default=0)
+                
                 if len(final_filtered) > 0:
                     current_flow.update(final_filtered.iloc[0].to_dict())
+                    # Restore aggregated clicks/conversions if we have filtered data
+                    if len(final_filtered) > 1:
+                        agg_clicks = safe_int(final_filtered['clicks'].sum(), default=0)
+                        agg_conversions = safe_int(final_filtered['conversions'].sum(), default=0)
+                        if agg_clicks > 0:
+                            current_flow['clicks'] = agg_clicks
+                        if agg_conversions > 0:
+                            current_flow['conversions'] = agg_conversions
+                    elif original_clicks > 0:
+                        # Keep original if single row has 0
+                        current_flow['clicks'] = original_clicks
+                    if original_conversions > 0:
+                        current_flow['conversions'] = original_conversions
                 
                 # Update session state
                 st.session_state.current_flow = current_flow
@@ -2312,7 +2329,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         st.caption(f"**Keyword:** {current_kw}")
                     
                     # Get landing URL and check clicks from current_flow
-                    # Use same logic as display (safe_int) for consistency
+                    # Use same logic as display (safe_int) for consistency - get from original flow, not filtered
                     flow_clicks = current_flow.get('clicks', 0)
                     clicks_value = safe_int(flow_clicks, default=0)
                     
@@ -2321,12 +2338,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         url_display = str(adv_url)[:60] + "..." if len(str(adv_url)) > 60 else str(adv_url)
                         st.caption(f"**Landing URL:** {url_display}")
                     
-                    # Check if clicks > 0 - only show warning if clicks are actually 0
-                    if clicks_value <= 0:
-                        # This specific view has no clicks
-                        st.warning("⚠️ **No Ad Clicks**")
-                        st.caption("This view has 0 clicks - user didn't click the ad.")
-                    elif adv_url and pd.notna(adv_url) and str(adv_url).strip():
+                    # Check if clicks > 0 - use the flow's clicks value (same as shown in info box)
+                    # Only show warning if clicks are actually 0
+                    if clicks_value > 0 and adv_url and pd.notna(adv_url) and str(adv_url).strip():
                         # Has clicks - show landing page
                         # Check if site blocks iframe embedding
                         try:
