@@ -22,7 +22,7 @@ import tempfile
 import os
 
 # Page config - MUST be first Streamlit command
-st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊😗😗😗😏", layout="wide")
+st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊", layout="wide")
 
 # Try to import gdown (better for large files)
 try:
@@ -781,7 +781,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     if device == 'mobile':
         device_w = 390
         container_height = 844
-        scale = 1.0  # No scaling - render at actual size to prevent text compression
+        scale = 0.3  # Smaller previews like before
         frame_style = "border-radius: 40px; border: 10px solid #000000;"
         
         # Mobile chrome
@@ -876,13 +876,9 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         bottom_nav = ""
         chrome_height = "52px"
     
-    # For mobile with scale=1.0, use actual device dimensions
-    if device == 'mobile' and scale == 1.0:
-        display_w = device_w  # 390px
-        display_h = container_height  # 844px
-    else:
-        display_w = int(device_w * scale)
-        display_h = int(container_height * scale)
+    # Calculate display dimensions based on scale
+    display_w = int(device_w * scale)
+    display_h = int(container_height * scale)
     
     # ALWAYS fetch HTML and render as srcdoc (NO IFRAME SRC) - user requested HTML only
     if is_url:
@@ -944,16 +940,22 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                 overflow-wrap: break-word !important;
                 max-width: 100% !important;
             }}
-            /* Ensure text flows horizontally */
-            body {{ 
+            /* Ensure text flows horizontally - CRITICAL */
+            html, body, * {{ 
                 writing-mode: horizontal-tb !important;
                 text-orientation: mixed !important;
+                direction: ltr !important;
             }}
             /* Constrain all direct children of content */
             .content > * {{
                 max-width: 100% !important;
                 min-width: unset !important;
                 overflow-x: hidden !important;
+            }}
+            /* Force horizontal text on all text elements */
+            p, div, span, h1, h2, h3, h4, h5, h6, a, li, label, button {{
+                writing-mode: horizontal-tb !important;
+                text-orientation: mixed !important;
             }}
         </style>
     </head>
@@ -970,11 +972,8 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     # Actually, srcdoc needs the HTML as-is, just escape quotes
     escaped = full_content.replace("'", "&#39;").replace('"', '&quot;')
     
-    # For mobile with scale=1.0, don't use transform
-    if device == 'mobile' and scale == 1.0:
-        iframe_style = f"width: {device_w}px; height: {container_height}px; border: none; display: block; background: white;"
-    else:
-        iframe_style = f"width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: center top; display: block; background: white;"
+    # Use transform scale for all devices (including mobile with scale=0.3)
+    iframe_style = f"width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: center top; display: block; background: white;"
     
     html_output = f"""
     <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
@@ -1302,7 +1301,7 @@ def parse_creative_html(response_str):
 
 
 # Simple title at top (Streamlit handles styling)
-st.title("📊 CPA Flow Analysis v2 - UPDATED")
+st.title("📊 CPA Flow Analysis v2")
 
 # ============================================
 # FORCE CLEAR SIMILARITY SCORES - REMOVED FEATURE
@@ -2023,18 +2022,20 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         padding: 0 !important; 
                                         font-size: 14px !important;
                                     }}
-                                    /* Force horizontal text flow */
-                                    body {{
+                                    /* Force horizontal text flow - CRITICAL */
+                                    html, body, * {{
                                         writing-mode: horizontal-tb !important;
                                         text-orientation: mixed !important;
+                                        direction: ltr !important;
                                     }}
                                     /* Allow text to wrap properly - CRITICAL */
-                                    p, div, span, a, h1, h2, h3, h4, h5, h6, li, td, th {{
+                                    p, div, span, a, h1, h2, h3, h4, h5, h6, li, td, th, label, button {{
                                         word-break: break-word !important;
                                         overflow-wrap: break-word !important;
                                         white-space: normal !important;
                                         max-width: 100% !important;
-                                        display: block !important;
+                                        writing-mode: horizontal-tb !important;
+                                        text-orientation: mixed !important;
                                     }}
                                     /* Override fixed widths */
                                     img, iframe, video {{
@@ -2177,16 +2178,19 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                     padding: 0 !important; 
                                                     font-size: 14px !important;
                                                 }}
-                                                body {{
+                                                /* Force horizontal text flow - CRITICAL */
+                                                html, body, * {{
                                                     writing-mode: horizontal-tb !important;
                                                     text-orientation: mixed !important;
+                                                    direction: ltr !important;
                                                 }}
-                                                p, div, span, a, h1, h2, h3, h4, h5, h6, li, td, th {{
+                                                p, div, span, a, h1, h2, h3, h4, h5, h6, li, td, th, label, button {{
                                                     word-break: break-word !important;
                                                     overflow-wrap: break-word !important;
                                                     white-space: normal !important;
                                                     max-width: 100% !important;
-                                                    display: block !important;
+                                                    writing-mode: horizontal-tb !important;
+                                                    text-orientation: mixed !important;
                                                 }}
                                                 img, iframe, video {{
                                                     max-width: 100% !important;
@@ -2310,20 +2314,20 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     # Get landing URL and check clicks from current_flow
                     # Use same logic as display (safe_int) for consistency
                     flow_clicks = current_flow.get('clicks', 0)
-                    clicks_value = safe_int(flow_clicks)
+                    clicks_value = safe_int(flow_clicks, default=0)
                     
                     # Show landing URL info in basic mode
                     if st.session_state.view_mode == 'basic' and adv_url and pd.notna(adv_url):
                         url_display = str(adv_url)[:60] + "..." if len(str(adv_url)) > 60 else str(adv_url)
                         st.caption(f"**Landing URL:** {url_display}")
                     
-                    # Check if clicks > 0 - use safe_int to handle None/NaN/0 properly
-                    # Debug: Show actual clicks value
-                    if clicks_value is None or clicks_value <= 0:
+                    # Check if clicks > 0 - only show warning if clicks are actually 0
+                    if clicks_value <= 0:
                         # This specific view has no clicks
                         st.warning("⚠️ **No Ad Clicks**")
                         st.caption("This view has 0 clicks - user didn't click the ad.")
                     elif adv_url and pd.notna(adv_url) and str(adv_url).strip():
+                        # Has clicks - show landing page
                         # Check if site blocks iframe embedding
                         try:
                             head_response = requests.head(adv_url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'})
@@ -2472,5 +2476,3 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.warning("No data available for this campaign")
 else:
     st.error("❌ Could not load data - Check FILE_A_ID and file sharing settings")
-
-
