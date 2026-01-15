@@ -876,11 +876,28 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         display_w = int(device_w * scale)
         display_h = int(container_height * scale)
     
-    if is_url and not use_srcdoc:
-        iframe_content = f'<iframe src="{content}" style="width: 100%; height: 100%; border: none;"></iframe>'
-    else:
-        # For HTML content or when use_srcdoc=True, embed directly
-        iframe_content = content
+    # ALWAYS fetch HTML and render as srcdoc (NO IFRAME SRC) - user requested HTML only
+    if is_url:
+        # For URLs, fetch HTML first, then render as srcdoc
+        try:
+            response = requests.get(content, timeout=10, headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            })
+            if response.status_code == 200:
+                content = response.text
+                # Fix relative URLs
+                from urllib.parse import urljoin
+                base_url = content if is_url else ''
+                if base_url and isinstance(base_url, str) and base_url.startswith('http'):
+                    content = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
+                                   lambda m: f'src="{urljoin(base_url, m.group(1))}"', content)
+                    content = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
+                                   lambda m: f'href="{urljoin(base_url, m.group(1))}"', content)
+        except:
+            pass  # If fetch fails, use original content
+    
+    # Always embed HTML directly (no iframe src)
+    iframe_content = content
     
     full_content = f"""
     <!DOCTYPE html>
@@ -940,7 +957,10 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     </html>
     """
     
-    escaped = full_content.replace("'", "&apos;").replace('"', '&quot;')
+    # Escape for srcdoc (use proper HTML escaping)
+    escaped = full_content.replace("'", "&#39;").replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;')
+    # Actually, srcdoc needs the HTML as-is, just escape quotes
+    escaped = full_content.replace("'", "&#39;").replace('"', '&quot;')
     
     # For mobile with scale=1.0, don't use transform
     if device == 'mobile' and scale == 1.0:
@@ -1558,7 +1578,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     url_filtered = dom_filtered[dom_filtered['publisher_url'] == urls[0]] if urls else dom_filtered
                                     if len(url_filtered) > 0:
                                         current_flow.update(url_filtered.iloc[0].to_dict())
-                                    st.session_state.similarities = None  # Reset scores
+                                    # Similarity scores removed
                                     st.rerun()
                             
                             # URL selector
@@ -1578,7 +1598,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     final_filtered = url_filtered
                                     if len(final_filtered) > 0:
                                         current_flow.update(final_filtered.iloc[0].to_dict())
-                                    st.session_state.similarities = None  # Reset scores
+                                    # Similarity scores removed
                                     st.rerun()
                             
                             # Show count
@@ -1812,7 +1832,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     final_filtered = url_filtered[url_filtered['serp_template_name'] == selected_serp]
                                     if len(final_filtered) > 0:
                                         current_flow.update(final_filtered.iloc[0].to_dict())
-                                    st.session_state.similarities = None  # Reset scores
+                                    # Similarity scores removed
                                     st.rerun()
                             
                                 # Show ad details
@@ -1847,7 +1867,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         ad_display_url = current_flow.get('ad_display_url', '')
                         keyword = current_flow.get('keyword_term', '')
                         
-                        # NEW APPROACH: Fetch HTML FIRST, replace values, THEN render as iframe
+                        # ALWAYS fetch HTML FIRST, replace values, THEN render (NO IFRAME SRC)
                         try:
                             # Step 1: Fetch SERP HTML
                             response = requests.get(serp_url, timeout=15, headers={
@@ -1863,13 +1883,16 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 # FIRST: Use regex to replace keyword in "Sponsored results for:" text (most reliable)
                                 if keyword:
                                     # Replace any variation: "Sponsored results for: ..." or "Sponsored results for: '...'"
-                                    serp_html = re.sub(
-                                        r'Sponsored results for:\s*["\']?[^"\']*["\']?',
-                                        f'Sponsored results for: "{keyword}"',
-                                        serp_html,
-                                        flags=re.IGNORECASE,
-                                        count=1
-                                    )
+                                    # Try multiple patterns to catch all variations
+                                    patterns = [
+                                        (r'Sponsored results for:\s*["\']?[^"\']*["\']?', f'Sponsored results for: "{keyword}"'),
+                                        (r'Sponsored results for:\s*[^<]*', f'Sponsored results for: "{keyword}"'),
+                                        (r'Sponsored results for[^:]*:\s*["\']?[^"\']*["\']?', f'Sponsored results for: "{keyword}"'),
+                                    ]
+                                    for pattern, replacement in patterns:
+                                        if re.search(pattern, serp_html, re.IGNORECASE):
+                                            serp_html = re.sub(pattern, replacement, serp_html, flags=re.IGNORECASE, count=1)
+                                            break
                                 
                                 # THEN: Use BeautifulSoup for structured replacements
                                 from bs4 import BeautifulSoup
@@ -2247,7 +2270,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                             url_filtered = dom_filtered[dom_filtered['publisher_url'] == urls[0]]
                                             if len(url_filtered) > 0:
                                                 current_flow.update(url_filtered.iloc[0].to_dict())
-                                st.session_state.similarities = None  # Reset scores
+                                # Similarity scores removed
                                 st.rerun()
                             
                             # Show landing page URL
@@ -2258,15 +2281,17 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     
                     # Get landing URL and check clicks from current_flow
                     # Use same logic as display (safe_int) for consistency
-                    flow_clicks = safe_int(current_flow.get('clicks', 0))
+                    flow_clicks = current_flow.get('clicks', 0)
+                    clicks_value = safe_int(flow_clicks)
                     
                     # Show landing URL info in basic mode
                     if st.session_state.view_mode == 'basic' and adv_url and pd.notna(adv_url):
                         url_display = str(adv_url)[:60] + "..." if len(str(adv_url)) > 60 else str(adv_url)
                         st.caption(f"**Landing URL:** {url_display}")
                     
-                    # Check if clicks > 0 (same check as display uses)
-                    if flow_clicks <= 0:
+                    # Check if clicks > 0 - use safe_int to handle None/NaN/0 properly
+                    # Debug: Show actual clicks value
+                    if clicks_value is None or clicks_value <= 0:
                         # This specific view has no clicks
                         st.warning("⚠️ **No Ad Clicks**")
                         st.caption("This view has 0 clicks - user didn't click the ad.")
