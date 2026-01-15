@@ -988,20 +988,56 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                     head = soup.new_tag('head')
                     soup.insert(0, head)
             
-            # Add chrome styles to head
+            # Add chrome styles to head - use isolated approach to avoid conflicts
             chrome_style = soup.new_tag('style')
             chrome_style.string = f"""
-                .device-chrome {{ width: 100%; background: white; position: fixed; top: 0; left: 0; right: 0; z-index: 10000; }}
-                .device-content {{ margin-top: {chrome_height}; margin-bottom: {'50px' if device == 'mobile' else '0'}; }}
-                .device-bottom-nav {{ position: fixed; bottom: 0; left: 0; right: 0; z-index: 10000; }}
-                body {{ padding-top: {chrome_height} !important; padding-bottom: {'50px' if device == 'mobile' else '0'} !important; }}
+                /* Chrome bars - isolated, high z-index to stay on top */
+                .device-chrome-wrapper {{
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    z-index: 2147483647;
+                    pointer-events: none;
+                }}
+                .device-chrome-wrapper > * {{
+                    pointer-events: auto;
+                }}
+                .device-chrome {{ 
+                    width: 100%; 
+                    background: white; 
+                    box-sizing: border-box;
+                }}
+                .device-bottom-nav {{ 
+                    position: fixed; 
+                    bottom: 0; 
+                    left: 0; 
+                    right: 0; 
+                    z-index: 2147483647; 
+                    box-sizing: border-box;
+                    pointer-events: none;
+                }}
+                .device-bottom-nav > * {{
+                    pointer-events: auto;
+                }}
+                /* Add spacing for chrome bars - use padding on html to avoid breaking body styles */
+                html {{
+                    padding-top: {chrome_height};
+                    padding-bottom: {'50px' if device == 'mobile' else '0'};
+                }}
+                /* Ensure body content starts below chrome */
+                body {{
+                    min-height: calc(100vh - {chrome_height} - {'50px' if device == 'mobile' else '0px'});
+                }}
             """
             head.append(chrome_style)
             
-            # Insert chrome bars at start of body
+            # Wrap chrome bars in a container to avoid interfering with page styles
+            chrome_wrapper = soup.new_tag('div', attrs={'class': 'device-chrome-wrapper'})
             chrome_div = soup.new_tag('div', attrs={'class': 'device-chrome'})
             chrome_div.append(BeautifulSoup(device_chrome, 'html.parser'))
-            body.insert(0, chrome_div)
+            chrome_wrapper.append(chrome_div)
+            body.insert(0, chrome_wrapper)
             
             # Insert bottom nav if mobile
             if device == 'mobile':
@@ -1009,6 +1045,8 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                 bottom_div.append(BeautifulSoup(bottom_nav, 'html.parser'))
                 body.append(bottom_div)
             
+            # Convert back - preserve all attributes and formatting
+            # Use str() instead of prettify() to keep original structure
             full_content = str(soup)
         except:
             # Fallback to wrapping if injection fails
@@ -2111,6 +2149,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         # Fallback: search globally
                                         title_elem = soup.find(class_=re.compile(r'title', re.IGNORECASE))
                                     if title_elem:
+                                        # Preserve existing attributes and styles
                                         title_elem.clear()
                                         title_elem.append(ad_title)
                                         replacement_made = True
@@ -2124,7 +2163,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     if not desc_elem and ad_container:
                                         desc_elem = soup.find(class_=re.compile(r'desc|description|snippet', re.IGNORECASE))
                                     if desc_elem:
-                                        desc_elem.clear()
+                                        # Preserve existing attributes (style, class, id, data-*, etc.)
+                                        # Only replace text content, keep all attributes
+                                        desc_elem.string = None  # Clear text nodes
+                                        for child in list(desc_elem.children):
+                                            if child.name is None:  # Text node
+                                                child.extract()
                                         desc_elem.append(ad_desc)
                                         replacement_made = True
                                 
@@ -2137,12 +2181,25 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     if not url_elem and ad_container:
                                         url_elem = soup.find(class_=re.compile(r'url|display.*url|ad.*url', re.IGNORECASE))
                                     if url_elem:
-                                        url_elem.clear()
+                                        # Preserve existing attributes (style, class, id, href, data-*, etc.)
+                                        # BeautifulSoup preserves attributes automatically
+                                        # Only replace text content, keep all attributes including href
+                                        url_elem.string = None  # Clear text nodes
+                                        for child in list(url_elem.children):
+                                            if child.name is None:  # Text node
+                                                child.extract()
                                         url_elem.append(ad_display_url)
                                         replacement_made = True
                                 
-                                # Convert back to HTML - KEEP FULL DOCUMENT STRUCTURE
+                                # Convert back to HTML - BeautifulSoup preserves all attributes by default
+                                # Use str() to maintain original structure (don't use prettify() as it reformats)
                                 serp_html = str(soup)
+                                
+                                # BeautifulSoup preserves:
+                                # - All attributes (style, class, data-*, id, etc.)
+                                # - Inline styles
+                                # - Event handlers
+                                # - Custom attributes
                                 
                                 # Fix relative URLs to absolute
                                 serp_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
@@ -2155,30 +2212,42 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 device_widths = {'mobile': 390, 'tablet': 820, 'laptop': 1440}
                                 current_device_w = device_widths.get(device_all, 390)
                                 
-                                # More targeted CSS - only affects SERP content, not chrome bars
+                                # More targeted CSS - preserve original styles, only fix vertical text
                                 mobile_css = f'''
                                 <meta name="viewport" content="width={current_device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
                                 <style>
-                                    /* Base styles - minimal, don't break existing layout */
-                                    html, body {{ 
-                                        width: {current_device_w}px !important;
-                                        max-width: {current_device_w}px !important; 
-                                        overflow-x: hidden !important; 
-                                        margin: 0 !important; 
-                                        padding: 0 !important;
+                                    /* Base styles - minimal impact, preserve original layout */
+                                    /* Only set width constraints, don't override margins/padding that might break layout */
+                                    html {{ 
+                                        width: {current_device_w}px;
+                                        max-width: {current_device_w}px; 
+                                        overflow-x: hidden; 
+                                    }}
+                                    body {{ 
+                                        width: {current_device_w}px;
+                                        max-width: {current_device_w}px; 
+                                        overflow-x: hidden; 
+                                        /* Don't override margin/padding - let original styles handle it */
                                     }}
                                     
-                                    /* CRITICAL: Force horizontal text ONLY for SERP content areas */
-                                    body > *:not(script):not(style),
-                                    [class*="result"], [class*="ad"], [class*="sponsored"], [class*="serp"],
-                                    [class*="ad-result"], [class*="serp-result"] {{
+                                    /* CRITICAL: Force horizontal text ONLY for SERP content areas - don't break existing styles */
+                                    [class*="result"]:not(.device-chrome):not(.device-bottom-nav),
+                                    [class*="ad"]:not(.device-chrome):not(.device-bottom-nav),
+                                    [class*="sponsored"]:not(.device-chrome):not(.device-bottom-nav),
+                                    [class*="serp"]:not(.device-chrome):not(.device-bottom-nav),
+                                    [class*="ad-result"]:not(.device-chrome):not(.device-bottom-nav),
+                                    [class*="serp-result"]:not(.device-chrome):not(.device-bottom-nav) {{
                                         writing-mode: horizontal-tb !important;
                                         text-orientation: mixed !important;
                                         direction: ltr !important;
                                     }}
                                     
-                                    /* Text elements - allow wrapping but preserve display */
-                                    p, div, span, a, h1, h2, h3, h4, h5, h6, li, td, th, label, button, strong, em, b, i {{
+                                    /* Text elements - fix vertical text but preserve other styles */
+                                    [class*="result"] p, [class*="result"] div, [class*="result"] span,
+                                    [class*="result"] a, [class*="result"] h1, [class*="result"] h2,
+                                    [class*="result"] h3, [class*="result"] h4, [class*="result"] h5,
+                                    [class*="result"] h6, [class*="ad"] p, [class*="ad"] div,
+                                    [class*="ad"] span, [class*="ad"] a {{
                                         word-break: break-word !important;
                                         overflow-wrap: break-word !important;
                                         white-space: normal !important;
@@ -2186,24 +2255,17 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         text-orientation: mixed !important;
                                     }}
                                     
-                                    /* Responsive images */
-                                    img, iframe, video {{
-                                        max-width: 100% !important;
-                                        height: auto !important;
+                                    /* Responsive images - don't break existing sizing */
+                                    img {{
+                                        max-width: 100%;
+                                        height: auto;
                                     }}
                                     
-                                    /* Prevent horizontal overflow */
-                                    [class*="container"], [class*="ad-result"], [class*="serp-result"], 
-                                    [class*="sponsored"], [class*="result"], [class*="ad"] {{
-                                        max-width: 100% !important; 
-                                        overflow-x: hidden !important;
-                                    }}
-                                    
-                                    /* Tables */
-                                    table {{
-                                        width: 100% !important;
-                                        max-width: 100% !important;
-                                        table-layout: auto !important;
+                                    /* Prevent horizontal overflow in SERP containers */
+                                    [class*="ad-result"], [class*="serp-result"], 
+                                    [class*="sponsored"], [class*="result"] {{
+                                        max-width: 100%; 
+                                        overflow-x: hidden;
                                     }}
                                 </style>
                                 '''
