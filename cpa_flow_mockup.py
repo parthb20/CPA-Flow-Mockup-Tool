@@ -905,9 +905,9 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
             # If fetch fails, show error
             content = f'<div style="padding: 20px; text-align: center;"><p>Failed to load URL</p><p><a href="{original_url}" target="_blank">Open in new tab</a></p></div>'
     
-    # Validate content - if empty or None, show placeholder
+    # Validate content - if empty or None, show placeholder with styling
     if not content or (isinstance(content, str) and len(content.strip()) == 0):
-        content = '<div style="padding: 20px; text-align: center; color: #666;"><p>No content available</p></div>'
+        content = '<html><body style="padding: 20px; text-align: center; color: #666; font-family: Arial, sans-serif;"><h3>No content available</h3><p>The content could not be loaded.</p></body></html>'
     
     # Always embed HTML directly (no iframe src)
     iframe_content = content
@@ -2334,14 +2334,21 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     flow_clicks = current_flow.get('clicks', 0)
                     clicks_value = safe_int(flow_clicks, default=0)
                     
+                    # Debug: Show what we have
+                    if st.session_state.view_mode == 'advanced':
+                        st.caption(f"🔍 Debug: clicks={clicks_value}, URL={'present' if (adv_url and pd.notna(adv_url) and str(adv_url).strip()) else 'missing/empty'}")
+                    
                     # Show landing URL info in basic mode
                     if st.session_state.view_mode == 'basic' and adv_url and pd.notna(adv_url):
                         url_display = str(adv_url)[:60] + "..." if len(str(adv_url)) > 60 else str(adv_url)
                         st.caption(f"**Landing URL:** {url_display}")
                     
+                    # Check if we have a valid landing URL
+                    has_valid_url = adv_url and pd.notna(adv_url) and str(adv_url).strip() and str(adv_url).lower() != 'nan'
+                    
                     # Check if clicks > 0 - use the flow's clicks value (same as shown in info box)
-                    # Only show warning if clicks are actually 0
-                    if clicks_value > 0 and adv_url and pd.notna(adv_url) and str(adv_url).strip():
+                    if clicks_value > 0:
+                        if has_valid_url:
                         # Has clicks - show landing page
                         # Check if site blocks iframe embedding
                         try:
@@ -2445,8 +2452,14 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     st.error(f"❌ HTTP {response.status_code}")
                             except Exception as e:
                                 st.error(f"❌ {str(e)[:100]}")
+                        else:
+                            # Has clicks but no valid URL
+                            st.warning("⚠️ **No Landing Page URL in Data**")
+                            st.caption("This flow has clicks but the landing URL is missing from the data.")
                     else:
-                        st.warning("No landing page URL")
+                        # No clicks
+                        st.info("ℹ️ **No Ad Clicks**")
+                        st.caption("This view has 0 clicks - user didn't reach the landing page.")
                     
                     st.markdown('</div>', unsafe_allow_html=True)
                 
