@@ -976,25 +976,16 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     </html>
     """
     
-    # Use base64 encoding AND render in a separate container to avoid Streamlit nesting issues
-    # Encode the full content
-    import base64
-    b64_content = base64.b64encode(full_content.encode('utf-8')).decode('utf-8')
-    
-    # Create a simple container with a script that renders the content
+    # Simple approach - just return the HTML wrapped in a styled container
+    # Streamlit will render it directly, no iframe/base64/escaping needed
     html_output = f"""
     <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
-        <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-            <div id="preview-container" style="width: {device_w}px; height: {container_height}px; transform: scale({scale}); transform-origin: center top; background: white; overflow: auto;"></div>
+        <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,0.2); position: relative;">
+            <div style="width: {device_w}px; height: {container_height}px; transform: scale({scale}); transform-origin: top left; position: absolute; top: 0; left: 0;">
+                {full_content}
+            </div>
         </div>
     </div>
-    <script>
-        (function() {{
-            var container = document.getElementById('preview-container');
-            var content = atob('{b64_content}');
-            container.innerHTML = content;
-        }})();
-    </script>
     """
     
     return html_output, display_h + 30, is_url
