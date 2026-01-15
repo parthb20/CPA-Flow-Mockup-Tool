@@ -967,9 +967,11 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     </html>
     """
     
-    # Properly escape HTML for srcdoc attribute using Python's html.escape
-    # This handles & correctly (only escapes & that aren't already part of entities)
-    escaped = html.escape(full_content, quote=True)  # quote=True escapes " as &quot;
+    # Properly escape HTML for srcdoc attribute
+    # srcdoc attribute uses double quotes, so we need to escape: &, <, >, "
+    # IMPORTANT: Escape & FIRST, then others, to avoid double-escaping
+    escaped = full_content.replace('&', '&amp;')  # Must be first
+    escaped = escaped.replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
     
     # Use transform scale for all devices
     iframe_style = f"width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: center top; display: block; background: white;"
@@ -1713,14 +1715,37 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 st.components.v1.html(preview_html, height=height, scrolling=False)
                                                 st.caption("🤖 Rendered via browser automation (bypassed 403)")
                                             else:
-                                                # Playwright failed - show error and link
-                                                st.warning("🚫 Site blocks access (403) - Playwright failed")
-                                                st.markdown(f"[🔗 Open in new tab]({pub_url})")
-                                                # Don't use Screenshot API as it's unreliable
+                                                # Playwright failed - try Screenshot API
+                                                if SCREENSHOT_API_KEY:
+                                                    try:
+                                                        from urllib.parse import quote
+                                                        screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(pub_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
+                                                        screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
+                                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                                        st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                        st.caption("📸 Screenshot API")
+                                                    except Exception as scr_err:
+                                                        st.warning("🚫 Site blocks access (403) - All methods failed")
+                                                        st.markdown(f"[🔗 Open in new tab]({pub_url})")
+                                                else:
+                                                    st.warning("🚫 Site blocks access (403) - Playwright failed")
+                                                    st.markdown(f"[🔗 Open in new tab]({pub_url})")
+                                    elif SCREENSHOT_API_KEY:
+                                        # No Playwright, use Screenshot API
+                                        try:
+                                            from urllib.parse import quote
+                                            screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(pub_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
+                                            screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
+                                            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                            st.components.v1.html(preview_html, height=height, scrolling=False)
+                                            st.caption("📸 Screenshot API")
+                                        except Exception as scr_err:
+                                            st.warning("🚫 Site blocks access (403)")
+                                            st.markdown(f"[🔗 Open in new tab]({pub_url})")
                                     else:
-                                        # No Playwright available - show error and link
+                                        # No Playwright and no Screenshot API
                                         st.warning("🚫 Site blocks access (403)")
-                                        st.info("💡 Install Playwright to bypass 403 errors: `pip install playwright && playwright install chromium`")
+                                        st.info("💡 Install Playwright or add SCREENSHOT_API_KEY to bypass 403 errors")
                                         st.markdown(f"[🔗 Open in new tab]({pub_url})")
                                 elif response.status_code == 200:
                                     # Use response.text which handles encoding automatically
@@ -2210,9 +2235,24 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                             st.components.v1.html(preview_html, height=height, scrolling=False)
                                             st.caption("📺 SERP (via Playwright)")
                                         else:
-                                            st.warning("⚠️ Playwright failed to load SERP")
-                                            st.info("💡 Playwright may need to be installed: `pip install playwright && playwright install chromium`")
-                                            st.markdown(f"[🔗 Open SERP in new tab]({serp_url})")
+                                            # Playwright failed - try Screenshot API
+                                            if SCREENSHOT_API_KEY:
+                                                try:
+                                                    from urllib.parse import quote
+                                                    viewports = {'mobile': (390, 844), 'tablet': (820, 1180), 'laptop': (1440, 900)}
+                                                    vw, vh = viewports.get(device_all, (390, 844))
+                                                    screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(serp_url)}&full_page=false&viewport_width={vw}&viewport_height={vh}&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
+                                                    screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
+                                                    preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                                    st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                    st.caption("📸 Screenshot API")
+                                                except Exception as scr_err:
+                                                    st.warning("⚠️ Could not load SERP - All methods failed")
+                                                    st.markdown(f"[🔗 Open SERP in new tab]({serp_url})")
+                                            else:
+                                                st.warning("⚠️ Playwright failed to load SERP")
+                                                st.info("💡 Install Playwright or add SCREENSHOT_API_KEY")
+                                                st.markdown(f"[🔗 Open SERP in new tab]({serp_url})")
                                 else:
                                     st.error(f"HTTP {response.status_code} - Install Playwright for 403 bypass")
                             else:
@@ -2345,13 +2385,37 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 st.components.v1.html(preview_html, height=height, scrolling=False)
                                                 st.caption("🤖 Rendered via browser automation (bypassed 403)")
                                             else:
-                                                # Playwright failed - show error and link
-                                                st.warning("🚫 Site blocks access (403) - Playwright failed")
-                                                st.markdown(f"[🔗 Open in new tab]({adv_url})")
+                                                # Playwright failed - try Screenshot API
+                                                if SCREENSHOT_API_KEY:
+                                                    try:
+                                                        from urllib.parse import quote
+                                                        screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(adv_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
+                                                        screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
+                                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                                        st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                        st.caption("📸 Screenshot API")
+                                                    except Exception as scr_err:
+                                                        st.warning("🚫 Site blocks access (403) - All methods failed")
+                                                        st.markdown(f"[🔗 Open in new tab]({adv_url})")
+                                                else:
+                                                    st.warning("🚫 Site blocks access (403) - Playwright failed")
+                                                    st.markdown(f"[🔗 Open in new tab]({adv_url})")
+                                    elif SCREENSHOT_API_KEY:
+                                        # No Playwright, use Screenshot API
+                                        try:
+                                            from urllib.parse import quote
+                                            screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(adv_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
+                                            screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
+                                            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                            st.components.v1.html(preview_html, height=height, scrolling=False)
+                                            st.caption("📸 Screenshot API")
+                                        except Exception as scr_err:
+                                            st.warning("🚫 Site blocks access (403)")
+                                            st.markdown(f"[🔗 Open landing page]({adv_url})")
                                     else:
-                                        # No Playwright available - show error and link
+                                        # No Playwright and no Screenshot API
                                         st.warning("🚫 Site blocks access (403)")
-                                        st.info("💡 Install Playwright to bypass 403 errors: `pip install playwright && playwright install chromium`")
+                                        st.info("💡 Install Playwright or add SCREENSHOT_API_KEY to bypass 403 errors")
                                         st.markdown(f"[🔗 Open landing page]({adv_url})")
                                 elif response.status_code == 200:
                                     # Use response.text which handles encoding automatically
