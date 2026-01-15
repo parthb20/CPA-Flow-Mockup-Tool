@@ -1035,7 +1035,7 @@ def generate_serp_mockup(flow_data, serp_templates):
                 html
             )
             
-            # Replace URL (inside <div class="url">)
+            # Replace URL (inside <div class="url">) - match old working version exactly
             html = re.sub(
                 r'(<div class="url">)[^<]*(</div>)', 
                 f'\\1{ad_url}\\2', 
@@ -1043,23 +1043,20 @@ def generate_serp_mockup(flow_data, serp_templates):
                 count=1
             )
             
-            # Replace title (inside <div class="title">) - preserve inner HTML structure
-            # Match opening tag, any inner content, and closing tag, but preserve attributes
+            # Replace title (inside <div class="title">) - match old working version exactly
             html = re.sub(
-                r'(<div[^>]*class=["\']title["\'][^>]*>)[^<]*(</div>)', 
+                r'(<div class="title">)[^<]*(</div>)', 
                 f'\\1{ad_title}\\2', 
                 html, 
-                count=1,
-                flags=re.IGNORECASE
+                count=1
             )
             
-            # Replace description (inside <div class="desc">) - preserve inner HTML structure
+            # Replace description (inside <div class="desc">) - match old working version exactly
             html = re.sub(
-                r'(<div[^>]*class=["\']desc["\'][^>]*>)[^<]*(</div>)', 
+                r'(<div class="desc">)[^<]*(</div>)', 
                 f'\\1{ad_desc}\\2', 
                 html, 
-                count=1,
-                flags=re.IGNORECASE
+                count=1
             )
             
             return html
@@ -2090,33 +2087,42 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                             text_node.replace_with(new_text)
                                             replacement_made = True
                                 
-                                # 2. Replace ad title - find ALL elements with title class, replace FIRST one
+                                # 2. Replace ad title - use simple regex like old working version
                                 if ad_title:
-                                    title_elements = soup.find_all(class_=re.compile(r'title', re.IGNORECASE))
-                                    if title_elements:
-                                        # Replace the first title element's content
-                                        first_title = title_elements[0]
-                                        first_title.clear()
-                                        first_title.append(ad_title)
-                                        replacement_made = True
+                                    # Convert soup back to string, use regex replacement, then re-parse
+                                    serp_html_temp = str(soup)
+                                    serp_html_temp = re.sub(
+                                        r'(<div class="title">)[^<]*(</div>)',
+                                        f'\\1{ad_title}\\2',
+                                        serp_html_temp,
+                                        count=1
+                                    )
+                                    soup = BeautifulSoup(serp_html_temp, 'html.parser')
+                                    replacement_made = True
                                 
-                                # 3. Replace ad description - find ALL elements with desc class, replace FIRST one
+                                # 3. Replace ad description - use simple regex like old working version
                                 if ad_desc:
-                                    desc_elements = soup.find_all(class_=re.compile(r'desc', re.IGNORECASE))
-                                    if desc_elements:
-                                        first_desc = desc_elements[0]
-                                        first_desc.clear()
-                                        first_desc.append(ad_desc)
-                                        replacement_made = True
+                                    serp_html_temp = str(soup)
+                                    serp_html_temp = re.sub(
+                                        r'(<div class="desc">)[^<]*(</div>)',
+                                        f'\\1{ad_desc}\\2',
+                                        serp_html_temp,
+                                        count=1
+                                    )
+                                    soup = BeautifulSoup(serp_html_temp, 'html.parser')
+                                    replacement_made = True
                                 
-                                # 4. Replace ad display URL - find ALL elements with url class, replace FIRST one
+                                # 4. Replace ad display URL - use simple regex like old working version
                                 if ad_display_url:
-                                    url_elements = soup.find_all(class_=re.compile(r'url', re.IGNORECASE))
-                                    if url_elements:
-                                        first_url = url_elements[0]
-                                        first_url.clear()
-                                        first_url.append(ad_display_url)
-                                        replacement_made = True
+                                    serp_html_temp = str(soup)
+                                    serp_html_temp = re.sub(
+                                        r'(<div class="url">)[^<]*(</div>)',
+                                        f'\\1{ad_display_url}\\2',
+                                        serp_html_temp,
+                                        count=1
+                                    )
+                                    soup = BeautifulSoup(serp_html_temp, 'html.parser')
+                                    replacement_made = True
                                 
                                 # Debug info
                                 if not replacement_made:
