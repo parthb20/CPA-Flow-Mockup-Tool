@@ -351,9 +351,11 @@ def load_csv_from_gdrive(file_id):
         response = session.get(url, timeout=30, stream=False)
         
         content = response.content
+        if content is None:
+            return None
         
         # Check for virus scan warning or download confirmation (handle silently)
-        if b'virus scan warning' in content.lower() or b'download anyway' in content.lower() or content.startswith(b'<!DOCTYPE'):
+        if content and (b'virus scan warning' in content.lower() or b'download anyway' in content.lower() or content.startswith(b'<!DOCTYPE')):
             text = content.decode('utf-8', errors='ignore')
             
             # Try to find confirmation token
@@ -363,6 +365,8 @@ def load_csv_from_gdrive(file_id):
                 url = f"https://drive.google.com/uc?export=download&id={file_id}&confirm={confirm}"
                 response = session.get(url, timeout=60, stream=False)
                 content = response.content
+                if content is None:
+                    return None
             else:
                 download_match = re.search(r'href="(/uc\?[^"]*export=download[^"]*)"', text)
                 if download_match:
@@ -370,13 +374,17 @@ def load_csv_from_gdrive(file_id):
                     url = f"https://drive.google.com{download_path}"
                     response = session.get(url, timeout=60, stream=False)
                     content = response.content
+                    if content is None:
+                        return None
                 else:
                     return None
         
         if response.status_code != 200:
             return None
         
-        # Process the content
+        # Process the content - ensure content is not None
+        if content is None:
+            return None
         return process_file_content(content)
             
     except Exception as e:
@@ -385,6 +393,11 @@ def load_csv_from_gdrive(file_id):
 def process_file_content(content):
     """Process file content - detect type and decompress if needed"""
     try:
+        # Ensure content is not None
+        if content is None:
+            st.error("❌ No content received")
+            return None
+        
         # Check if Google Drive returned HTML error page
         if content.startswith(b'<!DOCTYPE') or content.startswith(b'<html') or b'<title>Google Drive' in content[:1000]:
             st.error("❌ Could not download file - check sharing settings")
@@ -446,6 +459,9 @@ def process_file_content(content):
         else:
             # Try as CSV
             try:
+                if content is None:
+                    st.error("❌ No content received from Google Drive")
+                    return None
                 df = pd.read_csv(
                     StringIO(content.decode('utf-8')), 
                     dtype=str, 
