@@ -754,7 +754,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     if device == 'mobile':
         device_w = 390
         container_height = 844
-        scale = 0.35
+        scale = 0.55  # Increased from 0.35 for better visibility
         frame_style = "border-radius: 40px; border: 10px solid #000000;"
         
         # Mobile chrome
@@ -1573,15 +1573,17 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                     screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
                                                     preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
                                                     st.components.v1.html(preview_html, height=height, scrolling=False)
-                                                    st.caption("📸 Screenshot API (browser automation failed)")
+                                                    st.caption("📸 Screenshot API")
                                                     
-                                                    # Try to extract text from screenshot
+                                                    # Automatically extract text from screenshot
                                                     if OCR_AVAILABLE:
-                                                        with st.spinner("🔍 Extracting text from screenshot..."):
+                                                        try:
                                                             extracted_text = extract_text_from_screenshot(screenshot_url)
                                                             if extracted_text:
-                                                                with st.expander("📝 Extracted Text"):
-                                                                    st.text(extracted_text[:500])
+                                                                with st.expander("📝 Extracted Text from Screenshot"):
+                                                                    st.text(extracted_text[:1000])
+                                                        except Exception as ocr_err:
+                                                            pass  # Silent fail for OCR
                                                 else:
                                                     st.warning("🚫 Site blocks access (403)")
                                                     st.markdown(f"[🔗 Open in new tab]({pub_url})")
@@ -1592,7 +1594,17 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
                                         preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
                                         st.components.v1.html(preview_html, height=height, scrolling=False)
-                                        st.caption("📸 Screenshot API (HTTP 403)")
+                                        st.caption("📸 Screenshot API")
+                                        
+                                        # Automatically extract text from screenshot
+                                        if OCR_AVAILABLE:
+                                            try:
+                                                extracted_text = extract_text_from_screenshot(screenshot_url)
+                                                if extracted_text:
+                                                    with st.expander("📝 Extracted Text from Screenshot"):
+                                                        st.text(extracted_text[:1000])
+                                            except Exception as ocr_err:
+                                                pass  # Silent fail for OCR
                                     else:
                                         st.warning("🚫 Site blocks access (403)")
                                         st.info("Install Playwright or add SCREENSHOT_API_KEY")
@@ -1765,41 +1777,54 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 from bs4 import BeautifulSoup
                                 soup = BeautifulSoup(serp_html, 'html.parser')
                                 
+                                # Debug: Show what we're replacing
+                                replacement_made = False
+                                
                                 # 1. Replace keyword in "Sponsored results for:" text (all occurrences)
                                 for text_node in soup.find_all(string=True):
-                                    if 'Sponsored results for:' in text_node or 'sponsored results for:' in text_node.lower():
-                                        parent = text_node.parent
-                                        if parent:
-                                            # Replace the text node
-                                            new_text = re.sub(
-                                                r'(Sponsored results for:|sponsored results for:)\s*["\']?([^"\'<>]*)["\']?',
-                                                f'\\1 "{keyword}"',
-                                                text_node,
-                                                flags=re.IGNORECASE
-                                            )
+                                    text_str = str(text_node)
+                                    if 'Sponsored results for:' in text_str or 'sponsored results for:' in text_str.lower():
+                                        new_text = re.sub(
+                                            r'(Sponsored results for:|sponsored results for:)\s*["\']?([^"\'<>]*)["\']?',
+                                            f'\\1 "{keyword}"',
+                                            text_str,
+                                            flags=re.IGNORECASE
+                                        )
+                                        if new_text != text_str:
                                             text_node.replace_with(new_text)
+                                            replacement_made = True
                                 
-                                # 2. Replace ad title - find FIRST element with title class and replace ALL text inside
-                                title_elements = soup.find_all(class_=re.compile(r'title', re.IGNORECASE))
-                                if title_elements and ad_title:
-                                    # Replace the first title element's content
-                                    first_title = title_elements[0]
-                                    first_title.clear()
-                                    first_title.append(ad_title)
+                                # 2. Replace ad title - find ALL elements with title class, replace FIRST one
+                                if ad_title:
+                                    title_elements = soup.find_all(class_=re.compile(r'title', re.IGNORECASE))
+                                    if title_elements:
+                                        # Replace the first title element's content
+                                        first_title = title_elements[0]
+                                        first_title.clear()
+                                        first_title.append(ad_title)
+                                        replacement_made = True
                                 
-                                # 3. Replace ad description - find FIRST element with desc class
-                                desc_elements = soup.find_all(class_=re.compile(r'desc', re.IGNORECASE))
-                                if desc_elements and ad_desc:
-                                    first_desc = desc_elements[0]
-                                    first_desc.clear()
-                                    first_desc.append(ad_desc)
+                                # 3. Replace ad description - find ALL elements with desc class, replace FIRST one
+                                if ad_desc:
+                                    desc_elements = soup.find_all(class_=re.compile(r'desc', re.IGNORECASE))
+                                    if desc_elements:
+                                        first_desc = desc_elements[0]
+                                        first_desc.clear()
+                                        first_desc.append(ad_desc)
+                                        replacement_made = True
                                 
-                                # 4. Replace ad display URL - find FIRST element with url class
-                                url_elements = soup.find_all(class_=re.compile(r'url', re.IGNORECASE))
-                                if url_elements and ad_display_url:
-                                    first_url = url_elements[0]
-                                    first_url.clear()
-                                    first_url.append(ad_display_url)
+                                # 4. Replace ad display URL - find ALL elements with url class, replace FIRST one
+                                if ad_display_url:
+                                    url_elements = soup.find_all(class_=re.compile(r'url', re.IGNORECASE))
+                                    if url_elements:
+                                        first_url = url_elements[0]
+                                        first_url.clear()
+                                        first_url.append(ad_display_url)
+                                        replacement_made = True
+                                
+                                # Debug info
+                                if not replacement_made:
+                                    st.warning("⚠️ No matching elements found for replacement. Check SERP HTML structure.")
                                 
                                 # Convert back to HTML
                                 serp_html = str(soup)
@@ -2002,15 +2027,17 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                     screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
                                                     preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
                                                     st.components.v1.html(preview_html, height=height, scrolling=False)
-                                                    st.caption("📸 Screenshot API (browser automation failed)")
+                                                    st.caption("📸 Screenshot API")
                                                     
-                                                    # Try to extract text from screenshot
+                                                    # Automatically extract text from screenshot
                                                     if OCR_AVAILABLE:
-                                                        with st.spinner("🔍 Extracting text from screenshot..."):
+                                                        try:
                                                             extracted_text = extract_text_from_screenshot(screenshot_url)
                                                             if extracted_text:
-                                                                with st.expander("📝 Extracted Text"):
-                                                                    st.text(extracted_text[:500])
+                                                                with st.expander("📝 Extracted Text from Screenshot"):
+                                                                    st.text(extracted_text[:1000])
+                                                        except Exception as ocr_err:
+                                                            pass  # Silent fail for OCR
                                                 else:
                                                     st.warning("🚫 Site blocks access (403)")
                                                     st.markdown(f"[🔗 Open in new tab]({adv_url})")
@@ -2021,15 +2048,17 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                         screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
                                         preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
                                         st.components.v1.html(preview_html, height=height, scrolling=False)
-                                        st.caption("📸 Screenshot API (HTTP 403)")
+                                        st.caption("📸 Screenshot API")
                                         
-                                        # Try to extract text from screenshot
+                                        # Automatically extract text from screenshot
                                         if OCR_AVAILABLE:
-                                            with st.spinner("🔍 Extracting text from screenshot..."):
+                                            try:
                                                 extracted_text = extract_text_from_screenshot(screenshot_url)
                                                 if extracted_text:
-                                                    with st.expander("📝 Extracted Text"):
-                                                        st.text(extracted_text[:500])
+                                                    with st.expander("📝 Extracted Text from Screenshot"):
+                                                        st.text(extracted_text[:1000])
+                                            except Exception as ocr_err:
+                                                pass  # Silent fail for OCR
                                     else:
                                         st.warning("🚫 Site blocks access (403)")
                                         st.info("Install Playwright or add SCREENSHOT_API_KEY")
