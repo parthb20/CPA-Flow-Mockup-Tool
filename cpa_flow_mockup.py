@@ -278,6 +278,7 @@ st.markdown("""
 
 # Config
 FILE_A_ID = "17_JKUhXfBYlWZZEKUStRgFQhL3Ty-YZu"  # Main data file
+FILE_B_ID = "1SXcLm1hhzQK23XY6Qt7E1YX5Fa-2Tlr9"  # SERP templates JSON file
 # SERP URL base - template key gets appended
 SERP_BASE_URL = "https://related.performmedia.com/search/?srprc=3&oscar=1&a=100&q=nada+vehicle+value+by+vin&mkt=perform&purl=forbes.com/home&tpid="
 
@@ -345,7 +346,7 @@ def get_screenshot_url(url, device='mobile', full_page=False):
     return f"https://image.thum.io/get/{url}"
 
 # Session state
-for key in ['data_a', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'similarities', 'last_campaign_key']:
+for key in ['data_a', 'data_b', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'similarities', 'last_campaign_key']:
     if key not in st.session_state:
         if key == 'view_mode':
             st.session_state[key] = 'basic'
@@ -502,6 +503,28 @@ def process_file_content(content):
         st.error(f"❌ Error processing file: {str(e)}")
         return None
 
+
+def load_json_from_gdrive(file_id):
+    """Load JSON file from Google Drive - returns dict of SERP templates {template_key: html_string}"""
+    try:
+        url = f"https://drive.google.com/uc?export=download&id={file_id}"
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+        
+        # Return dict as-is: { "T8F75KL": "<html>...", ... }
+        if isinstance(data, dict):
+            return data
+        
+        # If it's a list, convert to dict (fallback for old format)
+        if isinstance(data, list) and len(data) > 0:
+            # Try to extract template key from first item if it has one
+            return data
+        
+        return None
+    except Exception as e:
+        st.error(f"Error loading SERP templates: {str(e)}")
+        return None
 
 def safe_float(value, default=0.0):
     try:
@@ -979,15 +1002,34 @@ def generate_serp_mockup(flow_data, serp_templates):
     
     This function processes SERP templates and fixes CSS issues that cause
     vertical text rendering problems.
+    
+    Args:
+        flow_data: Dict containing flow information including 'serp_template_key'
+        serp_templates: Dict mapping template keys to HTML strings, e.g., {"T8F75KL": "<html>..."}
     """
     keyword = flow_data.get('keyword_term', 'N/A')
     ad_title = flow_data.get('ad_title', 'N/A')
     ad_desc = flow_data.get('ad_description', 'N/A')
     ad_url = flow_data.get('ad_display_url', 'N/A')
+    serp_template_key = flow_data.get('serp_template_key', '')
     
-    if serp_templates and len(serp_templates) > 0:
+    if serp_templates:
         try:
-            html = serp_templates[0].get('code', '')
+            # New format: dict with template_key -> HTML string
+            if isinstance(serp_templates, dict):
+                # Look up template by key
+                if serp_template_key and str(serp_template_key) in serp_templates:
+                    html = serp_templates[str(serp_template_key)]
+                elif len(serp_templates) > 0:
+                    # Fallback: use first available template
+                    html = list(serp_templates.values())[0]
+                else:
+                    return ""
+            # Old format: list of dicts with 'code' key (backward compatibility)
+            elif isinstance(serp_templates, list) and len(serp_templates) > 0:
+                html = serp_templates[0].get('code', '')
+            else:
+                return ""
             
             # Fix CSS media queries that cause rendering issues
             html = html.replace('min-device-width', 'min-width')
@@ -1342,6 +1384,7 @@ if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
         try:
             st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
+            st.session_state.data_b = load_json_from_gdrive(FILE_B_ID)
             st.session_state.loading_done = True
         except Exception as e:
             st.error(f"❌ Error loading data")
@@ -1917,8 +1960,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     
                     # Try using SERP templates first (better rendering, fixes CSS issues)
                     serp_html = None
-                    if st.session_state.data_b and len(st.session_state.data_b) > 0:
-                        serp_html = generate_serp_mockup(current_flow, st.session_state.data_b)
+                    if 'data_b' in st.session_state and st.session_state.data_b:
+                        # Check if it's a dict (new format) or list (old format)
+                        is_dict = isinstance(st.session_state.data_b, dict)
+                        is_list = isinstance(st.session_state.data_b, list)
+                        if (is_dict and len(st.session_state.data_b) > 0) or (is_list and len(st.session_state.data_b) > 0):
+                            serp_html = generate_serp_mockup(current_flow, st.session_state.data_b)
                     
                     # If template generation worked, use it
                     if serp_html and serp_html.strip():
