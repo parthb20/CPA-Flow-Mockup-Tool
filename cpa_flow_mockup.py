@@ -283,10 +283,66 @@ SERP_BASE_URL = "https://related.performmedia.com/search/?srprc=3&oscar=1&a=100&
 
 try:
     API_KEY = st.secrets.get("FASTROUTER_API_KEY", st.secrets.get("OPENAI_API_KEY", "")).strip()
-    SCREENSHOT_API_KEY = st.secrets.get("SCREENSHOT_API_KEY", "").strip()
+    SCREENSHOT_API_KEY = st.secrets.get("SCREENSHOT_API_KEY", "").strip()  # thum.io API key (auth token) or empty for referer-based
+    THUMIO_REFERER_DOMAIN = st.secrets.get("THUMIO_REFERER_DOMAIN", "").strip()  # thum.io referer domain (e.g., cpa-flow-mockup.streamlit.app)
 except Exception as e:
     API_KEY = ""
     SCREENSHOT_API_KEY = ""
+    THUMIO_REFERER_DOMAIN = ""
+
+# Helper: Check if thum.io is configured (either via auth token or referer domain)
+THUMIO_CONFIGURED = bool(SCREENSHOT_API_KEY or THUMIO_REFERER_DOMAIN)
+
+# Helper function to generate thum.io screenshot URL
+def get_screenshot_url(url, device='mobile', full_page=False):
+    """
+    Generate thum.io screenshot URL
+    Fallback order: iframe → HTML → Playwright → Screenshot (thum.io)
+    
+    thum.io format: https://image.thum.io/get/{url} (for referer-based keys)
+    For auth token keys: https://image.thum.io/get/[options]/https://target-url.com/
+    
+    Supports two authentication methods:
+    1. Auth token: Set SCREENSHOT_API_KEY in secrets (adds auth/{token} to URL with options)
+    2. Referer-based: Set THUMIO_REFERER_DOMAIN in secrets (simple format, browser sets referer header)
+    
+    Note: For referer-based keys, use simple format: https://image.thum.io/get/{url}
+    The HTTP referer header is automatically set by the browser when loading images.
+    """
+    from urllib.parse import quote
+    
+    # For referer-based keys, use simple format: https://image.thum.io/get/{url}
+    if THUMIO_REFERER_DOMAIN:
+        screenshot_url = f"https://image.thum.io/get/{url}"
+        return screenshot_url
+    
+    # For auth token keys, add options (width, height, auth)
+    if SCREENSHOT_API_KEY:
+        # Device viewport sizes
+        viewports = {
+            'mobile': {'width': 390, 'height': 844},
+            'tablet': {'width': 820, 'height': 1180},
+            'laptop': {'width': 1440, 'height': 900}
+        }
+        
+        vp = viewports.get(device, viewports['mobile'])
+        
+        # Build options: width, height/fullpage, auth
+        options = [f"width/{vp['width']}"]
+        
+        if full_page:
+            options.append("fullpage")
+        else:
+            options.append(f"height/{vp['height']}")
+        
+        options.append(f"auth/{SCREENSHOT_API_KEY}")
+        
+        # Construct URL: https://image.thum.io/get/{options}/{url}
+        screenshot_url = f"https://image.thum.io/get/{'/'.join(options)}/{url}"
+        return screenshot_url
+    
+    # Fallback: simple format (may work without auth for basic usage)
+    return f"https://image.thum.io/get/{url}"
 
 # Session state
 for key in ['data_a', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'similarities', 'last_campaign_key']:
@@ -546,10 +602,10 @@ def fetch_page_content(url):
             pass
     
     # Try 3: Screenshot OCR if available (for 403 blocks)
-    if OCR_AVAILABLE and SCREENSHOT_API_KEY:
+    if OCR_AVAILABLE and THUMIO_CONFIGURED:
         try:
             from urllib.parse import quote
-            screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(url)}&full_page=true&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
+            screenshot_url = get_screenshot_url(url, device='mobile', full_page=True)
             extracted_text = extract_text_from_screenshot(screenshot_url)
             if extracted_text:
                 return extracted_text[:3000]  # Limit for API
@@ -873,24 +929,35 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     <!DOCTYPE html>
     <html>
     <head>
-        <meta name="viewport" content="width={device_w}, initial-scale=1.0">
+        <meta name="viewport" content="width={device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <meta charset="utf-8">
         <style>
             * {{ box-sizing: border-box; }}
             body {{ margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; width: {device_w}px; overflow-x: hidden; }}
-            .chrome {{ width: 100%; background: white; position: fixed; top: 0; left: 0; right: 0; z-index: 100; }}
-            .content {{ position: absolute; top: {chrome_height}; bottom: {'50px' if device == 'mobile' else '0'}; left: 0; right: 0; overflow-y: auto; overflow-x: hidden; width: 100%; max-width: {device_w}px; }}
-            .bottom-nav {{ position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; }}
-            /* Prevent text from breaking vertically */
-            p, div, span, h1, h2, h3, h4, h5, h6, a, li {{ white-space: normal; word-wrap: break-word; word-break: normal; }}
-            /* Ensure proper text flow */
+            .device-chrome {{ width: 100%; background: white; }}
+            .content-area {{ height: calc(100vh - {'90px' if device == 'mobile' else '60px' if device == 'tablet' else '52px'}); overflow-y: auto; overflow-x: hidden; }}
+            /* Prevent text from breaking vertically - ensure horizontal flow */
+            body, p, div, span, h1, h2, h3, h4, h5, h6, a, li, td, th {{
+                white-space: normal !important;
+                word-wrap: break-word !important;
+                word-break: normal !important;
+                writing-mode: horizontal-tb !important;
+                text-orientation: mixed !important;
+            }}
+            /* Ensure proper text flow and prevent vertical stacking */
             * {{ max-width: 100%; }}
+            /* Fix for SERP content - ensure horizontal layout */
+            .ad-container, .result, .search-result {{
+                display: block !important;
+                width: 100% !important;
+                max-width: 100% !important;
+            }}
         </style>
     </head>
     <body>
-        <div class="chrome">{device_chrome}</div>
-        <div class="content">{iframe_content}</div>
-        {f'<div class="bottom-nav">{bottom_nav}</div>' if device == 'mobile' else ''}
+        <div class="device-chrome">{device_chrome}</div>
+        <div class="content-area">{iframe_content}</div>
+        {bottom_nav if device == 'mobile' else ''}
     </body>
     </html>
     """
@@ -906,6 +973,67 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     """
     
     return html_output, display_h + 30, is_url
+
+def generate_serp_mockup(flow_data, serp_templates):
+    """Generate SERP HTML using actual template with CSS fixes
+    
+    This function processes SERP templates and fixes CSS issues that cause
+    vertical text rendering problems.
+    """
+    keyword = flow_data.get('keyword_term', 'N/A')
+    ad_title = flow_data.get('ad_title', 'N/A')
+    ad_desc = flow_data.get('ad_description', 'N/A')
+    ad_url = flow_data.get('ad_display_url', 'N/A')
+    
+    if serp_templates and len(serp_templates) > 0:
+        try:
+            html = serp_templates[0].get('code', '')
+            
+            # Fix CSS media queries that cause rendering issues
+            html = html.replace('min-device-width', 'min-width')
+            html = html.replace('max-device-width', 'max-width')
+            html = html.replace('min-device-height', 'min-height')
+            html = html.replace('max-device-height', 'max-height')
+            
+            # Remove problematic min-height constraints that cause blank space
+            html = re.sub(r'min-height\s*:\s*calc\(100[sv][vh]h?[^)]*\)\s*;?', '', html, flags=re.IGNORECASE)
+            
+            # Replace keyword in the header text
+            html = re.sub(
+                r'Sponsored results for:\s*"[^"]*"', 
+                f'Sponsored results for: "{keyword}"', 
+                html
+            )
+            
+            # Replace URL (inside <div class="url">)
+            html = re.sub(
+                r'(<div class="url">)[^<]*(</div>)', 
+                f'\\1{ad_url}\\2', 
+                html, 
+                count=1
+            )
+            
+            # Replace title (inside <div class="title">)
+            html = re.sub(
+                r'(<div class="title">)[^<]*(</div>)', 
+                f'\\1{ad_title}\\2', 
+                html, 
+                count=1
+            )
+            
+            # Replace description (inside <div class="desc">)
+            html = re.sub(
+                r'(<div class="desc">)[^<]*(</div>)', 
+                f'\\1{ad_desc}\\2', 
+                html, 
+                count=1
+            )
+            
+            return html
+        except Exception as e:
+            st.error(f"Error generating SERP mockup: {str(e)}")
+    
+    return ""
 
 def extract_text_from_screenshot(screenshot_url):
     """Extract text from screenshot using OCR"""
@@ -1584,13 +1712,18 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 st.caption("🤖 Rendered via browser automation (bypassed 403)")
                                             else:
                                                 # Try screenshot API as fallback
-                                                if SCREENSHOT_API_KEY:
+                                                if THUMIO_CONFIGURED:
                                                     from urllib.parse import quote
-                                                    screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(pub_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                                    screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                                    preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
-                                                    st.components.v1.html(preview_html, height=height, scrolling=False)
-                                                    st.caption("📸 Screenshot API")
+                                                    screenshot_url = get_screenshot_url(pub_url, device=device_all, full_page=False)
+                                                    if screenshot_url:
+                                                        vw = 390 if device_all == 'mobile' else 820 if device_all == 'tablet' else 1440
+                                                        screenshot_html = f'''<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width={vw}">
+<style>* {{margin:0;padding:0}} img {{width:100%;height:auto}}</style>
+</head><body><img src="{screenshot_url}" alt="Page screenshot" onerror="this.parentElement.innerHTML='<div style=\\'padding: 20px; text-align: center; color: #666;\\'>Image failed to load</div>';" /></body></html>'''
+                                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
+                                                        st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                        st.caption("📸 Screenshot (thum.io)")
                                                     
                                                     # Automatically extract text from screenshot
                                                     if OCR_AVAILABLE:
@@ -1604,14 +1737,19 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 else:
                                                     st.warning("🚫 Site blocks access (403)")
                                                     st.markdown(f"[🔗 Open in new tab]({pub_url})")
-                                    elif SCREENSHOT_API_KEY:
+                                    elif THUMIO_CONFIGURED:
                                         # No Playwright, use screenshot API
                                         from urllib.parse import quote
-                                        screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(pub_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                        screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
-                                        st.components.v1.html(preview_html, height=height, scrolling=False)
-                                        st.caption("📸 Screenshot API")
+                                        screenshot_url = get_screenshot_url(pub_url, device=device_all, full_page=False)
+                                        if screenshot_url:
+                                            vw = 390 if device_all == 'mobile' else 820 if device_all == 'tablet' else 1440
+                                            screenshot_html = f'''<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width={vw}">
+<style>* {{margin:0;padding:0}} img {{width:100%;height:auto}}</style>
+</head><body><img src="{screenshot_url}" alt="Page screenshot" onerror="this.parentElement.innerHTML='<div style=\\'padding: 20px; text-align: center; color: #666;\\'>Image failed to load</div>';" /></body></html>'''
+                                            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
+                                            st.components.v1.html(preview_html, height=height, scrolling=False)
+                                            st.caption("📸 Screenshot (thum.io)")
                                         
                                         # Automatically extract text from screenshot
                                         if OCR_AVAILABLE:
@@ -1624,7 +1762,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 pass  # Silent fail for OCR
                                     else:
                                         st.warning("🚫 Site blocks access (403)")
-                                        st.info("Install Playwright or add SCREENSHOT_API_KEY")
+                                        st.info("💡 Install Playwright or configure thum.io (add THUMIO_REFERER_DOMAIN or SCREENSHOT_API_KEY to secrets)")
                                         st.markdown(f"[🔗 Open in new tab]({pub_url})")
                                 elif response.status_code == 200:
                                     # Use response.text which handles encoding automatically
@@ -1771,14 +1909,35 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     else:
                         serp_url = None
                     
-                    if serp_url:
-                        # Get ad details for replacement
-                        ad_title = current_flow.get('ad_title', '')
-                        ad_desc = current_flow.get('ad_description', '')
-                        ad_display_url = current_flow.get('ad_display_url', '')
-                        keyword = current_flow.get('keyword_term', '')
+                    # Get ad details for replacement
+                    ad_title = current_flow.get('ad_title', '')
+                    ad_desc = current_flow.get('ad_description', '')
+                    ad_display_url = current_flow.get('ad_display_url', '')
+                    keyword = current_flow.get('keyword_term', '')
+                    
+                    # Try using SERP templates first (better rendering, fixes CSS issues)
+                    serp_html = None
+                    if st.session_state.data_b and len(st.session_state.data_b) > 0:
+                        serp_html = generate_serp_mockup(current_flow, st.session_state.data_b)
+                    
+                    # If template generation worked, use it
+                    if serp_html and serp_html.strip():
+                        # Apply additional CSS fixes to prevent vertical text
+                        serp_html = re.sub(
+                            r'<head>',
+                            '<head><style>body, p, div, span, h1, h2, h3, h4, h5, h6, a, li, td, th { white-space: normal !important; word-wrap: break-word !important; word-break: normal !important; writing-mode: horizontal-tb !important; text-orientation: mixed !important; } * { max-width: 100% !important; } .ad-container, .result, .search-result { display: block !important; width: 100% !important; }</style>',
+                            serp_html,
+                            flags=re.IGNORECASE,
+                            count=1
+                        )
                         
-                        # NEW APPROACH: Fetch HTML FIRST, replace values, THEN render as iframe
+                        # Render using device preview
+                        preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
+                        st.components.v1.html(preview_html, height=height, scrolling=False)
+                        st.caption("📺 SERP (from template)")
+                    
+                    # Fallback: Fetch from URL if templates not available
+                    elif serp_url:
                         try:
                             # Step 1: Fetch SERP HTML
                             response = requests.get(serp_url, timeout=15, headers={
@@ -1789,6 +1948,13 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             
                             if response.status_code == 200:
                                 serp_html = response.text
+                                
+                                # Apply CSS fixes FIRST to prevent vertical text
+                                serp_html = serp_html.replace('min-device-width', 'min-width')
+                                serp_html = serp_html.replace('max-device-width', 'max-width')
+                                serp_html = serp_html.replace('min-device-height', 'min-height')
+                                serp_html = serp_html.replace('max-device-height', 'max-height')
+                                serp_html = re.sub(r'min-height\s*:\s*calc\(100[sv][vh]h?[^)]*\)\s*;?', '', serp_html, flags=re.IGNORECASE)
                                 
                                 # Step 2: Replace ad content in SERP HTML using BeautifulSoup
                                 from bs4 import BeautifulSoup
@@ -1853,7 +2019,13 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                   lambda m: f'href="{urljoin(serp_url, m.group(1))}"', serp_html)
                                 
                                 # Add CSS to prevent vertical text wrapping
-                                serp_html = re.sub(r'<head>', f'<head><style>body, p, div, span, h1, h2, h3, h4, h5, h6, a, li {{ white-space: normal !important; word-wrap: break-word !important; word-break: normal !important; max-width: 100% !important; overflow-wrap: break-word !important; }}</style>', serp_html, flags=re.IGNORECASE)
+                                serp_html = re.sub(
+                                    r'<head>',
+                                    '<head><style>body, p, div, span, h1, h2, h3, h4, h5, h6, a, li, td, th { white-space: normal !important; word-wrap: break-word !important; word-break: normal !important; writing-mode: horizontal-tb !important; text-orientation: mixed !important; } * { max-width: 100% !important; } .ad-container, .result, .search-result { display: block !important; width: 100% !important; }</style>',
+                                    serp_html,
+                                    flags=re.IGNORECASE,
+                                    count=1
+                                )
                                 
                                 # Step 3: Render modified HTML as iframe using srcdoc
                                 preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
@@ -1897,25 +2069,47 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 url_elements[0].append(ad_display_url)
                                             
                                             serp_html = str(soup)
+                                            
+                                            # Apply CSS fixes to prevent vertical text
+                                            serp_html = serp_html.replace('min-device-width', 'min-width')
+                                            serp_html = serp_html.replace('max-device-width', 'max-width')
+                                            serp_html = serp_html.replace('min-device-height', 'min-height')
+                                            serp_html = serp_html.replace('max-device-height', 'max-height')
+                                            serp_html = re.sub(r'min-height\s*:\s*calc\(100[sv][vh]h?[^)]*\)\s*;?', '', serp_html, flags=re.IGNORECASE)
+                                            
                                             serp_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
                                                               lambda m: f'src="{urljoin(serp_url, m.group(1))}"', serp_html)
                                             serp_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
                                                               lambda m: f'href="{urljoin(serp_url, m.group(1))}"', serp_html)
+                                            
+                                            # Add CSS to prevent vertical text wrapping
+                                            serp_html = re.sub(
+                                                r'<head>',
+                                                '<head><style>body, p, div, span, h1, h2, h3, h4, h5, h6, a, li, td, th { white-space: normal !important; word-wrap: break-word !important; word-break: normal !important; writing-mode: horizontal-tb !important; text-orientation: mixed !important; } * { max-width: 100% !important; } .ad-container, .result, .search-result { display: block !important; width: 100% !important; }</style>',
+                                                serp_html,
+                                                flags=re.IGNORECASE,
+                                                count=1
+                                            )
                                             
                                             preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
                                             st.components.v1.html(preview_html, height=height, scrolling=False)
                                             st.caption("📺 SERP (via Playwright)")
                                         else:
                                             # Playwright failed, try screenshot API if available
-                                            if SCREENSHOT_API_KEY:
+                                            if THUMIO_CONFIGURED:
                                                 from urllib.parse import quote
-                                                screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(serp_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                                screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                                preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
-                                                st.components.v1.html(preview_html, height=height, scrolling=False)
-                                                st.caption("📸 Screenshot API")
+                                                screenshot_url = get_screenshot_url(serp_url, device=device_all, full_page=False)
+                                                if screenshot_url:
+                                                    vw = 390 if device_all == 'mobile' else 820 if device_all == 'tablet' else 1440
+                                                    screenshot_html = f'''<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width={vw}">
+<style>* {{margin:0;padding:0}} img {{width:100%;height:auto}}</style>
+</head><body><img src="{screenshot_url}" alt="SERP screenshot" onerror="this.parentElement.innerHTML='<div style=\\'padding: 20px; text-align: center; color: #666;\\'>Image failed to load</div>';" /></body></html>'''
+                                                    preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
+                                                    st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                    st.caption("📸 Screenshot (thum.io)")
                                             else:
-                                                st.warning("⚠️ Could not load SERP. Install Playwright or add SCREENSHOT_API_KEY")
+                                                st.warning("⚠️ Could not load SERP. Install Playwright or configure thum.io (add THUMIO_REFERER_DOMAIN or SCREENSHOT_API_KEY to secrets)")
                                 else:
                                     st.error(f"HTTP {response.status_code} - Install Playwright for 403 bypass")
                             else:
@@ -2049,14 +2243,17 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 st.components.v1.html(preview_html, height=height, scrolling=False)
                                                 st.caption("🤖 Rendered via browser automation (bypassed 403)")
                                             else:
-                                                # Try screenshot API as fallback
-                                                if SCREENSHOT_API_KEY:
-                                                    from urllib.parse import quote
-                                                    screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(adv_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                                    screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                                    preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                                # Try screenshot API as fallback (thum.io)
+                                                screenshot_url = get_screenshot_url(adv_url, device=device_all, full_page=False)
+                                                if screenshot_url:
+                                                    vw = 390 if device_all == 'mobile' else 820 if device_all == 'tablet' else 1440
+                                                    screenshot_html = f'''<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width={vw}">
+<style>* {{margin:0;padding:0}} img {{width:100%;height:auto}}</style>
+</head><body><img src="{screenshot_url}" alt="Page screenshot" onerror="this.parentElement.innerHTML='<div style=\\'padding: 20px; text-align: center; color: #666;\\'>Image failed to load</div>';" /></body></html>'''
+                                                    preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
                                                     st.components.v1.html(preview_html, height=height, scrolling=False)
-                                                    st.caption("📸 Screenshot API")
+                                                    st.caption("📸 Screenshot (thum.io)")
                                                     
                                                     # Automatically extract text from screenshot
                                                     if OCR_AVAILABLE:
@@ -2070,14 +2267,18 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 else:
                                                     st.warning("🚫 Site blocks access (403)")
                                                     st.markdown(f"[🔗 Open in new tab]({adv_url})")
-                                    elif SCREENSHOT_API_KEY:
-                                        # No Playwright, use screenshot API
-                                        from urllib.parse import quote
-                                        screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(adv_url)}&full_page=false&viewport_width=390&viewport_height=844&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
-                                        screenshot_html = f'<img src="{screenshot_url}" style="width: 100%; height: auto;" />'
-                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
-                                        st.components.v1.html(preview_html, height=height, scrolling=False)
-                                        st.caption("📸 Screenshot API")
+                                    else:
+                                        # No Playwright, try screenshot API (thum.io)
+                                        screenshot_url = get_screenshot_url(adv_url, device=device_all, full_page=False)
+                                        if screenshot_url:
+                                            vw = 390 if device_all == 'mobile' else 820 if device_all == 'tablet' else 1440
+                                            screenshot_html = f'''<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width={vw}">
+<style>* {{margin:0;padding:0}} img {{width:100%;height:auto}}</style>
+</head><body><img src="{screenshot_url}" alt="Page screenshot" onerror="this.parentElement.innerHTML='<div style=\\'padding: 20px; text-align: center; color: #666;\\'>Image failed to load</div>';" /></body></html>'''
+                                            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
+                                            st.components.v1.html(preview_html, height=height, scrolling=False)
+                                            st.caption("📸 Screenshot (thum.io)")
                                         
                                         # Automatically extract text from screenshot
                                         if OCR_AVAILABLE:
@@ -2088,10 +2289,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                         st.text(extracted_text[:1000])
                                             except Exception as ocr_err:
                                                 pass  # Silent fail for OCR
-                                    else:
-                                        st.warning("🚫 Site blocks access (403)")
-                                        st.info("Install Playwright or add SCREENSHOT_API_KEY")
-                                        st.markdown(f"[🔗 Open landing page]({adv_url})")
+                                        else:
+                                            st.warning("🚫 Site blocks access (403)")
+                                            st.info("💡 Install Playwright or configure thum.io (add THUMIO_REFERER_DOMAIN or SCREENSHOT_API_KEY to secrets)")
+                                            st.markdown(f"[🔗 Open landing page]({adv_url})")
                                 elif response.status_code == 200:
                                     # Use response.text which handles encoding automatically
                                     page_html = response.text
