@@ -880,34 +880,131 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     display_w = int(device_w * scale)
     display_h = int(container_height * scale)
     
-    # ALWAYS fetch HTML and render as srcdoc (NO IFRAME SRC) - user requested HTML only
+    # Fetch HTML with robust error handling and multiple fallback strategies
     original_url = None
+    fetch_success = False
+    
     if is_url:
-        # For URLs, fetch HTML first, then render as srcdoc
         original_url = content  # Save original URL
-        try:
-            response = requests.get(content, timeout=10, headers={
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            })
-            if response.status_code == 200:
-                content = response.text
-                # Fix relative URLs using the original URL as base
-                if original_url:
+        
+        # Strategy 1: Try regular fetch first (with retry)
+        for attempt in range(3):
+            try:
+                response = requests.get(content, timeout=20, headers={
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9'
+                })
+                if response.status_code == 200 and len(response.text) > 500:  # Must have substantial content
+                    content = response.text
+                    # Fix relative URLs using the original URL as base
                     from urllib.parse import urljoin
                     content = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
                                    lambda m: f'src="{urljoin(original_url, m.group(1))}"', content)
                     content = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
                                    lambda m: f'href="{urljoin(original_url, m.group(1))}"', content)
-            else:
-                # If fetch fails, return error placeholder
-                content = f'<div style="padding: 20px; text-align: center;"><p>Failed to load: HTTP {response.status_code}</p><p><a href="{original_url}" target="_blank">Open in new tab</a></p></div>'
-        except Exception as e:
-            # If fetch fails, show error
-            content = f'<div style="padding: 20px; text-align: center;"><p>Failed to load URL</p><p><a href="{original_url}" target="_blank">Open in new tab</a></p></div>'
+                    fetch_success = True
+                    break
+            except Exception as e:
+                if attempt == 2:  # Last attempt
+                    pass
+                else:
+                    time.sleep(1)
+        
+        # Strategy 2: If fetch failed, try Playwright
+        if not fetch_success and PLAYWRIGHT_AVAILABLE:
+            try:
+                page_html = capture_with_playwright(original_url, device=device)
+                if page_html and len(page_html) > 500:  # Must have substantial content
+                    content = page_html
+                    fetch_success = True
+            except:
+                pass
+        
+        # Strategy 3: If both failed, use Screenshot API as image
+        if not fetch_success and SCREENSHOT_API_KEY:
+            try:
+                from urllib.parse import quote
+                viewports = {'mobile': (390, 844), 'tablet': (820, 1180), 'laptop': (1440, 900)}
+                vw, vh = viewports.get(device, (390, 844))
+                screenshot_url = f"https://api.screenshotone.com/take?access_key={SCREENSHOT_API_KEY}&url={quote(original_url)}&full_page=false&viewport_width={vw}&viewport_height={vh}&device_scale_factor=2&format=jpg&image_quality=80&cache=false"
+                
+                # Render as image instead of HTML
+                content = f'''
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <style>
+                        body {{ margin: 0; padding: 0; background: white; }}
+                        img {{ width: 100%; height: auto; display: block; }}
+                    </style>
+                </head>
+                <body>
+                    <img src="{screenshot_url}" alt="Page screenshot" />
+                </body>
+                </html>
+                '''
+                fetch_success = True
+            except:
+                pass
+        
+        # Strategy 4: If ALL failed, show styled error with link
+        if not fetch_success:
+            content = f'''
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <style>
+                    body {{
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        min-height: 100vh;
+                        margin: 0;
+                        padding: 20px;
+                        text-align: center;
+                    }}
+                    .error-box {{
+                        background: rgba(255, 255, 255, 0.1);
+                        backdrop-filter: blur(10px);
+                        border: 2px solid rgba(255, 255, 255, 0.2);
+                        border-radius: 16px;
+                        padding: 40px;
+                        max-width: 500px;
+                    }}
+                    h2 {{ margin: 0 0 20px 0; font-size: 24px; }}
+                    p {{ margin: 10px 0; line-height: 1.6; opacity: 0.9; }}
+                    a {{
+                        display: inline-block;
+                        margin-top: 20px;
+                        padding: 12px 24px;
+                        background: white;
+                        color: #667eea;
+                        text-decoration: none;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        transition: transform 0.2s;
+                    }}
+                    a:hover {{ transform: scale(1.05); }}
+                </style>
+            </head>
+            <body>
+                <div class="error-box">
+                    <h2>🔒 Content Unavailable</h2>
+                    <p>This page cannot be embedded due to security restrictions.</p>
+                    <p style="font-size: 14px; opacity: 0.7;">Common causes: X-Frame-Options, CSP, 403 Forbidden</p>
+                    <a href="{original_url}" target="_blank">🔗 Open in New Tab</a>
+                </div>
+            </body>
+            </html>
+            '''
     
     # Validate content - if empty or None, show placeholder with styling
     if not content or (isinstance(content, str) and len(content.strip()) == 0):
-        content = '<html><body style="padding: 20px; text-align: center; color: #666; font-family: Arial, sans-serif;"><h3>No content available</h3><p>The content could not be loaded.</p></body></html>'
+        content = '<html><body style="padding: 20px; text-align: center; color: #666; font-family: Arial, sans-serif; background: white; min-height: 100vh; display: flex; align-items: center; justify-content: center;"><div><h3>No content available</h3><p>The content could not be loaded.</p></div></body></html>'
     
     # Always embed HTML directly (no iframe src)
     iframe_content = content
@@ -975,6 +1072,12 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     </body>
     </html>
     """
+    
+    # DEBUG: In advanced mode, show what HTML is being rendered
+    if st.session_state.get('view_mode') == 'advanced':
+        with st.expander("🔍 DEBUG: Preview HTML (first 1000 chars)"):
+            st.code(full_content[:1000], language='html')
+            st.caption(f"Total length: {len(full_content)} chars")
     
     # Use base64 encoding to avoid ALL escaping issues
     # Base64 encoding bypasses all HTML escaping problems - browser decodes it automatically
@@ -1682,13 +1785,28 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             iframe_blocked = False  # If can't check, try iframe anyway
                         
                         if not iframe_blocked:
-                            # Try iframe src (preferred)
+                            # Try iframe src directly (preferred - don't fetch HTML)
                             try:
-                                preview_html, height, _ = render_mini_device_preview(pub_url, is_url=True, device=device_all)
-                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                # Create iframe directly without fetching HTML
+                                if device_all == 'mobile':
+                                    device_w, container_height, scale = 390, 844, 0.55
+                                elif device_all == 'tablet':
+                                    device_w, container_height, scale = 820, 1180, 0.35
+                                else:  # laptop
+                                    device_w, container_height, scale = 1440, 900, 0.50
+                                
+                                display_w = int(device_w * scale)
+                                display_h = int(container_height * scale)
+                                
+                                iframe_html = f'''
+                                <div style="width: {display_w}px; height: {display_h}px; border: 2px solid #e0e0e0; border-radius: 8px; overflow: hidden; background: white;">
+                                    <iframe src="{pub_url}" style="width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: center top;"></iframe>
+                                </div>
+                                '''
+                                st.components.v1.html(iframe_html, height=display_h + 20, scrolling=False)
                                 st.caption("📺 Iframe")
                             except:
-                                iframe_blocked = True  # Failed, use HTML
+                                iframe_blocked = True  # Failed, use HTML fetch
                         
                         if iframe_blocked:
                             # Fetch HTML with complete browser headers
@@ -2363,13 +2481,28 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 iframe_blocked = False
                             
                             if not iframe_blocked:
-                                # Try iframe src
+                                # Try iframe src directly (preferred - don't fetch HTML)
                                 try:
-                                    preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all)
-                                    st.components.v1.html(preview_html, height=height, scrolling=False)
+                                    # Create iframe directly without fetching HTML
+                                    if device_all == 'mobile':
+                                        device_w, container_height, scale = 390, 844, 0.55
+                                    elif device_all == 'tablet':
+                                        device_w, container_height, scale = 820, 1180, 0.35
+                                    else:  # laptop
+                                        device_w, container_height, scale = 1440, 900, 0.50
+                                    
+                                    display_w = int(device_w * scale)
+                                    display_h = int(container_height * scale)
+                                    
+                                    iframe_html = f'''
+                                    <div style="width: {display_w}px; height: {display_h}px; border: 2px solid #e0e0e0; border-radius: 8px; overflow: hidden; background: white;">
+                                        <iframe src="{adv_url}" style="width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: center top;"></iframe>
+                                    </div>
+                                    '''
+                                    st.components.v1.html(iframe_html, height=display_h + 20, scrolling=False)
                                     st.caption("📺 Iframe")
                                 except:
-                                    iframe_blocked = True
+                                    iframe_blocked = True  # Failed, use HTML fetch
                             
                             if iframe_blocked:
                                 # Auto-fallback to HTML fetch with enhanced headers
