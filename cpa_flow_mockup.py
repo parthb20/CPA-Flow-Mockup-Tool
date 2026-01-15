@@ -1661,7 +1661,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 """)
                 
                 if st.session_state.view_mode == 'basic':
-                    st.success("✨ Auto-selected based on best performance")
+                    st.success("✨ Auto Selected based on best performance")
                 else:
                     st.success("✨ Use filters above to change flow")
                 
@@ -2720,3 +2720,4 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.warning("No data available for this campaign")
 else:
     st.error("❌ Could not load data - Check FILE_A_ID and file sharing settings")
+
