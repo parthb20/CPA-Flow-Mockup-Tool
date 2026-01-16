@@ -5,6 +5,10 @@ Modular architecture for maintainability
 """
 
 import streamlit as st
+
+# Page config - MUST be FIRST Streamlit command (before any imports that use Streamlit)
+st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊", layout="wide")
+
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
@@ -12,10 +16,6 @@ import json
 from urllib.parse import urlparse, urljoin
 import re
 import html
-from concurrent import futures
-
-# Page config - MUST be FIRST Streamlit command (before any imports that use Streamlit)
-st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊", layout="wide")
 
 # Import from modules (after page config)
 from src.config import FILE_A_ID, FILE_B_ID, SERP_BASE_URL
@@ -47,18 +47,32 @@ except Exception:
     PLAYWRIGHT_AVAILABLE = False
     # Don't show warning here - it's optional
 
-# Get API keys from secrets
+# Get API keys from secrets - safe access pattern
+API_KEY = ""
+SCREENSHOT_API_KEY = ""
+THUMIO_REFERER_DOMAIN = ""
+
+# Safely access secrets - catch all exceptions
 try:
-    API_KEY = st.secrets.get("FASTROUTER_API_KEY", st.secrets.get("OPENAI_API_KEY", "")).strip()
-    SCREENSHOT_API_KEY = st.secrets.get("SCREENSHOT_API_KEY", "").strip()
-    THUMIO_REFERER_DOMAIN = st.secrets.get("THUMIO_REFERER_DOMAIN", "").strip()
-    # Debug: Check if API key is loaded (only show warning when actually needed)
-    # Warning will be shown when similarity calculation is attempted
-except Exception as e:
+    try:
+        API_KEY = str(st.secrets["FASTROUTER_API_KEY"]).strip()
+    except Exception:
+        try:
+            API_KEY = str(st.secrets["OPENAI_API_KEY"]).strip()
+        except Exception:
+            API_KEY = ""
+except Exception:
     API_KEY = ""
+
+try:
+    SCREENSHOT_API_KEY = str(st.secrets["SCREENSHOT_API_KEY"]).strip()
+except Exception:
     SCREENSHOT_API_KEY = ""
+
+try:
+    THUMIO_REFERER_DOMAIN = str(st.secrets["THUMIO_REFERER_DOMAIN"]).strip()
+except Exception:
     THUMIO_REFERER_DOMAIN = ""
-    st.warning(f"⚠️ Error loading secrets: {str(e)[:100]}")
 
 THUMIO_CONFIGURED = True  # Always True - free tier works without setup!
 
