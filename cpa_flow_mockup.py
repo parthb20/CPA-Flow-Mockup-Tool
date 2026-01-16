@@ -292,58 +292,60 @@ except Exception as e:
     THUMIO_REFERER_DOMAIN = ""
 
 # Helper: Check if thum.io is configured (either via auth token or referer domain)
-THUMIO_CONFIGURED = bool(SCREENSHOT_API_KEY or THUMIO_REFERER_DOMAIN)
+# thum.io is always available (FREE tier works without auth)
+# Set SCREENSHOT_API_KEY or THUMIO_REFERER_DOMAIN in secrets for paid tier with higher limits
+THUMIO_CONFIGURED = True  # Always True - free tier works without setup!
 
 # Helper function to generate thum.io screenshot URL
 def get_screenshot_url(url, device='mobile', full_page=False):
     """
     Generate thum.io screenshot URL
-    Fallback order: iframe → HTML → Playwright → Screenshot (thum.io)
     
-    thum.io format: https://image.thum.io/get/{url} (for referer-based keys)
-    For auth token keys: https://image.thum.io/get/[options]/https://target-url.com/
+    thum.io FREE tier: 1000 impressions/month, no signup required!
+    Format: https://image.thum.io/get/width/{width}/crop/{height}/{url}
     
-    Supports two authentication methods:
-    1. Auth token: Set SCREENSHOT_API_KEY in secrets (adds auth/{token} to URL with options)
-    2. Referer-based: Set THUMIO_REFERER_DOMAIN in secrets (simple format, browser sets referer header)
+    Supports three methods (in order of preference):
+    1. FREE tier (default): No auth needed, works immediately
+    2. Referer-based key: Set THUMIO_REFERER_DOMAIN in secrets
+    3. Auth token: Set SCREENSHOT_API_KEY in secrets
     
-    Note: For referer-based keys, use simple format: https://image.thum.io/get/{url}
-    The HTTP referer header is automatically set by the browser when loading images.
+    For free tier, we use width/crop options for better mobile screenshots.
     """
     from urllib.parse import quote
     
-    # For referer-based keys, use simple format: https://image.thum.io/get/{url}
+    # Device viewport sizes for better screenshots
+    viewports = {
+        'mobile': {'width': 390, 'height': 844},
+        'tablet': {'width': 820, 'height': 1180},
+        'laptop': {'width': 1440, 'height': 900}
+    }
+    
+    vp = viewports.get(device, viewports['mobile'])
+    
+    # For referer-based keys, use simple format
     if THUMIO_REFERER_DOMAIN:
         screenshot_url = f"https://image.thum.io/get/{url}"
         return screenshot_url
     
-    # For auth token keys, add options (width, height, auth)
+    # For auth token keys, add options with auth
     if SCREENSHOT_API_KEY:
-        # Device viewport sizes
-        viewports = {
-            'mobile': {'width': 390, 'height': 844},
-            'tablet': {'width': 820, 'height': 1180},
-            'laptop': {'width': 1440, 'height': 900}
-        }
-        
-        vp = viewports.get(device, viewports['mobile'])
-        
-        # Build options: width, height/fullpage, auth
         options = [f"width/{vp['width']}"]
-        
         if full_page:
             options.append("fullpage")
         else:
             options.append(f"height/{vp['height']}")
-        
         options.append(f"auth/{SCREENSHOT_API_KEY}")
-        
-        # Construct URL: https://image.thum.io/get/{options}/{url}
         screenshot_url = f"https://image.thum.io/get/{'/'.join(options)}/{url}"
         return screenshot_url
     
-    # Fallback: simple format (may work without auth for basic usage)
-    return f"https://image.thum.io/get/{url}"
+    # FREE TIER (default): Use width/crop for better mobile screenshots
+    # Format: https://image.thum.io/get/width/{width}/crop/{height}/{url}
+    # This gives better quality than simple format
+    if full_page:
+        screenshot_url = f"https://image.thum.io/get/width/{vp['width']}/fullpage/{url}"
+    else:
+        screenshot_url = f"https://image.thum.io/get/width/{vp['width']}/crop/{vp['height']}/{url}"
+    return screenshot_url
 
 # Session state
 for key in ['data_a', 'data_b', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'similarities', 'last_campaign_key']:
@@ -1876,7 +1878,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 pass  # Silent fail for OCR
                                     else:
                                         st.warning("🚫 Site blocks access (403)")
-                                        st.info("💡 Install Playwright or configure thum.io (add THUMIO_REFERER_DOMAIN or SCREENSHOT_API_KEY to secrets)")
+                                        st.info("💡 Install Playwright for better rendering, or screenshots will use thum.io free tier (1000/month)")
                                         st.markdown(f"[🔗 Open in new tab]({pub_url})")
                                 elif response.status_code == 200:
                                     # Use response.text which handles encoding automatically
@@ -2231,7 +2233,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                     st.components.v1.html(preview_html, height=height, scrolling=False)
                                                     st.caption("📸 Screenshot (thum.io)")
                                             else:
-                                                st.warning("⚠️ Could not load SERP. Install Playwright or configure thum.io (add THUMIO_REFERER_DOMAIN or SCREENSHOT_API_KEY to secrets)")
+                                                st.warning("⚠️ Could not load SERP. Install Playwright for better rendering, or screenshots will use thum.io free tier")
                                 else:
                                     st.error(f"HTTP {response.status_code} - Install Playwright for 403 bypass")
                             else:
@@ -2409,7 +2411,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 pass  # Silent fail for OCR
                                         else:
                                             st.warning("🚫 Site blocks access (403)")
-                                            st.info("💡 Install Playwright or configure thum.io (add THUMIO_REFERER_DOMAIN or SCREENSHOT_API_KEY to secrets)")
+                                            st.info("💡 Install Playwright for better rendering, or screenshots will use thum.io free tier (1000/month)")
                                             st.markdown(f"[🔗 Open landing page]({adv_url})")
                                 elif response.status_code == 200:
                                     # Use response.text which handles encoding automatically
