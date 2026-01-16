@@ -784,15 +784,8 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
     upper_bound = data.get('upper_bound', score)
     lower_bound = data.get('lower_bound', score)
     
-    # Explanation of similarity score (shown once below Publisher URL)
-    if show_explanation:
-        st.markdown(f"""
-        <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 12px; margin: 10px 0; border-radius: 4px;">
-            <strong>📊 What is a Similarity Score?</strong><br>
-            <small style="color: #64748b;">Similarity scores measure how well different parts of your ad flow match each other. 
-            Higher scores (0.8-1.0) mean better alignment, which typically leads to better performance.</small>
-        </div>
-        """, unsafe_allow_html=True)
+    # Explanation removed - it was taking too much space and showing multiple times
+    # Explanation should be shown once at the top, not for each score
     
     # Determine title and tooltip
     if custom_title:
@@ -992,7 +985,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     if device == 'mobile':
         device_w = 390
         container_height = 844
-        scale = 0.3  # Increased for readability while still fitting in one line
+        scale = 0.5  # Increased for readability - larger previews
         frame_style = "border-radius: 30px; border: 5px solid #000000;"
         
         # Mobile chrome
@@ -1049,7 +1042,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     else:  # laptop
         device_w = 1440
         container_height = 900
-        scale = 0.2
+        scale = 0.3  # Increased for readability
         frame_style = "border-radius: 8px; border: 6px solid #374151;"
         
         # Laptop chrome
@@ -2058,12 +2051,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     }
                     </style>
                     """, unsafe_allow_html=True)
-                    # Wrap in container with max-width to reduce overall width, then create columns
-                    st.markdown("""
-                    <div style="max-width: 95%; margin: 0 auto;">
-                    """, unsafe_allow_html=True)
-                    # Make columns tighter but balanced - ensure all 4 fit in one line
-                    stage_cols = st.columns([0.8, 0.001, 0.3, 0.001, 0.8, 0.001, 0.8], gap='small')
+                    # No max-width container - use full width, balanced columns for all 4 cards
+                    # Make columns balanced - ensure all 4 fit in one line
+                    stage_cols = st.columns([1, 0.05, 0.7, 0.05, 1, 0.05, 1], gap='small')
                 else:
                     # Vertical layout - cards extend full width, details inline within card boundaries
                     # No separate columns - everything within each card
@@ -2199,7 +2189,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     preview_html, height, _ = render_mini_device_preview(pub_url, is_url=True, device=device_all)
                                     preview_html = inject_unique_id(preview_html, 'pub_iframe', pub_url, device_all, current_flow)
                                     # Limit height in horizontal mode - readable but compact
-                                    display_height = min(height, 200) if st.session_state.flow_layout == 'horizontal' else height
+                                    display_height = height  # No height limit in horizontal mode - let it be readable
                                     st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                     if st.session_state.flow_layout != 'horizontal':
                                         st.caption("📺 Iframe")
@@ -2261,7 +2251,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                             screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                                             preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
                                                             preview_html = inject_unique_id(preview_html, 'pub_screenshot', pub_url, device_all, current_flow)
-                                                            display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
+                                                            display_height = height  # No height limit in horizontal mode - let it be readable
                                                             st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                                             if st.session_state.flow_layout != 'horizontal':
                                                                 st.caption("📸 Screenshot (thum.io)")
@@ -2308,7 +2298,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                               lambda m: f'href="{urljoin(pub_url, m.group(1))}"', page_html)
                                             preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                             preview_html = inject_unique_id(preview_html, 'pub_html', pub_url, device_all, current_flow)
-                                            display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
+                                            display_height = height  # No height limit in horizontal mode - let it be readable
                                             st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                             st.caption("📄 HTML")
                                         except Exception as html_error:
@@ -2350,7 +2340,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                             screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                                             preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
                                                             preview_html = inject_unique_id(preview_html, 'pub_screenshot', pub_url, device_all, current_flow)
-                                                            display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
+                                                            display_height = height  # No height limit in horizontal mode - let it be readable
                                                             st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                                             if st.session_state.flow_layout != 'horizontal':
                                                                 st.caption("📸 Screenshot (thum.io)")
@@ -2405,8 +2395,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 if stage_cols:
                     with stage_cols[1]:
                         st.markdown("""
-                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 200px; padding: 0; margin: 0;'>
-                            <div style='font-size: 60px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
+                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 400px; padding: 0; margin: 0;'>
+                            <div style='font-size: 80px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
                         </div>
                         """, unsafe_allow_html=True)
                 # No vertical arrows in vertical mode - removed as requested
@@ -2478,9 +2468,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             except Exception as e:
                                 st.error(f"⚠️ Creative error: {str(e)[:100]}")
                         else:
-                            # Keep equal space even when no creative - show compact placeholder
+                            # Keep equal space even when no creative - show readable placeholder
                             if st.session_state.flow_layout == 'horizontal':
-                                min_height = 200  # Readable size for horizontal layout
+                                min_height = 400  # Readable size for horizontal layout
                             else:
                                 min_height = 400
                             st.markdown(f"""
@@ -2523,8 +2513,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 if stage_cols:
                     with stage_cols[3]:
                         st.markdown("""
-                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 200px; padding: 0; margin: 0;'>
-                            <div style='font-size: 60px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
+                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 400px; padding: 0; margin: 0;'>
+                            <div style='font-size: 80px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
                         </div>
                         """, unsafe_allow_html=True)
                 # No vertical arrows in vertical mode - removed as requested
@@ -2719,7 +2709,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     # Step 3: Render modified HTML as iframe using srcdoc
                                     preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
                                     preview_html = inject_unique_id(preview_html, 'serp_injected', serp_url, device_all, current_flow)
-                                    display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
+                                    display_height = height  # No height limit in horizontal mode - let it be readable
                                     st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                     if st.session_state.flow_layout != 'horizontal':
                                         st.caption("📺 SERP with injected ad content")
@@ -2795,7 +2785,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 
                                                 preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
                                                 preview_html = inject_unique_id(preview_html, 'serp_playwright', serp_url, device_all, current_flow)
-                                                display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
+                                                display_height = height  # No height limit in horizontal mode - let it be readable
                                                 st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                                 if st.session_state.flow_layout != 'horizontal':
                                                     st.caption("📺 SERP (via Playwright)")
@@ -2808,7 +2798,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                         screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                                         preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
                                                         preview_html = inject_unique_id(preview_html, 'serp_screenshot', serp_url, device_all, current_flow)
-                                                        display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
+                                                        display_height = height  # No height limit in horizontal mode - let it be readable
                                                         st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                                         st.caption("📸 Screenshot (thum.io)")
                                                 else:
@@ -2853,8 +2843,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 if stage_cols:
                     with stage_cols[5]:
                         st.markdown("""
-                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 200px; padding: 0; margin: 0;'>
-                            <div style='font-size: 60px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
+                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 400px; padding: 0; margin: 0;'>
+                            <div style='font-size: 80px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
                         </div>
                         """, unsafe_allow_html=True)
                 # No vertical arrows in vertical mode - removed as requested
@@ -2950,7 +2940,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 try:
                                     preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all)
                                     preview_html = inject_unique_id(preview_html, 'landing_iframe', adv_url, device_all, current_flow)
-                                    display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
+                                    display_height = height  # No height limit in horizontal mode - let it be readable
                                     st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                     st.caption("📺 Iframe")
                                 except:
@@ -2998,7 +2988,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                             screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                                             preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
                                                             preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
-                                                            display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
+                                                            display_height = height  # No height limit in horizontal mode - let it be readable
                                                             st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                                             if st.session_state.flow_layout != 'horizontal':
                                                                 st.caption("📸 Screenshot (thum.io)")
@@ -3019,7 +3009,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                     screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                                     preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
                                                     preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
-                                                    display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
+                                                    display_height = height  # No height limit in horizontal mode - let it be readable
                                                     st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                                     if st.session_state.flow_layout != 'horizontal':
                                                         st.caption("📸 Screenshot (thum.io)")
@@ -3047,7 +3037,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                               lambda m: f'href="{urljoin(adv_url, m.group(1))}"', page_html)
                                             preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                             preview_html = inject_unique_id(preview_html, 'landing_html', adv_url, device_all, current_flow)
-                                            display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
+                                            display_height = height  # No height limit in horizontal mode - let it be readable
                                             st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                             st.caption("📄 HTML")
                                         except Exception as html_error:
@@ -3059,7 +3049,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                         screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                                         preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
                                                         preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
-                                                        display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
+                                                        display_height = height  # No height limit in horizontal mode - let it be readable
                                                         st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                                         st.caption("📸 Screenshot (thum.io)")
                                                     else:
@@ -3077,7 +3067,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                     if page_html:
                                                         preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                                         preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
-                                                        display_height = min(height, 200) if st.session_state.flow_layout == 'horizontal' else height
+                                                        display_height = height  # No height limit in horizontal mode - let it be readable
                                                         st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                                         if st.session_state.flow_layout != 'horizontal':
                                                             st.caption("🤖 Rendered via browser automation")
@@ -3092,7 +3082,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                             screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                                             preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
                                                             preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
-                                                            display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
+                                                            display_height = height  # No height limit in horizontal mode - let it be readable
                                                             st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                                             if st.session_state.flow_layout != 'horizontal':
                                                                 st.caption("📸 Screenshot (thum.io)")
@@ -3110,7 +3100,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                     screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                                     preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
                                                     preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
-                                                    display_height = min(height, 200) if st.session_state.flow_layout == 'horizontal' else height
+                                                    display_height = height  # No height limit in horizontal mode - let it be readable
                                                     st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                                     if st.session_state.flow_layout != 'horizontal':
                                                         st.caption("📸 Screenshot (thum.io)")
@@ -3190,9 +3180,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     else:
                         st.info("⏳ Similarity scores will be calculated after data loads")
                     
-                    # Close the container div for horizontal layout
-                    if st.session_state.flow_layout == 'horizontal':
-                        st.markdown("</div>", unsafe_allow_html=True)
+                    # Container div was removed - no closing tag needed
             
             else:
                 st.warning("No data available for this campaign")
