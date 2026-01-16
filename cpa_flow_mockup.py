@@ -41,16 +41,8 @@ try:
     from playwright.sync_api import sync_playwright
     PLAYWRIGHT_AVAILABLE = True
     
-    # Auto-install browsers on first run (Streamlit Cloud)
-    try:
-        import subprocess
-        import os
-        if not os.path.exists(os.path.expanduser('~/.cache/ms-playwright')):
-            subprocess.run(['playwright', 'install', 'chromium', '--with-deps'], 
-                          capture_output=True, timeout=120)
-    except Exception:
-        # Silently fail - browser install is optional
-        pass
+    # Note: Browsers should be pre-installed via packages.txt
+    # Skip auto-install to prevent blocking app startup
 except Exception:
     PLAYWRIGHT_AVAILABLE = False
     # Don't show warning here - it's optional
@@ -335,8 +327,9 @@ if not st.session_state.loading_done:
             with futures.ThreadPoolExecutor(max_workers=2) as executor:
                 future_a = executor.submit(load_csv_from_gdrive, FILE_A_ID)
                 future_b = executor.submit(load_json_from_gdrive, FILE_B_ID)
-                st.session_state.data_a = future_a.result()
-                st.session_state.data_b = future_b.result()
+                # Add timeout to prevent blocking health checks
+                st.session_state.data_a = future_a.result(timeout=30)
+                st.session_state.data_b = future_b.result(timeout=30)
             st.session_state.loading_done = True
             
             # Check if data loaded successfully
@@ -356,6 +349,8 @@ if not st.session_state.loading_done:
             st.error(f"❌ Error loading data: {str(e)[:200]}")
             st.info(f"**CSV File ID:** `{FILE_A_ID}`")
             st.info(f"**JSON File ID:** `{FILE_B_ID}`")
+            st.session_state.data_a = None
+            st.session_state.data_b = None
             st.session_state.loading_done = True
 
 # View mode toggle

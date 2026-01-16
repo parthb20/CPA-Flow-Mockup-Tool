@@ -19,7 +19,7 @@ def find_default_flow(df):
         
         # Ensure ts is datetime
         if 'ts' in df.columns:
-            df['ts'] = pd.to_datetime(df['ts'], format='mixed', errors='coerce')
+            df['ts'] = pd.to_datetime(df['ts'], errors='coerce')
         
         # Get domain from publisher_url or Serp_URL if publisher_domain doesn't exist
         if 'publisher_domain' not in df.columns:

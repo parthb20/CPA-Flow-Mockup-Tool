@@ -1013,6 +1013,12 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         # Display in a grid
         detail_cols = st.columns([1, 1, 1, 1])
         with detail_cols[0]:
+            pub_url_html = ''
+            if flow_pub_url and pd.notna(flow_pub_url):
+                pub_url_short = html.escape(str(flow_pub_url)[:50])
+                pub_url_dots = "..." if len(str(flow_pub_url)) > 50 else ""
+                pub_url_html = f'<div style="margin-bottom: 8px;"><div style="font-weight: 700; color: #64748b; font-size: 12px;">URL</div><div style="font-size: 11px;"><a href="{flow_pub_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{pub_url_short}{pub_url_dots}</a></div></div>'
+            
             st.markdown(f"""
             <div style='font-size: 13px;'>
                 <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>📰 Publisher</strong></div>
@@ -1020,7 +1026,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     <div style='font-weight: 700; color: #64748b; font-size: 12px;'>Domain</div>
                     <div style='color: #0f172a; font-size: 12px;'>{html.escape(str(flow_pub_domain))}</div>
                 </div>
-                {f'<div style="margin-bottom: 8px;"><div style="font-weight: 700; color: #64748b; font-size: 12px;">URL</div><div style="font-size: 11px;"><a href="{flow_pub_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(flow_pub_url)[:50])}{"..." if len(str(flow_pub_url)) > 50 else ""}</a></div></div>' if flow_pub_url and pd.notna(flow_pub_url) else ''}
+                {pub_url_html}
             </div>
             """, unsafe_allow_html=True)
         
@@ -1036,6 +1042,12 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             """, unsafe_allow_html=True)
         
         with detail_cols[2]:
+            serp_url_html = ''
+            if flow_serp_url and flow_serp_url != 'N/A':
+                serp_url_short = html.escape(str(flow_serp_url)[:50])
+                serp_url_dots = "..." if len(str(flow_serp_url)) > 50 else ""
+                serp_url_html = f'<div style="margin-bottom: 8px;"><div style="font-weight: 700; color: #64748b; font-size: 12px;">SERP URL</div><div style="font-size: 11px;"><a href="{flow_serp_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{serp_url_short}{serp_url_dots}</a></div></div>'
+            
             st.markdown(f"""
             <div style='font-size: 13px;'>
                 <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>📄 SERP</strong></div>
@@ -1043,15 +1055,23 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     <div style='font-weight: 700; color: #64748b; font-size: 12px;'>SERP Key</div>
                     <div style='color: #0f172a; font-size: 12px;'>{html.escape(str(flow_serp_key))}</div>
                 </div>
-                {f'<div style="margin-bottom: 8px;"><div style="font-weight: 700; color: #64748b; font-size: 12px;">SERP URL</div><div style="font-size: 11px;"><a href="{flow_serp_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(flow_serp_url)[:50])}{"..." if len(str(flow_serp_url)) > 50 else ""}</a></div></div>' if flow_serp_url and flow_serp_url != 'N/A' else ''}
+                {serp_url_html}
             </div>
             """, unsafe_allow_html=True)
         
         with detail_cols[3]:
+            landing_url_html = ''
+            if flow_adv_url and pd.notna(flow_adv_url) and str(flow_adv_url).strip():
+                landing_url_short = html.escape(str(flow_adv_url)[:50])
+                landing_url_dots = "..." if len(str(flow_adv_url)) > 50 else ""
+                landing_url_html = f'<div style="margin-bottom: 8px;"><div style="font-weight: 700; color: #64748b; font-size: 12px;">Landing URL</div><div style="font-size: 11px;"><a href="{flow_adv_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{landing_url_short}{landing_url_dots}</a></div></div>'
+            else:
+                landing_url_html = '<div style="margin-bottom: 8px;"><div style="font-weight: 700; color: #64748b; font-size: 12px;">Landing URL</div><div style="color: #94a3b8; font-size: 12px;">No URL</div></div>'
+            
             st.markdown(f"""
             <div style='font-size: 13px;'>
                 <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>🎯 Landing Page</strong></div>
-                {f'<div style="margin-bottom: 8px;"><div style="font-weight: 700; color: #64748b; font-size: 12px;">Landing URL</div><div style="font-size: 11px;"><a href="{flow_adv_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(flow_adv_url)[:50])}{"..." if len(str(flow_adv_url)) > 50 else ""}</a></div></div>' if flow_adv_url and pd.notna(flow_adv_url) and str(flow_adv_url).strip() else '<div style="margin-bottom: 8px;"><div style="font-weight: 700; color: #64748b; font-size: 12px;">Landing URL</div><div style="color: #94a3b8; font-size: 12px;">No URL</div></div>'}
+                {landing_url_html}
             </div>
             """, unsafe_allow_html=True)
     
