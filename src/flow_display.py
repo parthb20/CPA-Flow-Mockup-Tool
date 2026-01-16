@@ -79,43 +79,45 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         </style>
         """, unsafe_allow_html=True)
         
-        # Description layer - show domain, URL, keyword (creative), SERP URL, SERP temp key, landing URL
+        # Description layer - show domain, URL, keyword (creative), SERP URL, SERP temp key
+        # Format: Bold titles on top, values below (not inline), no truncation, proper alignment
         desc_cols = st.columns([1, 0.05, 0.7, 0.05, 1, 0.05, 1], gap='small')
         with desc_cols[0]:
             domain = current_flow.get('publisher_domain', 'N/A')
             url = current_flow.get('publisher_url', 'N/A')
             st.markdown(f"""
-            <div style="font-size: 11px; color: #64748b; padding: 6px 0;">
-                <div><strong>Domain:</strong></div>
-                <div style="margin-left: 8px; margin-top: 2px;">{html.escape(str(domain))}</div>
-                <div style="margin-top: 4px;"><strong>URL:</strong></div>
-                <div style="margin-left: 8px; margin-top: 2px;">{html.escape(str(url)[:40])}{'...' if len(str(url)) > 40 else ''}</div>
+            <div style="font-size: 13px; padding: 8px 0; min-height: 80px;">
+                <div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 6px;"><strong>Domain</strong></div>
+                <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;">{html.escape(str(domain))}</div>
+                <div style="margin-top: 12px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 6px;"><strong>URL</strong></div>
+                <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;">{html.escape(str(url))}</div>
             </div>
             """, unsafe_allow_html=True)
         with desc_cols[2]:
             keyword = current_flow.get('keyword_term', 'N/A')
             st.markdown(f"""
-            <div style="font-size: 11px; color: #64748b; padding: 6px 0;">
-                <strong>Keyword:</strong> {html.escape(str(keyword))}
+            <div style="font-size: 13px; padding: 8px 0; min-height: 80px;">
+                <div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 6px;"><strong>Keyword</strong></div>
+                <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;">{html.escape(str(keyword))}</div>
             </div>
             """, unsafe_allow_html=True)
         with desc_cols[4]:
             serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
             serp_key = current_flow.get('serp_template_key', 'N/A')
             st.markdown(f"""
-            <div style="font-size: 11px; color: #64748b; padding: 6px 0;">
-                <div><strong>SERP URL:</strong></div>
-                <div style="margin-left: 8px; margin-top: 2px;">{html.escape(str(serp_url)[:50])}{'...' if len(str(serp_url)) > 50 else ''}</div>
-                <div style="margin-top: 4px;"><strong>SERP Key:</strong></div>
-                <div style="margin-left: 8px; margin-top: 2px;">{html.escape(str(serp_key))}</div>
+            <div style="font-size: 13px; padding: 8px 0; min-height: 80px;">
+                <div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 6px;"><strong>SERP URL</strong></div>
+                <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;">{html.escape(str(serp_url))}</div>
+                <div style="margin-top: 12px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 6px;"><strong>SERP Key</strong></div>
+                <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;">{html.escape(str(serp_key))}</div>
             </div>
             """, unsafe_allow_html=True)
         with desc_cols[6]:
-            landing_url = current_flow.get('reporting_destination_url', 'N/A')
-            st.markdown(f"""
-            <div style="font-size: 11px; color: #64748b; padding: 6px 0;">
-                <div><strong>Landing URL:</strong></div>
-                <div style="margin-left: 8px; margin-top: 2px;">{html.escape(str(landing_url)[:40])}{'...' if len(str(landing_url)) > 40 else ''}</div>
+            # REMOVED Landing URL from description layer - it's shown in Landing Page stage to avoid duplication
+            st.markdown("""
+            <div style="font-size: 13px; padding: 8px 0; min-height: 80px;">
+                <div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 6px;"><strong>Landing URL</strong></div>
+                <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;">See Landing Page stage below</div>
             </div>
             """, unsafe_allow_html=True)
         
@@ -158,11 +160,15 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         else:
             st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">📰 Publisher URL</h3>', unsafe_allow_html=True)
         
-        # Show info below title (not duplicate)
+        # Show info below title (not inline) - formatted properly
         if st.session_state.view_mode == 'basic':
-            st.markdown(f"<div style='margin-bottom: 8px;'><strong>Domain:</strong> {current_dom}</div>", unsafe_allow_html=True)
-            if current_url and pd.notna(current_url):
-                st.markdown(f"<div style='margin-bottom: 8px;'><strong>URL:</strong> <a href='{current_url}' target='_blank'>{current_url[:50]}{'...' if len(current_url) > 50 else ''}</a></div>", unsafe_allow_html=True)
+            st.markdown(f"""
+            <div style='margin-bottom: 12px; font-size: 13px;'>
+                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Domain</strong></div>
+                <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;'>{html.escape(str(current_dom))}</div>
+                {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{current_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
+            </div>
+            """, unsafe_allow_html=True)
         
         pub_url = current_flow.get('publisher_url', '')
         preview_container = card_col_left if st.session_state.flow_layout == 'vertical' and card_col_left else stage_1_container
@@ -373,17 +379,18 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         if st.session_state.flow_layout == 'vertical' and card_col_right:
             with card_col_right:
                 st.markdown("""
-                <div style="margin-bottom: 8px;">
-                    <span style="font-weight: 600; color: #0f172a; font-size: 13px;">
+                <div style="margin-bottom: 12px;">
+                    <span style="font-weight: 900; color: #0f172a; font-size: 18px;">
                         📰 Publisher URL Details
                         <span title="Similarity scores measure how well different parts of your ad flow match: Keyword → Ad (ad matches keyword), Ad → Page (landing page matches ad), Keyword → Page (overall flow consistency)" style="cursor: help; color: #3b82f6; font-size: 12px; margin-left: 4px;">ℹ️</span>
                     </span>
                 </div>
                 """, unsafe_allow_html=True)
                 st.markdown(f"""
-                <div style="display: inline-flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 8px;">
-                    <span style="font-size: 12px; color: #64748b;"><strong>Domain:</strong> {current_dom}</span>
-                    {f'<span style="font-size: 12px; color: #64748b;"><strong>URL:</strong> <a href="{current_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{current_url[:50]}{"..." if len(current_url) > 50 else ""}</a></span>' if current_url and pd.notna(current_url) else ''}
+                <div style="margin-bottom: 12px; font-size: 13px;">
+                    <div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>Domain</strong></div>
+                    <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;">{html.escape(str(current_dom))}</div>
+                    {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{current_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
                 </div>
                 """, unsafe_allow_html=True)
     
@@ -723,11 +730,12 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             with serp_card_right:
                 serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
                 
-                st.markdown("<h4 style='font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;'>📄 SERP Details</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='font-size: 18px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0;'>📄 SERP Details</h4>", unsafe_allow_html=True)
                 st.markdown(f"""
-                <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 8px;">
-                    <span style="font-size: 12px; color: #64748b;"><strong>Template:</strong> {serp_name}</span>
-                    {f'<span style="font-size: 12px; color: #64748b;"><strong>URL:</strong> <a href="{serp_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{serp_url[:50]}{"..." if len(serp_url) > 50 else ""}</a></span>' if serp_url else ''}
+                <div style="margin-bottom: 12px; font-size: 13px;">
+                    <div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>Template</strong></div>
+                    <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;">{html.escape(str(serp_name))}</div>
+                    {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{serp_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(serp_url))}</a></div>' if serp_url else ''}
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -775,8 +783,14 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         adv_url = current_flow.get('reporting_destination_url', '')
         flow_clicks = current_flow.get('clicks', 0)
         
+        # Show Landing URL below title (not inline) - only in basic view, horizontal layout
         if st.session_state.view_mode == 'basic' and adv_url and pd.notna(adv_url) and st.session_state.flow_layout == 'horizontal':
-            st.markdown(f"**Landing URL:** [{adv_url}]({adv_url})", unsafe_allow_html=True)
+            st.markdown(f"""
+            <div style="margin-bottom: 8px; font-size: 13px;">
+                <div style="font-weight: 700; color: #0f172a; margin-bottom: 4px;"><strong>Landing URL:</strong></div>
+                <div style="margin-left: 8px; word-break: break-word;"><a href="{adv_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(adv_url))}</a></div>
+            </div>
+            """, unsafe_allow_html=True)
         
         landing_preview_container = landing_card_left if st.session_state.flow_layout == 'vertical' and landing_card_left else stage_4_container
         
@@ -966,10 +980,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             with landing_card_right:
                 adv_url = current_flow.get('reporting_destination_url', '')
                 
-                st.markdown("<h4 style='font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;'>🎯 Landing Page Details</h4>", unsafe_allow_html=True)
+                st.markdown("<h4 style='font-size: 18px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0;'>🎯 Landing Page Details</h4>", unsafe_allow_html=True)
                 st.markdown(f"""
-                <div style="display: inline-flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 8px;">
-                    {f'<span style="font-size: 12px; color: #64748b;"><strong>Landing URL:</strong> <a href="{adv_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{adv_url[:50]}{"..." if len(adv_url) > 50 else ""}</a></span>' if adv_url and pd.notna(adv_url) else ''}
+                <div style="margin-bottom: 12px; font-size: 13px;">
+                    {f'<div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>Landing URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{adv_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(adv_url))}</a></div>' if adv_url and pd.notna(adv_url) else ''}
                 </div>
                 """, unsafe_allow_html=True)
                 
