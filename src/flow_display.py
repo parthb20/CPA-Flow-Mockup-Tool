@@ -46,8 +46,18 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     """, unsafe_allow_html=True)
     device_all = st.radio("Device for all previews:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='device_all', index=0)
     
-    # Remove spacing after device selector - minimal height
-    st.markdown("<div style='margin-bottom: 0; height: 0; line-height: 0;'></div>", unsafe_allow_html=True)
+    # Remove ALL spacing after device selector
+    st.markdown("""
+    <style>
+    .stRadio {
+        margin-bottom: 0 !important;
+    }
+    .stRadio > div {
+        margin-bottom: 0 !important;
+    }
+    </style>
+    <div style='margin: 0; padding: 0; height: 0; line-height: 0;'></div>
+    """, unsafe_allow_html=True)
     
     # Initialize containers for both layouts
     stage_cols = None
@@ -128,6 +138,20 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         }
         .stage-card-wrapper .stMarkdown > *:first-child {
             margin-top: 0 !important;
+        }
+        /* Remove spacing from radio button container */
+        .stRadio {
+            margin-bottom: 0 !important;
+            padding-bottom: 0 !important;
+        }
+        /* Remove spacing from horizontal block containers */
+        .stHorizontalBlock {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .stHorizontalBlock > div {
+            margin: 0 !important;
+            padding: 0 !important;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -1068,13 +1092,18 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             else:
                 st.session_state.similarities = {}
         
-        # Render similarity scores - check if we have actual data
-        has_similarities = (
-            'similarities' in st.session_state and 
-            st.session_state.similarities and 
-            isinstance(st.session_state.similarities, dict) and
-            len(st.session_state.similarities) > 0
-        )
+        # Render similarity scores - check if we have actual valid data (not just error dicts)
+        has_similarities = False
+        if 'similarities' in st.session_state and st.session_state.similarities:
+            similarities = st.session_state.similarities
+            if isinstance(similarities, dict) and len(similarities) > 0:
+                # Check if we have at least one valid score (not an error)
+                for key in ['kwd_to_ad', 'ad_to_page', 'kwd_to_page']:
+                    if key in similarities:
+                        score_data = similarities[key]
+                        if isinstance(score_data, dict) and 'error' not in score_data and 'final_score' in score_data:
+                            has_similarities = True
+                            break
         
         if has_similarities:
             score_cols = st.columns(3, gap='small')
@@ -1094,7 +1123,23 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                        custom_title="Keyword → Landing Page Similarity",
                                        tooltip_text="Measures overall flow consistency from keyword to landing page. Higher scores indicate better end-to-end alignment.")
         else:
+            # Show helpful error message
             if api_key:
-                st.warning("⚠️ Similarity scores could not be calculated. Check API key configuration.")
+                if 'similarities' in st.session_state and st.session_state.similarities:
+                    similarities = st.session_state.similarities
+                    if isinstance(similarities, dict):
+                        # Check what's in similarities
+                        error_keys = [k for k, v in similarities.items() if isinstance(v, dict) and v.get('error')]
+                        valid_keys = [k for k, v in similarities.items() if isinstance(v, dict) and not v.get('error') and 'final_score' in v]
+                        if error_keys and not valid_keys:
+                            st.warning(f"⚠️ Similarity calculation failed. Check API key and network connection. Errors: {', '.join(error_keys)}")
+                        elif valid_keys:
+                            st.info(f"⏳ Some similarity scores are still calculating... ({len(valid_keys)}/{len(similarities)} complete)")
+                        else:
+                            st.info("⏳ Similarity scores are being calculated...")
+                    else:
+                        st.warning("⚠️ Similarity scores format error.")
+                else:
+                    st.warning("⚠️ Similarity scores could not be calculated. Check API key configuration.")
             else:
                 st.info("⏳ Add API key to calculate similarity scores")
