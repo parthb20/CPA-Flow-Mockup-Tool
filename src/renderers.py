@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Rendering functions for UI components
 """
@@ -24,7 +25,7 @@ except:
     PLAYWRIGHT_AVAILABLE = False
 
 
-def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdoc=False):
+def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdoc=False, display_url=None):
     """Render device preview with realistic chrome for mobile/tablet/laptop"""
     # Device dimensions and styling
     if device == 'mobile':
@@ -33,7 +34,9 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         scale = 0.5
         frame_style = "border-radius: 30px; border: 5px solid #000000;"
         
-        device_chrome = """
+        url_display = display_url if display_url else (content if is_url else "URL")
+        url_display_short = url_display[:40] + "..." if len(url_display) > 40 else url_display
+        device_chrome = f"""
         <div style="background: #000; color: white; padding: 6px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500;">
             <div>9:41</div>
             <div style="display: flex; gap: 4px; align-items: center;">
@@ -45,7 +48,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         <div style="background: #f7f7f7; border-bottom: 1px solid #d1d1d1; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
             <div style="flex: 1; background: white; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; border: 1px solid #e0e0e0;">
                 <span style="font-size: 16px;">🔒</span>
-                <span style="color: #666; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">URL</span>
+                <span style="color: #666; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{url_display_short}</span>
                 <span style="font-size: 16px;">🔄</span>
             </div>
         </div>
@@ -75,7 +78,9 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         scale = 0.4
         frame_style = "border-radius: 16px; border: 12px solid #1f2937;"
         
-        device_chrome = """
+        url_display = display_url if display_url else (content if is_url else "URL")
+        url_display_short = url_display[:50] + "..." if len(url_display) > 50 else url_display
+        device_chrome = f"""
         <div style="background: #000; color: white; padding: 8px 24px; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 500;">
             <div style="display: flex; gap: 12px;">
                 <span>9:41 AM</span>
@@ -90,7 +95,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         <div style="background: #f0f0f0; border-bottom: 1px solid #d0d0d0; padding: 12px 16px; display: flex; align-items: center; gap: 12px;">
             <div style="flex: 1; background: white; border-radius: 10px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; border: 1px solid #e0e0e0;">
                 <span style="font-size: 18px;">🔒</span>
-                <span style="color: #666; font-size: 15px; flex: 1;">URL</span>
+                <span style="color: #666; font-size: 15px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{url_display_short}</span>
             </div>
         </div>
         """
@@ -103,7 +108,9 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         scale = 0.3
         frame_style = "border-radius: 8px; border: 6px solid #374151;"
         
-        device_chrome = """
+        url_display = display_url if display_url else (content if is_url else "URL")
+        url_display_short = url_display[:60] + "..." if len(url_display) > 60 else url_display
+        device_chrome = f"""
         <div style="background: #e8e8e8; padding: 12px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #d0d0d0;">
             <div style="display: flex; gap: 8px;">
                 <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f57;"></div>
@@ -112,7 +119,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
             </div>
             <div style="flex: 1; background: white; border-radius: 6px; padding: 8px 16px; display: flex; align-items: center; gap: 12px; border: 1px solid #d0d0d0;">
                 <span style="font-size: 16px;">🔒</span>
-                <span style="color: #333; font-size: 14px; flex: 1;">https://URL</span>
+                <span style="color: #333; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{url_display_short}</span>
             </div>
         </div>
         """
@@ -123,6 +130,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     display_h = int(container_height * scale)
     
     if is_url and not use_srcdoc:
+        # For URL-based iframes, wrap in device chrome
         iframe_content = f'<iframe src="{content}" style="width: 100%; height: 100%; border: none;"></iframe>'
     else:
         iframe_content = content
