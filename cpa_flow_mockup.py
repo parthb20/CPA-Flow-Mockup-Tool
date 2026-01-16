@@ -2249,6 +2249,20 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 card_col_left = None
                 card_col_right = None
                 
+                # Get current domain and URL for Publisher URL section
+                current_dom = current_flow.get('publisher_domain', '')
+                current_url = current_flow.get('publisher_url', '')
+                
+                # Get domains and URLs for filtering (needed for edit details)
+                keywords = sorted(campaign_df['keyword_term'].dropna().unique().tolist())
+                current_kw = current_flow.get('keyword_term', keywords[0] if keywords else '')
+                kw_filtered = campaign_df[campaign_df['keyword_term'] == current_kw]
+                domains = sorted(kw_filtered['publisher_domain'].dropna().unique().tolist()) if 'publisher_domain' in kw_filtered.columns else []
+                
+                # Get URLs for current domain
+                dom_filtered = kw_filtered[kw_filtered['publisher_domain'] == current_dom] if current_dom and domains else kw_filtered
+                urls = dom_filtered['publisher_url'].dropna().unique().tolist() if 'publisher_url' in dom_filtered.columns else []
+                
                 with stage_1_container:
                     if st.session_state.flow_layout == 'vertical':
                         # Vertical: Full width card with inline details
