@@ -1066,6 +1066,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     display_h = int(container_height * scale)
     
     if is_url and not use_srcdoc:
+        # Wrap URL in device chrome structure
         iframe_content = f'<iframe src="{content}" style="width: 100%; height: 100%; border: none;"></iframe>'
     else:
         # For HTML content or when use_srcdoc=True, embed directly
@@ -1120,6 +1121,12 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     </body>
     </html>
     """
+    
+    # If is_url=True and not use_srcdoc, we still need chrome - wrap iframe in chrome structure
+    if is_url and not use_srcdoc:
+        # The iframe_content already has the iframe, but we need to ensure chrome is shown
+        # The full_content above already includes chrome, so this should work
+        pass
     
     escaped = full_content.replace("'", "&apos;").replace('"', '&quot;')
     
@@ -1692,7 +1699,7 @@ def parse_creative_html(response_str):
 
 # Proper SaaS-style title - REALLY BIG and BOLD (like a logo) - removed v2
 st.markdown("""
-    <div style="margin-bottom: 15px; padding-bottom: 12px; border-bottom: 3px solid #e2e8f0;">
+    <div style="margin-bottom: 8px; margin-top: 0px; padding-bottom: 8px; border-bottom: 3px solid #e2e8f0;">
                         <h1 class="main-title" style="font-size: 72px !important; font-weight: 900 !important; color: #0f172a !important; margin: 0 !important; padding: 0 !important; text-align: left !important; line-height: 1.3 !important; letter-spacing: 0.01em !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif !important; text-shadow: 1px 1px 2px rgba(0,0,0,0.1) !important; pointer-events: none !important; user-select: none !important; word-spacing: normal !important;">
                             📊 CPA Flow Analysis
                         </h1>
@@ -1791,6 +1798,15 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             """, unsafe_allow_html=True)
             
             if 'publisher_domain' in campaign_df.columns and 'keyword_term' in campaign_df.columns:
+                # Table filter controls
+                table_col1, table_col2, table_col3 = st.columns(3)
+                with table_col1:
+                    table_filter = st.selectbox("Filter:", ['Best', 'Worst', 'Overall'], index=0, key='table_filter')
+                with table_col2:
+                    table_count = st.selectbox("Rows:", [5, 10, 15], index=1, key='table_count')
+                with table_col3:
+                    table_sort = st.selectbox("Sort by:", ['Impressions', 'Clicks', 'Conversions', 'CTR', 'CVR'], index=0, key='table_sort')
+                
                 # Aggregate by domain + keyword
                 agg_df = campaign_df.groupby(['publisher_domain', 'keyword_term']).agg({
                     'impressions': 'sum',
@@ -1808,8 +1824,26 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 weighted_avg_ctr = (agg_df['clicks'].sum() / total_imps * 100) if total_imps > 0 else 0
                 weighted_avg_cvr = (agg_df['conversions'].sum() / total_clicks * 100) if total_clicks > 0 else 0
                 
-                # Sort by conversions and show top 10 only
-                agg_df = agg_df.sort_values('conversions', ascending=False).head(10).reset_index(drop=True)
+                # Map sort column names
+                sort_map = {
+                    'Impressions': 'impressions',
+                    'Clicks': 'clicks',
+                    'Conversions': 'conversions',
+                    'CTR': 'CTR',
+                    'CVR': 'CVR'
+                }
+                sort_col = sort_map.get(table_sort, 'impressions')
+                
+                # Sort based on filter
+                if table_filter == 'Best':
+                    agg_df = agg_df.sort_values(sort_col, ascending=False)
+                elif table_filter == 'Worst':
+                    agg_df = agg_df.sort_values(sort_col, ascending=True)
+                else:  # Overall - show all
+                    agg_df = agg_df.sort_values(sort_col, ascending=False)
+                
+                # Show selected count
+                agg_df = agg_df.head(table_count).reset_index(drop=True)
                 
                 # Create styled table with white background, black text, borders, and conditional CTR/CVR colors
                 table_html = """
@@ -1922,12 +1956,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.warning("Could not generate table - missing required columns")
             
             # Reduce spacing - minimal margin
-            st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top: 8px; margin-bottom: 8px;'></div>", unsafe_allow_html=True)
             
             # Simplified, easy-to-read flow explanation with consistent styling
             st.markdown("""
-            <div style="background: #f8fafc; padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 12px 0;">
-                <h3 style="font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 12px 0;">🔄 What is a Flow?</h3>
+            <div style="background: #f8fafc; padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 8px 0;">
+                <h3 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 12px 0;">🔄 What is a Flow?</h3>
                 <p style="font-size: 15px; color: #334155; margin: 8px 0; line-height: 1.6;">
                     A <strong style="font-weight: 700; color: #0f172a;">flow</strong> is the complete path a user takes from seeing your ad to reaching your landing page.
                 </p>
@@ -1954,14 +1988,25 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             if st.session_state.current_flow:
                 current_flow = st.session_state.current_flow
                 
-                # Flow layout toggle
+                # Flow layout toggle - lighter colors, bold and large
+                st.markdown("""
+                <style>
+                button[key='horiz_btn'], button[key='vert_btn'] {
+                    font-weight: 700 !important;
+                    font-size: 16px !important;
+                }
+                button[key='horiz_btn']:has-text("Horizontal") {
+                    background-color: #e0f2fe !important;
+                }
+                </style>
+                """, unsafe_allow_html=True)
                 layout_col1, layout_col2, layout_col3, layout_col4 = st.columns([1, 1, 3, 1])
                 with layout_col1:
-                    if st.button("↔️ Horizontal", type="primary" if st.session_state.flow_layout == 'horizontal' else "secondary", key='horiz_btn'):
+                    if st.button("↔️ **Horizontal**", key='horiz_btn', type="primary" if st.session_state.flow_layout == 'horizontal' else "secondary", use_container_width=True):
                         st.session_state.flow_layout = 'horizontal'
                         st.rerun()
                 with layout_col2:
-                    if st.button("↕️ Vertical", type="primary" if st.session_state.flow_layout == 'vertical' else "secondary", key='vert_btn'):
+                    if st.button("↕️ **Vertical**", key='vert_btn', type="primary" if st.session_state.flow_layout == 'vertical' else "secondary", use_container_width=True):
                         st.session_state.flow_layout = 'vertical'
                         st.rerun()
                 
@@ -1983,7 +2028,18 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         default_kw_idx = 0
                         if current_kw_val in keywords:
                             default_kw_idx = keywords.index(current_kw_val) + 1  # +1 because 'All' is first
-                        selected_keyword_filter = st.selectbox("🔑 Filter by Keyword:", ['All'] + keywords, index=default_kw_idx, key='kw_filter_adv')
+                        # Add search functionality using text input + filtered selectbox
+                        search_kw = st.text_input("🔑 Search Keyword:", value="", key='kw_search', placeholder="Type to search...")
+                        if search_kw:
+                            filtered_keywords = [kw for kw in keywords if search_kw.lower() in kw.lower()]
+                            if filtered_keywords:
+                                keywords_to_show = ['All'] + filtered_keywords
+                            else:
+                                keywords_to_show = ['All'] + keywords
+                                st.caption("No matches, showing all")
+                        else:
+                            keywords_to_show = ['All'] + keywords
+                        selected_keyword_filter = st.selectbox("🔑 Filter by Keyword:", keywords_to_show, index=0 if search_kw else default_kw_idx, key='kw_filter_adv')
                     
                     with filter_col2:
                         if 'publisher_domain' in campaign_df.columns:
@@ -1992,7 +2048,18 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             default_dom_idx = 0
                             if current_dom_val in domains:
                                 default_dom_idx = domains.index(current_dom_val) + 1  # +1 because 'All' is first
-                            selected_domain_filter = st.selectbox("🌐 Filter by Domain:", ['All'] + domains, index=default_dom_idx, key='dom_filter_adv')
+                            # Add search functionality
+                            search_dom = st.text_input("🌐 Search Domain:", value="", key='dom_search', placeholder="Type to search...")
+                            if search_dom:
+                                filtered_domains = [dom for dom in domains if search_dom.lower() in dom.lower()]
+                                if filtered_domains:
+                                    domains_to_show = ['All'] + filtered_domains
+                                else:
+                                    domains_to_show = ['All'] + domains
+                                    st.caption("No matches, showing all")
+                            else:
+                                domains_to_show = ['All'] + domains
+                            selected_domain_filter = st.selectbox("🌐 Filter by Domain:", domains_to_show, index=0 if search_dom else default_dom_idx, key='dom_filter_adv')
                     
                     # Check if filters were changed from default/current flow
                     if selected_keyword_filter != 'All' and selected_keyword_filter != current_kw_val:
@@ -2005,7 +2072,16 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 # Apply filtering logic based on view mode and filter changes
                 if st.session_state.view_mode == 'basic':
-                    # Basic view: Use default flow (already set, no changes needed)
+                    # Basic view: Use default flow - ensure it's the best performing one
+                    # Recalculate default flow if current flow has 0 conversions and campaign has conversions
+                    if current_flow.get('conversions', 0) == 0:
+                        campaign_total_convs = campaign_df['conversions'].apply(safe_float).sum()
+                        if campaign_total_convs > 0:
+                            # Recalculate best flow
+                            st.session_state.default_flow = find_default_flow(campaign_df)
+                            if st.session_state.default_flow:
+                                current_flow = st.session_state.default_flow.copy()
+                    
                     final_filtered = campaign_df[
                         (campaign_df['keyword_term'] == current_flow.get('keyword_term', '')) &
                         (campaign_df['publisher_domain'] == current_flow.get('publisher_domain', ''))
@@ -2200,7 +2276,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         domain = current_flow.get('publisher_domain', 'N/A')
                         url = current_flow.get('publisher_url', 'N/A')
                         st.markdown(f"""
-                        <div style="font-size: 11px; color: #64748b; padding: 4px 0;">
+                        <div style="font-size: 11px; color: #64748b; padding: 6px 0;">
                             <strong>Domain:</strong> {html.escape(str(domain))}<br>
                             <strong>URL:</strong> {html.escape(str(url)[:40])}{'...' if len(str(url)) > 40 else ''}
                         </div>
@@ -2208,7 +2284,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     with desc_cols[2]:
                         keyword = current_flow.get('keyword_term', 'N/A')
                         st.markdown(f"""
-                        <div style="font-size: 11px; color: #64748b; padding: 4px 0;">
+                        <div style="font-size: 11px; color: #64748b; padding: 6px 0;">
                             <strong>Keyword:</strong> {html.escape(str(keyword))}
                         </div>
                         """, unsafe_allow_html=True)
@@ -2216,15 +2292,15 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
                         serp_key = current_flow.get('serp_template_key', 'N/A')
                         st.markdown(f"""
-                        <div style="font-size: 11px; color: #64748b; padding: 4px 0;">
-                            <strong>SERP URL:</strong> {html.escape(str(serp_url)[:30])}{'...' if len(str(serp_url)) > 30 else ''}<br>
+                        <div style="font-size: 11px; color: #64748b; padding: 6px 0;">
+                            <strong>SERP URL:</strong> {html.escape(str(serp_url)[:50])}{'...' if len(str(serp_url)) > 50 else ''}<br>
                             <strong>SERP Key:</strong> {html.escape(str(serp_key))}
                         </div>
                         """, unsafe_allow_html=True)
                     with desc_cols[6]:
                         landing_url = current_flow.get('reporting_destination_url', 'N/A')
                         st.markdown(f"""
-                        <div style="font-size: 11px; color: #64748b; padding: 4px 0;">
+                        <div style="font-size: 11px; color: #64748b; padding: 6px 0;">
                             <strong>Landing URL:</strong> {html.escape(str(landing_url)[:40])}{'...' if len(str(landing_url)) > 40 else ''}
                         </div>
                         """, unsafe_allow_html=True)
@@ -2678,19 +2754,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             
                             st.markdown("**🎨 Creative Details**")
                             
-                            # Keyword filter in creative section (advanced view only)
-                            if st.session_state.view_mode == 'advanced':
-                                keywords = sorted(campaign_df['keyword_term'].dropna().unique().tolist())
-                                selected_keyword = st.selectbox(
-                                    "🔑 Filter by Keyword:",
-                                    keywords,
-                                    index=keywords.index(keyword) if keyword in keywords else 0,
-                                    key='kw_filter_creative'
-                                )
-                                if selected_keyword != keyword:
-                                    current_flow['keyword_term'] = selected_keyword
-                                    st.session_state.similarities = None
-                                    st.rerun()
+                            # Keyword filter removed from creative - now only at top in advanced view
                             
                             # Inline horizontal layout - all on same line
                             st.markdown(f"""
