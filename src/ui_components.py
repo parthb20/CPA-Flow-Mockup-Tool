@@ -189,6 +189,48 @@ def render_what_is_flow_section():
     """, unsafe_allow_html=True)
 
 
+def render_api_key_info_section():
+    """Render the API key information section explaining Fast Router setup"""
+    st.markdown("""
+    <div style="background: #fff7ed; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 8px 0;">
+        <h3 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 12px 0;">🔑 API Key Setup for Similarity Calculations</h3>
+        <p style="font-size: 15px; color: #334155; margin: 8px 0; line-height: 1.6;">
+            <strong style="font-weight: 700; color: #0f172a;">Why is an API key needed?</strong> The similarity scores (Keyword → Ad Copy, Ad Copy → Landing Page, Keyword → Landing Page) are calculated using AI models via Fast Router. Without an API key, similarity scores will not be displayed.
+        </p>
+        <div style="margin-top: 16px;">
+            <h4 style="font-size: 16px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">Fast Router Setup Steps:</h4>
+            <ol style="font-size: 14px; color: #334155; margin: 8px 0; padding-left: 20px; line-height: 1.8;">
+                <li><strong style="font-weight: 600;">Request access:</strong> Get invited and accept the invitation</li>
+                <li><strong style="font-weight: 600;">Get added to project:</strong> Join "Team Akshay" project</li>
+                <li><strong style="font-weight: 600;">Install package:</strong> <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 13px;">pip install openai</code></li>
+                <li><strong style="font-weight: 600;">Add API key:</strong> Add your Fast Router API key to Streamlit secrets (key name: <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 13px;">FASTROUTER_API_KEY</code> or <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 13px;">OPENAI_API_KEY</code>)</li>
+            </ol>
+        </div>
+        <div style="margin-top: 16px; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
+            <h4 style="font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">Sample Code (with request tags):</h4>
+            <pre style="background: #1e293b; color: #e2e8f0; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 12px; line-height: 1.5; margin: 0;"><code>from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://go.fastrouter.ai/api/v1",
+    api_key="sk-v1-YOUR_ACTUAL_API_KEY_HERE",
+)
+
+completion = client.chat.completions.create(
+    model="anthropic/claude-sonnet-4-20250514",
+    messages=[{"role": "user", "content": "Your prompt"}],
+    extra_body={"request_tags": ["&lt;BT&gt;/&lt;project_name&gt;"]}
+)</code></pre>
+            <p style="font-size: 13px; color: #64748b; margin: 8px 0 0 0;">
+                <strong>Note:</strong> Request tags (e.g., <code style="background: #f1f5f9; padding: 1px 4px; border-radius: 3px; font-size: 12px;">BT1/keyword_review</code>) are required to track usage by BT and project.
+            </p>
+        </div>
+        <p style="font-size: 13px; color: #64748b; margin: 12px 0 0 0; font-style: italic;">
+            Key name format: <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 12px;">Parth Bhatt_Key - 17122025232034</code>
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+
 def render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs, flow_ctr, flow_cvr):
     """Render the Selected Flow display with performance metrics"""
     st.markdown("""
