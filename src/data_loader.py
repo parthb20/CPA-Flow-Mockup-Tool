@@ -33,10 +33,24 @@ def process_file_content(content):
     """Process file content - detect type and decompress if needed"""
     import streamlit as st
     
+    def safe_st_error(msg):
+        """Safely call st.error, catching thread-related issues"""
+        try:
+            st.error(msg)
+        except:
+            pass  # Ignore errors when called from thread
+    
+    def safe_st_info(msg):
+        """Safely call st.info, catching thread-related issues"""
+        try:
+            st.info(msg)
+        except:
+            pass  # Ignore errors when called from thread
+    
     try:
         # Check if Google Drive returned HTML error page
         if content.startswith(b'<!DOCTYPE') or content.startswith(b'<html') or b'<title>Google Drive' in content[:1000]:
-            st.error("❌ Could not download file - check sharing settings")
+            safe_st_error("❌ Could not download file - check sharing settings")
             return None
         
         # Check file type by magic bytes
@@ -89,7 +103,7 @@ def process_file_content(content):
                 
                 return df
             except Exception as e:
-                st.error(f"❌ Error decompressing GZIP: {str(e)}")
+                safe_st_error(f"❌ Error decompressing GZIP: {str(e)}")
                 return None
         
         # ZIP: 50 4b (PK)
@@ -164,49 +178,40 @@ def process_file_content(content):
                             decoded_content = content.decode(encoding, errors='replace')
                         
                         # Try reading CSV with multiple strategies
+                        # Build read_csv kwargs based on pandas version
+                        read_csv_kwargs = {
+                            'dtype': str,
+                            'encoding': encoding,
+                            'engine': 'python',
+                            'quoting': csv.QUOTE_MINIMAL,
+                            'skipinitialspace': True,
+                            'low_memory': False
+                        }
+                        if HAS_ON_BAD_LINES:
+                            read_csv_kwargs['on_bad_lines'] = 'skip'
+                        else:
+                            read_csv_kwargs['error_bad_lines'] = False
+                            read_csv_kwargs['warn_bad_lines'] = False
+                        
                         # Strategy 1: Standard pandas with error handling
                         try:
-                            df = pd.read_csv(
-                                StringIO(decoded_content),
-                                dtype=str,
-                                on_bad_lines='skip',
-                                encoding=encoding,
-                                engine='python',
-                                quoting=csv.QUOTE_MINIMAL,
-                                skipinitialspace=True,
-                                low_memory=False
-                            )
+                            df = pd.read_csv(StringIO(decoded_content), **read_csv_kwargs)
                             if df is not None and len(df) > 0:
                                 break
                         except Exception as e1:
                             last_error = e1
                             # Strategy 2: Try with different quote handling
                             try:
-                                df = pd.read_csv(
-                                    StringIO(decoded_content),
-                                    dtype=str,
-                                    on_bad_lines='skip',
-                                    encoding=encoding,
-                                    engine='python',
-                                    quoting=csv.QUOTE_ALL,
-                                    skipinitialspace=True,
-                                    low_memory=False
-                                )
+                                read_csv_kwargs['quoting'] = csv.QUOTE_ALL
+                                df = pd.read_csv(StringIO(decoded_content), **read_csv_kwargs)
                                 if df is not None and len(df) > 0:
                                     break
                             except Exception as e2:
                                 # Strategy 3: Try with C engine (faster but less forgiving)
                                 try:
-                                    df = pd.read_csv(
-                                        StringIO(decoded_content),
-                                        dtype=str,
-                                        on_bad_lines='skip',
-                                        encoding=encoding,
-                                        engine='c',
-                                        quoting=csv.QUOTE_MINIMAL,
-                                        skipinitialspace=True,
-                                        low_memory=False
-                                    )
+                                    read_csv_kwargs['quoting'] = csv.QUOTE_MINIMAL
+                                    read_csv_kwargs['engine'] = 'c'
+                                    df = pd.read_csv(StringIO(decoded_content), **read_csv_kwargs)
                                     if df is not None and len(df) > 0:
                                         break
                                 except Exception as e3:
@@ -230,17 +235,17 @@ def process_file_content(content):
                 if df is not None and len(df) > 0:
                     return df
                 else:
-                    st.error(f"❌ CSV parse error: {str(last_error) if last_error else 'Could not parse CSV with any method'}")
-                    st.info("💡 Tip: Check if CSV has proper quoting for fields containing commas")
+                    safe_st_error(f"❌ CSV parse error: {str(last_error) if last_error else 'Could not parse CSV with any method'}")
+                    safe_st_info("💡 Tip: Check if CSV has proper quoting for fields containing commas")
                     return None
                     
             except Exception as e:
-                st.error(f"❌ CSV parse error: {str(e)}")
-                st.info("💡 Tip: The CSV file may have formatting issues. Try opening it in Excel and re-saving as CSV.")
+                safe_st_error(f"❌ CSV parse error: {str(e)}")
+                safe_st_info("💡 Tip: The CSV file may have formatting issues. Try opening it in Excel and re-saving as CSV.")
                 return None
                 
     except Exception as e:
-        st.error(f"❌ Error processing file: {str(e)}")
+        safe_st_error(f"❌ Error processing file: {str(e)}")
         return None
 
 
@@ -316,6 +321,14 @@ def load_csv_from_gdrive(file_id):
 def load_json_from_gdrive(file_id):
     """Load JSON file from Google Drive - returns dict of SERP templates {template_key: html_string}"""
     import streamlit as st
+    
+    def safe_st_error(msg):
+        """Safely call st.error, catching thread-related issues"""
+        try:
+            st.error(msg)
+        except:
+            pass  # Ignore errors when called from thread
+    
     try:
         url = f"https://drive.google.com/uc?export=download&id={file_id}"
         response = requests.get(url, timeout=30)
@@ -332,5 +345,5 @@ def load_json_from_gdrive(file_id):
         
         return None
     except Exception as e:
-        st.error(f"Error loading SERP templates: {str(e)}")
+        safe_st_error(f"Error loading SERP templates: {str(e)}")
         return None
