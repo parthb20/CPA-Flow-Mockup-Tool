@@ -302,18 +302,20 @@ def get_screenshot_url(url, device='mobile', full_page=False):
     Generate thum.io screenshot URL
     
     thum.io FREE tier: 1000 impressions/month, no signup required!
-    Format: https://image.thum.io/get/width/{width}/crop/{height}/{url}
+    Simple format: https://image.thum.io/get/{url}
     
     Supports three methods (in order of preference):
     1. FREE tier (default): No auth needed, works immediately
     2. Referer-based key: Set THUMIO_REFERER_DOMAIN in secrets
     3. Auth token: Set SCREENSHOT_API_KEY in secrets
-    
-    For free tier, we use width/crop options for better mobile screenshots.
     """
     from urllib.parse import quote
     
-    # Device viewport sizes for better screenshots
+    # Ensure URL is properly formatted (must start with http:// or https://)
+    if not url.startswith(('http://', 'https://')):
+        url = f"https://{url}"
+    
+    # Device viewport sizes for better screenshots (used with auth token)
     viewports = {
         'mobile': {'width': 390, 'height': 844},
         'tablet': {'width': 820, 'height': 1180},
@@ -338,13 +340,10 @@ def get_screenshot_url(url, device='mobile', full_page=False):
         screenshot_url = f"https://image.thum.io/get/{'/'.join(options)}/{url}"
         return screenshot_url
     
-    # FREE TIER (default): Use width/crop for better mobile screenshots
-    # Format: https://image.thum.io/get/width/{width}/crop/{height}/{url}
-    # This gives better quality than simple format
-    if full_page:
-        screenshot_url = f"https://image.thum.io/get/width/{vp['width']}/fullpage/{url}"
-    else:
-        screenshot_url = f"https://image.thum.io/get/width/{vp['width']}/crop/{vp['height']}/{url}"
+    # FREE TIER (default): Simple format - works without auth
+    # Format: https://image.thum.io/get/{url}
+    # Example: https://image.thum.io/get/https://www.google.com/
+    screenshot_url = f"https://image.thum.io/get/{url}"
     return screenshot_url
 
 # Session state
@@ -755,6 +754,53 @@ def get_score_class(score):
         return "score-weak", "Weak", "#f97316"
     else:
         return "score-poor", "Poor", "#ef4444"
+
+def render_similarity_score(score_type, similarities_data, show_explanation=False):
+    """Render a single similarity score card
+    
+    Args:
+        score_type: 'kwd_to_ad', 'ad_to_page', or 'kwd_to_page'
+        similarities_data: Dict with similarity results
+        show_explanation: If True, show explanation of what similarity score is
+    """
+    if not similarities_data:
+        return
+    
+    data = similarities_data.get(score_type, {})
+    
+    if not data or 'error' in data:
+        if data and data.get('status_code') == 'no_api_key':
+            st.info("🔑 Add API key to calculate")
+        else:
+            st.info("⏳ Will calculate after data loads")
+        return
+    
+    score = data.get('final_score', 0)
+    reason = data.get('reason', 'N/A')
+    css_class, label, color = get_score_class(score)
+    
+    # Explanation of similarity score (shown once below Publisher URL)
+    if show_explanation:
+        st.markdown(f"""
+        <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 12px; margin: 10px 0; border-radius: 4px;">
+            <strong>📊 What is a Similarity Score?</strong><br>
+            <small style="color: #64748b;">Similarity scores measure how well different parts of your ad flow match each other. 
+            Higher scores (0.8-1.0) mean better alignment, which typically leads to better performance.</small>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Score display
+    st.markdown(f"""
+    <div style="background: white; border: 2px solid {color}; border-radius: 8px; padding: 12px; margin: 8px 0;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="font-size: 32px; font-weight: 700; color: {color}; min-width: 80px;">{score:.0%}</div>
+            <div style="flex: 1;">
+                <div style="font-weight: 600; color: #0f172a; font-size: 14px;">{label} Match</div>
+                <div style="font-size: 12px; color: #64748b; margin-top: 4px;">{reason[:80]}{'...' if len(reason) > 80 else ''}</div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 def find_default_flow(df):
     """Find the best performing flow - prioritize conversions, then clicks, then impressions"""
@@ -1702,15 +1748,38 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Single device selector for ALL cards
                 device_all = st.radio("Device for all previews:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='device_all', index=0)
                 
+                # Add a small info bar instead of blank space
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #3b82f6; padding: 8px 12px; border-radius: 4px; margin: 8px 0;">
+                    <small style="color: #64748b;">💡 Select a device above to preview how the ad flow appears on different screen sizes</small>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Initialize containers for both layouts
+                stage_cols = None
+                vertical_preview_col = None
+                vertical_info_col = None
+                stage_1_info_container = None
+                stage_2_info_container = None
+                stage_3_info_container = None
+                stage_4_info_container = None
+                
                 if st.session_state.flow_layout == 'horizontal':
                     # Equal width columns for 4 cards + 3 arrows
                     stage_cols = st.columns([1, 0.1, 1, 0.1, 1, 0.1, 1])
                 else:
-                    # Vertical layout - one card per row
-                    stage_cols = None
+                    # Vertical layout - 60% left for previews, 40% right for info
+                    # Create main container with 60/40 split for vertical mode
+                    vertical_preview_col, vertical_info_col = st.columns([0.6, 0.4])
                 
                 # Stage 1: Publisher URL
-                stage_1_container = stage_cols[0] if stage_cols else st.container()
+                if st.session_state.flow_layout == 'vertical':
+                    stage_1_container = vertical_preview_col.container()
+                    stage_1_info_container = vertical_info_col.container()
+                else:
+                    stage_1_container = stage_cols[0]
+                    stage_1_info_container = None
+                
                 with stage_1_container:
                     st.markdown('<div class="stage-card">', unsafe_allow_html=True)
                     st.markdown('<div class="stage-title">📰 Publisher URL</div>', unsafe_allow_html=True)
@@ -1768,8 +1837,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         # Basic mode - show info
                         st.caption(f"**Domain:** {current_dom}")
                         if current_url and pd.notna(current_url):
-                            url_display = str(current_url)[:60] + "..." if len(str(current_url)) > 60 else str(current_url)
-                            st.caption(f"**URL:** {url_display}")
+                            # Show full URL - don't truncate
+                            st.caption(f"**URL:** {current_url}")
+                            st.markdown(f"[🔗 Open full URL]({current_url})", unsafe_allow_html=True)
                     
                     # Get the full URL for rendering
                     pub_url = current_flow.get('publisher_url', '')
@@ -1843,16 +1913,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                         preview_html = inject_unique_id(preview_html, 'pub_screenshot', pub_url, device_all, current_flow)
                                                         st.components.v1.html(preview_html, height=height, scrolling=False)
                                                         st.caption("📸 Screenshot (thum.io)")
-                                                    
-                                                    # Automatically extract text from screenshot
-                                                    if OCR_AVAILABLE:
-                                                        try:
-                                                            extracted_text = extract_text_from_screenshot(screenshot_url)
-                                                            if extracted_text:
-                                                                with st.expander("📝 Extracted Text from Screenshot"):
-                                                                    st.text(extracted_text[:1000])
-                                                        except Exception as ocr_err:
-                                                            pass  # Silent fail for OCR
                                                 else:
                                                     st.warning("🚫 Site blocks access (403)")
                                                     st.markdown(f"[🔗 Open in new tab]({pub_url})")
@@ -1866,16 +1926,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                             preview_html = inject_unique_id(preview_html, 'pub_screenshot', pub_url, device_all, current_flow)
                                             st.components.v1.html(preview_html, height=height, scrolling=False)
                                             st.caption("📸 Screenshot (thum.io)")
-                                        
-                                        # Automatically extract text from screenshot
-                                        if OCR_AVAILABLE:
-                                            try:
-                                                extracted_text = extract_text_from_screenshot(screenshot_url)
-                                                if extracted_text:
-                                                    with st.expander("📝 Extracted Text from Screenshot"):
-                                                        st.text(extracted_text[:1000])
-                                            except Exception as ocr_err:
-                                                pass  # Silent fail for OCR
                                     else:
                                         st.warning("🚫 Site blocks access (403)")
                                         st.info("💡 Install Playwright for better rendering, or screenshots will use thum.io free tier (1000/month)")
@@ -1907,23 +1957,65 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         st.warning("⚠️ No valid publisher URL in data")
                     
                     st.markdown('</div>', unsafe_allow_html=True)
+                    
+                    # Similarity score explanation below Publisher URL (horizontal mode only)
+                    if st.session_state.flow_layout == 'horizontal':
+                        # Calculate similarity scores if not already done
+                        if 'similarities' not in st.session_state or st.session_state.similarities is None:
+                            if API_KEY:
+                                with st.spinner("🧠 Calculating similarity scores..."):
+                                    st.session_state.similarities = calculate_similarities(current_flow)
+                            else:
+                                st.session_state.similarities = {}
+                        
+                        # Show explanation of similarity score
+                        render_similarity_score('kwd_to_page', st.session_state.similarities, show_explanation=True)
+                    
+                    # In vertical mode, show info in right column
+                    if st.session_state.flow_layout == 'vertical' and stage_1_info_container:
+                        with stage_1_info_container:
+                            st.markdown("**📰 Publisher URL Details**")
+                            st.caption(f"**Domain:** {current_dom}")
+                            if current_url and pd.notna(current_url):
+                                st.caption(f"**URL:** {current_url}")
+                                st.markdown(f"[🔗 Open full URL]({current_url})", unsafe_allow_html=True)
+                            
+                            # Calculate similarity scores if not already done
+                            if 'similarities' not in st.session_state or st.session_state.similarities is None:
+                                if API_KEY:
+                                    with st.spinner("🧠 Calculating..."):
+                                        st.session_state.similarities = calculate_similarities(current_flow)
+                                else:
+                                    st.session_state.similarities = {}
+                            
+                            # Show explanation and kwd->page score in vertical mode
+                            render_similarity_score('kwd_to_page', st.session_state.similarities, show_explanation=True)
                 
                 if stage_cols:
                     with stage_cols[1]:
                         st.markdown("""
                         <div style='display: flex; align-items: center; justify-content: center; height: 100%;'>
-                            <div style='font-size: 36px; color: #3b82f6; font-weight: 700;'>→</div>
+                            <div style='font-size: 72px; color: #3b82f6; font-weight: 900; line-height: 1;'>→</div>
                         </div>
                         """, unsafe_allow_html=True)
                 else:
                     st.markdown("""
-                    <div style='text-align: center; font-size: 40px; color: #3b82f6; margin: 20px 0; font-weight: 700;'>
+                    <div style='text-align: center; font-size: 72px; color: #3b82f6; margin: 20px 0; font-weight: 900;'>
                         ↓
                     </div>
                     """, unsafe_allow_html=True)
                 
                 # Stage 2: Creative
-                stage_2_container = stage_cols[2] if stage_cols else st.container()
+                if st.session_state.flow_layout == 'vertical':
+                    stage_2_container = vertical_preview_col.container()
+                    stage_2_info_container = vertical_info_col.container()
+                else:
+                    if stage_cols:
+                        stage_2_container = stage_cols[2]
+                    else:
+                        stage_2_container = st.container()
+                    stage_2_info_container = None
+                
                 with stage_2_container:
                     st.markdown('<div class="stage-card">', unsafe_allow_html=True)
                     st.markdown('<div class="stage-title">🎨 Creative</div>', unsafe_allow_html=True)
@@ -1963,23 +2055,71 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         st.warning("⚠️ No creative data")
                     
                     st.markdown('</div>', unsafe_allow_html=True)
+                    
+                    # Similarity score: Keyword → Ad below Creative
+                    # Calculate if not already done
+                    if 'similarities' not in st.session_state or st.session_state.similarities is None:
+                        if API_KEY:
+                            with st.spinner("🧠 Calculating similarity scores..."):
+                                st.session_state.similarities = calculate_similarities(current_flow)
+                        else:
+                            st.session_state.similarities = {}
+                    
+                    # Similarity score: Keyword → Ad below Creative
+                    if st.session_state.flow_layout == 'vertical' and stage_2_info_container:
+                        # In vertical mode, show in right column
+                        with stage_2_info_container:
+                            st.markdown("**🎨 Creative Details**")
+                            st.caption(f"**Size:** {creative_size}")
+                            
+                            if 'similarities' not in st.session_state or st.session_state.similarities is None:
+                                if API_KEY:
+                                    with st.spinner("🧠 Calculating..."):
+                                        st.session_state.similarities = calculate_similarities(current_flow)
+                                else:
+                                    st.session_state.similarities = {}
+                            
+                            if 'similarities' in st.session_state and st.session_state.similarities:
+                                st.markdown("#### 🔗 Keyword → Ad")
+                                render_similarity_score('kwd_to_ad', st.session_state.similarities)
+                    else:
+                        # Horizontal mode - show below card
+                        if 'similarities' in st.session_state and st.session_state.similarities:
+                            st.markdown("#### 🔗 Keyword → Ad")
+                            render_similarity_score('kwd_to_ad', st.session_state.similarities)
                 
                 if stage_cols:
                     with stage_cols[3]:
                         st.markdown("""
                         <div style='display: flex; align-items: center; justify-content: center; height: 100%;'>
-                            <div style='font-size: 36px; color: #3b82f6; font-weight: 700;'>→</div>
+                            <div style='font-size: 72px; color: #3b82f6; font-weight: 900; line-height: 1;'>→</div>
                         </div>
                         """, unsafe_allow_html=True)
                 else:
                     st.markdown("""
-                    <div style='text-align: center; font-size: 40px; color: #3b82f6; margin: 20px 0; font-weight: 700;'>
+                    <div style='text-align: center; font-size: 72px; color: #3b82f6; margin: 20px 0; font-weight: 900;'>
                         ↓
                     </div>
                     """, unsafe_allow_html=True)
                 
                 # Stage 3: SERP
-                stage_3_container = stage_cols[4] if stage_cols else st.container()
+                # Construct SERP URL before using it (needed for vertical layout)
+                serp_template_key = current_flow.get('serp_template_key', '')
+                if serp_template_key and pd.notna(serp_template_key) and str(serp_template_key).strip():
+                    serp_url = SERP_BASE_URL + str(serp_template_key)
+                else:
+                    serp_url = None
+                
+                if st.session_state.flow_layout == 'vertical':
+                    stage_3_container = vertical_preview_col.container()
+                    stage_3_info_container = vertical_info_col.container()
+                else:
+                    if stage_cols:
+                        stage_3_container = stage_cols[4]
+                    else:
+                        stage_3_container = st.container()
+                    stage_3_info_container = None
+                
                 with stage_3_container:
                     st.markdown('<div class="stage-card">', unsafe_allow_html=True)
                     st.markdown('<div class="stage-title">📄 SERP</div>', unsafe_allow_html=True)
@@ -2012,19 +2152,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
                         st.caption(f"**Template:** {serp_name}")
                     
-                    # Construct SERP URL dynamically from serp_template_key
-                    serp_template_key = current_flow.get('serp_template_key', '')
-                    
                     # Always show the constructed SERP URL as clickable link
-                    if serp_template_key:
-                        final_serp_url = SERP_BASE_URL + str(serp_template_key)
-                        st.markdown(f"**Final SERP URL:** [🔗 {final_serp_url}]({final_serp_url})")
-                    
-                    if serp_template_key and pd.notna(serp_template_key) and str(serp_template_key).strip():
-                        # Build SERP URL: base + template key
-                        serp_url = SERP_BASE_URL + str(serp_template_key)
-                    else:
-                        serp_url = None
+                    if serp_url:
+                        st.markdown(f"**Final SERP URL:** [🔗 {serp_url}]({serp_url})")
                     
                     # Get ad details for replacement
                     ad_title = current_flow.get('ad_title', '')
@@ -2245,23 +2375,69 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         st.warning("⚠️ No SERP URL found in mapping")
                     
                     st.markdown('</div>', unsafe_allow_html=True)
+                    
+                    # Similarity score: Ad → Page below SERP
+                    # Calculate if not already done
+                    if 'similarities' not in st.session_state or st.session_state.similarities is None:
+                        if API_KEY:
+                            with st.spinner("🧠 Calculating similarity scores..."):
+                                st.session_state.similarities = calculate_similarities(current_flow)
+                        else:
+                            st.session_state.similarities = {}
+                    
+                    # Similarity score: Ad → Page below SERP
+                    if st.session_state.flow_layout == 'vertical' and stage_3_info_container:
+                        # In vertical mode, show in right column
+                        with stage_3_info_container:
+                            st.markdown("**📄 SERP Details**")
+                            serp_template_key = current_flow.get('serp_template_key', '')
+                            serp_name = current_flow.get('serp_template_name', 'N/A')
+                            st.caption(f"**Template:** {serp_name}")
+                            if serp_url:
+                                st.caption(f"**SERP URL:** {serp_url}")
+                                st.markdown(f"[🔗 Open SERP URL]({serp_url})", unsafe_allow_html=True)
+                            
+                            if 'similarities' not in st.session_state or st.session_state.similarities is None:
+                                if API_KEY:
+                                    with st.spinner("🧠 Calculating..."):
+                                        st.session_state.similarities = calculate_similarities(current_flow)
+                                else:
+                                    st.session_state.similarities = {}
+                            
+                            if 'similarities' in st.session_state and st.session_state.similarities:
+                                st.markdown("#### 🔗 Ad → Page")
+                                render_similarity_score('ad_to_page', st.session_state.similarities)
+                    else:
+                        # Horizontal mode - show below card
+                        if 'similarities' in st.session_state and st.session_state.similarities:
+                            st.markdown("#### 🔗 Ad → Page")
+                            render_similarity_score('ad_to_page', st.session_state.similarities)
                 
                 if stage_cols:
                     with stage_cols[5]:
                         st.markdown("""
                         <div style='display: flex; align-items: center; justify-content: center; height: 100%;'>
-                            <div style='font-size: 36px; color: #3b82f6; font-weight: 700;'>→</div>
+                            <div style='font-size: 72px; color: #3b82f6; font-weight: 900; line-height: 1;'>→</div>
                         </div>
                         """, unsafe_allow_html=True)
                 else:
                     st.markdown("""
-                    <div style='text-align: center; font-size: 40px; color: #3b82f6; margin: 20px 0; font-weight: 700;'>
+                    <div style='text-align: center; font-size: 72px; color: #3b82f6; margin: 20px 0; font-weight: 900;'>
                         ↓
                     </div>
                     """, unsafe_allow_html=True)
                 
                 # Stage 4: Landing Page
-                stage_4_container = stage_cols[6] if stage_cols else st.container()
+                if st.session_state.flow_layout == 'vertical':
+                    stage_4_container = vertical_preview_col.container()
+                    stage_4_info_container = vertical_info_col.container()
+                else:
+                    if stage_cols:
+                        stage_4_container = stage_cols[6]
+                    else:
+                        stage_4_container = st.container()
+                    stage_4_info_container = None
+                
                 with stage_4_container:
                     st.markdown('<div class="stage-card">', unsafe_allow_html=True)
                     st.markdown('<div class="stage-title">🎯 Landing Page</div>', unsafe_allow_html=True)
@@ -2307,17 +2483,13 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     # Use same logic as display (safe_int) for consistency
                     flow_clicks = safe_int(current_flow.get('clicks', 0))
                     
-                    # Show landing URL info in basic mode
+                    # Show landing URL info in basic mode - show full URL
                     if st.session_state.view_mode == 'basic' and adv_url and pd.notna(adv_url):
-                        url_display = str(adv_url)[:60] + "..." if len(str(adv_url)) > 60 else str(adv_url)
-                        st.caption(f"**Landing URL:** {url_display}")
+                        st.caption(f"**Landing URL:** {adv_url}")
+                        st.markdown(f"[🔗 Open full URL]({adv_url})", unsafe_allow_html=True)
                     
-                    # Check if clicks > 0 (same check as display uses)
-                    if flow_clicks <= 0:
-                        # This specific view has no clicks
-                        st.warning("⚠️ **No Ad Clicks**")
-                        st.caption("This view has 0 clicks - user didn't click the ad.")
-                    elif adv_url and pd.notna(adv_url) and str(adv_url).strip():
+                    # Always try to render landing page if URL exists
+                    if adv_url and pd.notna(adv_url) and str(adv_url).strip():
                         # Check if site blocks iframe embedding
                         try:
                             head_response = requests.head(adv_url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'})
@@ -2377,16 +2549,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                     preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
                                                     st.components.v1.html(preview_html, height=height, scrolling=False)
                                                     st.caption("📸 Screenshot (thum.io)")
-                                                    
-                                                    # Automatically extract text from screenshot
-                                                    if OCR_AVAILABLE:
-                                                        try:
-                                                            extracted_text = extract_text_from_screenshot(screenshot_url)
-                                                            if extracted_text:
-                                                                with st.expander("📝 Extracted Text from Screenshot"):
-                                                                    st.text(extracted_text[:1000])
-                                                        except Exception as ocr_err:
-                                                            pass  # Silent fail for OCR
                                                 else:
                                                     st.warning("🚫 Site blocks access (403)")
                                                     st.markdown(f"[🔗 Open in new tab]({adv_url})")
@@ -2399,16 +2561,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                             preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
                                             st.components.v1.html(preview_html, height=height, scrolling=False)
                                             st.caption("📸 Screenshot (thum.io)")
-                                        
-                                        # Automatically extract text from screenshot
-                                        if OCR_AVAILABLE:
-                                            try:
-                                                extracted_text = extract_text_from_screenshot(screenshot_url)
-                                                if extracted_text:
-                                                    with st.expander("📝 Extracted Text from Screenshot"):
-                                                        st.text(extracted_text[:1000])
-                                            except Exception as ocr_err:
-                                                pass  # Silent fail for OCR
                                         else:
                                             st.warning("🚫 Site blocks access (403)")
                                             st.info("💡 Install Playwright for better rendering, or screenshots will use thum.io free tier (1000/month)")
@@ -2439,87 +2591,42 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         st.warning("No landing page URL")
                     
                     st.markdown('</div>', unsafe_allow_html=True)
-                
-                st.divider()
-                
-                # Calculate similarity scores
-                if 'similarities' not in st.session_state or st.session_state.similarities is None:
-                    if API_KEY:
-                        with st.spinner("🧠 Calculating similarity scores..."):
-                            st.session_state.similarities = calculate_similarities(current_flow)
-                    else:
-                        st.session_state.similarities = {}
-                
-                # Similarity Scores Below
-                st.markdown("### 📊 Similarity Scores")
-                
-                score_cols = st.columns(3)
-                
-                with score_cols[0]:
-                    st.markdown("#### 🔗 Keyword → Ad")
-                    if 'similarities' in st.session_state and st.session_state.similarities:
-                        data = st.session_state.similarities.get('kwd_to_ad', {})
-                        if 'error' not in data:
-                            score = data.get('final_score', 0)
-                            reason = data.get('reason', 'N/A')
-                            css_class, label, color = get_score_class(score)
-                            
-                            st.markdown(f'<div class="score-box {css_class}">{score:.1%}</div>', unsafe_allow_html=True)
-                            st.markdown(f"**{label} Match**")
-                            st.caption(reason)
-                            
-                            with st.expander("📊 Details"):
-                                for key, value in data.items():
-                                    if key not in ['final_score', 'band', 'reason'] and isinstance(value, (int, float)):
-                                        st.metric(key.replace('_', ' ').title(), f"{value:.1%}")
+                    
+                    # Similarity score: Keyword → Page below Landing Page
+                    # Calculate if not already done
+                    if 'similarities' not in st.session_state or st.session_state.similarities is None:
+                        if API_KEY:
+                            with st.spinner("🧠 Calculating similarity scores..."):
+                                st.session_state.similarities = calculate_similarities(current_flow)
                         else:
-                            st.error("API Error")
+                            st.session_state.similarities = {}
+                    
+                    # Similarity score: Keyword → Page below Landing Page
+                    if st.session_state.flow_layout == 'vertical' and stage_4_info_container:
+                        # In vertical mode, show in right column
+                        with stage_4_info_container:
+                            st.markdown("**🎯 Landing Page Details**")
+                            keyword = current_flow.get('keyword_term', 'N/A')
+                            st.caption(f"**Keyword:** {keyword}")
+                            if adv_url and pd.notna(adv_url):
+                                st.caption(f"**Landing URL:** {adv_url}")
+                                st.markdown(f"[🔗 Open full URL]({adv_url})", unsafe_allow_html=True)
+                            
+                            if 'similarities' not in st.session_state or st.session_state.similarities is None:
+                                if API_KEY:
+                                    with st.spinner("🧠 Calculating..."):
+                                        st.session_state.similarities = calculate_similarities(current_flow)
+                                else:
+                                    st.session_state.similarities = {}
+                            
+                            if 'similarities' in st.session_state and st.session_state.similarities:
+                                st.markdown("#### 🔗 Keyword → Page")
+                                render_similarity_score('kwd_to_page', st.session_state.similarities)
                     else:
-                        st.info("Add API key to calculate")
-                
-                with score_cols[1]:
-                    st.markdown("#### 🔗 Ad → Page")
-                    if 'similarities' in st.session_state and st.session_state.similarities:
-                        data = st.session_state.similarities.get('ad_to_page', {})
-                        if data and 'error' not in data:
-                            score = data.get('final_score', 0)
-                            reason = data.get('reason', 'N/A')
-                            css_class, label, color = get_score_class(score)
-                            
-                            st.markdown(f'<div class="score-box {css_class}">{score:.1%}</div>', unsafe_allow_html=True)
-                            st.markdown(f"**{label} Match**")
-                            st.caption(reason)
-                            
-                            with st.expander("📊 Details"):
-                                for key, value in data.items():
-                                    if key not in ['final_score', 'band', 'reason'] and isinstance(value, (int, float)):
-                                        st.metric(key.replace('_', ' ').title(), f"{value:.1%}")
-                        else:
-                            st.info("Will calculate after landing page loads")
-                    else:
-                        st.info("Add API key to calculate")
-                
-                with score_cols[2]:
-                    st.markdown("#### 🔗 Keyword → Page")
-                    if 'similarities' in st.session_state and st.session_state.similarities:
-                        data = st.session_state.similarities.get('kwd_to_page', {})
-                        if data and 'error' not in data:
-                            score = data.get('final_score', 0)
-                            reason = data.get('reason', 'N/A')
-                            css_class, label, color = get_score_class(score)
-                            
-                            st.markdown(f'<div class="score-box {css_class}">{score:.1%}</div>', unsafe_allow_html=True)
-                            st.markdown(f"**{label} Match**")
-                            st.caption(reason)
-                            
-                            with st.expander("📊 Details"):
-                                for key, value in data.items():
-                                    if key not in ['final_score', 'band', 'reason'] and isinstance(value, (int, float)):
-                                        st.metric(key.replace('_', ' ').title(), f"{value:.1%}")
-                        else:
-                            st.info("Will calculate after landing page loads")
-                    else:
-                        st.info("Add API key to calculate")
+                        # Horizontal mode - show below card
+                        if 'similarities' in st.session_state and st.session_state.similarities:
+                            st.markdown("#### 🔗 Keyword → Page")
+                            render_similarity_score('kwd_to_page', st.session_state.similarities)
             
             else:
                 st.warning("No data available for this campaign")
