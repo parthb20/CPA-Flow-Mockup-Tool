@@ -85,14 +85,17 @@ st.markdown("""
     /* Don't override the main title - it has its own inline styles */
     h1:not(.main-title) { font-weight: 700 !important; font-size: 32px !important; }
     
-    /* Ensure main title is HUGE - override everything */
+    /* Ensure main title is properly sized - override everything */
     .main-title {
-        font-size: 120px !important;
+        font-size: 48px !important;
         font-weight: 900 !important;
         color: #0f172a !important;
         margin: 0 !important;
         padding: 0 !important;
-        line-height: 1.2 !important;
+        line-height: 1.3 !important;
+        letter-spacing: 0.01em !important;
+        word-spacing: normal !important;
+        white-space: normal !important;
     }
     
     h2 { font-weight: 700 !important; font-size: 26px !important; }
@@ -989,8 +992,8 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     if device == 'mobile':
         device_w = 390
         container_height = 844
-        scale = 0.25  # Very small to fit all cards in one line
-        frame_style = "border-radius: 40px; border: 5px solid #000000;"
+        scale = 0.2  # Even smaller to fit all cards in one line and reduce grey box
+        frame_style = "border-radius: 30px; border: 4px solid #000000;"
         
         # Mobile chrome
         device_chrome = """
@@ -1674,8 +1677,8 @@ def parse_creative_html(response_str):
 # Proper SaaS-style title - REALLY BIG and BOLD (like a logo) - removed v2
 st.markdown("""
     <div style="margin-bottom: 15px; padding-bottom: 12px; border-bottom: 3px solid #e2e8f0;">
-        <h1 class="main-title" style="font-size: 120px !important; font-weight: 900 !important; color: #0f172a !important; margin: 0 !important; padding: 0 !important; text-align: left !important; line-height: 1.2 !important; letter-spacing: -0.02em !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif !important; text-shadow: 2px 2px 4px rgba(0,0,0,0.1) !important; pointer-events: none !important; user-select: none !important;">
-            <strong>📊 CPA Flow Analysis</strong>
+        <h1 class="main-title" style="font-size: 48px !important; font-weight: 900 !important; color: #0f172a !important; margin: 0 !important; padding: 0 !important; text-align: left !important; line-height: 1.3 !important; letter-spacing: 0.01em !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif !important; text-shadow: 1px 1px 2px rgba(0,0,0,0.1) !important; pointer-events: none !important; user-select: none !important; word-spacing: normal !important;">
+            📊 CPA Flow Analysis
         </h1>
         <p style="font-size: 18px; color: #64748b; margin: 8px 0 0 0; font-weight: 400;">Analyze and optimize your ad flow performance</p>
     </div>
@@ -1857,10 +1860,14 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         cvr_bg = "#fee2e2"  # light red
                         cvr_color = "#991b1b"  # dark red text
                     
+                    # Escape HTML to prevent rendering issues
+                    domain = html.escape(str(row['publisher_domain']))
+                    keyword = html.escape(str(row['keyword_term']))
+                    
                     table_html += f"""
                     <tr>
-                        <td style="background: white !important; color: #000000 !important;">{row['publisher_domain']}</td>
-                        <td style="background: white !important; color: #000000 !important;">{row['keyword_term']}</td>
+                        <td style="background: white !important; color: #000000 !important;">{domain}</td>
+                        <td style="background: white !important; color: #000000 !important;">{keyword}</td>
                         <td style="background: white !important; color: #000000 !important;">{int(row['impressions']):,}</td>
                         <td style="background: white !important; color: #000000 !important;">{int(row['clicks']):,}</td>
                         <td style="background: white !important; color: #000000 !important;">{int(row['conversions']):,}</td>
@@ -2050,7 +2057,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     }
                     </style>
                     """, unsafe_allow_html=True)
-                    stage_cols = st.columns([0.85, 0.001, 0.25, 0.001, 0.85, 0.001, 0.85], gap='small')
+                    # Make columns even tighter - reduce all widths to fit in one line
+                    stage_cols = st.columns([0.7, 0.001, 0.2, 0.001, 0.7, 0.001, 0.7], gap='small')
                 else:
                     # Vertical layout - cards extend full width, details inline within card boundaries
                     # No separate columns - everything within each card
@@ -2186,7 +2194,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     preview_html, height, _ = render_mini_device_preview(pub_url, is_url=True, device=device_all)
                                     preview_html = inject_unique_id(preview_html, 'pub_iframe', pub_url, device_all, current_flow)
                                     # Limit height in horizontal mode to fit all cards in one line - VERY compact
-                                    display_height = min(height, 180) if st.session_state.flow_layout == 'horizontal' else height
+                                    display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
                                     st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                     if st.session_state.flow_layout != 'horizontal':
                                         st.caption("📺 Iframe")
@@ -2467,7 +2475,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         else:
                             # Keep equal space even when no creative - show compact placeholder
                             if st.session_state.flow_layout == 'horizontal':
-                                min_height = 180  # Very compact for horizontal layout
+                                min_height = 150  # Very compact for horizontal layout
                             else:
                                 min_height = 400
                             st.markdown(f"""
