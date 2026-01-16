@@ -14,7 +14,10 @@ import re
 import html
 from concurrent import futures
 
-# Import from modules
+# Page config - MUST be FIRST Streamlit command (before any imports that use Streamlit)
+st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊", layout="wide")
+
+# Import from modules (after page config)
 from src.config import FILE_A_ID, FILE_B_ID, SERP_BASE_URL
 from src.data_loader import load_csv_from_gdrive, load_json_from_gdrive
 from src.utils import safe_float, safe_int
@@ -38,22 +41,11 @@ try:
     from playwright.sync_api import sync_playwright
     PLAYWRIGHT_AVAILABLE = True
     
-    # Auto-install browsers on first run (Streamlit Cloud)
-    try:
-        import subprocess
-        import os
-        if not os.path.exists(os.path.expanduser('~/.cache/ms-playwright')):
-            subprocess.run(['playwright', 'install', 'chromium', '--with-deps'], 
-                          capture_output=True, timeout=120)
-    except Exception as e:
-        st.warning(f"Playwright browser install: {str(e)[:50]}")
-        pass
-except Exception as e:
+    # Note: Browsers should be pre-installed via packages.txt
+    # Skip auto-install to prevent blocking app startup
+except Exception:
     PLAYWRIGHT_AVAILABLE = False
-    st.warning(f"Playwright not available: {str(e)[:50]}")
-
-# Page config - MUST be first Streamlit command
-st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊", layout="wide")
+    # Don't show warning here - it's optional
 
 # Get API keys from secrets
 try:
