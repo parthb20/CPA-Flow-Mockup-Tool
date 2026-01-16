@@ -172,8 +172,9 @@ def render_flow_combinations_table(campaign_df):
 def render_what_is_flow_section():
     """Render the 'What is a Flow?' explanation section"""
     st.markdown("""
-    <div style="background: #f8fafc; padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 8px 0;">
-        <h3 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 12px 0;">🔄 What is a Flow?</h3>
+    <h2 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; display: block;"><strong>🔄 Flow Journey</strong></h2>
+    <div style="background: #f8fafc; padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 4px 0;">
+        <h3 style="font-size: 20px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0;">What is a Flow?</h3>
         <p style="font-size: 15px; color: #334155; margin: 8px 0; line-height: 1.6;">
             A <strong style="font-weight: 700; color: #0f172a;">flow</strong> is the complete path a user takes from seeing your ad to reaching your landing page.
         </p>
