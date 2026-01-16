@@ -206,16 +206,7 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
         if data and data.get('status_code') == 'no_api_key':
             # Only show message if API key is actually missing
             try:
-                # Safe way to access Streamlit secrets
-                api_key = ""
-                try:
-                    api_key = str(st.secrets["FASTROUTER_API_KEY"]).strip()
-                except (KeyError, AttributeError, TypeError):
-                    try:
-                        api_key = str(st.secrets["OPENAI_API_KEY"]).strip()
-                    except (KeyError, AttributeError, TypeError):
-                        api_key = ""
-                
+                api_key = st.secrets.get('FASTROUTER_API_KEY') or st.secrets.get('OPENAI_API_KEY')
                 if not api_key:
                     st.info("🔑 Add API key to calculate")
             except:
