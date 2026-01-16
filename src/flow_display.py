@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 """
 Flow Display Module for CPA Flow Analysis Tool
@@ -103,42 +102,11 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             margin: 0 !important;
             margin-top: 0 !important;
         }
-        /* Card wrapper - NO border, NO background, NO white box */
-        .stage-card-wrapper {
-            min-height: 600px;
-            display: flex;
-            flex-direction: column;
-            border: none !important;
-            border-radius: 0 !important;
-            padding: 0 !important;
-            background: transparent !important;
-            margin: 0 !important;
-            align-items: stretch;
-        }
-        /* Remove ALL spacing from first child */
-        .stage-card-wrapper > *:first-child {
-            margin-top: 0 !important;
-            margin-bottom: 0 !important;
-            padding-top: 0 !important;
-        }
-        /* Ensure h3 titles have NO top spacing */
-        .stage-card-wrapper h3 {
+        /* Remove ALL spacing from Streamlit elements */
+        [data-testid="column"] h3 {
             margin-top: 0 !important;
             margin-bottom: 8px !important;
             padding-top: 0 !important;
-            padding-bottom: 0 !important;
-        }
-        /* Remove spacing from any divs inside wrapper */
-        .stage-card-wrapper > div {
-            margin-top: 0 !important;
-        }
-        /* Remove Streamlit markdown spacing */
-        .stage-card-wrapper .stMarkdown {
-            margin-top: 0 !important;
-            margin-bottom: 0 !important;
-        }
-        .stage-card-wrapper .stMarkdown > *:first-child {
-            margin-top: 0 !important;
         }
         /* Remove spacing from radio button container */
         .stRadio {
@@ -189,10 +157,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     urls = dom_filtered['publisher_url'].dropna().unique().tolist() if 'publisher_url' in dom_filtered.columns else []
     
     with stage_1_container:
-        # Wrap content in consistent container for alignment in horizontal layout
-        if st.session_state.flow_layout == 'horizontal':
-            st.markdown('<div class="stage-card-wrapper">', unsafe_allow_html=True)
-        
         if st.session_state.flow_layout == 'vertical':
             card_col_left, card_col_right = st.columns([0.6, 0.4])
             with card_col_left:
@@ -424,18 +388,15 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 </div>
                 """, unsafe_allow_html=True)
         
-        # Close wrapper div for horizontal layout
-        if st.session_state.flow_layout == 'horizontal':
-            # Show info BELOW card preview in horizontal layout
-            if st.session_state.view_mode == 'basic':
-                st.markdown(f"""
-                <div style='margin-top: 8px; font-size: 13px;'>
-                    <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Domain</strong></div>
-                    <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;'>{html.escape(str(current_dom))}</div>
-                    {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{current_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
-                </div>
-                """, unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+        # Show info BELOW card preview in horizontal layout
+        if st.session_state.flow_layout == 'horizontal' and st.session_state.view_mode == 'basic':
+            st.markdown(f"""
+            <div style='margin-top: 8px; font-size: 13px;'>
+                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Domain</strong></div>
+                <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;'>{html.escape(str(current_dom))}</div>
+                {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{current_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
+            </div>
+            """, unsafe_allow_html=True)
     
     # Arrow divs removed - no longer needed
     
@@ -451,10 +412,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         creative_card_right = None
     
     with stage_2_container:
-        # Wrap content in consistent container for alignment in horizontal layout
-        if st.session_state.flow_layout == 'horizontal':
-            st.markdown('<div class="stage-card-wrapper">', unsafe_allow_html=True)
-        
         if st.session_state.flow_layout == 'vertical':
             creative_card_left, creative_card_right = st.columns([0.5, 0.5])
             with creative_card_left:
@@ -534,18 +491,15 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     st.markdown("<h4 style='font-size: 18px; font-weight: 700; color: #0f172a; margin: 12px 0 8px 0;'>🔗 Keyword → Ad Copy Similarity</h4>", unsafe_allow_html=True)
                     render_similarity_score('kwd_to_ad', st.session_state.similarities)
         
-        # Close wrapper div for horizontal layout
-        if st.session_state.flow_layout == 'horizontal':
-            # Show keyword BELOW card preview in horizontal layout
-            if st.session_state.view_mode == 'basic':
-                keyword = current_flow.get('keyword_term', 'N/A')
-                st.markdown(f"""
-                <div style='margin-top: 8px; font-size: 13px;'>
-                    <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Keyword</strong></div>
-                    <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;'>{html.escape(str(keyword))}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+        # Show keyword BELOW card preview in horizontal layout
+        if st.session_state.flow_layout == 'horizontal' and st.session_state.view_mode == 'basic':
+            keyword = current_flow.get('keyword_term', 'N/A')
+            st.markdown(f"""
+            <div style='margin-top: 8px; font-size: 13px;'>
+                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Keyword</strong></div>
+                <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;'>{html.escape(str(keyword))}</div>
+            </div>
+            """, unsafe_allow_html=True)
     
     # Arrow divs removed - no longer needed
     
@@ -570,10 +524,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         serp_card_right = None
     
     with stage_3_container:
-        # Wrap content in consistent container for alignment in horizontal layout
-        if st.session_state.flow_layout == 'horizontal':
-            st.markdown('<div class="stage-card-wrapper">', unsafe_allow_html=True)
-        
         if st.session_state.flow_layout == 'vertical':
             serp_card_left, serp_card_right = st.columns([0.6, 0.4])
             with serp_card_left:
@@ -807,21 +757,18 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                            custom_title="Ad Copy → Landing Page Similarity",
                                            tooltip_text="Measures how well the landing page fulfills the promises made in the ad copy. Higher scores indicate better ad-page consistency.")
         
-        # Close wrapper div for horizontal layout
-        if st.session_state.flow_layout == 'horizontal':
-            # Show SERP info BELOW card preview in horizontal layout
-            if st.session_state.view_mode == 'basic':
-                serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
-                serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
-                serp_key = current_flow.get('serp_template_key', 'N/A')
-                st.markdown(f"""
-                <div style='margin-top: 8px; font-size: 13px;'>
-                    <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>SERP Key</strong></div>
-                    <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;'>{html.escape(str(serp_key))}</div>
-                    {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>SERP URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{serp_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(serp_url))}</a></div>' if serp_url and serp_url != 'N/A' else ''}
-                </div>
-                """, unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+        # Show SERP info BELOW card preview in horizontal layout
+        if st.session_state.flow_layout == 'horizontal' and st.session_state.view_mode == 'basic':
+            serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
+            serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
+            serp_key = current_flow.get('serp_template_key', 'N/A')
+            st.markdown(f"""
+            <div style='margin-top: 8px; font-size: 13px;'>
+                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>SERP Key</strong></div>
+                <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;'>{html.escape(str(serp_key))}</div>
+                {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>SERP URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{serp_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(serp_url))}</a></div>' if serp_url and serp_url != 'N/A' else ''}
+            </div>
+            """, unsafe_allow_html=True)
     
     # Arrow divs removed - no longer needed
     
@@ -840,10 +787,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         landing_card_right = None
     
     with stage_4_container:
-        # Wrap content in consistent container for alignment in horizontal layout
-        if st.session_state.flow_layout == 'horizontal':
-            st.markdown('<div class="stage-card-wrapper">', unsafe_allow_html=True)
-        
         if st.session_state.flow_layout == 'vertical':
             landing_card_left, landing_card_right = st.columns([0.6, 0.4])
             with landing_card_left:
@@ -1072,9 +1015,16 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                            custom_title="Keyword → Landing Page Similarity",
                                            tooltip_text="Measures overall flow consistency from keyword to landing page. Higher scores indicate better end-to-end alignment.")
         
-        # Close wrapper div for horizontal layout
-        if st.session_state.flow_layout == 'horizontal':
-            st.markdown('</div>', unsafe_allow_html=True)
+        # Show Landing URL BELOW card preview in horizontal layout
+        if st.session_state.flow_layout == 'horizontal' and st.session_state.view_mode == 'basic':
+            adv_url = current_flow.get('reporting_destination_url', '')
+            if adv_url and pd.notna(adv_url):
+                st.markdown(f"""
+                <div style='margin-top: 8px; font-size: 13px;'>
+                    <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Landing URL</strong></div>
+                    <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;'>{html.escape(str(adv_url))}</div>
+                </div>
+                """, unsafe_allow_html=True)
     
     # Similarity Scores Section for Horizontal Layout
     if st.session_state.flow_layout == 'horizontal':
@@ -1088,12 +1038,16 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         # Calculate similarities if not already calculated
         if 'similarities' not in st.session_state or st.session_state.similarities is None:
             if api_key:
-                with st.spinner("Calculating similarity scores..."):
-                    st.session_state.similarities = calculate_similarities(current_flow)
+                try:
+                    with st.spinner("Calculating similarity scores..."):
+                        st.session_state.similarities = calculate_similarities(current_flow)
+                except Exception as e:
+                    st.warning(f"⚠️ Similarity calculation failed. Check API key and network connection. Error: {str(e)[:100]}")
+                    st.session_state.similarities = {}
             else:
                 st.session_state.similarities = {}
         
-        # Render similarity scores - check if we have actual valid data (not just error dicts)
+        # Render similarity scores - check if we have actual valid data
         has_similarities = False
         if 'similarities' in st.session_state and st.session_state.similarities:
             similarities = st.session_state.similarities
