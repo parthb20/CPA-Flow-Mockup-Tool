@@ -390,16 +390,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 </div>
                 """, unsafe_allow_html=True)
         
-        # For horizontal layout: show BELOW the frame (AFTER all card rendering completes)
-        if st.session_state.flow_layout == 'horizontal':
-            # Info goes in stage_1_container AFTER the card rendering block
-            st.markdown(f"""
-            <div style='margin-top: 8px; font-size: 13px;'>
-                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Domain</strong></div>
-                <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;'>{html.escape(str(current_dom))}</div>
-                {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{current_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
-            </div>
-            """, unsafe_allow_html=True)
+        # For horizontal layout: info will be displayed at the END after all cards (TEMPORARILY DISABLED FOR DEBUGGING)
     
     # Arrow divs removed - no longer needed
     
@@ -494,16 +485,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     st.markdown("<h4 style='font-size: 18px; font-weight: 700; color: #0f172a; margin: 12px 0 8px 0;'>🔗 Keyword → Ad Copy Similarity</h4>", unsafe_allow_html=True)
                     render_similarity_score('kwd_to_ad', st.session_state.similarities)
         
-        # Show keyword BELOW card preview (horizontal layout only - vertical shows in right column)
-        if st.session_state.flow_layout == 'horizontal':
-            keyword = current_flow.get('keyword_term', 'N/A')
-            # Info goes in stage_2_container AFTER the card rendering block
-            st.markdown(f"""
-            <div style='margin-top: 8px; font-size: 13px;'>
-                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Keyword</strong></div>
-                <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;'>{html.escape(str(keyword))}</div>
-            </div>
-            """, unsafe_allow_html=True)
+        # For horizontal layout: keyword will be displayed at the END after all cards (TEMPORARILY DISABLED FOR DEBUGGING)
     
     # Arrow divs removed - no longer needed
     
@@ -759,16 +741,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                            custom_title="Ad Copy → Landing Page Similarity",
                                            tooltip_text="Measures how well the landing page fulfills the promises made in the ad copy. Higher scores indicate better ad-page consistency.")
         
-        # Show SERP info BELOW card for horizontal layout (no duplicates)
-        if st.session_state.flow_layout == 'horizontal':
-            # Info goes in stage_3_container AFTER the card rendering block
-            st.markdown(f"""
-            <div style='margin-top: 8px; font-size: 13px;'>
-                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>SERP Key</strong></div>
-                <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;'>{html.escape(str(serp_key))}</div>
-                {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>SERP URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{serp_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(serp_url))}</a></div>' if serp_url and serp_url != 'N/A' else ''}
-            </div>
-            """, unsafe_allow_html=True)
+        # For horizontal layout: SERP info will be displayed at the END after all cards (TEMPORARILY DISABLED FOR DEBUGGING)
     
     # Arrow divs removed - no longer needed
     
@@ -1015,17 +988,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                            custom_title="Keyword → Landing Page Similarity",
                                            tooltip_text="Measures overall flow consistency from keyword to landing page. Higher scores indicate better end-to-end alignment.")
         
-        # Show Landing URL BELOW card preview (horizontal layout only - vertical shows in right column)
-        if st.session_state.flow_layout == 'horizontal':
-            adv_url = current_flow.get('reporting_destination_url', '')
-            # Info goes in stage_4_container AFTER the card rendering block
-            if adv_url and pd.notna(adv_url) and str(adv_url).strip():
-                st.markdown(f"""
-                <div style='margin-top: 8px; font-size: 13px;'>
-                    <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Landing URL</strong></div>
-                    <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;'><a href="{adv_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(adv_url))}</a></div>
-                </div>
-                """, unsafe_allow_html=True)
+        # For horizontal layout: Landing URL will be displayed at the END after all cards (TEMPORARILY DISABLED FOR DEBUGGING)
     
     # Similarity Scores Section for Horizontal Layout
     if st.session_state.flow_layout == 'horizontal':
