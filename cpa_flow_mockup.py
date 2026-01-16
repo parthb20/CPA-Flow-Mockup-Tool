@@ -2256,7 +2256,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                             screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                                             preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
                                                             preview_html = inject_unique_id(preview_html, 'pub_screenshot', pub_url, device_all, current_flow)
-                                                            display_height = min(height, 180) if st.session_state.flow_layout == 'horizontal' else height
+                                                            display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
                                                             st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                                             if st.session_state.flow_layout != 'horizontal':
                                                                 st.caption("📸 Screenshot (thum.io)")
@@ -2303,7 +2303,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                               lambda m: f'href="{urljoin(pub_url, m.group(1))}"', page_html)
                                             preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                             preview_html = inject_unique_id(preview_html, 'pub_html', pub_url, device_all, current_flow)
-                                            display_height = min(height, 180) if st.session_state.flow_layout == 'horizontal' else height
+                                            display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
                                             st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                             st.caption("📄 HTML")
                                         except Exception as html_error:
@@ -2345,7 +2345,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                             screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                                             preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
                                                             preview_html = inject_unique_id(preview_html, 'pub_screenshot', pub_url, device_all, current_flow)
-                                                            display_height = min(height, 180) if st.session_state.flow_layout == 'horizontal' else height
+                                                            display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
                                                             st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                                             if st.session_state.flow_layout != 'horizontal':
                                                                 st.caption("📸 Screenshot (thum.io)")
@@ -2400,8 +2400,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 if stage_cols:
                     with stage_cols[1]:
                         st.markdown("""
-                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 180px; padding: 0; margin: 0;'>
-                            <div style='font-size: 60px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 4px 4px 8px rgba(59,130,246,0.5); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
+                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 150px; padding: 0; margin: 0;'>
+                            <div style='font-size: 50px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
                         </div>
                         """, unsafe_allow_html=True)
                 # No vertical arrows in vertical mode - removed as requested
@@ -2518,8 +2518,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 if stage_cols:
                     with stage_cols[3]:
                         st.markdown("""
-                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 180px; padding: 0; margin: 0;'>
-                            <div style='font-size: 60px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 4px 4px 8px rgba(59,130,246,0.5); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
+                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 150px; padding: 0; margin: 0;'>
+                            <div style='font-size: 50px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
                         </div>
                         """, unsafe_allow_html=True)
                 # No vertical arrows in vertical mode - removed as requested
@@ -2714,7 +2714,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     # Step 3: Render modified HTML as iframe using srcdoc
                                     preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
                                     preview_html = inject_unique_id(preview_html, 'serp_injected', serp_url, device_all, current_flow)
-                                    display_height = min(height, 180) if st.session_state.flow_layout == 'horizontal' else height
+                                    display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
                                     st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                     if st.session_state.flow_layout != 'horizontal':
                                         st.caption("📺 SERP with injected ad content")
@@ -2790,7 +2790,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                 
                                                 preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
                                                 preview_html = inject_unique_id(preview_html, 'serp_playwright', serp_url, device_all, current_flow)
-                                                display_height = min(height, 180) if st.session_state.flow_layout == 'horizontal' else height
+                                                display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
                                                 st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                                 if st.session_state.flow_layout != 'horizontal':
                                                     st.caption("📺 SERP (via Playwright)")
@@ -2803,7 +2803,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                         screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                                         preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
                                                         preview_html = inject_unique_id(preview_html, 'serp_screenshot', serp_url, device_all, current_flow)
-                                                        display_height = min(height, 180) if st.session_state.flow_layout == 'horizontal' else height
+                                                        display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
                                                         st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                                         st.caption("📸 Screenshot (thum.io)")
                                                 else:
@@ -2848,8 +2848,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 if stage_cols:
                     with stage_cols[5]:
                         st.markdown("""
-                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 180px; padding: 0; margin: 0;'>
-                            <div style='font-size: 60px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 4px 4px 8px rgba(59,130,246,0.5); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
+                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 150px; padding: 0; margin: 0;'>
+                            <div style='font-size: 50px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
                         </div>
                         """, unsafe_allow_html=True)
                 # No vertical arrows in vertical mode - removed as requested
@@ -2945,7 +2945,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 try:
                                     preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all)
                                     preview_html = inject_unique_id(preview_html, 'landing_iframe', adv_url, device_all, current_flow)
-                                    display_height = min(height, 180) if st.session_state.flow_layout == 'horizontal' else height
+                                    display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
                                     st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                     st.caption("📺 Iframe")
                                 except:
@@ -2993,7 +2993,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                             screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                                             preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
                                                             preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
-                                                            display_height = min(height, 180) if st.session_state.flow_layout == 'horizontal' else height
+                                                            display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
                                                             st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                                             if st.session_state.flow_layout != 'horizontal':
                                                                 st.caption("📸 Screenshot (thum.io)")
@@ -3014,7 +3014,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                     screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                                     preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
                                                     preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
-                                                    display_height = min(height, 180) if st.session_state.flow_layout == 'horizontal' else height
+                                                    display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
                                                     st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                                     if st.session_state.flow_layout != 'horizontal':
                                                         st.caption("📸 Screenshot (thum.io)")
@@ -3042,7 +3042,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                               lambda m: f'href="{urljoin(adv_url, m.group(1))}"', page_html)
                                             preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                             preview_html = inject_unique_id(preview_html, 'landing_html', adv_url, device_all, current_flow)
-                                            display_height = min(height, 180) if st.session_state.flow_layout == 'horizontal' else height
+                                            display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
                                             st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                             st.caption("📄 HTML")
                                         except Exception as html_error:
@@ -3054,7 +3054,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                         screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                                         preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
                                                         preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
-                                                        display_height = min(height, 180) if st.session_state.flow_layout == 'horizontal' else height
+                                                        display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
                                                         st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                                         st.caption("📸 Screenshot (thum.io)")
                                                     else:
@@ -3085,7 +3085,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                             screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                                             preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
                                                             preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
-                                                            display_height = min(height, 180) if st.session_state.flow_layout == 'horizontal' else height
+                                                            display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
                                                             st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                                             if st.session_state.flow_layout != 'horizontal':
                                                                 st.caption("📸 Screenshot (thum.io)")
@@ -3103,7 +3103,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                                     screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=THUMIO_REFERER_DOMAIN)
                                                     preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
                                                     preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
-                                                    display_height = min(height, 180) if st.session_state.flow_layout == 'horizontal' else height
+                                                    display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
                                                     st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                                     if st.session_state.flow_layout != 'horizontal':
                                                         st.caption("📸 Screenshot (thum.io)")
