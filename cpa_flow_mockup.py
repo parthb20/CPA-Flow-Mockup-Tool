@@ -33,6 +33,9 @@ from src.ui_components import render_flow_combinations_table, render_what_is_flo
 from src.filters import render_advanced_filters, apply_flow_filtering
 from src.flow_display import render_flow_journey
 
+# Page config - MUST be first Streamlit command
+st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊", layout="wide")
+
 # Try to import playwright (for 403 bypass)
 try:
     from playwright.sync_api import sync_playwright
@@ -51,9 +54,6 @@ try:
 except Exception as e:
     PLAYWRIGHT_AVAILABLE = False
     st.warning(f"Playwright not available: {str(e)[:50]}")
-
-# Page config - MUST be first Streamlit command
-st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊", layout="wide")
 
 # Get API keys from secrets
 try:
@@ -76,11 +76,17 @@ try:
         THUMIO_REFERER_DOMAIN = ""
     # Debug: Check if API key is loaded (only show warning when actually needed)
     # Warning will be shown when similarity calculation is attempted
-except Exception as e:
+except (AttributeError, KeyError, TypeError):
+    # Secrets not available or not configured - use defaults
     API_KEY = ""
     SCREENSHOT_API_KEY = ""
     THUMIO_REFERER_DOMAIN = ""
-    st.warning(f"⚠️ Error loading secrets: {str(e)[:100]}")
+except Exception as e:
+    # Other errors - log but don't crash
+    API_KEY = ""
+    SCREENSHOT_API_KEY = ""
+    THUMIO_REFERER_DOMAIN = ""
+    pass
 
 THUMIO_CONFIGURED = True  # Always True - free tier works without setup!
 
