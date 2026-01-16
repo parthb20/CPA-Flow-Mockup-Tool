@@ -1914,6 +1914,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 else:
                     # Vertical layout - cards extend full width, details inline within card boundaries
                     # No separate columns - everything within each card
+                    stage_cols = None
                 
                 # Stage 1: Publisher URL
                 if st.session_state.flow_layout == 'vertical':
