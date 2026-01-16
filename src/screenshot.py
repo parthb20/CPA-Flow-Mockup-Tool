@@ -22,14 +22,16 @@ def get_screenshot_url(url, device='mobile', full_page=False):
         SCREENSHOT_API_KEY = ""
         THUMIO_REFERER_DOMAIN = ""
         
+        # Safe way to access Streamlit secrets - catch all exceptions
+        # Note: StreamlitSecretNotFoundError inherits from Exception, so catching Exception works
         try:
             SCREENSHOT_API_KEY = str(st.secrets["SCREENSHOT_API_KEY"]).strip()
-        except (KeyError, AttributeError, TypeError):
+        except Exception:
             SCREENSHOT_API_KEY = ""
         
         try:
             THUMIO_REFERER_DOMAIN = str(st.secrets["THUMIO_REFERER_DOMAIN"]).strip()
-        except (KeyError, AttributeError, TypeError):
+        except Exception:
             THUMIO_REFERER_DOMAIN = ""
         
         # Ensure URL is properly formatted
