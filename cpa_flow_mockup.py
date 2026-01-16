@@ -780,6 +780,10 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
     reason = data.get('reason', 'N/A')
     css_class, label, color = get_score_class(score)
     
+    # Get bounds if available
+    upper_bound = data.get('upper_bound', score)
+    lower_bound = data.get('lower_bound', score)
+    
     # Explanation of similarity score (shown once below Publisher URL)
     if show_explanation:
         st.markdown(f"""
@@ -790,14 +794,18 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
         </div>
         """, unsafe_allow_html=True)
     
-    # Score display - horizontal layout
+    # Score display - horizontal layout with upper/lower bounds
     st.markdown(f"""
-    <div style="background: white; border: 2px solid {color}; border-radius: 8px; padding: 10px 12px; margin: 8px 0;">
-        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: nowrap;">
-            <div style="font-size: 28px; font-weight: 700; color: {color}; min-width: 70px; flex-shrink: 0;">{score:.0%}</div>
+    <div style="background: white; border: 2px solid {color}; border-radius: 8px; padding: 12px; margin: 8px 0;">
+        <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;">
+            <div style="font-size: 32px; font-weight: 700; color: {color}; flex-shrink: 0;">{score:.0%}</div>
+            <div style="font-size: 11px; color: #64748b; display: flex; flex-direction: column; gap: 2px;">
+                <div><strong>Upper:</strong> {upper_bound:.0%}</div>
+                <div><strong>Lower:</strong> {lower_bound:.0%}</div>
+            </div>
             <div style="flex: 1; min-width: 0;">
-                <div style="font-weight: 600; color: #0f172a; font-size: 13px; white-space: nowrap;">{label} Match</div>
-                <div style="font-size: 11px; color: #64748b; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{reason[:60]}{'...' if len(reason) > 60 else ''}</div>
+                <div style="font-weight: 600; color: {color}; font-size: 13px; margin-bottom: 4px;">{label} Match</div>
+                <div style="font-size: 11px; color: #64748b; line-height: 1.3;">{reason[:70]}{'...' if len(reason) > 70 else ''}</div>
             </div>
         </div>
     </div>
@@ -966,14 +974,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         </div>
         """
         
-        bottom_nav = """
-        <div style="position: fixed; bottom: 0; left: 0; right: 0; background: #f7f7f7; border-top: 1px solid #d1d1d1; padding: 8px; display: flex; justify-content: space-around; align-items: center;">
-            <div style="text-align: center; font-size: 20px;">◀️</div>
-            <div style="text-align: center; font-size: 20px;">▶️</div>
-            <div style="text-align: center; font-size: 20px;">↻</div>
-            <div style="text-align: center; font-size: 20px;">⊞</div>
-        </div>
-        """
+        bottom_nav = ""  # Removed navigation arrows as requested
         chrome_height = "90px"
         
     elif device == 'tablet':
@@ -996,15 +997,10 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
             </div>
         </div>
         <div style="background: #f0f0f0; border-bottom: 1px solid #d0d0d0; padding: 12px 16px; display: flex; align-items: center; gap: 12px;">
-            <span style="font-size: 20px;">◀️</span>
-            <span style="font-size: 20px;">▶️</span>
-            <span style="font-size: 20px;">↻</span>
             <div style="flex: 1; background: white; border-radius: 10px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; border: 1px solid #e0e0e0;">
                 <span style="font-size: 18px;">🔒</span>
                 <span style="color: #666; font-size: 15px; flex: 1;">URL</span>
             </div>
-            <span style="font-size: 20px;">⊞</span>
-            <span style="font-size: 20px;">⋮</span>
         </div>
         """
         bottom_nav = ""
@@ -1024,16 +1020,10 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                 <div style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e;"></div>
                 <div style="width: 12px; height: 12px; border-radius: 50%; background: #28c840;"></div>
             </div>
-            <span style="font-size: 18px; margin-left: 8px;">◀️</span>
-            <span style="font-size: 18px;">▶️</span>
-            <span style="font-size: 18px; margin-right: 8px;">↻</span>
             <div style="flex: 1; background: white; border-radius: 6px; padding: 8px 16px; display: flex; align-items: center; gap: 12px; border: 1px solid #d0d0d0;">
                 <span style="font-size: 16px;">🔒</span>
                 <span style="color: #333; font-size: 14px; flex: 1;">https://URL</span>
-                <span style="font-size: 16px;">⭐</span>
             </div>
-            <span style="font-size: 18px; margin-left: 8px;">⊞</span>
-            <span style="font-size: 18px;">⋮</span>
         </div>
         """
         bottom_nav = ""
@@ -1644,9 +1634,9 @@ def parse_creative_html(response_str):
         return None, None
 
 
-# Big title at top
+# Big title at top-left
 st.markdown("""
-    <h1 style="font-size: 72px; font-weight: 900; color: #0f172a; margin-bottom: 20px; text-align: center; line-height: 1.2;">
+    <h1 style="font-size: 64px; font-weight: 900; color: #0f172a; margin-bottom: 20px; text-align: left; line-height: 1.2;">
         📊 CPA Flow Analysis v2
     </h1>
 """, unsafe_allow_html=True)
@@ -1994,9 +1984,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         # Basic mode - show info
                         st.caption(f"**Domain:** {current_dom}")
                         if current_url and pd.notna(current_url):
-                            # Show full URL - don't truncate
-                            st.caption(f"**URL:** {current_url}")
-                            st.markdown(f"[🔗 Open full URL]({current_url})", unsafe_allow_html=True)
+                            # Show URL as clickable link only (no duplicate)
+                            st.markdown(f"**URL:** [{current_url}]({current_url})", unsafe_allow_html=True)
                     
                     # Get the full URL for rendering
                     pub_url = current_flow.get('publisher_url', '')
@@ -2153,19 +2142,37 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             st.markdown("**📰 Publisher URL Details**")
                             st.caption(f"**Domain:** {current_dom}")
                             if current_url and pd.notna(current_url):
-                                st.caption(f"**URL:** {current_url}")
-                                st.markdown(f"[🔗 Open full URL]({current_url})", unsafe_allow_html=True)
+                                st.markdown(f"**URL:** [{current_url}]({current_url})", unsafe_allow_html=True)
+                            
+                            # Similarity score explanation below publisher URL
+                            st.markdown("---")
+                            st.markdown("**💡 What are Similarity Scores?**")
+                            st.caption("Similarity scores measure how well different parts of your ad flow match:")
+                            st.caption("• **Keyword → Ad**: How well your ad matches the search keyword")
+                            st.caption("• **Ad → Page**: How well your landing page matches your ad")
+                            st.caption("• **Keyword → Page**: Overall flow consistency from keyword to landing page")
+                            
+                            # Calculate and show Keyword → Page score here (below publisher URL)
+                            if 'similarities' not in st.session_state or st.session_state.similarities is None:
+                                if API_KEY:
+                                    st.session_state.similarities = calculate_similarities(current_flow)
+                                else:
+                                    st.session_state.similarities = {}
+                            
+                            if 'similarities' in st.session_state and st.session_state.similarities:
+                                st.markdown("#### 🔗 Keyword → Page")
+                                render_similarity_score('kwd_to_page', st.session_state.similarities)
                 
                 if stage_cols:
                     with stage_cols[1]:
                         st.markdown("""
-                        <div style='display: flex; align-items: center; justify-content: center; height: 100%;'>
-                            <div style='font-size: 72px; color: #3b82f6; font-weight: 900; line-height: 1;'>→</div>
+                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 300px;'>
+                            <div style='font-size: 96px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3);'>→</div>
                         </div>
                         """, unsafe_allow_html=True)
                 else:
                     st.markdown("""
-                    <div style='text-align: center; font-size: 72px; color: #3b82f6; margin: 20px 0; font-weight: 900;'>
+                    <div style='text-align: center; font-size: 96px; color: #3b82f6; margin: 20px 0; font-weight: 900; text-shadow: 2px 2px 4px rgba(59,130,246,0.3);'>
                         ↓
                     </div>
                     """, unsafe_allow_html=True)
@@ -2222,8 +2229,21 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     
                     st.markdown('</div>', unsafe_allow_html=True)
                     
-                    # Creative - Info on RIGHT in vertical mode (inline layout)
-                    if st.session_state.flow_layout == 'vertical' and stage_2_info_container:
+                    # Similarity score: Keyword → Ad
+                    # Horizontal: below creative card | Vertical: right of creative card
+                    if st.session_state.flow_layout == 'horizontal':
+                        # Calculate if not already done
+                        if 'similarities' not in st.session_state or st.session_state.similarities is None:
+                            if API_KEY:
+                                st.session_state.similarities = calculate_similarities(current_flow)
+                            else:
+                                st.session_state.similarities = {}
+                        
+                        if 'similarities' in st.session_state and st.session_state.similarities:
+                            st.markdown("#### 🔗 Keyword → Ad")
+                            render_similarity_score('kwd_to_ad', st.session_state.similarities)
+                    elif st.session_state.flow_layout == 'vertical' and stage_2_info_container:
+                        # Vertical: right of creative card
                         with stage_2_info_container:
                             # Inline layout - all info in one card
                             creative_size = current_flow.get('creative_size', 'N/A')
@@ -2237,7 +2257,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             # Keyword → Ad similarity score on right of creative (inline)
                             if 'similarities' not in st.session_state or st.session_state.similarities is None:
                                 if API_KEY:
-                                    # Calculate silently, don't show spinner here
                                     st.session_state.similarities = calculate_similarities(current_flow)
                                 else:
                                     st.session_state.similarities = {}
@@ -2249,13 +2268,13 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 if stage_cols:
                     with stage_cols[3]:
                         st.markdown("""
-                        <div style='display: flex; align-items: center; justify-content: center; height: 100%;'>
-                            <div style='font-size: 72px; color: #3b82f6; font-weight: 900; line-height: 1;'>→</div>
+                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 300px;'>
+                            <div style='font-size: 96px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3);'>→</div>
                         </div>
                         """, unsafe_allow_html=True)
                 else:
                     st.markdown("""
-                    <div style='text-align: center; font-size: 72px; color: #3b82f6; margin: 20px 0; font-weight: 900;'>
+                    <div style='text-align: center; font-size: 96px; color: #3b82f6; margin: 20px 0; font-weight: 900; text-shadow: 2px 2px 4px rgba(59,130,246,0.3);'>
                         ↓
                     </div>
                     """, unsafe_allow_html=True)
@@ -2535,8 +2554,21 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     
                     st.markdown('</div>', unsafe_allow_html=True)
                     
-                    # SERP - Info on RIGHT in vertical mode (inline horizontal layout)
-                    if st.session_state.flow_layout == 'vertical' and stage_3_info_container:
+                    # Similarity score: Ad → Page
+                    # Horizontal: below SERP card | Vertical: right of SERP card
+                    if st.session_state.flow_layout == 'horizontal':
+                        # Calculate if not already done
+                        if 'similarities' not in st.session_state or st.session_state.similarities is None:
+                            if API_KEY:
+                                st.session_state.similarities = calculate_similarities(current_flow)
+                            else:
+                                st.session_state.similarities = {}
+                        
+                        if 'similarities' in st.session_state and st.session_state.similarities:
+                            st.markdown("#### 🔗 Ad → Page")
+                            render_similarity_score('ad_to_page', st.session_state.similarities)
+                    elif st.session_state.flow_layout == 'vertical' and stage_3_info_container:
+                        # Vertical: right of SERP card
                         with stage_3_info_container:
                             serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
                             # Inline horizontal layout - all info in one line where possible
@@ -2550,17 +2582,28 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 {f'<a href="{serp_url}" target="_blank" style="font-size: 12px; color: #3b82f6; text-decoration: none; display: inline-block;">🔗 Open SERP URL</a>' if serp_url else ''}
                             </div>
                             """, unsafe_allow_html=True)
+                            
+                            # Ad → Page similarity score on right of SERP
+                            if 'similarities' not in st.session_state or st.session_state.similarities is None:
+                                if API_KEY:
+                                    st.session_state.similarities = calculate_similarities(current_flow)
+                                else:
+                                    st.session_state.similarities = {}
+                            
+                            if 'similarities' in st.session_state and st.session_state.similarities:
+                                st.markdown("#### 🔗 Ad → Page")
+                                render_similarity_score('ad_to_page', st.session_state.similarities)
                 
                 if stage_cols:
                     with stage_cols[5]:
                         st.markdown("""
-                        <div style='display: flex; align-items: center; justify-content: center; height: 100%;'>
-                            <div style='font-size: 72px; color: #3b82f6; font-weight: 900; line-height: 1;'>→</div>
+                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 300px;'>
+                            <div style='font-size: 96px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3);'>→</div>
                         </div>
                         """, unsafe_allow_html=True)
                 else:
                     st.markdown("""
-                    <div style='text-align: center; font-size: 72px; color: #3b82f6; margin: 20px 0; font-weight: 900;'>
+                    <div style='text-align: center; font-size: 96px; color: #3b82f6; margin: 20px 0; font-weight: 900; text-shadow: 2px 2px 4px rgba(59,130,246,0.3);'>
                         ↓
                     </div>
                     """, unsafe_allow_html=True)
@@ -2731,45 +2774,39 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     
                     st.markdown('</div>', unsafe_allow_html=True)
                     
-                    # Landing Page - Info on RIGHT in vertical mode
-                    if st.session_state.flow_layout == 'vertical' and stage_4_info_container:
+                    # Similarity score: Keyword → Page
+                    # Horizontal: below landing page card | Vertical: right of landing page card
+                    if st.session_state.flow_layout == 'horizontal':
+                        # Calculate if not already done
+                        if 'similarities' not in st.session_state or st.session_state.similarities is None:
+                            if API_KEY:
+                                st.session_state.similarities = calculate_similarities(current_flow)
+                            else:
+                                st.session_state.similarities = {}
+                        
+                        if 'similarities' in st.session_state and st.session_state.similarities:
+                            st.markdown("#### 🔗 Keyword → Page")
+                            render_similarity_score('kwd_to_page', st.session_state.similarities)
+                    elif st.session_state.flow_layout == 'vertical' and stage_4_info_container:
+                        # Vertical: right of landing page card
                         with stage_4_info_container:
                             st.markdown("**🎯 Landing Page Details**")
                             keyword = current_flow.get('keyword_term', 'N/A')
                             st.caption(f"**Keyword:** {keyword}")
                             adv_url = current_flow.get('reporting_destination_url', '')
                             if adv_url and pd.notna(adv_url):
-                                st.caption(f"**Landing URL:** {adv_url}")
-                                st.markdown(f"[🔗 Open full URL]({adv_url})", unsafe_allow_html=True)
-                
-                # Similarity Scores Section - Separate horizontal section after all stages
-                st.divider()
-                st.markdown("""
-                    <h2 style="font-size: 32px; font-weight: 700; color: #0f172a; margin: 30px 0 15px 0;">
-                        🧠 Similarity Scores
-                    </h2>
-                """, unsafe_allow_html=True)
-                
-                # Calculate similarity scores if not already done (do it silently, show results)
-                if 'similarities' not in st.session_state or st.session_state.similarities is None:
-                    if API_KEY:
-                        # Calculate without showing spinner inline - use placeholder
-                        placeholder = st.empty()
-                        placeholder.info("🧠 Calculating similarity scores...")
-                        try:
-                            st.session_state.similarities = calculate_similarities(current_flow)
-                            placeholder.empty()
-                        except Exception as e:
-                            placeholder.error(f"Error calculating scores: {str(e)[:100]}")
-                            st.session_state.similarities = {}
-                    else:
-                        st.session_state.similarities = {}
-                
-                # Render all similarity scores in one horizontal line
-                if 'similarities' in st.session_state and st.session_state.similarities:
-                    render_all_similarity_scores_horizontal(st.session_state.similarities)
-                else:
-                    st.info("⏳ Similarity scores will be calculated after data loads")
+                                st.markdown(f"**Landing URL:** [{adv_url}]({adv_url})", unsafe_allow_html=True)
+                            
+                            # Keyword → Page similarity score on right of landing page
+                            if 'similarities' not in st.session_state or st.session_state.similarities is None:
+                                if API_KEY:
+                                    st.session_state.similarities = calculate_similarities(current_flow)
+                                else:
+                                    st.session_state.similarities = {}
+                            
+                            if 'similarities' in st.session_state and st.session_state.similarities:
+                                st.markdown("#### 🔗 Keyword → Page")
+                                render_similarity_score('kwd_to_page', st.session_state.similarities)
             
             else:
                 st.warning("No data available for this campaign")
