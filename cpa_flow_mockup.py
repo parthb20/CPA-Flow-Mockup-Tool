@@ -5,6 +5,10 @@ Modular architecture for maintainability
 """
 
 import streamlit as st
+
+# Page config - MUST be first Streamlit command (before any other Streamlit calls or imports that use Streamlit)
+st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊", layout="wide")
+
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
@@ -12,8 +16,9 @@ import json
 from urllib.parse import urlparse, urljoin
 import re
 import html
+from concurrent import futures
 
-# Import from modules
+# Import from modules (after page config)
 from src.config import FILE_A_ID, FILE_B_ID, SERP_BASE_URL
 from src.data_loader import load_csv_from_gdrive, load_json_from_gdrive
 from src.utils import safe_float, safe_int
@@ -31,9 +36,6 @@ from src.screenshot import get_screenshot_url, capture_with_playwright
 from src.ui_components import render_flow_combinations_table, render_what_is_flow_section, render_selected_flow_display
 from src.filters import render_advanced_filters, apply_flow_filtering
 from src.flow_display import render_flow_journey
-
-# Page config - MUST be first Streamlit command
-st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊", layout="wide")
 
 # Try to import playwright (for 403 bypass)
 try:
