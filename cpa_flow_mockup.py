@@ -992,8 +992,8 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     if device == 'mobile':
         device_w = 390
         container_height = 844
-        scale = 0.2  # Even smaller to fit all cards in one line and reduce grey box
-        frame_style = "border-radius: 30px; border: 4px solid #000000;"
+        scale = 0.15  # Very small to fit all cards in one line and reduce grey box significantly
+        frame_style = "border-radius: 25px; border: 3px solid #000000;"
         
         # Mobile chrome
         device_chrome = """
@@ -1881,7 +1881,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 </table>
                 """
                 
-                st.markdown(table_html, unsafe_allow_html=True)
+                # Use components.v1.html to ensure proper rendering
+                st.components.v1.html(table_html, height=600, scrolling=True)
             else:
                 st.warning("Could not generate table - missing required columns")
             
@@ -2058,7 +2059,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     </style>
                     """, unsafe_allow_html=True)
                     # Make columns even tighter - reduce all widths to fit in one line
-                    stage_cols = st.columns([0.7, 0.001, 0.2, 0.001, 0.7, 0.001, 0.7], gap='small')
+                    # Make columns even tighter - reduce all widths significantly to fit in one line
+                    stage_cols = st.columns([0.6, 0.0005, 0.15, 0.0005, 0.6, 0.0005, 0.6], gap='small')
                 else:
                     # Vertical layout - cards extend full width, details inline within card boundaries
                     # No separate columns - everything within each card
@@ -2194,7 +2196,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     preview_html, height, _ = render_mini_device_preview(pub_url, is_url=True, device=device_all)
                                     preview_html = inject_unique_id(preview_html, 'pub_iframe', pub_url, device_all, current_flow)
                                     # Limit height in horizontal mode to fit all cards in one line - VERY compact
-                                    display_height = min(height, 150) if st.session_state.flow_layout == 'horizontal' else height
+                                    display_height = min(height, 120) if st.session_state.flow_layout == 'horizontal' else height
                                     st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                     if st.session_state.flow_layout != 'horizontal':
                                         st.caption("📺 Iframe")
@@ -2400,8 +2402,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 if stage_cols:
                     with stage_cols[1]:
                         st.markdown("""
-                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 150px; padding: 0; margin: 0;'>
-                            <div style='font-size: 50px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
+                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 120px; padding: 0; margin: 0;'>
+                            <div style='font-size: 40px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
                         </div>
                         """, unsafe_allow_html=True)
                 # No vertical arrows in vertical mode - removed as requested
@@ -2460,7 +2462,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 if creative_html and raw_adcode:
                                     # Render in compact dimensions for horizontal layout - VERY narrow and short
                                     if st.session_state.flow_layout == 'horizontal':
-                                        st.components.v1.html(creative_html, height=180, scrolling=True)
+                                        st.components.v1.html(creative_html, height=120, scrolling=True)
                                     else:
                                         st.components.v1.html(creative_html, height=400, scrolling=True)
                                     
@@ -2475,7 +2477,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         else:
                             # Keep equal space even when no creative - show compact placeholder
                             if st.session_state.flow_layout == 'horizontal':
-                                min_height = 150  # Very compact for horizontal layout
+                                min_height = 120  # Very compact for horizontal layout
                             else:
                                 min_height = 400
                             st.markdown(f"""
@@ -2518,8 +2520,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 if stage_cols:
                     with stage_cols[3]:
                         st.markdown("""
-                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 150px; padding: 0; margin: 0;'>
-                            <div style='font-size: 50px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
+                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 120px; padding: 0; margin: 0;'>
+                            <div style='font-size: 40px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
                         </div>
                         """, unsafe_allow_html=True)
                 # No vertical arrows in vertical mode - removed as requested
@@ -2848,8 +2850,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 if stage_cols:
                     with stage_cols[5]:
                         st.markdown("""
-                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 150px; padding: 0; margin: 0;'>
-                            <div style='font-size: 50px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
+                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 120px; padding: 0; margin: 0;'>
+                            <div style='font-size: 40px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
                         </div>
                         """, unsafe_allow_html=True)
                 # No vertical arrows in vertical mode - removed as requested
