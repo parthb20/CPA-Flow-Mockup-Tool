@@ -12,7 +12,6 @@ import json
 from urllib.parse import urlparse, urljoin
 import re
 import html
-from concurrent import futures
 
 # Import from modules
 from src.config import FILE_A_ID, FILE_B_ID, SERP_BASE_URL
@@ -320,16 +319,16 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# Auto-load from Google Drive (parallel loading)
+# Auto-load from Google Drive (sequential loading for better Streamlit Cloud compatibility)
 if not st.session_state.loading_done:
-    with st.spinner("Loading all data..."):
+    with st.spinner("Loading data..."):
         try:
-            with futures.ThreadPoolExecutor(max_workers=2) as executor:
-                future_a = executor.submit(load_csv_from_gdrive, FILE_A_ID)
-                future_b = executor.submit(load_json_from_gdrive, FILE_B_ID)
-                # Add timeout to prevent blocking health checks
-                st.session_state.data_a = future_a.result(timeout=30)
-                st.session_state.data_b = future_b.result(timeout=30)
+            # Load CSV first (critical)
+            st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
+            
+            # Load JSON second (nice to have)
+            st.session_state.data_b = load_json_from_gdrive(FILE_B_ID)
+            
             st.session_state.loading_done = True
             
             # Check if data loaded successfully
