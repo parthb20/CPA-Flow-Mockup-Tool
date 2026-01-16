@@ -988,19 +988,12 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         device: 'mobile', 'tablet', or 'laptop'
         use_srcdoc: If True, use srcdoc for HTML (bypasses X-Frame-Options)
     """
-    # Real device dimensions - make taller and narrower (portrait orientation like a person)
-    # Initialize scale variables
-    scale_w = None
-    scale_h = None
-    
+    # Real device dimensions - reduced scale for horizontal layout to fit in one line
     if device == 'mobile':
         device_w = 390
         container_height = 844
-        # Use different scales: narrower width (like shoulders), taller height (like person height)
-        scale_w = 0.18  # Narrower width - portrait orientation
-        scale_h = 0.35  # Taller height - makes it readable
-        scale = scale_w  # Base scale for calculations
-        frame_style = "border-radius: 30px; border: 4px solid #000000;"
+        scale = 0.3  # Increased for readability while still fitting in one line
+        frame_style = "border-radius: 30px; border: 5px solid #000000;"
         
         # Mobile chrome
         device_chrome = """
@@ -1076,13 +1069,8 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         bottom_nav = ""
         chrome_height = "52px"
     
-    # Calculate display dimensions - portrait orientation (taller, narrower) for mobile
-    if device == 'mobile':
-        display_w = int(device_w * scale_w)  # Narrower width (like shoulders)
-        display_h = int(container_height * scale_h)  # Taller height (like person height)
-    else:
-        display_w = int(device_w * scale)
-        display_h = int(container_height * scale)
+    display_w = int(device_w * scale)
+    display_h = int(container_height * scale)
     
     if is_url and not use_srcdoc:
         iframe_content = f'<iframe src="{content}" style="width: 100%; height: 100%; border: none;"></iframe>'
@@ -1119,16 +1107,10 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     
     escaped = full_content.replace("'", "&apos;").replace('"', '&quot;')
     
-    # Use appropriate scale for iframe transform - portrait orientation for mobile
-    if device == 'mobile' and scale_w is not None:
-        iframe_scale = scale_w  # Use width scale for iframe transform (narrower)
-    else:
-        iframe_scale = scale
-    
     html_output = f"""
     <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
         <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-            <iframe srcdoc='{escaped}' style="width: {device_w}px; height: {container_height}px; border: none; transform: scale({iframe_scale}); transform-origin: 0 0; display: block; background: white;"></iframe>
+            <iframe srcdoc='{escaped}' style="width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"></iframe>
         </div>
     </div>
     """
@@ -2076,9 +2058,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     }
                     </style>
                     """, unsafe_allow_html=True)
-                    # Wrap in container with max-width to reduce overall width to half, then create columns
+                    # Wrap in container with max-width to reduce overall width, then create columns
                     st.markdown("""
-                    <div style="max-width: 50%; margin: 0 auto;">
+                    <div style="max-width: 95%; margin: 0 auto;">
                     """, unsafe_allow_html=True)
                     # Make columns tighter but balanced - ensure all 4 fit in one line
                     stage_cols = st.columns([0.8, 0.001, 0.3, 0.001, 0.8, 0.001, 0.8], gap='small')
