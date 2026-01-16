@@ -87,11 +87,12 @@ st.markdown("""
     
     /* Ensure main title is HUGE - override everything */
     .main-title {
-        font-size: 600px !important;
+        font-size: 120px !important;
         font-weight: 900 !important;
         color: #0f172a !important;
         margin: 0 !important;
         padding: 0 !important;
+        line-height: 1.2 !important;
     }
     
     h2 { font-weight: 700 !important; font-size: 26px !important; }
@@ -1673,10 +1674,10 @@ def parse_creative_html(response_str):
 # Proper SaaS-style title - REALLY BIG and BOLD (like a logo) - removed v2
 st.markdown("""
     <div style="margin-bottom: 15px; padding-bottom: 12px; border-bottom: 3px solid #e2e8f0;">
-        <h1 class="main-title" style="font-size: 600px !important; font-weight: 900 !important; color: #0f172a !important; margin: 0 !important; padding: 0 !important; text-align: left !important; line-height: 1 !important; letter-spacing: -0.05em !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif !important; text-shadow: 4px 4px 8px rgba(0,0,0,0.2) !important; pointer-events: none !important; user-select: none !important;">
+        <h1 class="main-title" style="font-size: 120px !important; font-weight: 900 !important; color: #0f172a !important; margin: 0 !important; padding: 0 !important; text-align: left !important; line-height: 1.2 !important; letter-spacing: -0.02em !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif !important; text-shadow: 2px 2px 4px rgba(0,0,0,0.1) !important; pointer-events: none !important; user-select: none !important;">
             <strong>📊 CPA Flow Analysis</strong>
         </h1>
-        <p style="font-size: 20px; color: #64748b; margin: 10px 0 0 0; font-weight: 400;">Analyze and optimize your ad flow performance</p>
+        <p style="font-size: 18px; color: #64748b; margin: 8px 0 0 0; font-weight: 400;">Analyze and optimize your ad flow performance</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -2049,7 +2050,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     }
                     </style>
                     """, unsafe_allow_html=True)
-                    stage_cols = st.columns([0.85, 0.001, 0.25, 0.001, 0.85, 0.001, 0.85], gap='none')
+                    stage_cols = st.columns([0.85, 0.001, 0.25, 0.001, 0.85, 0.001, 0.85], gap='small')
                 else:
                     # Vertical layout - cards extend full width, details inline within card boundaries
                     # No separate columns - everything within each card
