@@ -79,16 +79,31 @@ def render_advanced_filters(campaign_df, current_flow):
         /* Make entire selectbox clickable - override any blocking */
         .stSelectbox [data-baseweb="select"] {
             pointer-events: auto !important;
+            cursor: pointer !important;
         }
         .stSelectbox [data-baseweb="select"] * {
             pointer-events: auto !important;
             cursor: pointer !important;
         }
-        /* Ensure the dropdown trigger is clickable */
-        .stSelectbox button {
+        /* Ensure the dropdown trigger button is clickable */
+        .stSelectbox [data-baseweb="select"] button {
             pointer-events: auto !important;
             cursor: pointer !important;
-            z-index: 999 !important;
+            z-index: 9999 !important;
+            position: relative !important;
+        }
+        /* Make the entire selectbox container clickable */
+        .stSelectbox {
+            pointer-events: auto !important;
+            cursor: pointer !important;
+        }
+        .stSelectbox > div {
+            pointer-events: auto !important;
+            cursor: pointer !important;
+        }
+        /* Target the actual clickable area */
+        .stSelectbox [data-baseweb="popover"] {
+            pointer-events: auto !important;
         }
         </style>
         """, unsafe_allow_html=True)
