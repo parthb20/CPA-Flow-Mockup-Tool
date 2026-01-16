@@ -431,14 +431,14 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             # Render table using module
             render_flow_combinations_table(campaign_df)
             
-            # Minimal spacing between table and What is Flow
-            st.markdown("<div style='margin-top: 2px; margin-bottom: 2px;'></div>", unsafe_allow_html=True)
+            # NO spacing between table and What is Flow
+            st.markdown("<div style='margin-top: 0; margin-bottom: 0;'></div>", unsafe_allow_html=True)
             
             # Render "What is Flow" section using module
             render_what_is_flow_section()
             
-            # Minimal spacing before Flow Journey
-            st.markdown("<div style='margin-top: 2px; margin-bottom: 2px;'></div>", unsafe_allow_html=True)
+            # NO spacing before Flow Journey
+            st.markdown("<div style='margin-top: 0; margin-bottom: 0;'></div>", unsafe_allow_html=True)
             
             # Find default flow if not set
             if st.session_state.default_flow is None:
