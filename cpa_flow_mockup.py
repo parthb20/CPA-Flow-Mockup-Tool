@@ -16,7 +16,6 @@ import json
 from urllib.parse import urlparse, urljoin
 import re
 import html
-from concurrent import futures
 
 # Import from modules (after page config)
 from src.config import FILE_A_ID, FILE_B_ID, SERP_BASE_URL
