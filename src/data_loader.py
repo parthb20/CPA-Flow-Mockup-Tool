@@ -152,10 +152,10 @@ def process_file_content(content):
                                     df = pd.DataFrame(rows, dtype=str)
                         return df
                     else:
-                        st.error("❌ No CSV file found in ZIP")
+                        safe_st_error("❌ No CSV file found in ZIP")
                         return None
             except Exception as e:
-                st.error(f"❌ Error extracting ZIP: {str(e)}")
+                safe_st_error(f"❌ Error extracting ZIP: {str(e)}")
                 return None
         else:
             # Try as CSV with robust parsing options
@@ -251,70 +251,75 @@ def process_file_content(content):
 
 def load_csv_from_gdrive(file_id):
     """Load CSV from Google Drive - handles CSV, ZIP, GZIP, and large file virus scan"""
-    
-    # Method 1: Try gdown if available (best for large files)
-    if GDOWN_AVAILABLE:
-        try:
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.tmp') as tmp_file:
-                url = f"https://drive.google.com/uc?id={file_id}"
-                output = tmp_file.name
-                
-                gdown.download(url, output, quiet=True, fuzzy=True)
-                
-                # Read the downloaded file
-                with open(output, 'rb') as f:
-                    content = f.read()
-                
-                # Clean up
-                try:
-                    os.unlink(output)
-                except:
-                    pass
-                
-                # Process the content (detect type and decompress if needed)
-                return process_file_content(content)
-                
-        except Exception as e:
-            pass  # Silently try alternative
-    
-    # Method 2: Manual download (fallback)
     try:
-        session = requests.Session()
+        # Method 1: Try gdown if available (best for large files)
+        if GDOWN_AVAILABLE:
+            try:
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.tmp') as tmp_file:
+                    url = f"https://drive.google.com/uc?id={file_id}"
+                    output = tmp_file.name
+                    
+                    gdown.download(url, output, quiet=True, fuzzy=True)
+                    
+                    # Read the downloaded file
+                    with open(output, 'rb') as f:
+                        content = f.read()
+                    
+                    # Clean up
+                    try:
+                        os.unlink(output)
+                    except:
+                        pass
+                    
+                    # Process the content (detect type and decompress if needed)
+                    result = process_file_content(content)
+                    if result is not None:
+                        return result
+                    
+            except Exception as e:
+                pass  # Silently try alternative
         
-        # Initial request
-        url = f"https://drive.google.com/uc?export=download&id={file_id}"
-        response = session.get(url, timeout=30, stream=False)
-        
-        content = response.content
-        
-        # Check for virus scan warning or download confirmation (handle silently)
-        if b'virus scan warning' in content.lower() or b'download anyway' in content.lower() or content.startswith(b'<!DOCTYPE'):
-            text = content.decode('utf-8', errors='ignore')
+        # Method 2: Manual download (fallback)
+        try:
+            session = requests.Session()
             
-            # Try to find confirmation token
-            confirm_match = re.search(r'confirm=([a-zA-Z0-9_-]+)', text)
-            if confirm_match:
-                confirm = confirm_match.group(1)
-                url = f"https://drive.google.com/uc?export=download&id={file_id}&confirm={confirm}"
-                response = session.get(url, timeout=60, stream=False)
-                content = response.content
-            else:
-                download_match = re.search(r'href="(/uc\?[^"]*export=download[^"]*)"', text)
-                if download_match:
-                    download_path = download_match.group(1).replace('&amp;', '&')
-                    url = f"https://drive.google.com{download_path}"
+            # Initial request
+            url = f"https://drive.google.com/uc?export=download&id={file_id}"
+            response = session.get(url, timeout=30, stream=False)
+            
+            content = response.content
+            
+            # Check for virus scan warning or download confirmation (handle silently)
+            if b'virus scan warning' in content.lower() or b'download anyway' in content.lower() or content.startswith(b'<!DOCTYPE'):
+                text = content.decode('utf-8', errors='ignore')
+                
+                # Try to find confirmation token
+                confirm_match = re.search(r'confirm=([a-zA-Z0-9_-]+)', text)
+                if confirm_match:
+                    confirm = confirm_match.group(1)
+                    url = f"https://drive.google.com/uc?export=download&id={file_id}&confirm={confirm}"
                     response = session.get(url, timeout=60, stream=False)
                     content = response.content
                 else:
-                    return None
-        
-        if response.status_code != 200:
-            return None
-        
-        # Process the content
-        return process_file_content(content)
+                    download_match = re.search(r'href="(/uc\?[^"]*export=download[^"]*)"', text)
+                    if download_match:
+                        download_path = download_match.group(1).replace('&amp;', '&')
+                        url = f"https://drive.google.com{download_path}"
+                        response = session.get(url, timeout=60, stream=False)
+                        content = response.content
+                    else:
+                        return None
             
+            if response.status_code != 200:
+                return None
+            
+            # Process the content
+            return process_file_content(content)
+                
+        except Exception as e:
+            return None
     except Exception as e:
+        # Catch any unexpected errors to prevent thread crashes
         return None
 
 
