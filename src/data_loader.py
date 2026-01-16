@@ -20,6 +20,14 @@ try:
 except:
     GDOWN_AVAILABLE = False
 
+# Check pandas version for on_bad_lines compatibility
+try:
+    pd_version = pd.__version__
+    pd_major, pd_minor = map(int, pd_version.split('.')[:2])
+    HAS_ON_BAD_LINES = (pd_major > 1) or (pd_major == 1 and pd_minor >= 3)
+except:
+    HAS_ON_BAD_LINES = False
+
 
 def process_file_content(content):
     """Process file content - detect type and decompress if needed"""
@@ -44,33 +52,28 @@ def process_file_content(content):
                 
                 # Read as CSV with comprehensive options - try multiple strategies
                 df = None
+                read_csv_kwargs = {
+                    'dtype': str,
+                    'encoding': 'utf-8',
+                    'engine': 'python',
+                    'quoting': csv.QUOTE_MINIMAL,
+                    'skipinitialspace': True,
+                    'low_memory': False
+                }
+                if HAS_ON_BAD_LINES:
+                    read_csv_kwargs['on_bad_lines'] = 'skip'
+                else:
+                    read_csv_kwargs['error_bad_lines'] = False
+                    read_csv_kwargs['warn_bad_lines'] = False
+                
                 try:
                     # Strategy 1: Python engine with error handling
-                    df = pd.read_csv(
-                        BytesIO(decompressed), 
-                        dtype=str, 
-                        on_bad_lines='skip',
-                        encoding='utf-8',
-                        engine='python',
-                        quoting=csv.QUOTE_MINIMAL,
-                        skipinitialspace=True,
-                        error_bad_lines=False,
-                        warn_bad_lines=False,
-                        low_memory=False
-                    )
+                    df = pd.read_csv(BytesIO(decompressed), **read_csv_kwargs)
                 except Exception as e1:
                     try:
                         # Strategy 2: Try with different quote handling
-                        df = pd.read_csv(
-                            BytesIO(decompressed), 
-                            dtype=str, 
-                            on_bad_lines='skip',
-                            encoding='utf-8',
-                            engine='python',
-                                quoting=csv.QUOTE_ALL,
-                                skipinitialspace=True,
-                                low_memory=False
-                        )
+                        read_csv_kwargs['quoting'] = csv.QUOTE_ALL
+                        df = pd.read_csv(BytesIO(decompressed), **read_csv_kwargs)
                     except Exception as e2:
                         # Strategy 3: Manual CSV parsing
                         try:
@@ -104,29 +107,26 @@ def process_file_content(content):
                         csv_content = zip_file.read(csv_file)
                         # Try multiple parsing strategies
                         df = None
+                        read_csv_kwargs = {
+                            'dtype': str,
+                            'encoding': 'utf-8',
+                            'engine': 'python',
+                            'quoting': csv.QUOTE_MINIMAL,
+                            'skipinitialspace': True,
+                            'low_memory': False
+                        }
+                        if HAS_ON_BAD_LINES:
+                            read_csv_kwargs['on_bad_lines'] = 'skip'
+                        else:
+                            read_csv_kwargs['error_bad_lines'] = False
+                            read_csv_kwargs['warn_bad_lines'] = False
+                        
                         try:
-                            df = pd.read_csv(
-                                BytesIO(csv_content), 
-                                dtype=str, 
-                                on_bad_lines='skip',
-                                encoding='utf-8',
-                                engine='python',
-                                quoting=csv.QUOTE_MINIMAL,
-                                skipinitialspace=True,
-                                low_memory=False
-                            )
+                            df = pd.read_csv(BytesIO(csv_content), **read_csv_kwargs)
                         except Exception:
                             try:
-                                df = pd.read_csv(
-                                    BytesIO(csv_content), 
-                                    dtype=str, 
-                                    on_bad_lines='skip',
-                                    encoding='utf-8',
-                                    engine='python',
-                                quoting=csv.QUOTE_ALL,
-                                skipinitialspace=True,
-                                low_memory=False
-                                )
+                                read_csv_kwargs['quoting'] = csv.QUOTE_ALL
+                                df = pd.read_csv(BytesIO(csv_content), **read_csv_kwargs)
                             except Exception:
                                 # Manual CSV parsing
                                 decoded = csv_content.decode('utf-8', errors='replace')
@@ -173,11 +173,7 @@ def process_file_content(content):
                                 encoding=encoding,
                                 engine='python',
                                 quoting=csv.QUOTE_MINIMAL,
-                                quotechar='"',
-                                escapechar='\\',
                                 skipinitialspace=True,
-                                error_bad_lines=False,
-                                warn_bad_lines=False,
                                 low_memory=False
                             )
                             if df is not None and len(df) > 0:
@@ -193,10 +189,7 @@ def process_file_content(content):
                                     encoding=encoding,
                                     engine='python',
                                     quoting=csv.QUOTE_ALL,
-                                    quotechar='"',
                                     skipinitialspace=True,
-                                    error_bad_lines=False,
-                                    warn_bad_lines=False,
                                     low_memory=False
                                 )
                                 if df is not None and len(df) > 0:
@@ -212,8 +205,6 @@ def process_file_content(content):
                                         engine='c',
                                         quoting=csv.QUOTE_MINIMAL,
                                         skipinitialspace=True,
-                                        error_bad_lines=False,
-                                        warn_bad_lines=False,
                                         low_memory=False
                                     )
                                     if df is not None and len(df) > 0:
@@ -324,6 +315,7 @@ def load_csv_from_gdrive(file_id):
 
 def load_json_from_gdrive(file_id):
     """Load JSON file from Google Drive - returns dict of SERP templates {template_key: html_string}"""
+    import streamlit as st
     try:
         url = f"https://drive.google.com/uc?export=download&id={file_id}"
         response = requests.get(url, timeout=30)
