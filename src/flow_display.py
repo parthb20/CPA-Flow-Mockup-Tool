@@ -66,62 +66,35 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     stage_4_info_container = None
     
     if st.session_state.flow_layout == 'horizontal':
-        # Add CSS to force single line and prevent wrapping
+        # Add CSS to force single line and prevent wrapping, ensure equal card heights and boundaries
         st.markdown("""
         <style>
         [data-testid="column"] {
             flex-shrink: 0 !important;
             min-width: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
         }
         .stColumn > div {
             overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+            height: 100% !important;
+        }
+        .stage-card-wrapper {
+            min-height: 600px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            background: #ffffff;
+            margin-bottom: 0;
         }
         </style>
         """, unsafe_allow_html=True)
         
-        # Description layer - show domain, URL, keyword (creative), SERP URL, SERP temp key
-        # Format: Bold titles on top, values below (not inline), no truncation, proper alignment
-        desc_cols = st.columns([1, 0.05, 0.7, 0.05, 1, 0.05, 1], gap='small')
-        with desc_cols[0]:
-            domain = current_flow.get('publisher_domain', 'N/A')
-            url = current_flow.get('publisher_url', 'N/A')
-            st.markdown(f"""
-            <div style="font-size: 13px; padding: 8px 0; min-height: 80px;">
-                <div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 6px;"><strong>Domain</strong></div>
-                <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;">{html.escape(str(domain))}</div>
-                <div style="margin-top: 12px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 6px;"><strong>URL</strong></div>
-                <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;">{html.escape(str(url))}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with desc_cols[2]:
-            keyword = current_flow.get('keyword_term', 'N/A')
-            st.markdown(f"""
-            <div style="font-size: 13px; padding: 8px 0; min-height: 80px;">
-                <div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 6px;"><strong>Keyword</strong></div>
-                <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;">{html.escape(str(keyword))}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with desc_cols[4]:
-            serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
-            serp_key = current_flow.get('serp_template_key', 'N/A')
-            st.markdown(f"""
-            <div style="font-size: 13px; padding: 8px 0; min-height: 80px;">
-                <div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 6px;"><strong>SERP URL</strong></div>
-                <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;">{html.escape(str(serp_url))}</div>
-                <div style="margin-top: 12px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 6px;"><strong>SERP Key</strong></div>
-                <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;">{html.escape(str(serp_key))}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with desc_cols[6]:
-            # REMOVED Landing URL from description layer - it's shown in Landing Page stage to avoid duplication
-            st.markdown("""
-            <div style="font-size: 13px; padding: 8px 0; min-height: 80px;">
-                <div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 6px;"><strong>Landing URL</strong></div>
-                <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;">See Landing Page stage below</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # Now create columns for the actual cards
+        # Create columns for the actual cards - removed description layer to avoid duplicates
         stage_cols = st.columns([1, 0.05, 0.7, 0.05, 1, 0.05, 1], gap='small')
     else:
         # Vertical layout - cards extend full width, details inline within card boundaries
@@ -153,6 +126,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     urls = dom_filtered['publisher_url'].dropna().unique().tolist() if 'publisher_url' in dom_filtered.columns else []
     
     with stage_1_container:
+        # Wrap content in consistent container for alignment in horizontal layout
+        if st.session_state.flow_layout == 'horizontal':
+            st.markdown('<div class="stage-card-wrapper">', unsafe_allow_html=True)
+        
         if st.session_state.flow_layout == 'vertical':
             card_col_left, card_col_right = st.columns([0.6, 0.4])
             with card_col_left:
@@ -160,8 +137,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         else:
             st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">📰 Publisher URL</h3>', unsafe_allow_html=True)
         
-        # Show info below title (not inline) - formatted properly
-        if st.session_state.view_mode == 'basic':
+        # Show info below title (not inline) - formatted properly - only in horizontal layout
+        if st.session_state.view_mode == 'basic' and st.session_state.flow_layout == 'horizontal':
             st.markdown(f"""
             <div style='margin-bottom: 12px; font-size: 13px;'>
                 <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Domain</strong></div>
@@ -393,6 +370,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{current_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
                 </div>
                 """, unsafe_allow_html=True)
+        
+        # Close wrapper div for horizontal layout
+        if st.session_state.flow_layout == 'horizontal':
+            st.markdown('</div>', unsafe_allow_html=True)
     
     if stage_cols:
         with stage_cols[1]:
@@ -409,14 +390,15 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         creative_card_left = None
         creative_card_right = None
     else:
-        if stage_cols:
-            stage_2_container = stage_cols[2]
-        else:
-            stage_2_container = st.container()
+        stage_2_container = stage_cols[2]
         creative_card_left = None
         creative_card_right = None
     
     with stage_2_container:
+        # Wrap content in consistent container for alignment in horizontal layout
+        if st.session_state.flow_layout == 'horizontal':
+            st.markdown('<div class="stage-card-wrapper">', unsafe_allow_html=True)
+        
         if st.session_state.flow_layout == 'vertical':
             creative_card_left, creative_card_right = st.columns([0.5, 0.5])
             with creative_card_left:
@@ -427,6 +409,16 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         creative_id = current_flow.get('creative_id', 'N/A')
         creative_name = current_flow.get('creative_template_name', 'N/A')
         creative_size = current_flow.get('creative_size', 'N/A')
+        keyword = current_flow.get('keyword_term', 'N/A')
+        
+        # Show keyword below title in horizontal layout
+        if st.session_state.flow_layout == 'horizontal' and st.session_state.view_mode == 'basic':
+            st.markdown(f"""
+            <div style='margin-bottom: 12px; font-size: 13px;'>
+                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Keyword</strong></div>
+                <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;'>{html.escape(str(keyword))}</div>
+            </div>
+            """, unsafe_allow_html=True)
         
         if st.session_state.flow_layout != 'vertical':
             if st.session_state.view_mode == 'advanced':
@@ -492,6 +484,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 if 'similarities' in st.session_state and st.session_state.similarities:
                     st.markdown("<h4 style='font-size: 18px; font-weight: 700; color: #0f172a; margin: 12px 0 8px 0;'>🔗 Keyword → Ad Copy Similarity</h4>", unsafe_allow_html=True)
                     render_similarity_score('kwd_to_ad', st.session_state.similarities)
+        
+        # Close wrapper div for horizontal layout
+        if st.session_state.flow_layout == 'horizontal':
+            st.markdown('</div>', unsafe_allow_html=True)
     
     if stage_cols:
         with stage_cols[3]:
@@ -522,14 +518,31 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         serp_card_right = None
     
     with stage_3_container:
+        # Wrap content in consistent container for alignment in horizontal layout
+        if st.session_state.flow_layout == 'horizontal':
+            st.markdown('<div class="stage-card-wrapper">', unsafe_allow_html=True)
+        
         if st.session_state.flow_layout == 'vertical':
             serp_card_left, serp_card_right = st.columns([0.6, 0.4])
             with serp_card_left:
-                st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">📄 SERP</h3>', unsafe_allow_html=True)
+                st.markdown('<h3 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">📄 SERP</h3>', unsafe_allow_html=True)
         else:
-            st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">📄 SERP</h3>', unsafe_allow_html=True)
+            st.markdown('<h3 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">📄 SERP</h3>', unsafe_allow_html=True)
         
         serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
+        serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
+        serp_key = current_flow.get('serp_template_key', 'N/A')
+        
+        # Show SERP info below title in horizontal layout
+        if st.session_state.flow_layout == 'horizontal' and st.session_state.view_mode == 'basic':
+            st.markdown(f"""
+            <div style='margin-bottom: 12px; font-size: 13px;'>
+                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>SERP Key</strong></div>
+                <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;'>{html.escape(str(serp_key))}</div>
+                {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>SERP URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{serp_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(serp_url))}</a></div>' if serp_url and serp_url != 'N/A' else ''}
+            </div>
+            """, unsafe_allow_html=True)
+        
         if st.session_state.flow_layout != 'horizontal':
             st.caption(f"**Template:** {serp_name}")
         
@@ -749,6 +762,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     render_similarity_score('ad_to_page', st.session_state.similarities,
                                            custom_title="Ad Copy → Landing Page Similarity",
                                            tooltip_text="Measures how well the landing page fulfills the promises made in the ad copy. Higher scores indicate better ad-page consistency.")
+        
+        # Close wrapper div for horizontal layout
+        if st.session_state.flow_layout == 'horizontal':
+            st.markdown('</div>', unsafe_allow_html=True)
     
     if stage_cols:
         with stage_cols[5]:
@@ -773,18 +790,31 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         landing_card_right = None
     
     with stage_4_container:
+        # Wrap content in consistent container for alignment in horizontal layout
+        if st.session_state.flow_layout == 'horizontal':
+            st.markdown('<div class="stage-card-wrapper">', unsafe_allow_html=True)
+        
         if st.session_state.flow_layout == 'vertical':
             landing_card_left, landing_card_right = st.columns([0.6, 0.4])
             with landing_card_left:
-                st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">🎯 Landing Page</h3>', unsafe_allow_html=True)
+                st.markdown('<h3 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">🎯 Landing Page</h3>', unsafe_allow_html=True)
         else:
-            st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">🎯 Landing Page</h3>', unsafe_allow_html=True)
+            st.markdown('<h3 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">🎯 Landing Page</h3>', unsafe_allow_html=True)
         
         adv_url = current_flow.get('reporting_destination_url', '')
         flow_clicks = current_flow.get('clicks', 0)
         
         # Show Landing URL below title (not inline) - only in basic view, horizontal layout
-        if st.session_state.view_mode == 'basic' and adv_url and pd.notna(adv_url) and st.session_state.flow_layout == 'horizontal':
+        if st.session_state.view_mode == 'basic' and st.session_state.flow_layout == 'horizontal':
+            st.markdown(f"""
+            <div style="margin-bottom: 12px; font-size: 13px;">
+                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Landing URL</strong></div>
+                <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;'>{html.escape(str(adv_url)) if adv_url and pd.notna(adv_url) else 'N/A'}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Old code removed - keeping only the new version above
+        if False and st.session_state.view_mode == 'basic' and adv_url and pd.notna(adv_url) and st.session_state.flow_layout == 'horizontal':
             st.markdown(f"""
             <div style="margin-bottom: 8px; font-size: 13px;">
                 <div style="font-weight: 700; color: #0f172a; margin-bottom: 4px;"><strong>Landing URL:</strong></div>
@@ -998,6 +1028,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     render_similarity_score('kwd_to_page', st.session_state.similarities,
                                            custom_title="Keyword → Landing Page Similarity",
                                            tooltip_text="Measures overall flow consistency from keyword to landing page. Higher scores indicate better end-to-end alignment.")
+        
+        # Close wrapper div for horizontal layout
+        if st.session_state.flow_layout == 'horizontal':
+            st.markdown('</div>', unsafe_allow_html=True)
     
     # Similarity Scores Section for Horizontal Layout
     if st.session_state.flow_layout == 'horizontal':
