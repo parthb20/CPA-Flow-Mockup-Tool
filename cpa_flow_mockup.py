@@ -973,12 +973,12 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         device: 'mobile', 'tablet', or 'laptop'
         use_srcdoc: If True, use srcdoc for HTML (bypasses X-Frame-Options)
     """
-    # Real device dimensions
+    # Real device dimensions - reduced scale for horizontal layout to fit in one line
     if device == 'mobile':
         device_w = 390
         container_height = 844
-        scale = 0.55  # Increased from 0.35 for better visibility
-        frame_style = "border-radius: 40px; border: 10px solid #000000;"
+        scale = 0.4  # Reduced from 0.55 to fit all cards in one line
+        frame_style = "border-radius: 40px; border: 8px solid #000000;"
         
         # Mobile chrome
         device_chrome = """
@@ -1659,13 +1659,13 @@ def parse_creative_html(response_str):
         return None, None
 
 
-# Proper SaaS-style title - REALLY BIG and BOLD (like a logo)
+# Proper SaaS-style title - REALLY BIG and BOLD (like a logo) - removed v2
 st.markdown("""
-    <div style="margin-bottom: 20px; padding-bottom: 16px; border-bottom: 3px solid #e2e8f0;">
-        <h1 style="font-size: 300px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; text-align: left; line-height: 1; letter-spacing: -0.05em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif; text-shadow: 3px 3px 6px rgba(0,0,0,0.15); pointer-events: none; user-select: none;">
-            <strong>📊 CPA Flow Analysis v2</strong>
+    <div style="margin-bottom: 15px; padding-bottom: 12px; border-bottom: 3px solid #e2e8f0;">
+        <h1 style="font-size: 400px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; text-align: left; line-height: 1; letter-spacing: -0.05em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif; text-shadow: 4px 4px 8px rgba(0,0,0,0.2); pointer-events: none; user-select: none;">
+            <strong>📊 CPA Flow Analysis</strong>
         </h1>
-        <p style="font-size: 20px; color: #64748b; margin: 12px 0 0 0; font-weight: 400;">Analyze and optimize your ad flow performance</p>
+        <p style="font-size: 20px; color: #64748b; margin: 10px 0 0 0; font-weight: 400;">Analyze and optimize your ad flow performance</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -1694,8 +1694,8 @@ with view_col2:
         st.session_state.view_mode = 'advanced'
         st.rerun()
 
-# Reduce spacing - no divider, just small margin
-st.markdown("<div style='margin-top: 8px; margin-bottom: 8px;'></div>", unsafe_allow_html=True)
+# Reduce spacing - minimal margin
+st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
 
 if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
     df = st.session_state.data_a
@@ -1748,8 +1748,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             avg_ctr = (total_clicks / total_impressions * 100) if total_impressions > 0 else 0
             avg_cvr = (total_conversions / total_clicks * 100) if total_clicks > 0 else 0
             
-            # Reduce spacing - small margin instead of divider
-            st.markdown("<div style='margin-top: 8px; margin-bottom: 8px;'></div>", unsafe_allow_html=True)
+            # Reduce spacing - minimal margin
+            st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
             
             # Show aggregated table
             st.markdown("### 📊 Flow Combinations Overview")
@@ -1768,38 +1768,93 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Sort by conversions and show top 20
                 agg_df = agg_df.sort_values('conversions', ascending=False).head(20).reset_index(drop=True)
                 
-                # Simple approach - format the dataframe with visual indicators in the cells
-                display_df = pd.DataFrame({
-                    'Publisher Domain': agg_df['publisher_domain'],
-                    'Keyword': agg_df['keyword_term'],
-                    'Impressions': agg_df['impressions'].apply(lambda x: f"{int(x):,}"),
-                    'Clicks': agg_df['clicks'].apply(lambda x: f"{int(x):,}"),
-                    'Conversions': agg_df['conversions'].apply(lambda x: f"{int(x):,}"),
-                    'CTR %': agg_df['CTR'].apply(lambda x: f"{x:.2f}%"),
-                    'CVR %': agg_df['CVR'].apply(lambda x: f"{x:.2f}%")
-                })
+                # Create styled table with white background, black text, and conditional CTR/CVR colors
+                table_html = """
+                <style>
+                .flow-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    background: white;
+                    margin: 10px 0;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                }
+                .flow-table th {
+                    background: #f8fafc;
+                    color: #0f172a;
+                    font-weight: 700;
+                    padding: 12px;
+                    text-align: left;
+                    border-bottom: 2px solid #e2e8f0;
+                    font-size: 14px;
+                }
+                .flow-table td {
+                    padding: 10px 12px;
+                    border-bottom: 1px solid #e2e8f0;
+                    color: #0f172a;
+                    font-size: 13px;
+                }
+                .flow-table tr:hover {
+                    background: #f8fafc;
+                }
+                </style>
+                <table class="flow-table">
+                <thead>
+                    <tr>
+                        <th>Publisher Domain</th>
+                        <th>Keyword</th>
+                        <th>Impressions</th>
+                        <th>Clicks</th>
+                        <th>Conversions</th>
+                        <th>CTR %</th>
+                        <th>CVR %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                """
                 
-                # Apply background colors using column_config (Streamlit's way)
-                st.dataframe(
-                    display_df,
-                    column_config={
-                        "CTR %": st.column_config.TextColumn(
-                            "CTR %",
-                            help=f"Green if ≥ {avg_ctr:.2f}% (avg), Red if below"
-                        ),
-                        "CVR %": st.column_config.TextColumn(
-                            "CVR %", 
-                            help=f"Green if ≥ {avg_cvr:.2f}% (avg), Red if below"
-                        )
-                    },
-                    height=600,
-                    hide_index=True
-                )
+                for _, row in agg_df.iterrows():
+                    ctr_val = row['CTR']
+                    cvr_val = row['CVR']
+                    
+                    # Determine CTR color (light green if >= avg, light red if < avg)
+                    if ctr_val >= avg_ctr:
+                        ctr_bg = "#dcfce7"  # light green
+                        ctr_color = "#166534"  # dark green text
+                    else:
+                        ctr_bg = "#fee2e2"  # light red
+                        ctr_color = "#991b1b"  # dark red text
+                    
+                    # Determine CVR color (light green if >= avg, light red if < avg)
+                    if cvr_val >= avg_cvr:
+                        cvr_bg = "#dcfce7"  # light green
+                        cvr_color = "#166534"  # dark green text
+                    else:
+                        cvr_bg = "#fee2e2"  # light red
+                        cvr_color = "#991b1b"  # dark red text
+                    
+                    table_html += f"""
+                    <tr>
+                        <td>{row['publisher_domain']}</td>
+                        <td>{row['keyword_term']}</td>
+                        <td>{int(row['impressions']):,}</td>
+                        <td>{int(row['clicks']):,}</td>
+                        <td>{int(row['conversions']):,}</td>
+                        <td style="background: {ctr_bg}; color: {ctr_color}; font-weight: 600;">{ctr_val:.2f}%</td>
+                        <td style="background: {cvr_bg}; color: {cvr_color}; font-weight: 600;">{cvr_val:.2f}%</td>
+                    </tr>
+                    """
+                
+                table_html += """
+                </tbody>
+                </table>
+                """
+                
+                st.markdown(table_html, unsafe_allow_html=True)
             else:
                 st.warning("Could not generate table - missing required columns")
             
-            # Reduce spacing - small margin instead of divider
-            st.markdown("<div style='margin-top: 8px; margin-bottom: 8px;'></div>", unsafe_allow_html=True)
+            # Reduce spacing - minimal margin
+            st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
             
             # Simplified, easy-to-read flow explanation with consistent styling
             st.markdown("""
@@ -1819,8 +1874,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             </div>
             """, unsafe_allow_html=True)
             
-            # Reduce spacing
-            st.markdown("<div style='margin-top: 8px; margin-bottom: 8px;'></div>", unsafe_allow_html=True)
+            # Reduce spacing - minimal margin
+            st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
             
             # Find default flow if not set
             if st.session_state.default_flow is None:
@@ -1849,7 +1904,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     with layout_col4:
                         st.markdown("")  # spacing
                     
-                    st.divider()
+                    # Reduce spacing
+                    st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
                     
                     filter_col1, filter_col2 = st.columns(2)
                     with filter_col1:
@@ -1861,7 +1917,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             domains = sorted(campaign_df['publisher_domain'].dropna().unique().tolist())
                             selected_domain_filter = st.selectbox("🌐 Filter by Domain:", ['All'] + domains, key='dom_filter_adv')
                 
-                st.divider()
+                # Reduce spacing - minimal margin instead of divider
+                st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
                 
                 # Show selected flow details
                 st.info(f"""
@@ -1878,6 +1935,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     st.success("✨ Auto-selected based on best performance")
                 else:
                     st.success("✨ Use filters above to change flow")
+                
+                # Reduce spacing before Flow Journey
+                st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
                 
                 # Build filter data
                 keywords = sorted(campaign_df['keyword_term'].dropna().unique().tolist())
@@ -1923,9 +1983,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     s4.metric("CTR", f"{(stats_df['clicks']/stats_df['impressions']*100 if stats_df['impressions'] > 0 else 0):.2f}%")
                     s5.metric("CVR", f"{(stats_df['conversions']/stats_df['clicks']*100 if stats_df['clicks'] > 0 else 0):.2f}%")
                     
-                    st.divider()
+                    # Reduce spacing - minimal margin
+                    st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
                 
                 # Flow Display based on layout
+                # Reduce spacing before Flow Journey
+                st.markdown("<div style='margin-top: 4px;'></div>", unsafe_allow_html=True)
                 st.markdown("### 🔄 Flow Journey")
                 
                 # Single device selector for ALL cards
@@ -1948,9 +2011,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 stage_4_info_container = None
                 
                 if st.session_state.flow_layout == 'horizontal':
-                    # Equal width columns for 4 cards + 3 arrows - ensure ALL 4 cards in ONE line
-                    # Use equal widths (1 each) with minimal arrow spacing (0.005) - all will fit in one line
-                    stage_cols = st.columns([1, 0.005, 1, 0.005, 1, 0.005, 1], gap='small')
+                    # Ensure ALL 4 cards in ONE line - make creative narrower (most are 300px width)
+                    # Creative gets 0.6 width, others get 1, with minimal arrow spacing
+                    stage_cols = st.columns([1, 0.003, 0.6, 0.003, 1, 0.003, 1], gap='small')
                 else:
                     # Vertical layout - cards extend full width, details inline within card boundaries
                     # No separate columns - everything within each card
@@ -2282,8 +2345,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 if stage_cols:
                     with stage_cols[1]:
                         st.markdown("""
-                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 280px; padding: 0; margin: 0;'>
-                            <div style='font-size: 120px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 4px 4px 8px rgba(59,130,246,0.5); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
+                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 250px; padding: 0; margin: 0;'>
+                            <div style='font-size: 100px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 4px 4px 8px rgba(59,130,246,0.5); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
                         </div>
                         """, unsafe_allow_html=True)
                 # No vertical arrows in vertical mode - removed as requested
@@ -2338,9 +2401,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             try:
                                 creative_html, raw_adcode = parse_creative_html(response_value)
                                 if creative_html and raw_adcode:
-                                    # Render in compact dimensions for horizontal layout
+                                    # Render in compact dimensions for horizontal layout - narrow window (250px)
                                     if st.session_state.flow_layout == 'horizontal':
-                                        st.components.v1.html(creative_html, height=280, scrolling=True)
+                                        st.components.v1.html(creative_html, height=250, scrolling=True)
                                     else:
                                         st.components.v1.html(creative_html, height=400, scrolling=True)
                                     
@@ -2355,7 +2418,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         else:
                             # Keep equal space even when no creative - show compact placeholder
                             if st.session_state.flow_layout == 'horizontal':
-                                min_height = 280
+                                min_height = 250  # Reduced for horizontal layout
                             else:
                                 min_height = 400
                             st.markdown(f"""
@@ -2398,8 +2461,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 if stage_cols:
                     with stage_cols[3]:
                         st.markdown("""
-                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 280px; padding: 0; margin: 0;'>
-                            <div style='font-size: 120px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 4px 4px 8px rgba(59,130,246,0.5); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
+                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 250px; padding: 0; margin: 0;'>
+                            <div style='font-size: 100px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 4px 4px 8px rgba(59,130,246,0.5); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
                         </div>
                         """, unsafe_allow_html=True)
                 # No vertical arrows in vertical mode - removed as requested
@@ -2720,8 +2783,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 if stage_cols:
                     with stage_cols[5]:
                         st.markdown("""
-                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 280px; padding: 0; margin: 0;'>
-                            <div style='font-size: 120px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 4px 4px 8px rgba(59,130,246,0.5); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
+                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 250px; padding: 0; margin: 0;'>
+                            <div style='font-size: 100px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 4px 4px 8px rgba(59,130,246,0.5); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
                         </div>
                         """, unsafe_allow_html=True)
                 # No vertical arrows in vertical mode - removed as requested
@@ -3007,7 +3070,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 # Fixed Similarity Scores Section for Horizontal Layout (BELOW frame line)
                 if st.session_state.flow_layout == 'horizontal':
-                    st.divider()
+                    # Reduce spacing - minimal margin
+                    st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
                     st.markdown("""
                         <h2 style="font-size: 28px; font-weight: 700; color: #0f172a; margin: 20px 0 15px 0;">
                             🧠 Similarity Scores
