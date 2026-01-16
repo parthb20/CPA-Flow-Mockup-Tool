@@ -57,10 +57,14 @@ try:
     API_KEY = st.secrets.get("FASTROUTER_API_KEY", st.secrets.get("OPENAI_API_KEY", "")).strip()
     SCREENSHOT_API_KEY = st.secrets.get("SCREENSHOT_API_KEY", "").strip()
     THUMIO_REFERER_DOMAIN = st.secrets.get("THUMIO_REFERER_DOMAIN", "").strip()
+    # Debug: Check if API key is loaded
+    if not API_KEY:
+        st.warning("⚠️ API key not found. Please add FASTROUTER_API_KEY or OPENAI_API_KEY to Streamlit secrets.")
 except Exception as e:
     API_KEY = ""
     SCREENSHOT_API_KEY = ""
     THUMIO_REFERER_DOMAIN = ""
+    st.warning(f"⚠️ Error loading secrets: {str(e)[:100]}")
 
 THUMIO_CONFIGURED = True  # Always True - free tier works without setup!
 
@@ -284,7 +288,7 @@ for key in ['data_a', 'data_b', 'loading_done', 'default_flow', 'current_flow', 
 
 # Proper SaaS-style title - REALLY BIG and BOLD (like a logo)
 st.markdown("""
-    <div style="margin-bottom: 8px; margin-top: -20px; padding-top: 0px; padding-bottom: 8px; border-bottom: 3px solid #e2e8f0;">
+    <div style="margin-bottom: 8px; margin-top: -40px; padding-top: 0px; padding-bottom: 8px; border-bottom: 3px solid #e2e8f0;">
                         <h1 class="main-title" style="font-size: 72px !important; font-weight: 900 !important; color: #0f172a !important; margin: 0 !important; padding: 0 !important; text-align: left !important; line-height: 1.3 !important; letter-spacing: 0.01em !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif !important; text-shadow: 1px 1px 2px rgba(0,0,0,0.1) !important; pointer-events: none !important; user-select: none !important; word-spacing: normal !important;">
                             📊 CPA Flow Analysis
                         </h1>
@@ -625,19 +629,32 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 default_dom_idx = domains.index(current_dom_val) + 1  # +1 because 'All' is first
                             selected_domain_filter = st.selectbox("🌐 Filter by Domain:", ['All'] + domains, index=default_dom_idx, key='dom_filter_adv')
                     
-                    # Add CSS to style selectboxes with dropdown arrow indicator
+                    # Add CSS to style selectboxes with dropdown arrow indicator and remove black bars
                     st.markdown("""
                     <style>
                     /* Remove black background from inputs */
                     .stSelectbox > div > div {
                         background-color: white !important;
+                        border-color: #cbd5e1 !important;
+                    }
+                    .stSelectbox > div > div > div {
+                        background-color: white !important;
+                    }
+                    /* Remove black search bars */
+                    .stSelectbox input {
+                        background-color: white !important;
+                        color: #0f172a !important;
+                        border-color: #cbd5e1 !important;
                     }
                     /* Ensure selectbox shows dropdown arrow */
-                    .stSelectbox select {
-                        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 9L1 4h10z'/%3E%3C/svg%3E") !important;
+                    .stSelectbox [data-baseweb="select"] {
+                        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%23666' d='M8 11L3 6h10z'/%3E%3C/svg%3E") !important;
                         background-repeat: no-repeat !important;
-                        background-position: right 8px center !important;
-                        padding-right: 30px !important;
+                        background-position: right 12px center !important;
+                        padding-right: 40px !important;
+                    }
+                    .stSelectbox [data-baseweb="select"] > div {
+                        background-color: white !important;
                     }
                     </style>
                     """, unsafe_allow_html=True)
@@ -666,9 +683,24 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         if 'serp_template_name' in campaign_df.columns:
                             final_filtered = final_filtered[final_filtered['serp_template_name'] == current_flow.get('serp_template_name', '')]
                         if len(final_filtered) > 0:
+                            # Prefer views with conversions > 0, then clicks > 0, then impressions > 0
+                            conv_positive = final_filtered[final_filtered['conversions'].apply(safe_float) > 0]
+                            if len(conv_positive) > 0:
+                                final_filtered = conv_positive
+                            else:
+                                clicks_positive = final_filtered[final_filtered['clicks'].apply(safe_float) > 0]
+                                if len(clicks_positive) > 0:
+                                    final_filtered = clicks_positive
+                                else:
+                                    imps_positive = final_filtered[final_filtered['impressions'].apply(safe_float) > 0]
+                                    if len(imps_positive) > 0:
+                                        final_filtered = imps_positive
+                            
                             if 'timestamp' in final_filtered.columns:
                                 best_view = final_filtered.loc[final_filtered['timestamp'].idxmax()]
                             else:
+                                # Sort by conversions desc, then clicks desc, then impressions desc
+                                final_filtered = final_filtered.sort_values(['conversions', 'clicks', 'impressions'], ascending=False)
                                 best_view = final_filtered.iloc[0]
                             current_flow.update(best_view.to_dict())
                 
@@ -851,8 +883,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         url = current_flow.get('publisher_url', 'N/A')
                         st.markdown(f"""
                         <div style="font-size: 11px; color: #64748b; padding: 6px 0;">
-                            <strong>Domain:</strong> {html.escape(str(domain))}<br>
-                            <strong>URL:</strong> {html.escape(str(url)[:40])}{'...' if len(str(url)) > 40 else ''}
+                            <div><strong>Domain:</strong></div>
+                            <div style="margin-left: 8px; margin-top: 2px;">{html.escape(str(domain))}</div>
+                            <div style="margin-top: 4px;"><strong>URL:</strong></div>
+                            <div style="margin-left: 8px; margin-top: 2px;">{html.escape(str(url)[:40])}{'...' if len(str(url)) > 40 else ''}</div>
                         </div>
                         """, unsafe_allow_html=True)
                     with desc_cols[2]:
@@ -867,15 +901,18 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         serp_key = current_flow.get('serp_template_key', 'N/A')
                         st.markdown(f"""
                         <div style="font-size: 11px; color: #64748b; padding: 6px 0;">
-                            <strong>SERP URL:</strong> {html.escape(str(serp_url)[:50])}{'...' if len(str(serp_url)) > 50 else ''}<br>
-                            <strong>SERP Key:</strong> {html.escape(str(serp_key))}
+                            <div><strong>SERP URL:</strong></div>
+                            <div style="margin-left: 8px; margin-top: 2px;">{html.escape(str(serp_url)[:50])}{'...' if len(str(serp_url)) > 50 else ''}</div>
+                            <div style="margin-top: 4px;"><strong>SERP Key:</strong></div>
+                            <div style="margin-left: 8px; margin-top: 2px;">{html.escape(str(serp_key))}</div>
                         </div>
                         """, unsafe_allow_html=True)
                     with desc_cols[6]:
                         landing_url = current_flow.get('reporting_destination_url', 'N/A')
                         st.markdown(f"""
                         <div style="font-size: 11px; color: #64748b; padding: 6px 0;">
-                            <strong>Landing URL:</strong> {html.escape(str(landing_url)[:40])}{'...' if len(str(landing_url)) > 40 else ''}
+                            <div><strong>Landing URL:</strong></div>
+                            <div style="margin-left: 8px; margin-top: 2px;">{html.escape(str(landing_url)[:40])}{'...' if len(str(landing_url)) > 40 else ''}</div>
                         </div>
                         """, unsafe_allow_html=True)
                     
@@ -954,7 +991,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             
                             if not iframe_blocked:
                                 try:
-                                    preview_html, height, _ = render_mini_device_preview(pub_url, is_url=True, device=device_all)
+                                    preview_html, height, _ = render_mini_device_preview(pub_url, is_url=True, device=device_all, display_url=pub_url)
                                     preview_html = inject_unique_id(preview_html, 'pub_iframe', pub_url, device_all, current_flow)
                                     display_height = height
                                     st.components.v1.html(preview_html, height=display_height, scrolling=False)
@@ -1549,7 +1586,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             
                             if not iframe_blocked:
                                 try:
-                                    preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all)
+                                    preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all, display_url=adv_url)
                                     preview_html = inject_unique_id(preview_html, 'landing_iframe', adv_url, device_all, current_flow)
                                     display_height = height
                                     st.components.v1.html(preview_html, height=display_height, scrolling=False)
