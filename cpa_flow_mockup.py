@@ -29,7 +29,7 @@ from src.renderers import (
     parse_creative_html
 )
 from src.screenshot import get_screenshot_url, capture_with_playwright
-from src.ui_components import render_flow_combinations_table, render_what_is_flow_section, render_selected_flow_display, render_api_key_info_section
+from src.ui_components import render_flow_combinations_table, render_what_is_flow_section, render_selected_flow_display
 from src.filters import render_advanced_filters, apply_flow_filtering
 from src.flow_display import render_flow_journey
 
@@ -428,9 +428,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             
             # Render "What is Flow" section using module
             render_what_is_flow_section()
-            
-            # Render API key info section
-            render_api_key_info_section()
             
             # Reduce spacing - minimal margin
             st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
