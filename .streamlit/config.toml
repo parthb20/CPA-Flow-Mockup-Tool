@@ -1,0 +1,16 @@
+[theme]
+primaryColor = "#3b82f6"
+backgroundColor = "#f8fafc"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#0f172a"
+font = "sans serif"
+
+[server]
+maxUploadSize = 200
+enableXsrfProtection = true
+enableCORS = false
+
+# Main file for Streamlit Cloud
+# This tells Streamlit Cloud which file to run
+# Uncomment the line below and set your main file:
+# mainFile = "cpa_flow_mockup_v2.py"
