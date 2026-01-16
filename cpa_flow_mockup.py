@@ -20,6 +20,7 @@ import zipfile
 import gzip
 import tempfile
 import os
+from concurrent import futures
 
 # Page config - MUST be first Streamlit command
 st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊", layout="wide")
@@ -802,6 +803,57 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
     </div>
     """, unsafe_allow_html=True)
 
+def render_all_similarity_scores_horizontal(similarities_data):
+    """Render all similarity scores in one horizontal line with all devices, upper and lower bounds"""
+    if not similarities_data:
+        return
+    
+    # Get all three scores
+    kwd_to_ad = similarities_data.get('kwd_to_ad', {})
+    ad_to_page = similarities_data.get('ad_to_page', {})
+    kwd_to_page = similarities_data.get('kwd_to_page', {})
+    
+    scores_data = [
+        ('kwd_to_ad', kwd_to_ad, '🔗 Keyword → Ad'),
+        ('ad_to_page', ad_to_page, '🔗 Ad → Page'),
+        ('kwd_to_page', kwd_to_page, '🔗 Keyword → Page')
+    ]
+    
+    # Create columns for all three scores
+    cols = st.columns(3)
+    
+    for idx, (score_type, data, label) in enumerate(scores_data):
+        with cols[idx]:
+            if not data or 'error' in data:
+                if data and data.get('status_code') == 'no_api_key':
+                    st.info("🔑 Add API key")
+                else:
+                    st.info("⏳ Calculating...")
+                continue
+            
+            score = data.get('final_score', 0)
+            reason = data.get('reason', 'N/A')
+            css_class, score_label, color = get_score_class(score)
+            
+            # Get bounds if available
+            upper_bound = data.get('upper_bound', score)
+            lower_bound = data.get('lower_bound', score)
+            
+            st.markdown(f"""
+            <div style="background: white; border: 2px solid {color}; border-radius: 8px; padding: 14px; margin: 4px 0;">
+                <div style="font-weight: 600; color: #0f172a; font-size: 13px; margin-bottom: 8px;">{label}</div>
+                <div style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; flex-wrap: wrap;">
+                    <div style="font-size: 36px; font-weight: 700; color: {color}; line-height: 1;">{score:.0%}</div>
+                    <div style="font-size: 11px; color: #64748b; display: flex; flex-direction: column; gap: 2px;">
+                        <div><strong>Upper:</strong> {upper_bound:.0%}</div>
+                        <div><strong>Lower:</strong> {lower_bound:.0%}</div>
+                    </div>
+                </div>
+                <div style="font-weight: 600; color: {color}; font-size: 12px; margin-bottom: 4px;">{score_label} Match</div>
+                <div style="font-size: 10px; color: #64748b; line-height: 1.4;">{reason[:75]}{'...' if len(reason) > 75 else ''}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
 def find_default_flow(df):
     """Find the best performing flow - prioritize conversions, then clicks, then impressions"""
     try:
@@ -1163,28 +1215,101 @@ def create_screenshot_html(screenshot_url, device='mobile', referer_domain=None)
 </script>
 </body></html>'''
     else:
-        # Standard img tag for free tier - use proper image loading with error handling
+        # Standard img tag for free tier - use proper image loading with error handling and retry
+        # Escape URL for JavaScript
+        screenshot_url_escaped = screenshot_url.replace("'", "\\'").replace('"', '\\"')
         screenshot_html = f'''<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width={vw}">
-<style>* {{margin:0;padding:0;box-sizing:border-box}} body {{background:#f5f5f5}} img {{width:100%;height:auto;display:block;max-width:100%;}} .error {{padding: 20px; text-align: center; color: #666; background: #fff; border-radius: 8px; margin: 10px;}} .loading {{padding: 20px; text-align: center; color: #999;}}</style>
+<style>* {{margin:0;padding:0;box-sizing:border-box}} body {{background:#f5f5f5}} img {{width:100%;height:auto;display:block;max-width:100%;}} .error {{padding: 20px; text-align: center; color: #dc2626; background: #fef2f2; border: 2px solid #fca5a5; border-radius: 8px; margin: 10px; font-family: system-ui, -apple-system, sans-serif;}} .loading {{padding: 20px; text-align: center; color: #64748b; background: #f8fafc; border-radius: 8px; margin: 10px;}}</style>
 </head><body>
-<div class="loading">Loading screenshot...</div>
+<div class="loading">⏳ Loading screenshot...</div>
 <script>
 (function() {{
-    const img = new Image();
-    img.style.width = '100%';
-    img.style.height = 'auto';
-    img.style.display = 'block';
-    img.onload = function() {{
-        document.body.innerHTML = '';
-        document.body.appendChild(img);
-    }};
-    img.onerror = function() {{
-        const urlShort = '{screenshot_url}'.substring(0, 50);
-        document.body.innerHTML = '<div class="error">⚠️ Screenshot failed to load<br><small>URL: ' + urlShort + '...</small></div>';
-    }};
-    img.src = '{screenshot_url}';
-    img.crossOrigin = 'anonymous';
+    let retryCount = 0;
+    const maxRetries = 3;
+    const screenshotUrl = '{screenshot_url_escaped}';
+    
+    function showError(message) {{
+        document.body.innerHTML = '<div class="error">' + message + '</div>';
+    }}
+    
+    function loadImage() {{
+        const img = new Image();
+        img.style.width = '100%';
+        img.style.height = 'auto';
+        img.style.display = 'block';
+        
+        // Set timeout for image loading (10 seconds)
+        const timeout = setTimeout(function() {{
+            img.onerror = null;
+            img.onload = null;
+            retryCount++;
+            if (retryCount <= maxRetries) {{
+                // Retry with cache busting
+                const separator = screenshotUrl.includes('?') ? '&' : '?';
+                img.src = screenshotUrl + separator + 't=' + Date.now() + '&retry=' + retryCount;
+            }} else {{
+                showError('⚠️ Screenshot failed to load<br><small>Timeout after multiple retries</small><br><small style="font-size: 10px;">URL: ' + screenshotUrl.substring(0, 60) + '...</small><br><br><small>💡 Check VPN/network connection<br>Some URLs require VPN to access</small>');
+            }}
+        }}, 10000);
+        
+        img.onload = function() {{
+            clearTimeout(timeout);
+            document.body.innerHTML = '';
+            document.body.appendChild(img);
+        }};
+        
+        img.onerror = function() {{
+            clearTimeout(timeout);
+            retryCount++;
+            if (retryCount <= maxRetries) {{
+                // Retry with cache busting and delay
+                setTimeout(function() {{
+                    const separator = screenshotUrl.includes('?') ? '&' : '?';
+                    img.src = screenshotUrl + separator + 't=' + Date.now() + '&retry=' + retryCount;
+                }}, 1000 * retryCount); // Exponential backoff
+            }} else {{
+                // Try fetch as last resort
+                fetch(screenshotUrl, {{ 
+                    method: 'GET',
+                    cache: 'no-cache',
+                    headers: {{ 'Accept': 'image/*' }}
+                }})
+                    .then(function(response) {{
+                        if (!response.ok) {{
+                            throw new Error('HTTP ' + response.status);
+                        }}
+                        return response.blob();
+                    }})
+                    .then(function(blob) {{
+                        const blobUrl = URL.createObjectURL(blob);
+                        const fallbackImg = new Image();
+                        fallbackImg.style.width = '100%';
+                        fallbackImg.style.height = 'auto';
+                        fallbackImg.style.display = 'block';
+                        fallbackImg.onload = function() {{
+                            document.body.innerHTML = '';
+                            document.body.appendChild(fallbackImg);
+                        }};
+                        fallbackImg.onerror = function() {{
+                            showError('⚠️ Screenshot failed to load<br><small>Image format error</small><br><br><small>💡 Check VPN/network connection</small>');
+                        }};
+                        fallbackImg.src = blobUrl;
+                    }})
+                    .catch(function(error) {{
+                        const urlShort = screenshotUrl.substring(0, 60);
+                        showError('⚠️ Screenshot failed to load<br><small>Network error: ' + error.message + '</small><br><small style="font-size: 10px;">URL: ' + urlShort + '...</small><br><br><small>💡 This URL may require VPN to access<br>Check your network connection</small>');
+                    }});
+            }}
+        }};
+        
+        // Set crossOrigin before setting src
+        img.crossOrigin = 'anonymous';
+        img.src = screenshotUrl;
+    }}
+    
+    // Start loading after a small delay to ensure DOM is ready
+    setTimeout(loadImage, 100);
 }})();
 </script>
 </body></html>'''
@@ -1519,15 +1644,22 @@ def parse_creative_html(response_str):
         return None, None
 
 
-# Simple title at top (Streamlit handles styling)
-st.title("📊 CPA Flow Analysis v2")
+# Big title at top
+st.markdown("""
+    <h1 style="font-size: 72px; font-weight: 900; color: #0f172a; margin-bottom: 20px; text-align: center; line-height: 1.2;">
+        📊 CPA Flow Analysis v2
+    </h1>
+""", unsafe_allow_html=True)
 
-# Auto-load from Google Drive (silent loading)
+# Auto-load from Google Drive (parallel loading)
 if not st.session_state.loading_done:
-    with st.spinner("Loading data..."):
+    with st.spinner("Loading all data..."):
         try:
-            st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
-            st.session_state.data_b = load_json_from_gdrive(FILE_B_ID)
+            with futures.ThreadPoolExecutor(max_workers=2) as executor:
+                future_a = executor.submit(load_csv_from_gdrive, FILE_A_ID)
+                future_b = executor.submit(load_json_from_gdrive, FILE_B_ID)
+                st.session_state.data_a = future_a.result()
+                st.session_state.data_b = future_b.result()
             st.session_state.loading_done = True
         except Exception as e:
             st.error(f"❌ Error loading data")
@@ -1771,9 +1903,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Single device selector for ALL cards
                 device_all = st.radio("Device for all previews:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='device_all', index=0)
                 
-                # Add a small info bar instead of blank space
+                # Add a small info bar - no white box, inline with selector
                 st.markdown("""
-                <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #3b82f6; padding: 8px 12px; border-radius: 4px; margin: 8px 0;">
+                <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #3b82f6; padding: 8px 12px; border-radius: 4px; margin: 0;">
                     <small style="color: #64748b;">💡 Select a device above to preview how the ad flow appears on different screen sizes</small>
                 </div>
                 """, unsafe_allow_html=True)
@@ -2090,38 +2222,29 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     
                     st.markdown('</div>', unsafe_allow_html=True)
                     
-                    # Creative - Info on RIGHT in vertical mode
+                    # Creative - Info on RIGHT in vertical mode (inline layout)
                     if st.session_state.flow_layout == 'vertical' and stage_2_info_container:
                         with stage_2_info_container:
-                            st.markdown("**🎨 Creative Details**")
+                            # Inline layout - all info in one card
                             creative_size = current_flow.get('creative_size', 'N/A')
-                            st.caption(f"**Size:** {creative_size}")
+                            st.markdown(f"""
+                            <div style="background: white; border-radius: 8px; padding: 12px; margin: 4px 0;">
+                                <div style="font-weight: 600; color: #0f172a; font-size: 13px; margin-bottom: 6px;">🎨 Creative Details</div>
+                                <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">Size: {creative_size}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
                             
-                            # Calculate similarity scores if not already done
+                            # Keyword → Ad similarity score on right of creative (inline)
                             if 'similarities' not in st.session_state or st.session_state.similarities is None:
                                 if API_KEY:
-                                    with st.spinner("🧠 Calculating..."):
-                                        st.session_state.similarities = calculate_similarities(current_flow)
+                                    # Calculate silently, don't show spinner here
+                                    st.session_state.similarities = calculate_similarities(current_flow)
                                 else:
                                     st.session_state.similarities = {}
                             
                             if 'similarities' in st.session_state and st.session_state.similarities:
                                 st.markdown("#### 🔗 Keyword → Ad")
                                 render_similarity_score('kwd_to_ad', st.session_state.similarities)
-                    
-                    # Similarity score: Keyword → Ad below Creative (horizontal mode only)
-                    if st.session_state.flow_layout == 'horizontal':
-                        # Calculate if not already done
-                        if 'similarities' not in st.session_state or st.session_state.similarities is None:
-                            if API_KEY:
-                                with st.spinner("🧠 Calculating similarity scores..."):
-                                    st.session_state.similarities = calculate_similarities(current_flow)
-                            else:
-                                st.session_state.similarities = {}
-                        
-                        if 'similarities' in st.session_state and st.session_state.similarities:
-                            st.markdown("#### 🔗 Keyword → Ad")
-                            render_similarity_score('kwd_to_ad', st.session_state.similarities)
                 
                 if stage_cols:
                     with stage_cols[3]:
@@ -2412,41 +2535,21 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     
                     st.markdown('</div>', unsafe_allow_html=True)
                     
-                    # SERP - Info on RIGHT in vertical mode
+                    # SERP - Info on RIGHT in vertical mode (inline horizontal layout)
                     if st.session_state.flow_layout == 'vertical' and stage_3_info_container:
                         with stage_3_info_container:
-                            st.markdown("**📄 SERP Details**")
                             serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
-                            st.caption(f"**Template:** {serp_name}")
-                            if serp_url:
-                                st.caption(f"**SERP URL:** {serp_url}")
-                                st.markdown(f"[🔗 Open SERP URL]({serp_url})", unsafe_allow_html=True)
-                            
-                            # Calculate similarity scores if not already done
-                            if 'similarities' not in st.session_state or st.session_state.similarities is None:
-                                if API_KEY:
-                                    with st.spinner("🧠 Calculating..."):
-                                        st.session_state.similarities = calculate_similarities(current_flow)
-                                else:
-                                    st.session_state.similarities = {}
-                            
-                            if 'similarities' in st.session_state and st.session_state.similarities:
-                                st.markdown("#### 🔗 Ad → Page")
-                                render_similarity_score('ad_to_page', st.session_state.similarities)
-                    
-                    # Similarity score: Ad → Page below SERP (horizontal mode only)
-                    if st.session_state.flow_layout == 'horizontal':
-                        # Calculate if not already done
-                        if 'similarities' not in st.session_state or st.session_state.similarities is None:
-                            if API_KEY:
-                                with st.spinner("🧠 Calculating similarity scores..."):
-                                    st.session_state.similarities = calculate_similarities(current_flow)
-                            else:
-                                st.session_state.similarities = {}
-                        
-                        if 'similarities' in st.session_state and st.session_state.similarities:
-                            st.markdown("#### 🔗 Ad → Page")
-                            render_similarity_score('ad_to_page', st.session_state.similarities)
+                            # Inline horizontal layout - all info in one line where possible
+                            st.markdown(f"""
+                            <div style="background: white; border-radius: 8px; padding: 12px; margin: 4px 0;">
+                                <div style="font-weight: 600; color: #0f172a; font-size: 13px; margin-bottom: 6px;">📄 SERP Details</div>
+                                <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 4px;">
+                                    <span style="font-size: 12px; color: #64748b;"><strong>Template:</strong> {serp_name}</span>
+                                </div>
+                                {f'<div style="font-size: 11px; color: #64748b; word-break: break-all; margin-bottom: 4px;">{serp_url}</div>' if serp_url else ''}
+                                {f'<a href="{serp_url}" target="_blank" style="font-size: 12px; color: #3b82f6; text-decoration: none; display: inline-block;">🔗 Open SERP URL</a>' if serp_url else ''}
+                            </div>
+                            """, unsafe_allow_html=True)
                 
                 if stage_cols:
                     with stage_cols[5]:
@@ -2638,32 +2741,35 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             if adv_url and pd.notna(adv_url):
                                 st.caption(f"**Landing URL:** {adv_url}")
                                 st.markdown(f"[🔗 Open full URL]({adv_url})", unsafe_allow_html=True)
-                            
-                            # Calculate similarity scores if not already done
-                            if 'similarities' not in st.session_state or st.session_state.similarities is None:
-                                if API_KEY:
-                                    with st.spinner("🧠 Calculating..."):
-                                        st.session_state.similarities = calculate_similarities(current_flow)
-                                else:
-                                    st.session_state.similarities = {}
-                            
-                            if 'similarities' in st.session_state and st.session_state.similarities:
-                                st.markdown("#### 🔗 Keyword → Page")
-                                render_similarity_score('kwd_to_page', st.session_state.similarities)
-                    
-                    # Similarity score: Keyword → Page below Landing Page (horizontal mode only)
-                    if st.session_state.flow_layout == 'horizontal':
-                        # Calculate if not already done
-                        if 'similarities' not in st.session_state or st.session_state.similarities is None:
-                            if API_KEY:
-                                with st.spinner("🧠 Calculating similarity scores..."):
-                                    st.session_state.similarities = calculate_similarities(current_flow)
-                            else:
-                                st.session_state.similarities = {}
-                        
-                        if 'similarities' in st.session_state and st.session_state.similarities:
-                            st.markdown("#### 🔗 Keyword → Page")
-                            render_similarity_score('kwd_to_page', st.session_state.similarities)
+                
+                # Similarity Scores Section - Separate horizontal section after all stages
+                st.divider()
+                st.markdown("""
+                    <h2 style="font-size: 32px; font-weight: 700; color: #0f172a; margin: 30px 0 15px 0;">
+                        🧠 Similarity Scores
+                    </h2>
+                """, unsafe_allow_html=True)
+                
+                # Calculate similarity scores if not already done (do it silently, show results)
+                if 'similarities' not in st.session_state or st.session_state.similarities is None:
+                    if API_KEY:
+                        # Calculate without showing spinner inline - use placeholder
+                        placeholder = st.empty()
+                        placeholder.info("🧠 Calculating similarity scores...")
+                        try:
+                            st.session_state.similarities = calculate_similarities(current_flow)
+                            placeholder.empty()
+                        except Exception as e:
+                            placeholder.error(f"Error calculating scores: {str(e)[:100]}")
+                            st.session_state.similarities = {}
+                    else:
+                        st.session_state.similarities = {}
+                
+                # Render all similarity scores in one horizontal line
+                if 'similarities' in st.session_state and st.session_state.similarities:
+                    render_all_similarity_scores_horizontal(st.session_state.similarities)
+                else:
+                    st.info("⏳ Similarity scores will be calculated after data loads")
             
             else:
                 st.warning("No data available for this campaign")
