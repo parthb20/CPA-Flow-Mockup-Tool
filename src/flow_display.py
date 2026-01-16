@@ -167,6 +167,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         pub_url = current_flow.get('publisher_url', '')
         preview_container = card_col_left if st.session_state.flow_layout == 'vertical' and card_col_left else stage_1_container
         
+        # Render card immediately after title - no info above
         if pub_url and pub_url != 'NOT_FOUND' and pd.notna(pub_url) and str(pub_url).strip():
             with preview_container:
                 try:
@@ -370,13 +371,14 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             with preview_container:
                 st.warning("⚠️ No valid publisher URL in data")
         
+        # Show Domain and URL BELOW the rendered frame ONLY (no duplicates above)
+        # For vertical layout: show in right column
         if st.session_state.flow_layout == 'vertical' and card_col_right:
             with card_col_right:
                 st.markdown("""
                 <div style="margin-bottom: 12px;">
                     <span style="font-weight: 900; color: #0f172a; font-size: 18px;">
                         📰 Publisher URL Details
-                        <span title="Similarity scores measure how well different parts of your ad flow match: Keyword → Ad (ad matches keyword), Ad → Page (landing page matches ad), Keyword → Page (overall flow consistency)" style="cursor: help; color: #3b82f6; font-size: 12px; margin-left: 4px;">ℹ️</span>
                     </span>
                 </div>
                 """, unsafe_allow_html=True)
@@ -388,8 +390,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 </div>
                 """, unsafe_allow_html=True)
         
-        # Show info BELOW card preview in horizontal layout
-        if st.session_state.flow_layout == 'horizontal' and st.session_state.view_mode == 'basic':
+        # For horizontal layout: show BELOW the frame (AFTER all card rendering completes)
+        if st.session_state.flow_layout == 'horizontal':
+            # Info goes in stage_1_container AFTER the card rendering block
             st.markdown(f"""
             <div style='margin-top: 8px; font-size: 13px;'>
                 <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Domain</strong></div>
@@ -491,9 +494,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     st.markdown("<h4 style='font-size: 18px; font-weight: 700; color: #0f172a; margin: 12px 0 8px 0;'>🔗 Keyword → Ad Copy Similarity</h4>", unsafe_allow_html=True)
                     render_similarity_score('kwd_to_ad', st.session_state.similarities)
         
-        # Show keyword BELOW card preview in horizontal layout
-        if st.session_state.flow_layout == 'horizontal' and st.session_state.view_mode == 'basic':
+        # Show keyword BELOW card preview (horizontal layout only - vertical shows in right column)
+        if st.session_state.flow_layout == 'horizontal':
             keyword = current_flow.get('keyword_term', 'N/A')
+            # Info goes in stage_2_container AFTER the card rendering block
             st.markdown(f"""
             <div style='margin-top: 8px; font-size: 13px;'>
                 <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Keyword</strong></div>
@@ -535,11 +539,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
         serp_key = current_flow.get('serp_template_key', 'N/A')
         
-        # SERP info removed from above card - will be shown BELOW card preview
+        # Define preview container - cards come immediately after title
+        serp_preview_container = serp_card_left if st.session_state.flow_layout == 'vertical' and serp_card_left else stage_3_container
         
-        if st.session_state.flow_layout != 'horizontal':
-            st.caption(f"**Template:** {serp_name}")
-        
+        # Cards come immediately after title - no info above
         ad_title = current_flow.get('ad_title', '')
         ad_desc = current_flow.get('ad_description', '')
         ad_display_url = current_flow.get('ad_display_url', '')
@@ -552,8 +555,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             if (is_dict and len(st.session_state.data_b) > 0) or (is_list and len(st.session_state.data_b) > 0):
                 serp_html = generate_serp_mockup(current_flow, st.session_state.data_b)
         
-        serp_preview_container = serp_card_left if st.session_state.flow_layout == 'vertical' and serp_card_left else stage_3_container
-        
+        # Render card immediately after title
         if serp_html and serp_html.strip():
             with serp_preview_container:
                 preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
@@ -740,9 +742,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 st.markdown("<h4 style='font-size: 18px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0;'>📄 SERP Details</h4>", unsafe_allow_html=True)
                 st.markdown(f"""
                 <div style="margin-bottom: 12px; font-size: 13px;">
-                    <div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>Template</strong></div>
-                    <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;">{html.escape(str(serp_name))}</div>
-                    {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{serp_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(serp_url))}</a></div>' if serp_url else ''}
+                    <div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>SERP Key</strong></div>
+                    <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;">{html.escape(str(serp_key))}</div>
+                    {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>SERP URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{serp_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(serp_url))}</a></div>' if serp_url and serp_url != 'N/A' else ''}
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -757,11 +759,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                            custom_title="Ad Copy → Landing Page Similarity",
                                            tooltip_text="Measures how well the landing page fulfills the promises made in the ad copy. Higher scores indicate better ad-page consistency.")
         
-        # Show SERP info BELOW card preview in horizontal layout
-        if st.session_state.flow_layout == 'horizontal' and st.session_state.view_mode == 'basic':
-            serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
-            serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
-            serp_key = current_flow.get('serp_template_key', 'N/A')
+        # Show SERP info BELOW card for horizontal layout (no duplicates)
+        if st.session_state.flow_layout == 'horizontal':
+            # Info goes in stage_3_container AFTER the card rendering block
             st.markdown(f"""
             <div style='margin-top: 8px; font-size: 13px;'>
                 <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>SERP Key</strong></div>
@@ -1015,14 +1015,15 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                            custom_title="Keyword → Landing Page Similarity",
                                            tooltip_text="Measures overall flow consistency from keyword to landing page. Higher scores indicate better end-to-end alignment.")
         
-        # Show Landing URL BELOW card preview in horizontal layout
-        if st.session_state.flow_layout == 'horizontal' and st.session_state.view_mode == 'basic':
+        # Show Landing URL BELOW card preview (horizontal layout only - vertical shows in right column)
+        if st.session_state.flow_layout == 'horizontal':
             adv_url = current_flow.get('reporting_destination_url', '')
-            if adv_url and pd.notna(adv_url):
+            # Info goes in stage_4_container AFTER the card rendering block
+            if adv_url and pd.notna(adv_url) and str(adv_url).strip():
                 st.markdown(f"""
                 <div style='margin-top: 8px; font-size: 13px;'>
                     <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Landing URL</strong></div>
-                    <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;'>{html.escape(str(adv_url))}</div>
+                    <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;'><a href="{adv_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(adv_url))}</a></div>
                 </div>
                 """, unsafe_allow_html=True)
     
