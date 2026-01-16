@@ -38,10 +38,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         thumio_configured: Boolean indicating if Thum.io is configured
         thumio_referer_domain: Thum.io referer domain
     """
-    # Add Flow Journey heading with minimal spacing
+    # Add Flow Journey heading with minimal spacing - ensure it's visible
     st.markdown("<div style='margin-top: 2px; margin-bottom: 2px;'></div>", unsafe_allow_html=True)
     st.markdown("""
-    <h2 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0;">🔄 Flow Journey</h2>
+    <h2 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 8px 0 12px 0; display: block;">🔄 Flow Journey</h2>
     """, unsafe_allow_html=True)
     
     # Single device selector for ALL cards with tooltip - highlighted
@@ -87,20 +87,34 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             border: 1px solid #e2e8f0;
             border-radius: 8px;
             padding: 12px;
-            padding-top: 8px !important;
+            padding-top: 0 !important;
             background: #ffffff;
             margin-top: 0 !important;
             margin-bottom: 0;
             align-items: stretch;
         }
-        /* Remove any extra spacing from Streamlit containers */
+        /* Remove ALL extra spacing from Streamlit containers */
         .stage-card-wrapper > *:first-child {
             margin-top: 0 !important;
+            padding-top: 0 !important;
         }
-        /* Ensure all cards align at the top */
+        /* Ensure all cards align at the top - remove all spacing */
         .stage-card-wrapper h3 {
             margin-top: 0 !important;
             padding-top: 0 !important;
+            margin-bottom: 8px !important;
+        }
+        /* Remove spacing from any divs inside wrapper */
+        .stage-card-wrapper > div {
+            margin-top: 0 !important;
+        }
+        /* Ensure columns align perfectly at top */
+        [data-testid="column"]:has(.stage-card-wrapper) {
+            align-items: flex-start !important;
+        }
+        /* Remove any Streamlit default spacing */
+        .element-container {
+            margin-top: 0 !important;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -139,7 +153,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     with stage_1_container:
         # Wrap content in consistent container for alignment in horizontal layout
         if st.session_state.flow_layout == 'horizontal':
-            st.markdown('<div class="stage-card-wrapper" style="margin-top: 0; padding-top: 8px;">', unsafe_allow_html=True)
+            st.markdown('<div class="stage-card-wrapper">', unsafe_allow_html=True)
         
         if st.session_state.flow_layout == 'vertical':
             card_col_left, card_col_right = st.columns([0.6, 0.4])
@@ -408,7 +422,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     with stage_2_container:
         # Wrap content in consistent container for alignment in horizontal layout
         if st.session_state.flow_layout == 'horizontal':
-            st.markdown('<div class="stage-card-wrapper" style="margin-top: 0; padding-top: 8px;">', unsafe_allow_html=True)
+            st.markdown('<div class="stage-card-wrapper">', unsafe_allow_html=True)
         
         if st.session_state.flow_layout == 'vertical':
             creative_card_left, creative_card_right = st.columns([0.5, 0.5])
@@ -531,7 +545,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     with stage_3_container:
         # Wrap content in consistent container for alignment in horizontal layout
         if st.session_state.flow_layout == 'horizontal':
-            st.markdown('<div class="stage-card-wrapper" style="margin-top: 0; padding-top: 8px;">', unsafe_allow_html=True)
+            st.markdown('<div class="stage-card-wrapper">', unsafe_allow_html=True)
         
         if st.session_state.flow_layout == 'vertical':
             serp_card_left, serp_card_right = st.columns([0.6, 0.4])
@@ -803,7 +817,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     with stage_4_container:
         # Wrap content in consistent container for alignment in horizontal layout
         if st.session_state.flow_layout == 'horizontal':
-            st.markdown('<div class="stage-card-wrapper" style="margin-top: 0; padding-top: 8px;">', unsafe_allow_html=True)
+            st.markdown('<div class="stage-card-wrapper">', unsafe_allow_html=True)
         
         if st.session_state.flow_layout == 'vertical':
             landing_card_left, landing_card_right = st.columns([0.6, 0.4])
@@ -1046,9 +1060,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     
     # Similarity Scores Section for Horizontal Layout
     if st.session_state.flow_layout == 'horizontal':
-        st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-top: 8px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
         st.markdown("""
-            <h2 style="font-size: 28px; font-weight: 700; color: #0f172a; margin: 20px 0 15px 0;">
+            <h2 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 12px 0 15px 0; display: block;">
                 🧠 Similarity Scores
             </h2>
         """, unsafe_allow_html=True)
