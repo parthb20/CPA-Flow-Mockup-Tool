@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Similarity calculation functions
 """
@@ -5,6 +6,8 @@ Similarity calculation functions
 import streamlit as st
 import requests
 import pandas as pd
+import json
+import re
 from bs4 import BeautifulSoup
 from src.utils import safe_float
 
@@ -12,7 +15,7 @@ from src.utils import safe_float
 def call_similarity_api(prompt):
     """Call FastRouter API for similarity scoring"""
     try:
-        API_KEY = st.secrets.get("FASTROUTER_API_KEY", st.secrets.get("OPENAI_API_KEY", ""), "")
+        API_KEY = st.secrets.get("FASTROUTER_API_KEY") or st.secrets.get("OPENAI_API_KEY", "")
     except:
         API_KEY = ""
     
