@@ -18,15 +18,18 @@ except:
 def get_screenshot_url(url, device='mobile', full_page=False):
     """Generate thum.io screenshot URL"""
     try:
-        # Correct way to access Streamlit secrets - check if key exists first
-        if "SCREENSHOT_API_KEY" in st.secrets:
+        # Safe way to access Streamlit secrets
+        SCREENSHOT_API_KEY = ""
+        THUMIO_REFERER_DOMAIN = ""
+        
+        try:
             SCREENSHOT_API_KEY = str(st.secrets["SCREENSHOT_API_KEY"]).strip()
-        else:
+        except (KeyError, AttributeError, TypeError):
             SCREENSHOT_API_KEY = ""
         
-        if "THUMIO_REFERER_DOMAIN" in st.secrets:
+        try:
             THUMIO_REFERER_DOMAIN = str(st.secrets["THUMIO_REFERER_DOMAIN"]).strip()
-        else:
+        except (KeyError, AttributeError, TypeError):
             THUMIO_REFERER_DOMAIN = ""
         
         # Ensure URL is properly formatted
