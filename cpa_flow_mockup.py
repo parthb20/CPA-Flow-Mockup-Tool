@@ -331,10 +331,18 @@ if not st.session_state.loading_done:
 view_col1, view_col2, view_col3 = st.columns([1, 1, 4])
 with view_col1:
     if st.button("📊 Basic View", type="primary" if st.session_state.view_mode == 'basic' else "secondary"):
+        # Preserve current flow when switching modes
+        if 'current_flow' in st.session_state and st.session_state.current_flow:
+            # Keep the current flow, don't reset it
+            pass
         st.session_state.view_mode = 'basic'
         st.rerun()
 with view_col2:
     if st.button("⚙️ Advanced View", type="primary" if st.session_state.view_mode == 'advanced' else "secondary"):
+        # Preserve current flow when switching modes
+        if 'current_flow' in st.session_state and st.session_state.current_flow:
+            # Keep the current flow, don't reset it
+            pass
         st.session_state.view_mode = 'advanced'
         st.rerun()
 
@@ -429,7 +437,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             # Render "What is Flow" section using module
             render_what_is_flow_section()
             
-            # Minimal spacing
+            # Minimal spacing before Flow Journey
             st.markdown("<div style='margin-top: 2px; margin-bottom: 2px;'></div>", unsafe_allow_html=True)
             
             # Find default flow if not set
