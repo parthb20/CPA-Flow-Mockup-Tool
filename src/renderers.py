@@ -343,7 +343,7 @@ def create_screenshot_html(screenshot_url, device='mobile', referer_domain=None)
                 }}, 1000 * retryCount);
             }} else {{
                 const urlShort = screenshotUrl.substring(0, 60);
-                showError('⚠️ Screenshot failed to load<br><small>Network error</small><br><small style="font-size: 10px;">URL: ' + urlShort + '...</small><br><br><small>💡 This URL may require VPN to access<br>Check your network connection</small>');
+                showError('⚠️ Screenshot failed to load<br><small>Network error - Thum.io API issue</small><br><small style="font-size: 10px;">URL: ' + urlShort + '...</small><br><br><small>💡 This may be a Thum.io API limitation or rate limit<br>Try refreshing or check if the URL is accessible</small>');
             }}
         }};
         
