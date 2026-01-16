@@ -1013,7 +1013,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     elif device == 'tablet':
         device_w = 820
         container_height = 1180
-        scale = 0.25
+        scale = 0.4  # Increased for readability
         frame_style = "border-radius: 16px; border: 12px solid #1f2937;"
         
         # Tablet chrome
@@ -1079,15 +1079,38 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         <meta name="viewport" content="width={device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <meta charset="utf-8">
         <style>
-            body {{ margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }}
-            .device-chrome {{ width: 100%; background: white; }}
+            body {{ 
+                margin: 0; 
+                padding: 0; 
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                width: {device_w}px;
+                max-width: {device_w}px;
+                overflow-x: hidden;
+            }}
+            .device-chrome {{ 
+                width: 100%; 
+                max-width: {device_w}px;
+                background: white; 
+            }}
             .content-area {{ 
+                width: {device_w}px;
+                max-width: {device_w}px;
                 height: calc(100vh - {'90px' if device == 'mobile' else '60px' if device == 'tablet' else '52px'}); 
                 overflow-y: auto; 
                 overflow-x: hidden;
                 -webkit-overflow-scrolling: touch; /* Smooth scrolling on mobile */
             }}
-            /* Don't interfere with template's own CSS - let it handle responsive design */
+            /* Constrain all content to device width - prevent SERP clipping */
+            .content-area * {{
+                max-width: {device_w}px !important;
+                box-sizing: border-box !important;
+            }}
+            /* Ensure no horizontal overflow */
+            html, body {{
+                overflow-x: hidden !important;
+                width: {device_w}px !important;
+                max-width: {device_w}px !important;
+            }}
         </style>
     </head>
     <body>
@@ -2607,7 +2630,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             # Render using device preview - preserve original template styling completely
                             preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
                             preview_html = inject_unique_id(preview_html, 'serp_template', serp_url or '', device_all, current_flow)
-                            display_height = min(height, 200) if st.session_state.flow_layout == 'horizontal' else height
+                            display_height = height  # No height limit in horizontal mode - let it be readable
                             st.components.v1.html(preview_html, height=display_height, scrolling=False)
                             if st.session_state.flow_layout != 'horizontal':
                                 st.caption("📺 SERP (from template)")
