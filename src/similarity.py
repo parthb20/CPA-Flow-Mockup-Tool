@@ -17,13 +17,15 @@ def call_similarity_api(prompt):
     # Safe way to access Streamlit secrets
     API_KEY = ""
     
+    # Safe way to access Streamlit secrets - catch all exceptions
+    # Note: StreamlitSecretNotFoundError inherits from Exception, so catching Exception works
     try:
         try:
             API_KEY = str(st.secrets["FASTROUTER_API_KEY"]).strip()
-        except (KeyError, AttributeError, TypeError):
+        except Exception:
             try:
                 API_KEY = str(st.secrets["OPENAI_API_KEY"]).strip()
-            except (KeyError, AttributeError, TypeError):
+            except Exception:
                 API_KEY = ""
     except Exception as e:
         return {
