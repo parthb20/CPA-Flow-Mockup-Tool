@@ -85,18 +85,18 @@ st.markdown("""
     /* Don't override the main title - it has its own inline styles */
     h1:not(.main-title) { font-weight: 700 !important; font-size: 32px !important; }
     
-    /* Ensure main title is properly sized - override everything */
-    .main-title {
-        font-size: 48px !important;
-        font-weight: 900 !important;
-        color: #0f172a !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        line-height: 1.3 !important;
-        letter-spacing: 0.01em !important;
-        word-spacing: normal !important;
-        white-space: normal !important;
-    }
+                /* Ensure main title is properly sized - override everything - VERY BIG */
+                .main-title {
+                    font-size: 72px !important;
+                    font-weight: 900 !important;
+                    color: #0f172a !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    line-height: 1.3 !important;
+                    letter-spacing: 0.01em !important;
+                    word-spacing: normal !important;
+                    white-space: normal !important;
+                }
     
     h2 { font-weight: 700 !important; font-size: 26px !important; }
     h3 { font-weight: 700 !important; font-size: 22px !important; }
@@ -1693,10 +1693,9 @@ def parse_creative_html(response_str):
 # Proper SaaS-style title - REALLY BIG and BOLD (like a logo) - removed v2
 st.markdown("""
     <div style="margin-bottom: 15px; padding-bottom: 12px; border-bottom: 3px solid #e2e8f0;">
-        <h1 class="main-title" style="font-size: 48px !important; font-weight: 900 !important; color: #0f172a !important; margin: 0 !important; padding: 0 !important; text-align: left !important; line-height: 1.3 !important; letter-spacing: 0.01em !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif !important; text-shadow: 1px 1px 2px rgba(0,0,0,0.1) !important; pointer-events: none !important; user-select: none !important; word-spacing: normal !important;">
-            📊 CPA Flow Analysis
-        </h1>
-        <p style="font-size: 18px; color: #64748b; margin: 8px 0 0 0; font-weight: 400;">Analyze and optimize your ad flow performance</p>
+                        <h1 class="main-title" style="font-size: 72px !important; font-weight: 900 !important; color: #0f172a !important; margin: 0 !important; padding: 0 !important; text-align: left !important; line-height: 1.3 !important; letter-spacing: 0.01em !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif !important; text-shadow: 1px 1px 2px rgba(0,0,0,0.1) !important; pointer-events: none !important; user-select: none !important; word-spacing: normal !important;">
+                            📊 CPA Flow Analysis
+                        </h1>
     </div>
 """, unsafe_allow_html=True)
 
@@ -1802,10 +1801,17 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 agg_df['CTR'] = agg_df.apply(lambda x: (x['clicks']/x['impressions']*100) if x['impressions']>0 else 0, axis=1)
                 agg_df['CVR'] = agg_df.apply(lambda x: (x['conversions']/x['clicks']*100) if x['clicks']>0 else 0, axis=1)
                 
-                # Sort by conversions and show top 20
-                agg_df = agg_df.sort_values('conversions', ascending=False).head(20).reset_index(drop=True)
+                # Calculate weighted averages for CTR and CVR
+                # CTR weighted by impressions, CVR weighted by clicks
+                total_imps = agg_df['impressions'].sum()
+                total_clicks = agg_df['clicks'].sum()
+                weighted_avg_ctr = (agg_df['clicks'].sum() / total_imps * 100) if total_imps > 0 else 0
+                weighted_avg_cvr = (agg_df['conversions'].sum() / total_clicks * 100) if total_clicks > 0 else 0
                 
-                # Create styled table with white background, black text, and conditional CTR/CVR colors
+                # Sort by conversions and show top 10 only
+                agg_df = agg_df.sort_values('conversions', ascending=False).head(10).reset_index(drop=True)
+                
+                # Create styled table with white background, black text, borders, and conditional CTR/CVR colors
                 table_html = """
                 <style>
                 .flow-table {
@@ -1814,6 +1820,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     background: white !important;
                     margin: 10px 0;
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                    border: 1px solid #e2e8f0;
                 }
                 .flow-table th {
                     background: #f8fafc !important;
@@ -1821,15 +1828,23 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     font-weight: 700;
                     padding: 12px;
                     text-align: left;
-                    border-bottom: 2px solid #e2e8f0;
+                    border-bottom: 2px solid #cbd5e1;
+                    border-right: 1px solid #e2e8f0;
                     font-size: 14px;
+                }
+                .flow-table th:last-child {
+                    border-right: none;
                 }
                 .flow-table td {
                     padding: 10px 12px;
                     border-bottom: 1px solid #e2e8f0;
+                    border-right: 1px solid #e2e8f0;
                     color: #000000 !important;
                     background: white !important;
                     font-size: 13px;
+                }
+                .flow-table td:last-child {
+                    border-right: none;
                 }
                 .flow-table tr {
                     background: white !important;
@@ -1860,16 +1875,16 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     ctr_val = row['CTR']
                     cvr_val = row['CVR']
                     
-                    # Determine CTR color (light green if >= avg, light red if < avg)
-                    if ctr_val >= avg_ctr:
+                    # Determine CTR color (light green if >= weighted avg, light red if < weighted avg)
+                    if ctr_val >= weighted_avg_ctr:
                         ctr_bg = "#dcfce7"  # light green
                         ctr_color = "#166534"  # dark green text
                     else:
                         ctr_bg = "#fee2e2"  # light red
                         ctr_color = "#991b1b"  # dark red text
                     
-                    # Determine CVR color (light green if >= avg, light red if < avg)
-                    if cvr_val >= avg_cvr:
+                    # Determine CVR color (light green if >= weighted avg, light red if < weighted avg)
+                    if cvr_val >= weighted_avg_cvr:
                         cvr_bg = "#dcfce7"  # light green
                         cvr_color = "#166534"  # dark green text
                     else:
@@ -1897,8 +1912,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 </table>
                 """
                 
-                # Use components.v1.html to ensure proper rendering
-                st.components.v1.html(table_html, height=600, scrolling=True)
+                # Calculate dynamic height based on number of rows (min 200px, ~50px per row)
+                num_rows = len(agg_df)
+                table_height = max(200, 80 + (num_rows * 45))  # Header + rows
+                
+                # Use components.v1.html to ensure proper rendering - dynamic height
+                st.components.v1.html(table_html, height=table_height, scrolling=False)
             else:
                 st.warning("Could not generate table - missing required columns")
             
@@ -1947,6 +1966,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         st.rerun()
                 
                 # Advanced mode: Show keyword and domain filters
+                filters_changed = False
                 if st.session_state.view_mode == 'advanced':
                     with layout_col3:
                         st.markdown("")  # spacing
@@ -1959,97 +1979,198 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     filter_col1, filter_col2 = st.columns(2)
                     with filter_col1:
                         keywords = sorted(campaign_df['keyword_term'].dropna().unique().tolist())
-                        selected_keyword_filter = st.selectbox("🔑 Filter by Keyword:", ['All'] + keywords, key='kw_filter_adv')
+                        current_kw_val = current_flow.get('keyword_term', '')
+                        default_kw_idx = 0
+                        if current_kw_val in keywords:
+                            default_kw_idx = keywords.index(current_kw_val) + 1  # +1 because 'All' is first
+                        selected_keyword_filter = st.selectbox("🔑 Filter by Keyword:", ['All'] + keywords, index=default_kw_idx, key='kw_filter_adv')
                     
                     with filter_col2:
                         if 'publisher_domain' in campaign_df.columns:
                             domains = sorted(campaign_df['publisher_domain'].dropna().unique().tolist())
-                            selected_domain_filter = st.selectbox("🌐 Filter by Domain:", ['All'] + domains, key='dom_filter_adv')
+                            current_dom_val = current_flow.get('publisher_domain', '')
+                            default_dom_idx = 0
+                            if current_dom_val in domains:
+                                default_dom_idx = domains.index(current_dom_val) + 1  # +1 because 'All' is first
+                            selected_domain_filter = st.selectbox("🌐 Filter by Domain:", ['All'] + domains, index=default_dom_idx, key='dom_filter_adv')
+                    
+                    # Check if filters were changed from default/current flow
+                    if selected_keyword_filter != 'All' and selected_keyword_filter != current_kw_val:
+                        filters_changed = True
+                    if selected_domain_filter != 'All' and selected_domain_filter != current_dom_val:
+                        filters_changed = True
                 
                 # Reduce spacing - minimal margin instead of divider
                 st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
                 
-                # Show selected flow details
-                st.info(f"""
-                **🎯 Selected Flow:**
-                • Keyword: {current_flow.get('keyword_term', 'N/A')}
-                • Domain: {current_flow.get('publisher_domain', 'N/A')}
-                • SERP: {current_flow.get('serp_template_name', 'N/A')}
-                • Impressions: {safe_int(current_flow.get('impressions', 0)):,}
-                • Clicks: {safe_int(current_flow.get('clicks', 0)):,}
-                • Conversions: {safe_int(current_flow.get('conversions', 0)):,}
-                """)
-                
+                # Apply filtering logic based on view mode and filter changes
                 if st.session_state.view_mode == 'basic':
-                    st.success("✨ Auto-selected based on best performance")
+                    # Basic view: Use default flow (already set, no changes needed)
+                    final_filtered = campaign_df[
+                        (campaign_df['keyword_term'] == current_flow.get('keyword_term', '')) &
+                        (campaign_df['publisher_domain'] == current_flow.get('publisher_domain', ''))
+                    ]
+                    if 'serp_template_name' in campaign_df.columns:
+                        final_filtered = final_filtered[final_filtered['serp_template_name'] == current_flow.get('serp_template_name', '')]
+                    if len(final_filtered) > 0:
+                        if 'timestamp' in final_filtered.columns:
+                            best_view = final_filtered.loc[final_filtered['timestamp'].idxmax()]
+                        else:
+                            best_view = final_filtered.iloc[0]
+                        current_flow.update(best_view.to_dict())
+                
+                elif st.session_state.view_mode == 'advanced' and filters_changed:
+                    # Advanced view WITH filter changes: Apply new logic (filter -> auto-select SERP -> max timestamp)
+                    keywords = sorted(campaign_df['keyword_term'].dropna().unique().tolist())
+                    
+                    # Filter based on user selections
+                    if selected_keyword_filter != 'All':
+                        current_kw = selected_keyword_filter
+                    else:
+                        current_kw = current_flow.get('keyword_term', keywords[0] if keywords else '')
+                    kw_filtered = campaign_df[campaign_df['keyword_term'] == current_kw]
+                    
+                    if selected_domain_filter != 'All':
+                        current_dom = selected_domain_filter
+                    else:
+                        domains = sorted(kw_filtered['publisher_domain'].dropna().unique().tolist()) if 'publisher_domain' in kw_filtered.columns else []
+                        current_dom = current_flow.get('publisher_domain', domains[0] if domains else '')
+                    dom_filtered = kw_filtered[kw_filtered['publisher_domain'] == current_dom] if current_dom else kw_filtered
+                    
+                    # Get unique URLs without sorting to preserve full URL
+                    urls = dom_filtered['publisher_url'].dropna().unique().tolist() if 'publisher_url' in dom_filtered.columns else []
+                    current_url = current_flow.get('publisher_url', urls[0] if urls else '')
+                    url_filtered = dom_filtered[dom_filtered['publisher_url'] == current_url] if urls else dom_filtered
+                    
+                    # Auto-select SERP: most convs (then clicks, then imps)
+                    serps = []
+                    if 'serp_template_name' in url_filtered.columns:
+                        serps = sorted(url_filtered['serp_template_name'].dropna().unique().tolist())
+                    
+                    if serps:
+                        # Group by SERP and calculate metrics
+                        serp_agg = url_filtered.groupby('serp_template_name').agg({
+                            'conversions': 'sum',
+                            'clicks': 'sum',
+                            'impressions': 'sum'
+                        }).reset_index()
+                        
+                        # Select SERP with most conversions, then clicks, then imps
+                        if serp_agg['conversions'].sum() > 0:
+                            best_serp = serp_agg.loc[serp_agg['conversions'].idxmax(), 'serp_template_name']
+                        elif serp_agg['clicks'].sum() > 0:
+                            best_serp = serp_agg.loc[serp_agg['clicks'].idxmax(), 'serp_template_name']
+                        else:
+                            best_serp = serp_agg.loc[serp_agg['impressions'].idxmax(), 'serp_template_name']
+                        
+                        current_serp = best_serp
+                        current_flow['serp_template_name'] = best_serp
+                    else:
+                        current_serp = current_flow.get('serp_template_name', '')
+                    
+                    final_filtered = url_filtered[url_filtered['serp_template_name'] == current_serp] if serps and current_serp else url_filtered
+                    
+                    if len(final_filtered) > 0:
+                        # Select view_id with max timestamp
+                        if 'timestamp' in final_filtered.columns:
+                            best_view = final_filtered.loc[final_filtered['timestamp'].idxmax()]
+                        else:
+                            best_view = final_filtered.iloc[0]
+                        current_flow.update(best_view.to_dict())
+                        # Update keyword and domain in current_flow
+                        current_flow['keyword_term'] = current_kw
+                        current_flow['publisher_domain'] = current_dom
+                        if urls:
+                            current_flow['publisher_url'] = current_url
+                
                 else:
-                    st.success("✨ Use filters above to change flow")
-                
-                # Reduce spacing before Flow Journey
-                st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
-                
-                # Build filter data
-                keywords = sorted(campaign_df['keyword_term'].dropna().unique().tolist())
-                
-                # Filter based on selections
-                current_kw = current_flow.get('keyword_term', keywords[0] if keywords else '')
-                kw_filtered = campaign_df[campaign_df['keyword_term'] == current_kw]
-                
-                domains = sorted(kw_filtered['publisher_domain'].dropna().unique().tolist()) if 'publisher_domain' in kw_filtered.columns else []
-                current_dom = current_flow.get('publisher_domain', domains[0] if domains else '')
-                dom_filtered = kw_filtered[kw_filtered['publisher_domain'] == current_dom] if domains else kw_filtered
-                
-                # Get unique URLs without sorting to preserve full URL
-                urls = dom_filtered['publisher_url'].dropna().unique().tolist() if 'publisher_url' in dom_filtered.columns else []
-                current_url = current_flow.get('publisher_url', urls[0] if urls else '')
-                url_filtered = dom_filtered[dom_filtered['publisher_url'] == current_url] if urls else dom_filtered
-                
-                serps = []
-                if 'serp_template_name' in url_filtered.columns:
-                    serps = sorted(url_filtered['serp_template_name'].dropna().unique().tolist())
-                current_serp = current_flow.get('serp_template_name', serps[0] if serps else '')
-                final_filtered = url_filtered[url_filtered['serp_template_name'] == current_serp] if serps else url_filtered
-                
-                if len(final_filtered) > 0:
-                    current_flow.update(final_filtered.iloc[0].to_dict())
+                    # Advanced view WITHOUT filter changes: Use default flow (already set, no changes needed)
+                    final_filtered = campaign_df[
+                        (campaign_df['keyword_term'] == current_flow.get('keyword_term', '')) &
+                        (campaign_df['publisher_domain'] == current_flow.get('publisher_domain', ''))
+                    ]
+                    if 'serp_template_name' in campaign_df.columns:
+                        final_filtered = final_filtered[final_filtered['serp_template_name'] == current_flow.get('serp_template_name', '')]
+                    if len(final_filtered) > 0:
+                        if 'timestamp' in final_filtered.columns:
+                            best_view = final_filtered.loc[final_filtered['timestamp'].idxmax()]
+                        else:
+                            best_view = final_filtered.iloc[0]
+                        current_flow.update(best_view.to_dict())
                 
                 # Update session state
                 st.session_state.current_flow = current_flow
                 
-                # Show stats for current selection (only in advanced view)
-                if st.session_state.view_mode == 'advanced' and len(final_filtered) > 0:
-                    stats_df = final_filtered.agg({
-                        'impressions': 'sum',
-                        'clicks': 'sum',
-                        'conversions': 'sum'
-                    })
+                # Show selected flow details - single clean display with performance metrics
+                # Get single view_id data (not aggregated)
+                if len(final_filtered) > 0:
+                    # Select view_id with max timestamp
+                    if 'timestamp' in final_filtered.columns:
+                        single_view = final_filtered.loc[final_filtered['timestamp'].idxmax()]
+                    else:
+                        single_view = final_filtered.iloc[0]
                     
-                    st.markdown("#### 📈 Selected Flow Performance")
-                    s1, s2, s3, s4, s5 = st.columns(5)
-                    s1.metric("Impressions", f"{safe_int(stats_df['impressions']):,}")
-                    s2.metric("Clicks", f"{safe_int(stats_df['clicks']):,}")
-                    s3.metric("Conversions", f"{safe_int(stats_df['conversions']):,}")
-                    s4.metric("CTR", f"{(stats_df['clicks']/stats_df['impressions']*100 if stats_df['impressions'] > 0 else 0):.2f}%")
-                    s5.metric("CVR", f"{(stats_df['conversions']/stats_df['clicks']*100 if stats_df['clicks'] > 0 else 0):.2f}%")
+                    flow_imps = safe_int(single_view.get('impressions', 0))
+                    flow_clicks = safe_int(single_view.get('clicks', 0))
+                    flow_convs = safe_int(single_view.get('conversions', 0))
+                    flow_ctr = (flow_clicks / flow_imps * 100) if flow_imps > 0 else 0
+                    flow_cvr = (flow_convs / flow_clicks * 100) if flow_clicks > 0 else 0
                     
-                    # Reduce spacing - minimal margin
-                    st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
+                    st.markdown("""
+                    <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #3b82f6; padding: 16px; border-radius: 8px; margin-bottom: 12px;">
+                        <h3 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 12px 0;">🎯 Selected Flow</h3>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; font-size: 14px;">
+                            <div><strong>Keyword:</strong> {keyword}</div>
+                            <div><strong>Domain:</strong> {domain}</div>
+                            <div><strong>SERP:</strong> {serp}</div>
+                            <div><strong>Landing URL:</strong> {landing_url}</div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #cbd5e1;">
+                            <div><strong style="color: #64748b; font-size: 12px;">Impressions</strong><div style="font-size: 18px; font-weight: 700; color: #0f172a;">{impressions:,}</div></div>
+                            <div><strong style="color: #64748b; font-size: 12px;">Clicks</strong><div style="font-size: 18px; font-weight: 700; color: #0f172a;">{clicks:,}</div></div>
+                            <div><strong style="color: #64748b; font-size: 12px;">Conversions</strong><div style="font-size: 18px; font-weight: 700; color: #0f172a;">{conversions:,}</div></div>
+                            <div><strong style="color: #64748b; font-size: 12px;">CTR</strong><div style="font-size: 18px; font-weight: 700; color: #0f172a;">{ctr:.2f}%</div></div>
+                            <div><strong style="color: #64748b; font-size: 12px;">CVR</strong><div style="font-size: 18px; font-weight: 700; color: #0f172a;">{cvr:.2f}%</div></div>
+                        </div>
+                    </div>
+                    """.format(
+                        keyword=html.escape(str(single_view.get('keyword_term', 'N/A'))),
+                        domain=html.escape(str(single_view.get('publisher_domain', 'N/A'))),
+                        serp=html.escape(str(single_view.get('serp_template_name', 'N/A'))),
+                        landing_url=html.escape(str(single_view.get('reporting_destination_url', 'N/A'))[:60] + ('...' if len(str(single_view.get('reporting_destination_url', ''))) > 60 else '')),
+                        impressions=flow_imps,
+                        clicks=flow_clicks,
+                        conversions=flow_convs,
+                        ctr=flow_ctr,
+                        cvr=flow_cvr
+                    ), unsafe_allow_html=True)
+                    
+                    if st.session_state.view_mode == 'basic':
+                        st.success("✨ Auto-selected based on best performance")
+                    else:
+                        st.success("✨ Use filters above to change flow")
+                else:
+                    st.info("🎯 Selected Flow: No data available")
+                
+                # Reduce spacing before Flow Journey
+                st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
+                
+                # Selected Flow Performance is now shown in the Selected Flow box above - removed duplicate
                 
                 # Flow Display based on layout
                 # Reduce spacing before Flow Journey
                 st.markdown("<div style='margin-top: 4px;'></div>", unsafe_allow_html=True)
                 st.markdown("### 🔄 Flow Journey")
                 
-                # Single device selector for ALL cards
-                device_all = st.radio("Device for all previews:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='device_all', index=0)
-                
-                # Add a small info bar - no white box, inline with selector
+                # Single device selector for ALL cards with tooltip
                 st.markdown("""
-                <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #3b82f6; padding: 8px 12px; border-radius: 4px; margin: 0;">
-                    <small style="color: #64748b;">💡 Select a device above to preview how the ad flow appears on different screen sizes</small>
+                <div style="margin-bottom: 8px;">
+                    <span style="font-size: 14px; color: #64748b;">💡 Select a device to preview how the ad flow appears on different screen sizes</span>
                 </div>
                 """, unsafe_allow_html=True)
+                device_all = st.radio("Device for all previews:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='device_all', index=0)
                 
+                # Tooltip moved above device selector - now shown as title tooltip
                 # Initialize containers for both layouts
                 stage_cols = None
                 vertical_preview_col = None
@@ -2060,8 +2181,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 stage_4_info_container = None
                 
                 if st.session_state.flow_layout == 'horizontal':
-                    # Ensure ALL 4 cards in ONE line - make creative VERY narrow, reduce all widths
-                    # Creative gets 0.25 width (very narrow), others get 0.85, with minimal arrow spacing, NO gap
                     # Add CSS to force single line and prevent wrapping
                     st.markdown("""
                     <style>
@@ -2074,8 +2193,43 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     }
                     </style>
                     """, unsafe_allow_html=True)
-                    # No max-width container - use full width, balanced columns for all 4 cards
-                    # Make columns balanced - ensure all 4 fit in one line
+                    
+                    # Description layer - show domain, URL, keyword (creative), SERP URL, SERP temp key, landing URL
+                    desc_cols = st.columns([1, 0.05, 0.7, 0.05, 1, 0.05, 1], gap='small')
+                    with desc_cols[0]:
+                        domain = current_flow.get('publisher_domain', 'N/A')
+                        url = current_flow.get('publisher_url', 'N/A')
+                        st.markdown(f"""
+                        <div style="font-size: 11px; color: #64748b; padding: 4px 0;">
+                            <strong>Domain:</strong> {html.escape(str(domain))}<br>
+                            <strong>URL:</strong> {html.escape(str(url)[:40])}{'...' if len(str(url)) > 40 else ''}
+                        </div>
+                        """, unsafe_allow_html=True)
+                    with desc_cols[2]:
+                        keyword = current_flow.get('keyword_term', 'N/A')
+                        st.markdown(f"""
+                        <div style="font-size: 11px; color: #64748b; padding: 4px 0;">
+                            <strong>Keyword:</strong> {html.escape(str(keyword))}
+                        </div>
+                        """, unsafe_allow_html=True)
+                    with desc_cols[4]:
+                        serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
+                        serp_key = current_flow.get('serp_template_key', 'N/A')
+                        st.markdown(f"""
+                        <div style="font-size: 11px; color: #64748b; padding: 4px 0;">
+                            <strong>SERP URL:</strong> {html.escape(str(serp_url)[:30])}{'...' if len(str(serp_url)) > 30 else ''}<br>
+                            <strong>SERP Key:</strong> {html.escape(str(serp_key))}
+                        </div>
+                        """, unsafe_allow_html=True)
+                    with desc_cols[6]:
+                        landing_url = current_flow.get('reporting_destination_url', 'N/A')
+                        st.markdown(f"""
+                        <div style="font-size: 11px; color: #64748b; padding: 4px 0;">
+                            <strong>Landing URL:</strong> {html.escape(str(landing_url)[:40])}{'...' if len(str(landing_url)) > 40 else ''}
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    # Now create columns for the actual cards
                     stage_cols = st.columns([1, 0.05, 0.7, 0.05, 1, 0.05, 1], gap='small')
                 else:
                     # Vertical layout - cards extend full width, details inline within card boundaries
@@ -2100,9 +2254,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         # Vertical: Full width card with inline details
                         card_col_left, card_col_right = st.columns([0.6, 0.4])
                         with card_col_left:
-                            st.markdown('### 📰 Publisher URL', unsafe_allow_html=True)
+                            st.markdown('### <strong>📰 Publisher URL</strong>', unsafe_allow_html=True)
                     else:
-                        st.markdown('### 📰 Publisher URL', unsafe_allow_html=True)
+                        st.markdown('### <strong>📰 Publisher URL</strong>', unsafe_allow_html=True)
                     
                     # Only show edit details in advanced mode
                     if st.session_state.view_mode == 'advanced':
@@ -2442,9 +2596,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         # Create inline columns within card - increase creative size (equal to other cards)
                         creative_card_left, creative_card_right = st.columns([0.5, 0.5])
                         with creative_card_left:
-                            st.markdown('### 🎨 Creative', unsafe_allow_html=True)
+                            st.markdown('### <strong>🎨 Creative</strong>', unsafe_allow_html=True)
                     else:
-                        st.markdown('### 🎨 Creative', unsafe_allow_html=True)
+                        st.markdown('### <strong>🎨 Creative</strong>', unsafe_allow_html=True)
                     
                     # Show details
                     creative_id = current_flow.get('creative_id', 'N/A')
@@ -2472,9 +2626,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             try:
                                 creative_html, raw_adcode = parse_creative_html(response_value)
                                 if creative_html and raw_adcode:
-                                    # Render in compact dimensions for horizontal layout - readable size
+                                    # Render in readable size - no height limit in horizontal mode
                                     if st.session_state.flow_layout == 'horizontal':
-                                        st.components.v1.html(creative_html, height=200, scrolling=True)
+                                        st.components.v1.html(creative_html, height=400, scrolling=True)
                                     else:
                                         st.components.v1.html(creative_html, height=400, scrolling=True)
                                     
@@ -2509,6 +2663,21 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             creative_name = current_flow.get('creative_template_name', 'N/A')
                             
                             st.markdown("**🎨 Creative Details**")
+                            
+                            # Keyword filter in creative section (advanced view only)
+                            if st.session_state.view_mode == 'advanced':
+                                keywords = sorted(campaign_df['keyword_term'].dropna().unique().tolist())
+                                selected_keyword = st.selectbox(
+                                    "🔑 Filter by Keyword:",
+                                    keywords,
+                                    index=keywords.index(keyword) if keyword in keywords else 0,
+                                    key='kw_filter_creative'
+                                )
+                                if selected_keyword != keyword:
+                                    current_flow['keyword_term'] = selected_keyword
+                                    st.session_state.similarities = None
+                                    st.rerun()
+                            
                             # Inline horizontal layout - all on same line
                             st.markdown(f"""
                             <div style="display: inline-flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 8px;">
@@ -2565,38 +2734,17 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         # Create inline columns within card
                         serp_card_left, serp_card_right = st.columns([0.6, 0.4])
                         with serp_card_left:
-                            st.markdown('### 📄 SERP', unsafe_allow_html=True)
+                            st.markdown('### <strong>📄 SERP</strong>', unsafe_allow_html=True)
                     else:
-                        st.markdown('### 📄 SERP', unsafe_allow_html=True)
+                        st.markdown('### <strong>📄 SERP</strong>', unsafe_allow_html=True)
                     
-                    if st.session_state.view_mode == 'advanced':
-                        with st.expander("⚙️ Edit Details", expanded=False):
-                            # SERP template dropdown
-                            if serps:
-                                selected_serp = st.selectbox(
-                                    "📄 SERP Template:",
-                                    serps,
-                                    index=serps.index(current_serp) if current_serp in serps else 0,
-                                    key='serp_select'
-                                )
-                                
-                                if selected_serp != current_serp:
-                                    current_flow['serp_template_name'] = selected_serp
-                                    final_filtered = url_filtered[url_filtered['serp_template_name'] == selected_serp]
-                                    if len(final_filtered) > 0:
-                                        current_flow.update(final_filtered.iloc[0].to_dict())
-                                    st.session_state.similarities = None  # Reset scores
-                                    st.rerun()
-                            
-                                # Show ad details
-                                st.caption(f"**Title:** {current_flow.get('ad_title', 'N/A')[:30]}...")
-                                st.caption(f"**Display URL:** {current_flow.get('ad_display_url', 'N/A')[:30]}...")
-                                st.caption(f"📊 {len(serps)} templates available")
-                    else:
-                        # Basic mode - show template name only
-                        serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
-                        if st.session_state.flow_layout != 'horizontal':
-                            st.caption(f"**Template:** {serp_name}")
+                    # SERP selection removed from advanced view - auto-selected based on performance
+                    # SERP is now auto-selected: most convs (then clicks, then imps)
+                    
+                    # Basic mode - show template name only
+                    serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
+                    if st.session_state.flow_layout != 'horizontal':
+                        st.caption(f"**Template:** {serp_name}")
                     
                     # Don't show SERP URL in horizontal mode to save space
                     
@@ -2886,46 +3034,16 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         # Create inline columns within card
                         landing_card_left, landing_card_right = st.columns([0.6, 0.4])
                         with landing_card_left:
-                            st.markdown('### 🎯 Landing Page', unsafe_allow_html=True)
+                            st.markdown('### <strong>🎯 Landing Page</strong>', unsafe_allow_html=True)
                     else:
-                        st.markdown('### 🎯 Landing Page', unsafe_allow_html=True)
+                        st.markdown('### <strong>🎯 Landing Page</strong>', unsafe_allow_html=True)
                     
                     # Get landing page URL
                     adv_url = current_flow.get('reporting_destination_url', '')
                     
-                    if st.session_state.view_mode == 'advanced':
-                        with st.expander("⚙️ Edit Details", expanded=False):
-                            # Keyword selector
-                            selected_keyword = st.selectbox(
-                                "🔑 Search Keyword:",
-                                keywords,
-                                index=keywords.index(current_kw) if current_kw in keywords else 0,
-                                key='kw_select'
-                            )
-                            
-                            if selected_keyword != current_kw:
-                                # Rebuild filters from keyword
-                                current_flow['keyword_term'] = selected_keyword
-                                kw_filtered = campaign_df[campaign_df['keyword_term'] == selected_keyword]
-                                if 'publisher_domain' in kw_filtered.columns:
-                                    domains = sorted(kw_filtered['publisher_domain'].dropna().unique().tolist())
-                                    if domains:
-                                        current_flow['publisher_domain'] = domains[0]
-                                        dom_filtered = kw_filtered[kw_filtered['publisher_domain'] == domains[0]]
-                                        urls = dom_filtered['publisher_url'].dropna().unique().tolist()
-                                        if urls:
-                                            current_flow['publisher_url'] = urls[0]
-                                            url_filtered = dom_filtered[dom_filtered['publisher_url'] == urls[0]]
-                                            if len(url_filtered) > 0:
-                                                current_flow.update(url_filtered.iloc[0].to_dict())
-                                st.session_state.similarities = None  # Reset scores
-                                st.rerun()
-                            
-                            # Show landing page URL
-                            st.caption(f"📊 {len(keywords)} keywords available")
-                    else:
-                        # Basic mode - keyword removed (now shown in creative card only)
-                        pass
+                    # Keyword filter removed from landing page - now in creative section
+                    # Basic mode - no keyword display here
+                    pass
                     
                     # Get landing URL and check clicks from current_flow
                     # Use same logic as display (safe_int) for consistency
