@@ -63,15 +63,22 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     
     if st.session_state.flow_layout == 'horizontal':
         # Add CSS to force single line and prevent wrapping, ensure equal card heights and boundaries
-        # Match advanced-horizontal mode alignment
+        # Match advanced-horizontal mode alignment - AGGRESSIVE FIXES
         st.markdown("""
         <style>
+        /* Target Streamlit columns directly - remove ALL padding/margin */
         [data-testid="column"] {
             flex-shrink: 0 !important;
             min-width: 0 !important;
             display: flex !important;
             flex-direction: column !important;
             align-items: stretch !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        [data-testid="column"] > div {
+            padding: 0 !important;
+            margin: 0 !important;
         }
         .stColumn > div {
             overflow: hidden !important;
@@ -79,41 +86,54 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             flex-direction: column !important;
             height: 100% !important;
             align-items: stretch !important;
+            padding: 0 !important;
+            margin: 0 !important;
         }
+        /* Remove Streamlit's default element-container spacing */
+        [data-testid="column"] .element-container {
+            padding: 0 !important;
+            margin: 0 !important;
+            margin-top: 0 !important;
+        }
+        /* Card wrapper - NO top padding/margin */
         .stage-card-wrapper {
             min-height: 600px;
             display: flex;
             flex-direction: column;
             border: 1px solid #e2e8f0;
             border-radius: 8px;
-            padding: 12px;
+            padding: 12px !important;
             padding-top: 0 !important;
+            padding-bottom: 12px !important;
             background: #ffffff;
+            margin: 0 !important;
             margin-top: 0 !important;
-            margin-bottom: 0;
+            margin-bottom: 0 !important;
             align-items: stretch;
         }
-        /* Remove ALL extra spacing from Streamlit containers */
+        /* Remove ALL spacing from first child */
         .stage-card-wrapper > *:first-child {
             margin-top: 0 !important;
+            margin-bottom: 0 !important;
             padding-top: 0 !important;
         }
-        /* Ensure all cards align at the top - remove all spacing */
+        /* Ensure h3 titles have NO top spacing */
         .stage-card-wrapper h3 {
             margin-top: 0 !important;
-            padding-top: 0 !important;
             margin-bottom: 8px !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
         }
         /* Remove spacing from any divs inside wrapper */
         .stage-card-wrapper > div {
             margin-top: 0 !important;
         }
-        /* Ensure columns align perfectly at top */
-        [data-testid="column"]:has(.stage-card-wrapper) {
-            align-items: flex-start !important;
+        /* Remove Streamlit markdown spacing */
+        .stage-card-wrapper .stMarkdown {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
         }
-        /* Remove any Streamlit default spacing */
-        .element-container {
+        .stage-card-wrapper .stMarkdown > *:first-child {
             margin-top: 0 !important;
         }
         </style>
@@ -160,7 +180,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             with card_col_left:
                 st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">📰 Publisher URL</h3>', unsafe_allow_html=True)
         else:
-            st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">📰 Publisher URL</h3>', unsafe_allow_html=True)
+            st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; padding-top: 0;">📰 Publisher URL</h3>', unsafe_allow_html=True)
         
         # Show info below title (not inline) - formatted properly - only in horizontal layout
         if st.session_state.view_mode == 'basic' and st.session_state.flow_layout == 'horizontal':
@@ -552,7 +572,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             with serp_card_left:
                 st.markdown('<h3 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">📄 SERP</h3>', unsafe_allow_html=True)
         else:
-            st.markdown('<h3 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">📄 SERP</h3>', unsafe_allow_html=True)
+            st.markdown('<h3 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; padding-top: 0;">📄 SERP</h3>', unsafe_allow_html=True)
         
         serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
         serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
@@ -824,7 +844,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             with landing_card_left:
                 st.markdown('<h3 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">🎯 Landing Page</h3>', unsafe_allow_html=True)
         else:
-            st.markdown('<h3 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">🎯 Landing Page</h3>', unsafe_allow_html=True)
+            st.markdown('<h3 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; padding-top: 0;">🎯 Landing Page</h3>', unsafe_allow_html=True)
         
         adv_url = current_flow.get('reporting_destination_url', '')
         flow_clicks = current_flow.get('clicks', 0)
