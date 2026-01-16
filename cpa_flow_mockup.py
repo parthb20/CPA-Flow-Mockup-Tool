@@ -55,38 +55,32 @@ except Exception:
     PLAYWRIGHT_AVAILABLE = False
     # Don't show warning here - it's optional
 
-# Get API keys from secrets
+# Get API keys from secrets - safe access pattern
+API_KEY = ""
+SCREENSHOT_API_KEY = ""
+THUMIO_REFERER_DOMAIN = ""
+
+# Safely access secrets - each key access wrapped in try/except
 try:
-    # Correct way to access Streamlit secrets - check if key exists first
-    if "FASTROUTER_API_KEY" in st.secrets:
+    try:
         API_KEY = str(st.secrets["FASTROUTER_API_KEY"]).strip()
-    elif "OPENAI_API_KEY" in st.secrets:
-        API_KEY = str(st.secrets["OPENAI_API_KEY"]).strip()
-    else:
-        API_KEY = ""
-    
-    if "SCREENSHOT_API_KEY" in st.secrets:
-        SCREENSHOT_API_KEY = str(st.secrets["SCREENSHOT_API_KEY"]).strip()
-    else:
-        SCREENSHOT_API_KEY = ""
-    
-    if "THUMIO_REFERER_DOMAIN" in st.secrets:
-        THUMIO_REFERER_DOMAIN = str(st.secrets["THUMIO_REFERER_DOMAIN"]).strip()
-    else:
-        THUMIO_REFERER_DOMAIN = ""
-    # Debug: Check if API key is loaded (only show warning when actually needed)
-    # Warning will be shown when similarity calculation is attempted
-except (AttributeError, KeyError, TypeError):
-    # Secrets not available or not configured - use defaults
+    except (KeyError, AttributeError, TypeError):
+        try:
+            API_KEY = str(st.secrets["OPENAI_API_KEY"]).strip()
+        except (KeyError, AttributeError, TypeError):
+            API_KEY = ""
+except Exception:
     API_KEY = ""
+
+try:
+    SCREENSHOT_API_KEY = str(st.secrets["SCREENSHOT_API_KEY"]).strip()
+except (KeyError, AttributeError, TypeError):
     SCREENSHOT_API_KEY = ""
+
+try:
+    THUMIO_REFERER_DOMAIN = str(st.secrets["THUMIO_REFERER_DOMAIN"]).strip()
+except (KeyError, AttributeError, TypeError):
     THUMIO_REFERER_DOMAIN = ""
-except Exception as e:
-    # Other errors - log but don't crash
-    API_KEY = ""
-    SCREENSHOT_API_KEY = ""
-    THUMIO_REFERER_DOMAIN = ""
-    pass
 
 THUMIO_CONFIGURED = True  # Always True - free tier works without setup!
 
