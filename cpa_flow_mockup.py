@@ -1107,15 +1107,23 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     
     escaped = full_content.replace("'", "&apos;").replace('"', '&quot;')
     
+    # Container box dimensions - taller and narrower (don't change device rendering)
+    # Reduce container width significantly, increase container height to prevent cutting
+    container_width = int(display_w * 0.7)  # Reduce width by 30% - narrower box
+    container_height_adjusted = int(display_h * 1.5)  # Increase height by 50% - taller box to prevent cutting
+    
     html_output = f"""
-    <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
-        <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-            <iframe srcdoc='{escaped}' style="width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"></iframe>
+    <div style="display: flex; justify-content: center; padding: 8px 20px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
+        <div style="width: {container_width}px; min-height: {container_height_adjusted}px; {frame_style} overflow: visible; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; flex-direction: column;">
+            <div style="width: {display_w}px; height: {display_h}px; overflow: hidden; flex-shrink: 0;">
+                <iframe srcdoc='{escaped}' style="width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"></iframe>
+            </div>
         </div>
     </div>
     """
     
-    return html_output, display_h + 30, is_url
+    # Return adjusted container height for proper display
+    return html_output, container_height_adjusted + 20, is_url
 
 def generate_serp_mockup(flow_data, serp_templates):
     """Generate SERP HTML using actual template with CSS fixes
