@@ -1659,13 +1659,13 @@ def parse_creative_html(response_str):
         return None, None
 
 
-# Proper SaaS-style title - DOUBLE SIZE and BOLD (like a logo)
+# Proper SaaS-style title - REALLY BIG and BOLD (like a logo)
 st.markdown("""
-    <div style="margin-bottom: 40px; padding-bottom: 24px; border-bottom: 3px solid #e2e8f0;">
-        <h1 style="font-size: 192px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; text-align: left; line-height: 1; letter-spacing: -0.05em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif; text-shadow: 2px 2px 4px rgba(0,0,0,0.1); pointer-events: none; user-select: none;">
+    <div style="margin-bottom: 20px; padding-bottom: 16px; border-bottom: 3px solid #e2e8f0;">
+        <h1 style="font-size: 300px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; text-align: left; line-height: 1; letter-spacing: -0.05em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif; text-shadow: 3px 3px 6px rgba(0,0,0,0.15); pointer-events: none; user-select: none;">
             <strong>📊 CPA Flow Analysis v2</strong>
         </h1>
-        <p style="font-size: 20px; color: #64748b; margin: 16px 0 0 0; font-weight: 400;">Analyze and optimize your ad flow performance</p>
+        <p style="font-size: 20px; color: #64748b; margin: 12px 0 0 0; font-weight: 400;">Analyze and optimize your ad flow performance</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -1694,7 +1694,8 @@ with view_col2:
         st.session_state.view_mode = 'advanced'
         st.rerun()
 
-st.divider()
+# Reduce spacing - no divider, just small margin
+st.markdown("<div style='margin-top: 8px; margin-bottom: 8px;'></div>", unsafe_allow_html=True)
 
 if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
     df = st.session_state.data_a
@@ -1747,7 +1748,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             avg_ctr = (total_clicks / total_impressions * 100) if total_impressions > 0 else 0
             avg_cvr = (total_conversions / total_clicks * 100) if total_clicks > 0 else 0
             
-            st.divider()
+            # Reduce spacing - small margin instead of divider
+            st.markdown("<div style='margin-top: 8px; margin-bottom: 8px;'></div>", unsafe_allow_html=True)
             
             # Show aggregated table
             st.markdown("### 📊 Flow Combinations Overview")
@@ -1796,22 +1798,29 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             else:
                 st.warning("Could not generate table - missing required columns")
             
-            st.divider()
+            # Reduce spacing - small margin instead of divider
+            st.markdown("<div style='margin-top: 8px; margin-bottom: 8px;'></div>", unsafe_allow_html=True)
             
-            # Explain what a flow is
-            st.info("""
-            **🔄 What is a Flow?**
+            # Simplified, easy-to-read flow explanation with consistent styling
+            st.markdown("""
+            <div style="background: #f8fafc; padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 12px 0;">
+                <h3 style="font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 12px 0;">🔄 What is a Flow?</h3>
+                <p style="font-size: 15px; color: #334155; margin: 8px 0; line-height: 1.6;">
+                    A <strong style="font-weight: 700; color: #0f172a;">flow</strong> is the complete path a user takes from seeing your ad to reaching your landing page.
+                </p>
+                <p style="font-size: 15px; color: #334155; margin: 8px 0; line-height: 1.6;">
+                    <strong style="font-weight: 700; color: #0f172a;">Publisher</strong> → <strong style="font-weight: 700; color: #0f172a;">Creative</strong> → <strong style="font-weight: 700; color: #0f172a;">SERP</strong> → <strong style="font-weight: 700; color: #0f172a;">Landing Page</strong>
+                </p>
+                <ul style="font-size: 15px; color: #334155; margin: 8px 0; padding-left: 20px; line-height: 1.8;">
+                    <li>Each combination creates a <strong style="font-weight: 600;">unique flow</strong></li>
+                    <li>We show the <strong style="font-weight: 600;">best performing flow</strong> automatically</li>
+                    <li>You can <strong style="font-weight: 600;">customize any part</strong> to see how it changes</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
             
-            A flow represents the complete user journey from seeing your ad to reaching your landing page:
-            
-            **Publisher** → **Creative** → **SERP** → **Landing Page**
-            
-            • Each combination of these elements creates a unique flow
-            • We automatically select the best performing flow to display
-            • You can customize any element to see how it affects the journey
-            """)
-            
-            st.divider()
+            # Reduce spacing
+            st.markdown("<div style='margin-top: 8px; margin-bottom: 8px;'></div>", unsafe_allow_html=True)
             
             # Find default flow if not set
             if st.session_state.default_flow is None:
@@ -1939,9 +1948,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 stage_4_info_container = None
                 
                 if st.session_state.flow_layout == 'horizontal':
-                    # Equal width columns for 4 cards + 3 arrows - minimize spacing to keep cards in one line
-                    # Use minimal gap and equal widths - ensure truly in one line
-                    stage_cols = st.columns([1, 0.015, 1, 0.015, 1, 0.015, 1], gap='small')
+                    # Equal width columns for 4 cards + 3 arrows - ensure ALL 4 cards in ONE line
+                    # Use equal widths (1 each) with minimal arrow spacing (0.005) - all will fit in one line
+                    stage_cols = st.columns([1, 0.005, 1, 0.005, 1, 0.005, 1], gap='small')
                 else:
                     # Vertical layout - cards extend full width, details inline within card boundaries
                     # No separate columns - everything within each card
@@ -1956,6 +1965,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     stage_1_container = stage_cols[0]
                 
                 # Render preview
+                # Initialize card columns for vertical layout
+                card_col_left = None
+                card_col_right = None
+                
                 with stage_1_container:
                     if st.session_state.flow_layout == 'vertical':
                         # Vertical: Full width card with inline details
@@ -2247,7 +2260,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             st.warning("⚠️ No valid publisher URL in data")
                     
                     # Publisher URL - Details inline on RIGHT in vertical mode
-                    if st.session_state.flow_layout == 'vertical':
+                    if st.session_state.flow_layout == 'vertical' and card_col_right:
                         with card_col_right:
                             # Similarity definition in tooltip
                             st.markdown("""
@@ -2269,8 +2282,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 if stage_cols:
                     with stage_cols[1]:
                         st.markdown("""
-                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 300px; padding: 0; margin: 0;'>
-                            <div style='font-size: 140px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 4px 4px 8px rgba(59,130,246,0.5); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
+                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 280px; padding: 0; margin: 0;'>
+                            <div style='font-size: 120px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 4px 4px 8px rgba(59,130,246,0.5); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
                         </div>
                         """, unsafe_allow_html=True)
                 # No vertical arrows in vertical mode - removed as requested
@@ -2304,16 +2317,15 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     creative_name = current_flow.get('creative_template_name', 'N/A')
                     creative_size = current_flow.get('creative_size', 'N/A')
                     
-                    # In vertical mode, NO details on left side - only title and preview
+                    # In horizontal mode, minimize details to keep card compact
                     if st.session_state.flow_layout != 'vertical':
+                        # Show minimal info in horizontal to keep card narrow
                         if st.session_state.view_mode == 'advanced':
-                            with st.expander("⚙️ View Details", expanded=False):
+                            with st.expander("⚙️", expanded=False):
                                 st.caption(f"**ID:** {creative_id}")
                                 st.caption(f"**Name:** {creative_name}")
                                 st.caption(f"**Size:** {creative_size}")
-                                st.caption("*Auto-selected based on flow*")
-                        else:
-                            st.caption(f"**Size:** {creative_size}")
+                        # Don't show size caption in horizontal - keep it compact
                     
                     # In vertical mode, preview goes in left column
                     creative_preview_container = creative_card_left if st.session_state.flow_layout == 'vertical' and creative_card_left else stage_2_container
@@ -2326,20 +2338,28 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             try:
                                 creative_html, raw_adcode = parse_creative_html(response_value)
                                 if creative_html and raw_adcode:
-                                    # Render in original dimensions
-                                    st.components.v1.html(creative_html, height=400, scrolling=True)
+                                    # Render in compact dimensions for horizontal layout
+                                    if st.session_state.flow_layout == 'horizontal':
+                                        st.components.v1.html(creative_html, height=280, scrolling=True)
+                                    else:
+                                        st.components.v1.html(creative_html, height=400, scrolling=True)
                                     
-                                    # Show raw code option
-                                    with st.expander("👁️ View Raw Ad Code"):
-                                        st.code(raw_adcode[:500], language='html')
+                                    # Show raw code option (only in advanced mode or vertical)
+                                    if st.session_state.view_mode == 'advanced' or st.session_state.flow_layout == 'vertical':
+                                        with st.expander("👁️ View Raw Ad Code"):
+                                            st.code(raw_adcode[:500], language='html')
                                 else:
                                     st.warning("⚠️ Empty creative JSON")
                             except Exception as e:
                                 st.error(f"⚠️ Creative error: {str(e)[:100]}")
                         else:
-                            # Keep equal space even when no creative - show placeholder
-                            st.markdown("""
-                            <div style="min-height: 400px; display: flex; align-items: center; justify-content: center; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px;">
+                            # Keep equal space even when no creative - show compact placeholder
+                            if st.session_state.flow_layout == 'horizontal':
+                                min_height = 280
+                            else:
+                                min_height = 400
+                            st.markdown(f"""
+                            <div style="min-height: {min_height}px; display: flex; align-items: center; justify-content: center; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px;">
                                 <div style="text-align: center; color: #64748b;">
                                     <div style="font-size: 48px; margin-bottom: 8px;">⚠️</div>
                                     <div style="font-weight: 600; font-size: 14px;">No creative data</div>
@@ -2378,8 +2398,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 if stage_cols:
                     with stage_cols[3]:
                         st.markdown("""
-                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 300px; padding: 0; margin: 0;'>
-                            <div style='font-size: 140px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 4px 4px 8px rgba(59,130,246,0.5); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
+                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 280px; padding: 0; margin: 0;'>
+                            <div style='font-size: 120px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 4px 4px 8px rgba(59,130,246,0.5); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
                         </div>
                         """, unsafe_allow_html=True)
                 # No vertical arrows in vertical mode - removed as requested
@@ -2700,8 +2720,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 if stage_cols:
                     with stage_cols[5]:
                         st.markdown("""
-                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 300px; padding: 0; margin: 0;'>
-                            <div style='font-size: 140px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 4px 4px 8px rgba(59,130,246,0.5); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
+                        <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 280px; padding: 0; margin: 0;'>
+                            <div style='font-size: 120px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 4px 4px 8px rgba(59,130,246,0.5); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
                         </div>
                         """, unsafe_allow_html=True)
                 # No vertical arrows in vertical mode - removed as requested
