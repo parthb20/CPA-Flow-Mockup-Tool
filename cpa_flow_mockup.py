@@ -48,12 +48,12 @@ try:
         if not os.path.exists(os.path.expanduser('~/.cache/ms-playwright')):
             subprocess.run(['playwright', 'install', 'chromium', '--with-deps'], 
                           capture_output=True, timeout=120)
-    except Exception as e:
-        st.warning(f"Playwright browser install: {str(e)[:50]}")
+    except Exception:
+        # Silently fail - browser install is optional
         pass
-except Exception as e:
+except Exception:
     PLAYWRIGHT_AVAILABLE = False
-    st.warning(f"Playwright not available: {str(e)[:50]}")
+    # Don't show warning here - it's optional
 
 # Get API keys from secrets
 try:
