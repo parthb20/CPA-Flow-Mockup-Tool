@@ -18,21 +18,8 @@ except:
 def get_screenshot_url(url, device='mobile', full_page=False):
     """Generate thum.io screenshot URL"""
     try:
-        # Safe way to access Streamlit secrets
-        SCREENSHOT_API_KEY = ""
-        THUMIO_REFERER_DOMAIN = ""
-        
-        # Safe way to access Streamlit secrets - catch all exceptions
-        # Note: StreamlitSecretNotFoundError inherits from Exception, so catching Exception works
-        try:
-            SCREENSHOT_API_KEY = str(st.secrets["SCREENSHOT_API_KEY"]).strip()
-        except Exception:
-            SCREENSHOT_API_KEY = ""
-        
-        try:
-            THUMIO_REFERER_DOMAIN = str(st.secrets["THUMIO_REFERER_DOMAIN"]).strip()
-        except Exception:
-            THUMIO_REFERER_DOMAIN = ""
+        SCREENSHOT_API_KEY = st.secrets.get("SCREENSHOT_API_KEY", "").strip()
+        THUMIO_REFERER_DOMAIN = st.secrets.get("THUMIO_REFERER_DOMAIN", "").strip()
         
         # Ensure URL is properly formatted
         if not url or pd.isna(url):
@@ -60,10 +47,9 @@ def get_screenshot_url(url, device='mobile', full_page=False):
         }
         vp = viewports.get(device, viewports['mobile'])
         
-        # Use simple thum.io format: //image.thum.io/get/http://www.example.com/
-        # For referer-based keys or free tier, use simple format
-        if THUMIO_REFERER_DOMAIN or not SCREENSHOT_API_KEY:
-            # Simple format - thum.io handles encoding
+        # For referer-based keys, use simple format (URL should NOT be double-encoded)
+        if THUMIO_REFERER_DOMAIN:
+            # Don't encode - thum.io handles it
             screenshot_url = f"https://image.thum.io/get/{url}"
             return screenshot_url
         
@@ -75,12 +61,19 @@ def get_screenshot_url(url, device='mobile', full_page=False):
             else:
                 options.append(f"height/{vp['height']}")
             options.append(f"auth/{SCREENSHOT_API_KEY}")
-            # Simple format - thum.io handles URL encoding
+            # Don't double-encode - thum.io handles URL encoding
             screenshot_url = f"https://image.thum.io/get/{'/'.join(options)}/{url}"
             return screenshot_url
         
-        # Default: Simple format
-        screenshot_url = f"https://image.thum.io/get/{url}"
+        # FREE TIER (default): Simple format - encode only once
+        # Use quote with safe='' to encode properly, but don't double-encode if already encoded
+        if '%' in url:
+            # Already encoded, use as-is
+            screenshot_url = f"https://image.thum.io/get/{url}"
+        else:
+            # Encode once
+            encoded_url = quote(url, safe='')
+            screenshot_url = f"https://image.thum.io/get/{encoded_url}"
         return screenshot_url
     except Exception as e:
         return None
