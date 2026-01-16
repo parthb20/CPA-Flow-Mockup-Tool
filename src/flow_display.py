@@ -38,10 +38,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         thumio_configured: Boolean indicating if Thum.io is configured
         thumio_referer_domain: Thum.io referer domain
     """
-    # Add Flow Journey heading with minimal spacing - ensure it's visible
-    st.markdown("<div style='margin-top: 2px; margin-bottom: 2px;'></div>", unsafe_allow_html=True)
+    # Add Flow Journey heading - ensure it's visible
     st.markdown("""
-    <h2 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 8px 0 12px 0; display: block;">🔄 Flow Journey</h2>
+    <h2 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 4px 0 12px 0; display: block;"><strong>🔄 Flow Journey</strong></h2>
     """, unsafe_allow_html=True)
     
     # Single device selector for ALL cards with tooltip - highlighted
@@ -95,20 +94,16 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             margin: 0 !important;
             margin-top: 0 !important;
         }
-        /* Card wrapper - NO top padding/margin */
+        /* Card wrapper - NO border, NO background, NO white box */
         .stage-card-wrapper {
             min-height: 600px;
             display: flex;
             flex-direction: column;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 12px !important;
-            padding-top: 0 !important;
-            padding-bottom: 12px !important;
-            background: #ffffff;
+            border: none !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+            background: transparent !important;
             margin: 0 !important;
-            margin-top: 0 !important;
-            margin-bottom: 0 !important;
             align-items: stretch;
         }
         /* Remove ALL spacing from first child */
@@ -180,17 +175,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             with card_col_left:
                 st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">📰 Publisher URL</h3>', unsafe_allow_html=True)
         else:
-            st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; padding-top: 0;">📰 Publisher URL</h3>', unsafe_allow_html=True)
-        
-        # Show info below title (not inline) - formatted properly - only in horizontal layout
-        if st.session_state.view_mode == 'basic' and st.session_state.flow_layout == 'horizontal':
-            st.markdown(f"""
-            <div style='margin-bottom: 12px; font-size: 13px;'>
-                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Domain</strong></div>
-                <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;'>{html.escape(str(current_dom))}</div>
-                {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{current_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; padding-top: 0;"><strong>📰 Publisher URL</strong></h3>', unsafe_allow_html=True)
         
         pub_url = current_flow.get('publisher_url', '')
         preview_container = card_col_left if st.session_state.flow_layout == 'vertical' and card_col_left else stage_1_container
@@ -418,6 +403,15 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         # Close wrapper div for horizontal layout
         if st.session_state.flow_layout == 'horizontal':
+            # Show info BELOW card preview in horizontal layout
+            if st.session_state.view_mode == 'basic':
+                st.markdown(f"""
+                <div style='margin-top: 8px; font-size: 13px;'>
+                    <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Domain</strong></div>
+                    <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;'>{html.escape(str(current_dom))}</div>
+                    {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{current_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
+                </div>
+                """, unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
     
     if stage_cols:
@@ -449,21 +443,14 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             with creative_card_left:
                 st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">🎨 Creative</h3>', unsafe_allow_html=True)
         else:
-            st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">🎨 Creative</h3>', unsafe_allow_html=True)
+            st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; padding-top: 0;"><strong>🎨 Creative</strong></h3>', unsafe_allow_html=True)
         
         creative_id = current_flow.get('creative_id', 'N/A')
         creative_name = current_flow.get('creative_template_name', 'N/A')
         creative_size = current_flow.get('creative_size', 'N/A')
         keyword = current_flow.get('keyword_term', 'N/A')
         
-        # Show keyword below title in horizontal layout
-        if st.session_state.flow_layout == 'horizontal' and st.session_state.view_mode == 'basic':
-            st.markdown(f"""
-            <div style='margin-bottom: 12px; font-size: 13px;'>
-                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Keyword</strong></div>
-                <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;'>{html.escape(str(keyword))}</div>
-            </div>
-            """, unsafe_allow_html=True)
+        # Keyword will be shown BELOW card preview
         
         if st.session_state.flow_layout != 'vertical':
             if st.session_state.view_mode == 'advanced':
@@ -532,6 +519,15 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         # Close wrapper div for horizontal layout
         if st.session_state.flow_layout == 'horizontal':
+            # Show keyword BELOW card preview in horizontal layout
+            if st.session_state.view_mode == 'basic':
+                keyword = current_flow.get('keyword_term', 'N/A')
+                st.markdown(f"""
+                <div style='margin-top: 8px; font-size: 13px;'>
+                    <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Keyword</strong></div>
+                    <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;'>{html.escape(str(keyword))}</div>
+                </div>
+                """, unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
     
     if stage_cols:
@@ -810,6 +806,18 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         # Close wrapper div for horizontal layout
         if st.session_state.flow_layout == 'horizontal':
+            # Show SERP info BELOW card preview in horizontal layout
+            if st.session_state.view_mode == 'basic':
+                serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
+                serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
+                serp_key = current_flow.get('serp_template_key', 'N/A')
+                st.markdown(f"""
+                <div style='margin-top: 8px; font-size: 13px;'>
+                    <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>SERP Key</strong></div>
+                    <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;'>{html.escape(str(serp_key))}</div>
+                    {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>SERP URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{serp_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(serp_url))}</a></div>' if serp_url and serp_url != 'N/A' else ''}
+                </div>
+                """, unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
     
     if stage_cols:
@@ -844,22 +852,15 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             with landing_card_left:
                 st.markdown('<h3 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">🎯 Landing Page</h3>', unsafe_allow_html=True)
         else:
-            st.markdown('<h3 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; padding-top: 0;">🎯 Landing Page</h3>', unsafe_allow_html=True)
+            st.markdown('<h3 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; padding-top: 0;"><strong>🎯 Landing Page</strong></h3>', unsafe_allow_html=True)
         
         adv_url = current_flow.get('reporting_destination_url', '')
         flow_clicks = current_flow.get('clicks', 0)
         
-        # Show Landing URL below title (not inline) - only in basic view, horizontal layout
-        if st.session_state.view_mode == 'basic' and st.session_state.flow_layout == 'horizontal':
-            st.markdown(f"""
-            <div style="margin-bottom: 12px; font-size: 13px;">
-                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Landing URL</strong></div>
-                <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;'>{html.escape(str(adv_url)) if adv_url and pd.notna(adv_url) else 'N/A'}</div>
-            </div>
-            """, unsafe_allow_html=True)
+        # Landing URL will be shown BELOW card preview
         
-        # Old code removed - keeping only the new version above
-        if False and st.session_state.view_mode == 'basic' and adv_url and pd.notna(adv_url) and st.session_state.flow_layout == 'horizontal':
+        # Old code removed
+        if False:
             st.markdown(f"""
             <div style="margin-bottom: 8px; font-size: 13px;">
                 <div style="font-weight: 700; color: #0f172a; margin-bottom: 4px;"><strong>Landing URL:</strong></div>
