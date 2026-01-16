@@ -13,7 +13,7 @@ from src.utils import safe_float
 
 
 def call_similarity_api(prompt):
-    """Call FastRouter API for similarity scoring"""
+    """Call FastRouter API for similarity scoring using OpenAI client"""
     try:
         API_KEY = st.secrets.get("FASTROUTER_API_KEY") or st.secrets.get("OPENAI_API_KEY", "")
     except:
@@ -27,48 +27,44 @@ def call_similarity_api(prompt):
         }
     
     try:
-        response = requests.post(
-            "https://api.fastrouter.ai/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {API_KEY}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": "openai/gpt-4o-mini",
-                "messages": [
-                    {"role": "system", "content": "You are a similarity scoring expert. Analyze text and return ONLY a JSON object with the requested fields."},
-                    {"role": "user", "content": prompt}
-                ],
-                "temperature": 0.3,
-                "max_tokens": 300
-            },
-            timeout=30
+        # Use OpenAI client with FastRouter base URL
+        from openai import OpenAI
+        
+        client = OpenAI(
+            base_url="https://go.fastrouter.ai/api/v1",
+            api_key=API_KEY,
         )
         
-        if response.status_code == 200:
-            result = response.json()
-            content = result['choices'][0]['message']['content'].strip()
-            
-            # Extract JSON from response
-            json_match = re.search(r'\{[^}]+\}', content, re.DOTALL)
-            if json_match:
-                score_data = json.loads(json_match.group())
-                return {
-                    "error": False,
-                    "final_score": float(score_data.get('final_score', score_data.get('score', 0))),
-                    "reason": score_data.get('reason', 'N/A'),
-                    "topic_match": score_data.get('topic_match', 0),
-                    "brand_match": score_data.get('brand_match', 0),
-                    "promise_match": score_data.get('promise_match', 0),
-                    "utility_match": score_data.get('utility_match', 0),
-                    "keyword_match": score_data.get('keyword_match', 0),
-                    "intent_match": score_data.get('intent_match', 0),
-                    "intent": score_data.get('intent', ''),
-                    "band": score_data.get('band', '')
-                }
-            return {"error": True, "status_code": response.status_code, "body": content}
-        else:
-            return {"error": True, "status_code": response.status_code, "body": response.text}
+        completion = client.chat.completions.create(
+            model="anthropic/claude-sonnet-4-20250514",
+            messages=[
+                {"role": "system", "content": "You are a similarity scoring expert. Analyze text and return ONLY a JSON object with the requested fields."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
+            max_tokens=300
+        )
+        
+        content = completion.choices[0].message.content.strip()
+        
+        # Extract JSON from response
+        json_match = re.search(r'\{[^}]+\}', content, re.DOTALL)
+        if json_match:
+            score_data = json.loads(json_match.group())
+            return {
+                "error": False,
+                "final_score": float(score_data.get('final_score', score_data.get('score', 0))),
+                "reason": score_data.get('reason', 'N/A'),
+                "topic_match": score_data.get('topic_match', 0),
+                "brand_match": score_data.get('brand_match', 0),
+                "promise_match": score_data.get('promise_match', 0),
+                "utility_match": score_data.get('utility_match', 0),
+                "keyword_match": score_data.get('keyword_match', 0),
+                "intent_match": score_data.get('intent_match', 0),
+                "intent": score_data.get('intent', ''),
+                "band": score_data.get('band', '')
+            }
+        return {"error": True, "status_code": "parse_error", "body": content}
     except Exception as e:
         return {"error": True, "status_code": "exception", "body": str(e)}
 
