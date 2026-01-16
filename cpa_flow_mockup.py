@@ -821,19 +821,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 """, unsafe_allow_html=True)
                 device_all = st.radio("Device for all previews:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='device_all', index=0)
                 
-                # Flow Display based on layout
-                # Reduce spacing before Flow Journey
-                st.markdown("<div style='margin-top: 4px;'></div>", unsafe_allow_html=True)
-                st.markdown("### 🔄 Flow Journey")
-                
-                # Single device selector for ALL cards with tooltip
-                st.markdown("""
-                <div style="margin-bottom: 8px;">
-                    <span style="font-size: 14px; color: #64748b;">💡 Select a device to preview how the ad flow appears on different screen sizes</span>
-                </div>
-                """, unsafe_allow_html=True)
-                device_all = st.radio("Device for all previews:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='device_all', index=0)
-                
                 # Initialize containers for both layouts
                 stage_cols = None
                 vertical_preview_col = None
