@@ -38,18 +38,16 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         thumio_configured: Boolean indicating if Thum.io is configured
         thumio_referer_domain: Thum.io referer domain
     """
-    # Add Flow Journey heading - ensure it's visible
-    st.markdown("""
-    <h2 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 4px 0 12px 0; display: block;"><strong>🔄 Flow Journey</strong></h2>
-    """, unsafe_allow_html=True)
-    
     # Single device selector for ALL cards with tooltip - highlighted
     st.markdown("""
-    <div style="margin-bottom: 12px; padding: 12px; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 4px;">
+    <div style="margin-bottom: 8px; padding: 12px; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 4px;">
         <span style="font-size: 15px; font-weight: 600; color: #0f172a;">💡 <strong>Select a device</strong> to preview how the ad flow appears on different screen sizes</span>
     </div>
     """, unsafe_allow_html=True)
     device_all = st.radio("Device for all previews:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='device_all', index=0)
+    
+    # Remove spacing after device selector - minimal height
+    st.markdown("<div style='margin-bottom: 0; height: 0; line-height: 0;'></div>", unsafe_allow_html=True)
     
     # Initialize containers for both layouts
     stage_cols = None
@@ -574,15 +572,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
         serp_key = current_flow.get('serp_template_key', 'N/A')
         
-        # Show SERP info below title in horizontal layout
-        if st.session_state.flow_layout == 'horizontal' and st.session_state.view_mode == 'basic':
-            st.markdown(f"""
-            <div style='margin-bottom: 12px; font-size: 13px;'>
-                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>SERP Key</strong></div>
-                <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;'>{html.escape(str(serp_key))}</div>
-                {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>SERP URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{serp_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(serp_url))}</a></div>' if serp_url and serp_url != 'N/A' else ''}
-            </div>
-            """, unsafe_allow_html=True)
+        # SERP info removed from above card - will be shown BELOW card preview
         
         if st.session_state.flow_layout != 'horizontal':
             st.caption(f"**Template:** {serp_name}")
