@@ -293,7 +293,13 @@ def create_screenshot_html(screenshot_url, device='mobile', referer_domain=None)
     """Create HTML for screenshot with proper referer handling"""
     vw = 390 if device == 'mobile' else 820 if device == 'tablet' else 1440
     
-    screenshot_url_escaped = screenshot_url.replace("'", "\\'").replace('"', '\\"')
+    # Ensure URL is properly formatted - don't double-encode
+    if screenshot_url and '%' in screenshot_url:
+        # Already encoded, use as-is but escape for HTML
+        screenshot_url_escaped = screenshot_url.replace("'", "\\'").replace('"', '\\"')
+    else:
+        # Not encoded, escape for HTML
+        screenshot_url_escaped = screenshot_url.replace("'", "\\'").replace('"', '\\"') if screenshot_url else ""
     screenshot_html = f'''<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width={vw}">
 <style>* {{margin:0;padding:0;box-sizing:border-box}} body {{background:#f5f5f5}} img {{width:100%;height:auto;display:block;max-width:100%;}} .error {{padding: 20px; text-align: center; color: #dc2626; background: #fef2f2; border: 2px solid #fca5a5; border-radius: 8px; margin: 10px; font-family: system-ui, -apple-system, sans-serif;}} .loading {{padding: 20px; text-align: center; color: #64748b; background: #f8fafc; border-radius: 8px; margin: 10px;}}</style>
