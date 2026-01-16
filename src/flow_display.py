@@ -132,8 +132,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         </style>
         """, unsafe_allow_html=True)
         
-        # Create columns for the actual cards - removed description layer to avoid duplicates
-        stage_cols = st.columns([1, 0.05, 0.7, 0.05, 1, 0.05, 1], gap='small')
+        # Create columns for the actual cards - removed description layer and arrow columns to avoid duplicates
+        stage_cols = st.columns([1, 0.7, 1, 1], gap='small')
     else:
         # Vertical layout - cards extend full width, details inline within card boundaries
         stage_cols = None
@@ -412,13 +412,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 """, unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
     
-    if stage_cols:
-        with stage_cols[1]:
-            st.markdown("""
-            <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 400px; padding: 0; margin: 0;'>
-                <div style='font-size: 80px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
-            </div>
-            """, unsafe_allow_html=True)
+    # Arrow divs removed - no longer needed
     
     # Stage 2: Creative
     if st.session_state.flow_layout == 'vertical':
@@ -427,7 +421,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         creative_card_left = None
         creative_card_right = None
     else:
-        stage_2_container = stage_cols[2]
+        stage_2_container = stage_cols[1]
         creative_card_left = None
         creative_card_right = None
     
@@ -528,13 +522,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 """, unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
     
-    if stage_cols:
-        with stage_cols[3]:
-            st.markdown("""
-            <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 400px; padding: 0; margin: 0;'>
-                <div style='font-size: 80px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
-            </div>
-            """, unsafe_allow_html=True)
+    # Arrow divs removed - no longer needed
     
     # Stage 3: SERP
     serp_template_key = current_flow.get('serp_template_key', '')
@@ -550,7 +538,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         serp_card_right = None
     else:
         if stage_cols:
-            stage_3_container = stage_cols[4]
+            stage_3_container = stage_cols[2]
         else:
             stage_3_container = st.container()
         serp_card_left = None
@@ -810,13 +798,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 """, unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
     
-    if stage_cols:
-        with stage_cols[5]:
-            st.markdown("""
-            <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 400px; padding: 0; margin: 0;'>
-                <div style='font-size: 80px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
-            </div>
-            """, unsafe_allow_html=True)
+    # Arrow divs removed - no longer needed
     
     # Stage 4: Landing Page
     if st.session_state.flow_layout == 'vertical':
@@ -826,7 +808,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         landing_card_right = None
     else:
         if stage_cols:
-            stage_4_container = stage_cols[6]
+            stage_4_container = stage_cols[3]
         else:
             stage_4_container = st.container()
         landing_card_left = None
@@ -1078,13 +1060,23 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             </h2>
         """, unsafe_allow_html=True)
         
+        # Calculate similarities if not already calculated
         if 'similarities' not in st.session_state or st.session_state.similarities is None:
             if api_key:
-                st.session_state.similarities = calculate_similarities(current_flow)
+                with st.spinner("Calculating similarity scores..."):
+                    st.session_state.similarities = calculate_similarities(current_flow)
             else:
                 st.session_state.similarities = {}
         
-        if 'similarities' in st.session_state and st.session_state.similarities:
+        # Render similarity scores - check if we have actual data
+        has_similarities = (
+            'similarities' in st.session_state and 
+            st.session_state.similarities and 
+            isinstance(st.session_state.similarities, dict) and
+            len(st.session_state.similarities) > 0
+        )
+        
+        if has_similarities:
             score_cols = st.columns(3, gap='small')
             
             with score_cols[0]:
@@ -1102,4 +1094,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                        custom_title="Keyword → Landing Page Similarity",
                                        tooltip_text="Measures overall flow consistency from keyword to landing page. Higher scores indicate better end-to-end alignment.")
         else:
-            st.info("⏳ Similarity scores will be calculated after data loads")
+            if api_key:
+                st.warning("⚠️ Similarity scores could not be calculated. Check API key configuration.")
+            else:
+                st.info("⏳ Add API key to calculate similarity scores")
