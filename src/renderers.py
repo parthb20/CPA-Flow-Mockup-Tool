@@ -1,1035 +1,419 @@
 # -*- coding: utf-8 -*-
 """
-Flow Display Module for CPA Flow Analysis Tool
-Handles rendering of the Flow Journey (Publisher, Creative, SERP, Landing Page)
+Rendering functions for UI components
 """
 
 import streamlit as st
 import pandas as pd
-import requests
-from bs4 import BeautifulSoup
-from urllib.parse import urljoin
-import re
 import html
+import hashlib
+import time
+from src.similarity import get_score_class
 
-from src.config import SERP_BASE_URL
-from src.renderers import (
-    render_mini_device_preview,
-    render_similarity_score,
-    inject_unique_id,
-    create_screenshot_html,
-    parse_creative_html
-)
-from src.screenshot import get_screenshot_url, capture_with_playwright
-from src.serp import generate_serp_mockup
-from src.similarity import calculate_similarities
+try:
+    from PIL import Image
+    import pytesseract
+    OCR_AVAILABLE = True
+except ImportError:
+    OCR_AVAILABLE = False
+    pytesseract = None
+
+try:
+    from playwright.sync_api import sync_playwright
+    PLAYWRIGHT_AVAILABLE = True
+except:
+    PLAYWRIGHT_AVAILABLE = False
 
 
-def render_flow_journey(campaign_df, current_flow, api_key, playwright_available, thumio_configured, thumio_referer_domain):
+def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdoc=False, display_url=None):
+    """Render device preview with realistic chrome for mobile/tablet/laptop"""
+    # Device dimensions and styling
+    if device == 'mobile':
+        device_w = 390
+        container_height = 844
+        scale = 0.5
+        frame_style = "border-radius: 30px; border: 5px solid #000000;"
+        
+        url_display = display_url if display_url else (content if is_url else "URL")
+        url_display_short = url_display[:40] + "..." if len(url_display) > 40 else url_display
+        device_chrome = f"""
+        <div style="background: #000; color: white; padding: 6px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500;">
+            <div>9:41</div>
+            <div style="display: flex; gap: 4px; align-items: center;">
+                <span>📶</span>
+                <span>📡</span>
+                <span>🔋</span>
+            </div>
+        </div>
+        <div style="background: #f7f7f7; border-bottom: 1px solid #d1d1d1; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
+            <div style="flex: 1; background: white; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; border: 1px solid #e0e0e0;">
+                <span style="font-size: 16px;">🔒</span>
+                <span style="color: #666; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{url_display_short}</span>
+                <span style="font-size: 16px;">🔄</span>
+            </div>
+        </div>
+        """
+        
+        bottom_nav = """
+        <div style="position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e0e0e0; padding: 8px 0; display: flex; justify-content: space-around; align-items: center; z-index: 1000;">
+            <div style="text-align: center; flex: 1;">
+                <div style="font-size: 20px;">🏠</div>
+                <div style="font-size: 10px; color: #666;">Home</div>
+            </div>
+            <div style="text-align: center; flex: 1;">
+                <div style="font-size: 20px;">⬅️</div>
+                <div style="font-size: 10px; color: #666;">Back</div>
+            </div>
+            <div style="text-align: center; flex: 1;">
+                <div style="font-size: 20px;">📱</div>
+                <div style="font-size: 10px; color: #666;">Apps</div>
+            </div>
+        </div>
+        """
+        chrome_height = "90px"
+        
+    elif device == 'tablet':
+        device_w = 820
+        container_height = 1180
+        scale = 0.4
+        frame_style = "border-radius: 16px; border: 12px solid #1f2937;"
+        
+        url_display = display_url if display_url else (content if is_url else "URL")
+        url_display_short = url_display[:50] + "..." if len(url_display) > 50 else url_display
+        device_chrome = f"""
+        <div style="background: #000; color: white; padding: 8px 24px; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 500;">
+            <div style="display: flex; gap: 12px;">
+                <span>9:41 AM</span>
+                <span>Wed Jan 13</span>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <span>📶</span>
+                <span>📡</span>
+                <span>🔋</span>
+            </div>
+        </div>
+        <div style="background: #f0f0f0; border-bottom: 1px solid #d0d0d0; padding: 12px 16px; display: flex; align-items: center; gap: 12px;">
+            <div style="flex: 1; background: white; border-radius: 10px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; border: 1px solid #e0e0e0;">
+                <span style="font-size: 18px;">🔒</span>
+                <span style="color: #666; font-size: 15px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{url_display_short}</span>
+            </div>
+        </div>
+        """
+        bottom_nav = ""
+        chrome_height = "60px"
+        
+    else:  # laptop
+        device_w = 1440
+        container_height = 900
+        scale = 0.3
+        frame_style = "border-radius: 8px; border: 6px solid #374151;"
+        
+        url_display = display_url if display_url else (content if is_url else "URL")
+        url_display_short = url_display[:60] + "..." if len(url_display) > 60 else url_display
+        device_chrome = f"""
+        <div style="background: #e8e8e8; padding: 12px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #d0d0d0;">
+            <div style="display: flex; gap: 8px;">
+                <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f57;"></div>
+                <div style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e;"></div>
+                <div style="width: 12px; height: 12px; border-radius: 50%; background: #28c840;"></div>
+            </div>
+            <div style="flex: 1; background: white; border-radius: 6px; padding: 8px 16px; display: flex; align-items: center; gap: 12px; border: 1px solid #d0d0d0;">
+                <span style="font-size: 16px;">🔒</span>
+                <span style="color: #333; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{url_display_short}</span>
+            </div>
+        </div>
+        """
+        bottom_nav = ""
+        chrome_height = "52px"
+    
+    display_w = int(device_w * scale)
+    display_h = int(container_height * scale)
+    
+    if is_url and not use_srcdoc:
+        # For URL-based iframes, wrap in device chrome
+        iframe_content = f'<iframe src="{content}" style="width: 100%; height: 100%; border: none;"></iframe>'
+    else:
+        iframe_content = content
+    
+    full_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta name="viewport" content="width={device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <meta charset="utf-8">
+        <style>
+            body {{ 
+                margin: 0; 
+                padding: 0; 
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                width: {device_w}px;
+                max-width: {device_w}px;
+                overflow-x: hidden;
+            }}
+            .device-chrome {{ 
+                width: 100%; 
+                max-width: {device_w}px;
+                background: white; 
+            }}
+            .content-area {{ 
+                width: {device_w}px;
+                max-width: {device_w}px;
+                height: calc(100vh - {chrome_height}); 
+                overflow-y: auto; 
+                overflow-x: hidden;
+                -webkit-overflow-scrolling: touch;
+            }}
+            .content-area * {{
+                max-width: {device_w}px !important;
+                box-sizing: border-box !important;
+            }}
+            html, body {{
+                overflow-x: hidden !important;
+                width: {device_w}px !important;
+                max-width: {device_w}px !important;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="device-chrome">{device_chrome}</div>
+        <div class="content-area">{iframe_content}</div>
+        {bottom_nav if device == 'mobile' else ''}
+    </body>
+    </html>
     """
-    Render the complete Flow Journey section with all stages:
-    Publisher URL, Creative, SERP, Landing Page, and Similarity Scores
     
-    Args:
-        campaign_df: Filtered campaign dataframe
-        current_flow: Current flow dictionary
-        api_key: API key for similarity calculations
-        playwright_available: Boolean indicating if Playwright is available
-        thumio_configured: Boolean indicating if Thum.io is configured
-        thumio_referer_domain: Thum.io referer domain
+    escaped = full_content.replace("'", "&apos;").replace('"', '&quot;')
+    
+    html_output = f"""
+    <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
+        <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+            <iframe srcdoc='{escaped}' style="width: {device_w}px; height: {container_height}px; border: none; transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"></iframe>
+        </div>
+    </div>
     """
-    # Reduce spacing before Flow Journey
-    st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
     
-    # Flow Display based on layout
-    # Reduce spacing before Flow Journey
-    st.markdown("<div style='margin-top: 4px;'></div>", unsafe_allow_html=True)
-    st.markdown("""
-    <h2 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0;">🔄 Flow Journey</h2>
-    """, unsafe_allow_html=True)
+    return html_output, display_h + 30, is_url
+
+
+def render_similarity_score(score_type, similarities_data, show_explanation=False, custom_title=None, tooltip_text=None):
+    """Render a single similarity score card"""
+    if not similarities_data:
+        return
     
-    # Single device selector for ALL cards with tooltip - highlighted
-    st.markdown("""
-    <div style="margin-bottom: 12px; padding: 12px; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 4px;">
-        <span style="font-size: 15px; font-weight: 600; color: #0f172a;">💡 <strong>Select a device</strong> to preview how the ad flow appears on different screen sizes</span>
+    data = similarities_data.get(score_type, {})
+    
+    if not data or 'error' in data:
+        if data and data.get('status_code') == 'no_api_key':
+            st.info("🔑 Add API key to calculate")
+        else:
+            st.info("⏳ Will calculate after data loads")
+        return
+    
+    score = data.get('final_score', 0)
+    reason = data.get('reason', 'N/A')
+    css_class, label, color = get_score_class(score)
+    
+    if custom_title:
+        title_text = custom_title
+    else:
+        if score_type == 'kwd_to_ad':
+            title_text = "Keyword → Ad Similarity"
+            default_tooltip = "Measures how well the ad creative matches the search keyword."
+        elif score_type == 'ad_to_page':
+            title_text = "Ad Copy → Landing Page Similarity"
+            default_tooltip = "Measures how well the landing page fulfills the promises made in the ad copy."
+        elif score_type == 'kwd_to_page':
+            title_text = "Keyword → Landing Page Similarity"
+            default_tooltip = "Measures overall flow consistency from keyword to landing page."
+        else:
+            title_text = f"{label} Match"
+            default_tooltip = "Similarity score measuring alignment between different parts of your ad flow."
+    
+    tooltip = tooltip_text or default_tooltip
+    
+    st.markdown(f"""
+    <div style="margin-bottom: 8px;">
+        <span style="font-weight: 600; color: #0f172a; font-size: 14px;">
+            {title_text}
+            <span title="{tooltip}" style="cursor: help; color: #3b82f6; font-size: 12px; margin-left: 4px;">ℹ️</span>
+        </span>
     </div>
     """, unsafe_allow_html=True)
-    device_all = st.radio("Device for all previews:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='device_all', index=0)
     
-    # Initialize containers for both layouts
-    stage_cols = None
-    vertical_preview_col = None
-    vertical_info_col = None
-    stage_1_info_container = None
-    stage_2_info_container = None
-    stage_3_info_container = None
-    stage_4_info_container = None
+    st.markdown(f"""
+    <div style="background: white; border: 2px solid {color}; border-radius: 8px; padding: 12px; margin: 8px 0;">
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px;">
+            <div style="font-size: 32px; font-weight: 700; color: {color}; flex-shrink: 0;">{score:.0%}</div>
+            <div style="flex: 1; min-width: 0;">
+                <div style="font-weight: 600; color: {color}; font-size: 13px; margin-bottom: 4px;">{label} Match</div>
+                <div style="font-size: 11px; color: #64748b; line-height: 1.3;">{reason[:70]}{'...' if len(reason) > 70 else ''}</div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
-    if st.session_state.flow_layout == 'horizontal':
-        # Add CSS to force single line and prevent wrapping
-        st.markdown("""
-        <style>
-        [data-testid="column"] {
-            flex-shrink: 0 !important;
-            min-width: 0 !important;
-        }
-        .stColumn > div {
-            overflow: hidden !important;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-        
-        # Description layer - show domain, URL, keyword (creative), SERP URL, SERP temp key
-        # Format: Bold titles on top, values below (not inline), no truncation, proper alignment
-        desc_cols = st.columns([1, 0.05, 0.7, 0.05, 1, 0.05, 1], gap='small')
-        with desc_cols[0]:
-            domain = current_flow.get('publisher_domain', 'N/A')
-            url = current_flow.get('publisher_url', 'N/A')
-            st.markdown(f"""
-            <div style="font-size: 13px; padding: 8px 0; min-height: 80px;">
-                <div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 6px;"><strong>Domain</strong></div>
-                <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;">{html.escape(str(domain))}</div>
-                <div style="margin-top: 12px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 6px;"><strong>URL</strong></div>
-                <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;">{html.escape(str(url))}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with desc_cols[2]:
-            keyword = current_flow.get('keyword_term', 'N/A')
-            st.markdown(f"""
-            <div style="font-size: 13px; padding: 8px 0; min-height: 80px;">
-                <div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 6px;"><strong>Keyword</strong></div>
-                <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;">{html.escape(str(keyword))}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with desc_cols[4]:
-            serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
-            serp_key = current_flow.get('serp_template_key', 'N/A')
-            st.markdown(f"""
-            <div style="font-size: 13px; padding: 8px 0; min-height: 80px;">
-                <div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 6px;"><strong>SERP URL</strong></div>
-                <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;">{html.escape(str(serp_url))}</div>
-                <div style="margin-top: 12px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 6px;"><strong>SERP Key</strong></div>
-                <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;">{html.escape(str(serp_key))}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with desc_cols[6]:
-            # REMOVED Landing URL from description layer - it's shown in Landing Page stage to avoid duplication
-            st.markdown("""
-            <div style="font-size: 13px; padding: 8px 0; min-height: 80px;">
-                <div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 6px;"><strong>Landing URL</strong></div>
-                <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;">See Landing Page stage below</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # Now create columns for the actual cards
-        stage_cols = st.columns([1, 0.05, 0.7, 0.05, 1, 0.05, 1], gap='small')
+    with st.expander(f"🔍 How was this calculated?", expanded=False):
+        st.markdown(f"**Reason:** {reason}")
+        if 'topic_match' in data:
+            st.markdown(f"**Topic Match:** {data.get('topic_match', 0):.0%}")
+        if 'brand_match' in data:
+            st.markdown(f"**Brand Match:** {data.get('brand_match', 0):.0%}")
+        if 'promise_match' in data:
+            st.markdown(f"**Promise Match:** {data.get('promise_match', 0):.0%}")
+
+
+def inject_unique_id(html_content, prefix, url, device, flow_data=None):
+    """Inject a unique identifier comment into HTML to force re-rendering"""
+    key_parts = [prefix, str(url), str(device), str(time.time())]
+    if flow_data:
+        key_parts.append(str(flow_data.get('publisher_url', '')))
+        key_parts.append(str(flow_data.get('serp_template_key', '')))
+    key_string = '_'.join(key_parts)
+    unique_id = hashlib.md5(key_string.encode()).hexdigest()[:12]
+    stripped = html_content.lstrip()
+    leading_ws = html_content[:len(html_content) - len(stripped)]
+    
+    if stripped.startswith('<!DOCTYPE'):
+        html_content = leading_ws + f'<!-- unique_id:{unique_id} -->\n' + stripped
+    elif stripped.startswith('<html'):
+        html_content = leading_ws + f'<!-- unique_id:{unique_id} -->\n' + stripped
     else:
-        # Vertical layout - cards extend full width, details inline within card boundaries
-        stage_cols = None
+        html_content = leading_ws + f'<!-- unique_id:{unique_id} -->\n' + stripped
+    return html_content
+
+
+def create_screenshot_html(screenshot_url, device='mobile', referer_domain=None):
+    """Create HTML for screenshot with proper referer handling"""
+    vw = 390 if device == 'mobile' else 820 if device == 'tablet' else 1440
     
-    # Stage 1: Publisher URL
-    if st.session_state.flow_layout == 'vertical':
-        st.markdown("<br>", unsafe_allow_html=True)
-        stage_1_container = st.container()
-    else:
-        stage_1_container = stage_cols[0]
+    screenshot_url_escaped = screenshot_url.replace("'", "\\'").replace('"', '\\"')
+    screenshot_html = f'''<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width={vw}">
+<style>* {{margin:0;padding:0;box-sizing:border-box}} body {{background:#f5f5f5}} img {{width:100%;height:auto;display:block;max-width:100%;}} .error {{padding: 20px; text-align: center; color: #dc2626; background: #fef2f2; border: 2px solid #fca5a5; border-radius: 8px; margin: 10px; font-family: system-ui, -apple-system, sans-serif;}} .loading {{padding: 20px; text-align: center; color: #64748b; background: #f8fafc; border-radius: 8px; margin: 10px;}}</style>
+</head><body>
+<div class="loading">⏳ Loading screenshot...</div>
+<script>
+(function() {{
+    let retryCount = 0;
+    const maxRetries = 3;
+    const screenshotUrl = '{screenshot_url_escaped}';
     
-    # Initialize card columns for vertical layout
-    card_col_left = None
-    card_col_right = None
+    function showError(message) {{
+        document.body.innerHTML = '<div class="error">' + message + '</div>';
+    }}
     
-    # Get current domain and URL for Publisher URL section
-    current_dom = current_flow.get('publisher_domain', '')
-    current_url = current_flow.get('publisher_url', '')
+    function loadImage() {{
+        const img = new Image();
+        img.style.width = '100%';
+        img.style.height = 'auto';
+        img.style.display = 'block';
+        
+        const timeout = setTimeout(function() {{
+            img.onerror = null;
+            img.onload = null;
+            retryCount++;
+            if (retryCount <= maxRetries) {{
+                const separator = screenshotUrl.includes('?') ? '&' : '?';
+                img.src = screenshotUrl + separator + 't=' + Date.now() + '&retry=' + retryCount;
+            }} else {{
+                showError('⚠️ Screenshot failed to load<br><small>Timeout after multiple retries</small><br><small style="font-size: 10px;">URL: ' + screenshotUrl.substring(0, 60) + '...</small><br><br><small>💡 Check VPN/network connection<br>Some URLs require VPN to access</small>');
+            }}
+        }}, 10000);
+        
+        img.onload = function() {{
+            clearTimeout(timeout);
+            document.body.innerHTML = '';
+            document.body.appendChild(img);
+        }};
+        
+        img.onerror = function() {{
+            clearTimeout(timeout);
+            retryCount++;
+            if (retryCount <= maxRetries) {{
+                setTimeout(function() {{
+                    const separator = screenshotUrl.includes('?') ? '&' : '?';
+                    img.src = screenshotUrl + separator + 't=' + Date.now() + '&retry=' + retryCount;
+                }}, 1000 * retryCount);
+            }} else {{
+                const urlShort = screenshotUrl.substring(0, 60);
+                showError('⚠️ Screenshot failed to load<br><small>Network error</small><br><small style="font-size: 10px;">URL: ' + urlShort + '...</small><br><br><small>💡 This URL may require VPN to access<br>Check your network connection</small>');
+            }}
+        }};
+        
+        img.crossOrigin = 'anonymous';
+        img.src = screenshotUrl;
+    }}
     
-    # Get domains and URLs for filtering
-    keywords = sorted(campaign_df['keyword_term'].dropna().unique().tolist())
-    current_kw = current_flow.get('keyword_term', keywords[0] if keywords else '')
-    kw_filtered = campaign_df[campaign_df['keyword_term'] == current_kw]
-    domains = sorted(kw_filtered['publisher_domain'].dropna().unique().tolist()) if 'publisher_domain' in kw_filtered.columns else []
+    setTimeout(loadImage, 100);
+}})();
+</script>
+</body></html>'''
     
-    # Get URLs for current domain
-    dom_filtered = kw_filtered[kw_filtered['publisher_domain'] == current_dom] if current_dom and domains else kw_filtered
-    urls = dom_filtered['publisher_url'].dropna().unique().tolist() if 'publisher_url' in dom_filtered.columns else []
+    return screenshot_html
+
+
+def unescape_adcode(adcode):
+    """Unescape adcode using Flask app logic"""
+    import json
+    import re
     
-    with stage_1_container:
-        if st.session_state.flow_layout == 'vertical':
-            card_col_left, card_col_right = st.columns([0.6, 0.4])
-            with card_col_left:
-                st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">📰 Publisher URL</h3>', unsafe_allow_html=True)
-        else:
-            st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">📰 Publisher URL</h3>', unsafe_allow_html=True)
+    try:
+        # Handle double-stringified JSON
+        if isinstance(adcode, str) and adcode.startswith('"'):
+            adcode = json.loads(adcode)
         
-        # Show info below title (not inline) - formatted properly
-        if st.session_state.view_mode == 'basic':
-            st.markdown(f"""
-            <div style='margin-bottom: 12px; font-size: 13px;'>
-                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Domain</strong></div>
-                <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;'>{html.escape(str(current_dom))}</div>
-                {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{current_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
-            </div>
-            """, unsafe_allow_html=True)
+        # Replace unicode escapes
+        adcode = adcode.encode().decode('unicode_escape')
         
-        pub_url = current_flow.get('publisher_url', '')
-        preview_container = card_col_left if st.session_state.flow_layout == 'vertical' and card_col_left else stage_1_container
+        # Handle HTML entities
+        adcode = adcode.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
         
-        if pub_url and pub_url != 'NOT_FOUND' and pd.notna(pub_url) and str(pub_url).strip():
-            with preview_container:
-                try:
-                    user_agents = [
-                        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0'
-                    ]
-                    head_response = None
-                    for ua in user_agents:
-                        try:
-                            head_response = requests.head(pub_url, timeout=5, headers={'User-Agent': ua})
-                            if head_response.status_code == 200:
-                                break
-                        except:
-                            continue
-                    
-                    if not head_response:
-                        iframe_blocked = False
-                    else:
-                        x_frame = head_response.headers.get('X-Frame-Options', '').upper()
-                        csp = head_response.headers.get('Content-Security-Policy', '')
-                        iframe_blocked = ('DENY' in x_frame or 'SAMEORIGIN' in x_frame or 'frame-ancestors' in csp.lower())
-                except:
-                    iframe_blocked = False
-                
-                if not iframe_blocked:
-                    try:
-                        preview_html, height, _ = render_mini_device_preview(pub_url, is_url=True, device=device_all, display_url=pub_url)
-                        preview_html = inject_unique_id(preview_html, 'pub_iframe', pub_url, device_all, current_flow)
-                        display_height = height
-                        st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                        if st.session_state.flow_layout != 'horizontal':
-                            st.caption("📺 Iframe")
-                    except:
-                        iframe_blocked = True
-                
-                if iframe_blocked:
-                    try:
-                        headers = {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                            'Accept-Language': 'en-US,en;q=0.9',
-                            'Accept-Encoding': 'gzip, deflate, br',
-                            'DNT': '1',
-                            'Connection': 'keep-alive',
-                            'Upgrade-Insecure-Requests': '1',
-                            'Sec-Fetch-Dest': 'document',
-                            'Sec-Fetch-Mode': 'navigate',
-                            'Sec-Fetch-Site': 'none',
-                            'Cache-Control': 'max-age=0'
-                        }
-                        
-                        session = requests.Session()
-                        response = None
-                        for ua in user_agents:
-                            headers['User-Agent'] = ua
-                            try:
-                                response = session.get(pub_url, timeout=15, headers=headers, allow_redirects=True)
-                                if response.status_code == 200:
-                                    break
-                            except:
-                                continue
-                        
-                        if not response:
-                            response = session.get(pub_url, timeout=15, headers=headers, allow_redirects=True)
-                        
-                        if response.status_code == 403:
-                            if playwright_available:
-                                try:
-                                    with st.spinner("🔄 Trying browser automation..."):
-                                        page_html = capture_with_playwright(pub_url, device=device_all)
-                                        if page_html:
-                                            preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                            preview_html = inject_unique_id(preview_html, 'pub_playwright', pub_url, device_all, current_flow)
-                                            st.components.v1.html(preview_html, height=height, scrolling=False)
-                                            st.caption("🤖 Rendered via browser automation (bypassed 403)")
-                                        else:
-                                            raise Exception("Playwright returned empty HTML")
-                                except Exception:
-                                    if thumio_configured:
-                                        try:
-                                            screenshot_url = get_screenshot_url(pub_url, device=device_all, full_page=False)
-                                            if screenshot_url:
-                                                screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=thumio_referer_domain)
-                                                preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                                preview_html = inject_unique_id(preview_html, 'pub_screenshot', pub_url, device_all, current_flow)
-                                                display_height = height
-                                                st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                                                if st.session_state.flow_layout != 'horizontal':
-                                                    st.caption("📸 Screenshot (thum.io)")
-                                            else:
-                                                st.warning("🚫 Site blocks access (403)")
-                                                st.markdown(f"[🔗 Open in new tab]({pub_url})")
-                                        except:
-                                            st.warning("🚫 Site blocks access (403)")
-                                            st.markdown(f"[🔗 Open in new tab]({pub_url})")
-                                    else:
-                                        st.warning("🚫 Site blocks access (403)")
-                                        st.info("💡 Install Playwright for better rendering, or screenshots will use thum.io free tier (1000/month)")
-                                        st.markdown(f"[🔗 Open in new tab]({pub_url})")
-                            elif thumio_configured:
-                                try:
-                                    screenshot_url = get_screenshot_url(pub_url, device=device_all, full_page=False)
-                                    if screenshot_url:
-                                        screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=thumio_referer_domain)
-                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                        preview_html = inject_unique_id(preview_html, 'pub_screenshot', pub_url, device_all, current_flow)
-                                        st.components.v1.html(preview_html, height=height, scrolling=False)
-                                        st.caption("📸 Screenshot (thum.io)")
-                                    else:
-                                        st.warning("🚫 Site blocks access (403)")
-                                        st.markdown(f"[🔗 Open in new tab]({pub_url})")
-                                except:
-                                    st.warning("🚫 Site blocks access (403)")
-                                    st.markdown(f"[🔗 Open in new tab]({pub_url})")
-                            else:
-                                st.warning("🚫 Site blocks access (403)")
-                                st.info("💡 Install Playwright for better rendering, or screenshots will use thum.io free tier (1000/month)")
-                                st.markdown(f"[🔗 Open in new tab]({pub_url})")
-                        elif response.status_code == 200:
-                            try:
-                                page_html = response.text
-                                if '<head>' in page_html:
-                                    page_html = page_html.replace('<head>', '<head><meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">', 1)
-                                else:
-                                    page_html = '<head><meta charset="utf-8"></head>' + page_html
-                                page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
-                                                  lambda m: f'src="{urljoin(pub_url, m.group(1))}"', page_html)
-                                page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
-                                                  lambda m: f'href="{urljoin(pub_url, m.group(1))}"', page_html)
-                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                preview_html = inject_unique_id(preview_html, 'pub_html', pub_url, device_all, current_flow)
-                                display_height = height
-                                st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                                st.caption("📄 HTML")
-                            except Exception as html_error:
-                                if thumio_configured:
-                                    try:
-                                        screenshot_url = get_screenshot_url(pub_url, device=device_all, full_page=False)
-                                        if screenshot_url:
-                                            screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=thumio_referer_domain)
-                                            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                            preview_html = inject_unique_id(preview_html, 'pub_screenshot', pub_url, device_all, current_flow)
-                                            st.components.v1.html(preview_html, height=height, scrolling=False)
-                                            st.caption("📸 Screenshot (thum.io)")
-                                        else:
-                                            st.error(f"❌ HTML rendering failed: {str(html_error)[:100]}")
-                                    except:
-                                        st.error(f"❌ HTML rendering failed: {str(html_error)[:100]}")
-                                else:
-                                    st.error(f"❌ HTML rendering failed: {str(html_error)[:100]}")
-                        else:
-                            if playwright_available:
-                                try:
-                                    with st.spinner("🔄 Trying browser automation..."):
-                                        page_html = capture_with_playwright(pub_url, device=device_all)
-                                        if page_html:
-                                            preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                            preview_html = inject_unique_id(preview_html, 'pub_playwright', pub_url, device_all, current_flow)
-                                            st.components.v1.html(preview_html, height=height, scrolling=False)
-                                            st.caption("🤖 Rendered via browser automation")
-                                        else:
-                                            raise Exception("Playwright returned empty HTML")
-                                except Exception:
-                                    if thumio_configured:
-                                        try:
-                                            screenshot_url = get_screenshot_url(pub_url, device=device_all, full_page=False)
-                                            if screenshot_url:
-                                                screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=thumio_referer_domain)
-                                                preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                                preview_html = inject_unique_id(preview_html, 'pub_screenshot', pub_url, device_all, current_flow)
-                                                display_height = height
-                                                st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                                                if st.session_state.flow_layout != 'horizontal':
-                                                    st.caption("📸 Screenshot (thum.io)")
-                                            else:
-                                                st.error(f"❌ HTTP {response.status_code}")
-                                        except:
-                                            st.error(f"❌ HTTP {response.status_code}")
-                                    else:
-                                        st.error(f"❌ HTTP {response.status_code}")
-                            elif thumio_configured:
-                                try:
-                                    screenshot_url = get_screenshot_url(pub_url, device=device_all, full_page=False)
-                                    if screenshot_url:
-                                        screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=thumio_referer_domain)
-                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                        preview_html = inject_unique_id(preview_html, 'pub_screenshot', pub_url, device_all, current_flow)
-                                        st.components.v1.html(preview_html, height=height, scrolling=False)
-                                        st.caption("📸 Screenshot (thum.io)")
-                                    else:
-                                        st.error(f"❌ HTTP {response.status_code}")
-                                except:
-                                    st.error(f"❌ HTTP {response.status_code}")
-                            else:
-                                st.error(f"❌ HTTP {response.status_code}")
-                    except Exception as e:
-                        st.error(f"❌ {str(e)[:100]}")
-        else:
-            with preview_container:
-                st.warning("⚠️ No valid publisher URL in data")
-        
-        if st.session_state.flow_layout == 'vertical' and card_col_right:
-            with card_col_right:
-                st.markdown("""
-                <div style="margin-bottom: 12px;">
-                    <span style="font-weight: 900; color: #0f172a; font-size: 18px;">
-                        📰 Publisher URL Details
-                        <span title="Similarity scores measure how well different parts of your ad flow match: Keyword → Ad (ad matches keyword), Ad → Page (landing page matches ad), Keyword → Page (overall flow consistency)" style="cursor: help; color: #3b82f6; font-size: 12px; margin-left: 4px;">ℹ️</span>
-                    </span>
-                </div>
-                """, unsafe_allow_html=True)
-                st.markdown(f"""
-                <div style="margin-bottom: 12px; font-size: 13px;">
-                    <div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>Domain</strong></div>
-                    <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;">{html.escape(str(current_dom))}</div>
-                    {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{current_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
-                </div>
-                """, unsafe_allow_html=True)
+        return adcode
+    except:
+        return adcode
+
+
+def parse_creative_html(response_str):
+    """Parse response JSON and extract HTML with proper unescaping"""
+    import json
+    import re
     
-    if stage_cols:
-        with stage_cols[1]:
-            st.markdown("""
-            <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 400px; padding: 0; margin: 0;'>
-                <div style='font-size: 80px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    # Stage 2: Creative
-    if st.session_state.flow_layout == 'vertical':
-        st.markdown("<br>", unsafe_allow_html=True)
-        stage_2_container = st.container()
-        creative_card_left = None
-        creative_card_right = None
-    else:
-        if stage_cols:
-            stage_2_container = stage_cols[2]
-        else:
-            stage_2_container = st.container()
-        creative_card_left = None
-        creative_card_right = None
-    
-    with stage_2_container:
-        if st.session_state.flow_layout == 'vertical':
-            creative_card_left, creative_card_right = st.columns([0.5, 0.5])
-            with creative_card_left:
-                st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">🎨 Creative</h3>', unsafe_allow_html=True)
-        else:
-            st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">🎨 Creative</h3>', unsafe_allow_html=True)
+    try:
+        if not response_str or pd.isna(response_str):
+            return None, None
         
-        creative_id = current_flow.get('creative_id', 'N/A')
-        creative_name = current_flow.get('creative_template_name', 'N/A')
-        creative_size = current_flow.get('creative_size', 'N/A')
+        if str(response_str).startswith('{\\'):
+            try:
+                response_str = json.loads('"' + response_str + '"')
+            except:
+                pass
         
-        if st.session_state.flow_layout != 'vertical':
-            if st.session_state.view_mode == 'advanced':
-                with st.expander("⚙️", expanded=False):
-                    st.caption(f"**ID:** {creative_id}")
-                    st.caption(f"**Name:** {creative_name}")
-                    st.caption(f"**Size:** {creative_size}")
+        response_data = json.loads(response_str)
+        raw_adcode = response_data.get('adcode', '')
         
-        creative_preview_container = creative_card_left if st.session_state.flow_layout == 'vertical' and creative_card_left else stage_2_container
-        response_value = current_flow.get('response', None)
+        if not raw_adcode:
+            return None, None
         
-        with creative_preview_container:
-            if response_value and pd.notna(response_value) and str(response_value).strip():
-                try:
-                    creative_html, raw_adcode = parse_creative_html(response_value)
-                    if creative_html and raw_adcode:
-                        if st.session_state.flow_layout == 'horizontal':
-                            st.components.v1.html(creative_html, height=400, scrolling=True)
-                        else:
-                            st.components.v1.html(creative_html, height=400, scrolling=True)
-                        
-                        if st.session_state.view_mode == 'advanced' or st.session_state.flow_layout == 'vertical':
-                            with st.expander("👁️ View Raw Ad Code"):
-                                st.code(raw_adcode[:500], language='html')
-                    else:
-                        st.warning("⚠️ Empty creative JSON")
-                except Exception as e:
-                    st.error(f"⚠️ Creative error: {str(e)[:100]}")
-            else:
-                min_height = 400
-                st.markdown(f"""
-                <div style="min-height: {min_height}px; display: flex; align-items: center; justify-content: center; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px;">
-                    <div style="text-align: center; color: #64748b;">
-                        <div style="font-size: 48px; margin-bottom: 8px;">⚠️</div>
-                        <div style="font-weight: 600; font-size: 14px;">No creative data</div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+        # Unescape adcode
+        adcode = unescape_adcode(raw_adcode)
         
-        if st.session_state.flow_layout == 'vertical' and creative_card_right:
-            with creative_card_right:
-                keyword = current_flow.get('keyword_term', 'N/A')
-                creative_size = current_flow.get('creative_size', 'N/A')
-                creative_name = current_flow.get('creative_template_name', 'N/A')
-                
-                st.markdown("<h4 style='font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;'>🎨 Creative Details</h4>", unsafe_allow_html=True)
-                st.markdown(f"""
-                <div style="margin-bottom: 12px;">
-                    <div style="margin-bottom: 4px;"><strong style="font-size: 13px; color: #0f172a;">Keyword:</strong></div>
-                    <div style="margin-left: 8px; margin-bottom: 8px; color: #64748b;">{keyword}</div>
-                    <div style="margin-bottom: 4px;"><strong style="font-size: 13px; color: #0f172a;">Size:</strong></div>
-                    <div style="margin-left: 8px; margin-bottom: 8px; color: #64748b;">{creative_size}</div>
-                    {f'<div style="margin-bottom: 4px;"><strong style="font-size: 13px; color: #0f172a;">Template:</strong></div><div style="margin-left: 8px; margin-bottom: 8px; color: #64748b;">{creative_name}</div>' if creative_name != 'N/A' else ''}
-                </div>
-                """, unsafe_allow_html=True)
-                
-                if 'similarities' not in st.session_state or st.session_state.similarities is None:
-                    if api_key:
-                        st.session_state.similarities = calculate_similarities(current_flow)
-                    else:
-                        st.session_state.similarities = {}
-                
-                if 'similarities' in st.session_state and st.session_state.similarities:
-                    st.markdown("<h4 style='font-size: 18px; font-weight: 700; color: #0f172a; margin: 12px 0 8px 0;'>🔗 Keyword → Ad Copy Similarity</h4>", unsafe_allow_html=True)
-                    render_similarity_score('kwd_to_ad', st.session_state.similarities)
-    
-    if stage_cols:
-        with stage_cols[3]:
-            st.markdown("""
-            <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 400px; padding: 0; margin: 0;'>
-                <div style='font-size: 80px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    # Stage 3: SERP
-    serp_template_key = current_flow.get('serp_template_key', '')
-    if serp_template_key and pd.notna(serp_template_key) and str(serp_template_key).strip():
-        serp_url = SERP_BASE_URL + str(serp_template_key)
-    else:
-        serp_url = None
-    
-    if st.session_state.flow_layout == 'vertical':
-        st.markdown("<br>", unsafe_allow_html=True)
-        stage_3_container = st.container()
-        serp_card_left = None
-        serp_card_right = None
-    else:
-        if stage_cols:
-            stage_3_container = stage_cols[4]
-        else:
-            stage_3_container = st.container()
-        serp_card_left = None
-        serp_card_right = None
-    
-    with stage_3_container:
-        if st.session_state.flow_layout == 'vertical':
-            serp_card_left, serp_card_right = st.columns([0.6, 0.4])
-            with serp_card_left:
-                st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">📄 SERP</h3>', unsafe_allow_html=True)
-        else:
-            st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">📄 SERP</h3>', unsafe_allow_html=True)
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body {{ margin: 0; padding: 0; background: white; font-family: Arial, sans-serif; }}
+            </style>
+        </head>
+        <body>
+            {adcode}
+        </body>
+        </html>
+        """
         
-        serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
-        if st.session_state.flow_layout != 'horizontal':
-            st.caption(f"**Template:** {serp_name}")
+        return html_content, raw_adcode
         
-        ad_title = current_flow.get('ad_title', '')
-        ad_desc = current_flow.get('ad_description', '')
-        ad_display_url = current_flow.get('ad_display_url', '')
-        keyword = current_flow.get('keyword_term', '')
-        
-        serp_html = None
-        if 'data_b' in st.session_state and st.session_state.data_b:
-            is_dict = isinstance(st.session_state.data_b, dict)
-            is_list = isinstance(st.session_state.data_b, list)
-            if (is_dict and len(st.session_state.data_b) > 0) or (is_list and len(st.session_state.data_b) > 0):
-                serp_html = generate_serp_mockup(current_flow, st.session_state.data_b)
-        
-        serp_preview_container = serp_card_left if st.session_state.flow_layout == 'vertical' and serp_card_left else stage_3_container
-        
-        if serp_html and serp_html.strip():
-            with serp_preview_container:
-                preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
-                preview_html = inject_unique_id(preview_html, 'serp_template', serp_url or '', device_all, current_flow)
-                display_height = height
-                st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                if st.session_state.flow_layout != 'horizontal':
-                    st.caption("📺 SERP (from template)")
-        
-        elif serp_url:
-            with serp_preview_container:
-                try:
-                    response = requests.get(serp_url, timeout=15, headers={
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                        'Accept-Language': 'en-US,en;q=0.9'
-                    })
-                    
-                    if response.status_code == 200:
-                        serp_html = response.text
-                        serp_html = serp_html.replace('min-device-width', 'min-width')
-                        serp_html = serp_html.replace('max-device-width', 'max-width')
-                        serp_html = serp_html.replace('min-device-height', 'min-height')
-                        serp_html = serp_html.replace('max-device-height', 'max-height')
-                        
-                        soup = BeautifulSoup(serp_html, 'html.parser')
-                        replacement_made = False
-                        
-                        for text_node in soup.find_all(string=True):
-                            text_str = str(text_node)
-                            if 'Sponsored results for:' in text_str or 'sponsored results for:' in text_str.lower():
-                                new_text = re.sub(
-                                    r'(Sponsored results for:|sponsored results for:)\s*["\']?([^"\'<>]*)["\']?',
-                                    f'\\1 "{keyword}"',
-                                    text_str,
-                                    flags=re.IGNORECASE
-                                )
-                                if new_text != text_str:
-                                    text_node.replace_with(new_text)
-                                    replacement_made = True
-                        
-                        if ad_title:
-                            serp_html_temp = str(soup)
-                            serp_html_temp = re.sub(
-                                r'(<div class="title">)[^<]*(</div>)',
-                                f'\\1{ad_title}\\2',
-                                serp_html_temp,
-                                count=1
-                            )
-                            soup = BeautifulSoup(serp_html_temp, 'html.parser')
-                            replacement_made = True
-                        
-                        if ad_desc:
-                            serp_html_temp = str(soup)
-                            serp_html_temp = re.sub(
-                                r'(<div class="desc">)[^<]*(</div>)',
-                                f'\\1{ad_desc}\\2',
-                                serp_html_temp,
-                                count=1
-                            )
-                            soup = BeautifulSoup(serp_html_temp, 'html.parser')
-                            replacement_made = True
-                        
-                        if ad_display_url:
-                            serp_html_temp = str(soup)
-                            serp_html_temp = re.sub(
-                                r'(<div class="url">)[^<]*(</div>)',
-                                f'\\1{ad_display_url}\\2',
-                                serp_html_temp,
-                                count=1
-                            )
-                            soup = BeautifulSoup(serp_html_temp, 'html.parser')
-                            replacement_made = True
-                        
-                        if not replacement_made:
-                            st.warning("⚠️ No matching elements found for replacement. Check SERP HTML structure.")
-                        
-                        serp_html = str(soup)
-                        serp_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
-                                          lambda m: f'src="{urljoin(serp_url, m.group(1))}"', serp_html)
-                        serp_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
-                                          lambda m: f'href="{urljoin(serp_url, m.group(1))}"', serp_html)
-                        
-                        preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
-                        preview_html = inject_unique_id(preview_html, 'serp_injected', serp_url, device_all, current_flow)
-                        display_height = height
-                        st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                        if st.session_state.flow_layout != 'horizontal':
-                            st.caption("📺 SERP with injected ad content")
-                    
-                    elif response.status_code == 403:
-                        if playwright_available:
-                            with st.spinner("🔄 Using browser automation..."):
-                                page_html = capture_with_playwright(serp_url, device=device_all)
-                                if page_html:
-                                    soup = BeautifulSoup(page_html, 'html.parser')
-                                    
-                                    for text_node in soup.find_all(string=True):
-                                        if 'Sponsored results for:' in text_node or 'sponsored results for:' in text_node.lower():
-                                            new_text = re.sub(
-                                                r'(Sponsored results for:|sponsored results for:)\s*["\']?([^"\'<>]*)["\']?',
-                                                f'\\1 "{keyword}"',
-                                                text_node,
-                                                flags=re.IGNORECASE
-                                            )
-                                            text_node.replace_with(new_text)
-                                    
-                                    title_elements = soup.find_all(class_=re.compile(r'title', re.IGNORECASE))
-                                    if title_elements and ad_title:
-                                        first_title = title_elements[0]
-                                        from bs4 import NavigableString
-                                        for child in list(first_title.children):
-                                            if isinstance(child, NavigableString):
-                                                child.extract()
-                                        first_title.append(ad_title)
-                                    
-                                    desc_elements = soup.find_all(class_=re.compile(r'desc', re.IGNORECASE))
-                                    if desc_elements and ad_desc:
-                                        first_desc = desc_elements[0]
-                                        from bs4 import NavigableString
-                                        for child in list(first_desc.children):
-                                            if isinstance(child, NavigableString):
-                                                child.extract()
-                                        first_desc.append(ad_desc)
-                                    
-                                    url_elements = soup.find_all(class_=re.compile(r'url', re.IGNORECASE))
-                                    if url_elements and ad_display_url:
-                                        url_elements[0].clear()
-                                        url_elements[0].append(ad_display_url)
-                                    
-                                    serp_html = str(soup)
-                                    serp_html = serp_html.replace('min-device-width', 'min-width')
-                                    serp_html = serp_html.replace('max-device-width', 'max-width')
-                                    serp_html = serp_html.replace('min-device-height', 'min-height')
-                                    serp_html = serp_html.replace('max-device-height', 'max-height')
-                                    serp_html = re.sub(r'min-height\s*:\s*calc\(100[sv][vh]h?[^)]*\)\s*;?', '', serp_html, flags=re.IGNORECASE)
-                                    
-                                    serp_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
-                                                      lambda m: f'src="{urljoin(serp_url, m.group(1))}"', serp_html)
-                                    serp_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
-                                                      lambda m: f'href="{urljoin(serp_url, m.group(1))}"', serp_html)
-                                    
-                                    serp_html = re.sub(
-                                        r'<head>',
-                                        '<head><style>body, p, div, span, h1, h2, h3, h4, h5, h6, a, li, td, th { writing-mode: horizontal-tb !important; text-orientation: mixed !important; }</style>',
-                                        serp_html,
-                                        flags=re.IGNORECASE,
-                                        count=1
-                                    )
-                                    
-                                    preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
-                                    preview_html = inject_unique_id(preview_html, 'serp_playwright', serp_url, device_all, current_flow)
-                                    display_height = height
-                                    st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                                    if st.session_state.flow_layout != 'horizontal':
-                                        st.caption("📺 SERP (via Playwright)")
-                                else:
-                                    if thumio_configured:
-                                        screenshot_url = get_screenshot_url(serp_url, device=device_all, full_page=False)
-                                        if screenshot_url:
-                                            screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=thumio_referer_domain)
-                                            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                            preview_html = inject_unique_id(preview_html, 'serp_screenshot', serp_url, device_all, current_flow)
-                                            display_height = height
-                                            st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                                            st.caption("📸 Screenshot (thum.io)")
-                                    else:
-                                        st.warning("⚠️ Could not load SERP. Install Playwright for better rendering, or screenshots will use thum.io free tier")
-                        else:
-                            st.error(f"HTTP {response.status_code} - Install Playwright for 403 bypass")
-                    else:
-                        st.error(f"HTTP {response.status_code}")
-                    
-                except Exception as e:
-                    st.error(f"Load failed: {str(e)[:100]}")
-        else:
-            with serp_preview_container:
-                st.warning("⚠️ No SERP URL found in mapping")
-        
-        if st.session_state.flow_layout == 'vertical' and serp_card_right:
-            with serp_card_right:
-                serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
-                
-                st.markdown("<h4 style='font-size: 18px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0;'>📄 SERP Details</h4>", unsafe_allow_html=True)
-                st.markdown(f"""
-                <div style="margin-bottom: 12px; font-size: 13px;">
-                    <div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>Template</strong></div>
-                    <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;">{html.escape(str(serp_name))}</div>
-                    {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{serp_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(serp_url))}</a></div>' if serp_url else ''}
-                </div>
-                """, unsafe_allow_html=True)
-                
-                if 'similarities' not in st.session_state or st.session_state.similarities is None:
-                    if api_key:
-                        st.session_state.similarities = calculate_similarities(current_flow)
-                    else:
-                        st.session_state.similarities = {}
-                
-                if 'similarities' in st.session_state and st.session_state.similarities:
-                    render_similarity_score('ad_to_page', st.session_state.similarities,
-                                           custom_title="Ad Copy → Landing Page Similarity",
-                                           tooltip_text="Measures how well the landing page fulfills the promises made in the ad copy. Higher scores indicate better ad-page consistency.")
-    
-    if stage_cols:
-        with stage_cols[5]:
-            st.markdown("""
-            <div style='display: flex; align-items: center; justify-content: center; height: 100%; min-height: 400px; padding: 0; margin: 0;'>
-                <div style='font-size: 80px; color: #3b82f6; font-weight: 900; line-height: 1; text-shadow: 2px 2px 4px rgba(59,130,246,0.3); font-stretch: ultra-condensed; letter-spacing: -0.1em;'>→</div>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    # Stage 4: Landing Page
-    if st.session_state.flow_layout == 'vertical':
-        st.markdown("<br>", unsafe_allow_html=True)
-        stage_4_container = st.container()
-        landing_card_left = None
-        landing_card_right = None
-    else:
-        if stage_cols:
-            stage_4_container = stage_cols[6]
-        else:
-            stage_4_container = st.container()
-        landing_card_left = None
-        landing_card_right = None
-    
-    with stage_4_container:
-        if st.session_state.flow_layout == 'vertical':
-            landing_card_left, landing_card_right = st.columns([0.6, 0.4])
-            with landing_card_left:
-                st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">🎯 Landing Page</h3>', unsafe_allow_html=True)
-        else:
-            st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">🎯 Landing Page</h3>', unsafe_allow_html=True)
-        
-        adv_url = current_flow.get('reporting_destination_url', '')
-        flow_clicks = current_flow.get('clicks', 0)
-        
-        # Show Landing URL below title (not inline) - only in basic view, horizontal layout
-        if st.session_state.view_mode == 'basic' and adv_url and pd.notna(adv_url) and st.session_state.flow_layout == 'horizontal':
-            st.markdown(f"""
-            <div style="margin-bottom: 8px; font-size: 13px;">
-                <div style="font-weight: 700; color: #0f172a; margin-bottom: 4px;"><strong>Landing URL:</strong></div>
-                <div style="margin-left: 8px; word-break: break-word;"><a href="{adv_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(adv_url))}</a></div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        landing_preview_container = landing_card_left if st.session_state.flow_layout == 'vertical' and landing_card_left else stage_4_container
-        
-        if adv_url and pd.notna(adv_url) and str(adv_url).strip():
-            with landing_preview_container:
-                try:
-                    head_response = requests.head(adv_url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'})
-                    x_frame = head_response.headers.get('X-Frame-Options', '').upper()
-                    csp = head_response.headers.get('Content-Security-Policy', '')
-                    iframe_blocked = ('DENY' in x_frame or 'SAMEORIGIN' in x_frame or 'frame-ancestors' in csp.lower())
-                except:
-                    iframe_blocked = False
-                
-                if not iframe_blocked:
-                    try:
-                        preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all, display_url=adv_url)
-                        preview_html = inject_unique_id(preview_html, 'landing_iframe', adv_url, device_all, current_flow)
-                        display_height = height
-                        st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                        st.caption("📺 Iframe")
-                    except:
-                        iframe_blocked = True
-                
-                if iframe_blocked:
-                    try:
-                        headers = {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                            'Accept-Language': 'en-US,en;q=0.9',
-                            'Accept-Encoding': 'gzip, deflate, br',
-                            'DNT': '1',
-                            'Connection': 'keep-alive',
-                            'Upgrade-Insecure-Requests': '1',
-                            'Sec-Fetch-Dest': 'document',
-                            'Sec-Fetch-Mode': 'navigate',
-                            'Sec-Fetch-Site': 'none',
-                            'Cache-Control': 'max-age=0'
-                        }
-                        
-                        session = requests.Session()
-                        response = session.get(adv_url, timeout=15, headers=headers, allow_redirects=True)
-                        
-                        if response.status_code == 403:
-                            if playwright_available:
-                                try:
-                                    with st.spinner("🔄 Trying browser automation..."):
-                                        page_html = capture_with_playwright(adv_url, device=device_all)
-                                        if page_html:
-                                            preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                            preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
-                                            st.components.v1.html(preview_html, height=height, scrolling=False)
-                                            st.caption("🤖 Rendered via browser automation (bypassed 403)")
-                                        else:
-                                            raise Exception("Playwright returned empty HTML")
-                                except Exception:
-                                    if thumio_configured:
-                                        try:
-                                            screenshot_url = get_screenshot_url(adv_url, device=device_all, full_page=False)
-                                            if screenshot_url:
-                                                screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=thumio_referer_domain)
-                                                preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                                preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
-                                                display_height = height
-                                                st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                                                if st.session_state.flow_layout != 'horizontal':
-                                                    st.caption("📸 Screenshot (thum.io)")
-                                            else:
-                                                st.warning("🚫 Site blocks access (403)")
-                                                st.markdown(f"[🔗 Open in new tab]({adv_url})")
-                                        except:
-                                            st.warning("🚫 Site blocks access (403)")
-                                            st.markdown(f"[🔗 Open in new tab]({adv_url})")
-                                    else:
-                                        st.warning("🚫 Site blocks access (403)")
-                                        st.info("💡 Install Playwright for better rendering, or screenshots will use thum.io free tier (1000/month)")
-                                        st.markdown(f"[🔗 Open in new tab]({adv_url})")
-                            elif thumio_configured:
-                                try:
-                                    screenshot_url = get_screenshot_url(adv_url, device=device_all, full_page=False)
-                                    if screenshot_url:
-                                        screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=thumio_referer_domain)
-                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                        preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
-                                        display_height = height
-                                        st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                                        if st.session_state.flow_layout != 'horizontal':
-                                            st.caption("📸 Screenshot (thum.io)")
-                                    else:
-                                        st.warning("🚫 Site blocks access (403)")
-                                        st.markdown(f"[🔗 Open in new tab]({adv_url})")
-                                except:
-                                    st.warning("🚫 Site blocks access (403)")
-                                    st.markdown(f"[🔗 Open in new tab]({adv_url})")
-                            else:
-                                st.warning("🚫 Site blocks access (403)")
-                                st.info("💡 Install Playwright for better rendering, or screenshots will use thum.io free tier (1000/month)")
-                                st.markdown(f"[🔗 Open landing page]({adv_url})")
-                        elif response.status_code == 200:
-                            try:
-                                page_html = response.text
-                                if '<head>' in page_html:
-                                    page_html = page_html.replace('<head>', '<head><meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">', 1)
-                                else:
-                                    page_html = '<head><meta charset="utf-8"></head>' + page_html
-                                page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
-                                                  lambda m: f'src="{urljoin(adv_url, m.group(1))}"', page_html)
-                                page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
-                                                  lambda m: f'href="{urljoin(adv_url, m.group(1))}"', page_html)
-                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                preview_html = inject_unique_id(preview_html, 'landing_html', adv_url, device_all, current_flow)
-                                display_height = height
-                                st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                                st.caption("📄 HTML")
-                            except Exception as html_error:
-                                if thumio_configured:
-                                    try:
-                                        screenshot_url = get_screenshot_url(adv_url, device=device_all, full_page=False)
-                                        if screenshot_url:
-                                            screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=thumio_referer_domain)
-                                            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                            preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
-                                            display_height = height
-                                            st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                                            st.caption("📸 Screenshot (thum.io)")
-                                        else:
-                                            st.error(f"❌ HTML rendering failed: {str(html_error)[:100]}")
-                                    except:
-                                        st.error(f"❌ HTML rendering failed: {str(html_error)[:100]}")
-                                else:
-                                    st.error(f"❌ HTML rendering failed: {str(html_error)[:100]}")
-                        else:
-                            if playwright_available:
-                                try:
-                                    with st.spinner("🔄 Trying browser automation..."):
-                                        page_html = capture_with_playwright(adv_url, device=device_all)
-                                        if page_html:
-                                            preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                            preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
-                                            display_height = height
-                                            st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                                            if st.session_state.flow_layout != 'horizontal':
-                                                st.caption("🤖 Rendered via browser automation")
-                                        else:
-                                            raise Exception("Playwright returned empty HTML")
-                                except Exception:
-                                    if thumio_configured:
-                                        try:
-                                            screenshot_url = get_screenshot_url(adv_url, device=device_all, full_page=False)
-                                            if screenshot_url:
-                                                screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=thumio_referer_domain)
-                                                preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                                preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
-                                                display_height = height
-                                                st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                                                if st.session_state.flow_layout != 'horizontal':
-                                                    st.caption("📸 Screenshot (thum.io)")
-                                            else:
-                                                st.error(f"❌ HTTP {response.status_code}")
-                                        except:
-                                            st.error(f"❌ HTTP {response.status_code}")
-                                    else:
-                                        st.error(f"❌ HTTP {response.status_code}")
-                            elif thumio_configured:
-                                try:
-                                    screenshot_url = get_screenshot_url(adv_url, device=device_all, full_page=False)
-                                    if screenshot_url:
-                                        screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=thumio_referer_domain)
-                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                        preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
-                                        display_height = height
-                                        st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                                        if st.session_state.flow_layout != 'horizontal':
-                                            st.caption("📸 Screenshot (thum.io)")
-                                    else:
-                                        st.error(f"❌ HTTP {response.status_code}")
-                                except:
-                                    st.error(f"❌ HTTP {response.status_code}")
-                            else:
-                                st.error(f"❌ HTTP {response.status_code}")
-                    except Exception as e:
-                        st.error(f"❌ {str(e)[:100]}")
-        else:
-            with landing_preview_container:
-                st.warning("No landing page URL")
-        
-        if st.session_state.flow_layout == 'vertical' and landing_card_right:
-            with landing_card_right:
-                adv_url = current_flow.get('reporting_destination_url', '')
-                
-                st.markdown("<h4 style='font-size: 18px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0;'>🎯 Landing Page Details</h4>", unsafe_allow_html=True)
-                st.markdown(f"""
-                <div style="margin-bottom: 12px; font-size: 13px;">
-                    {f'<div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>Landing URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{adv_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(adv_url))}</a></div>' if adv_url and pd.notna(adv_url) else ''}
-                </div>
-                """, unsafe_allow_html=True)
-                
-                if 'similarities' not in st.session_state or st.session_state.similarities is None:
-                    if api_key:
-                        st.session_state.similarities = calculate_similarities(current_flow)
-                    else:
-                        st.session_state.similarities = {}
-                
-                if 'similarities' in st.session_state and st.session_state.similarities:
-                    st.markdown("<h4 style='font-size: 18px; font-weight: 700; color: #0f172a; margin: 12px 0 8px 0;'>🔗 Keyword → Landing Page Similarity</h4>", unsafe_allow_html=True)
-                    render_similarity_score('kwd_to_page', st.session_state.similarities,
-                                           custom_title="Keyword → Landing Page Similarity",
-                                           tooltip_text="Measures overall flow consistency from keyword to landing page. Higher scores indicate better end-to-end alignment.")
-    
-    # Similarity Scores Section for Horizontal Layout
-    if st.session_state.flow_layout == 'horizontal':
-        st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
-        st.markdown("""
-            <h2 style="font-size: 28px; font-weight: 700; color: #0f172a; margin: 20px 0 15px 0;">
-                🧠 Similarity Scores
-            </h2>
-        """, unsafe_allow_html=True)
-        
-        if 'similarities' not in st.session_state or st.session_state.similarities is None:
-            if api_key:
-                st.session_state.similarities = calculate_similarities(current_flow)
-            else:
-                st.session_state.similarities = {}
-        
-        if 'similarities' in st.session_state and st.session_state.similarities:
-            score_cols = st.columns(3, gap='small')
-            
-            with score_cols[0]:
-                render_similarity_score('kwd_to_ad', st.session_state.similarities,
-                                       custom_title="Keyword → Ad Copy Similarity",
-                                       tooltip_text="Measures how well the ad creative matches the search keyword. Higher scores indicate better keyword-ad alignment.")
-            
-            with score_cols[1]:
-                render_similarity_score('ad_to_page', st.session_state.similarities,
-                                       custom_title="Ad Copy → Landing Page Similarity",
-                                       tooltip_text="Measures how well the landing page fulfills the promises made in the ad copy. Higher scores indicate better ad-page consistency.")
-            
-            with score_cols[2]:
-                render_similarity_score('kwd_to_page', st.session_state.similarities,
-                                       custom_title="Keyword → Landing Page Similarity",
-                                       tooltip_text="Measures overall flow consistency from keyword to landing page. Higher scores indicate better end-to-end alignment.")
-        else:
-            st.info("⏳ Similarity scores will be calculated after data loads")
+    except Exception as e:
+        st.error(f"Error parsing creative: {str(e)}")
+        return None, None
