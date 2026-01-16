@@ -548,8 +548,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     flow_ctr = (flow_clicks / flow_imps * 100) if flow_imps > 0 else 0
                     flow_cvr = (flow_convs / flow_clicks * 100) if flow_clicks > 0 else 0
                     
-                    # REMOVED: render_selected_flow_display - showing duplicate info above cards
-                    # render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs, flow_ctr, flow_cvr)
+                    # Display flow summary
+                    render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs, flow_ctr, flow_cvr)
                     
                     if st.session_state.view_mode == 'basic':
                         st.success("✨ Auto-selected based on best performance")

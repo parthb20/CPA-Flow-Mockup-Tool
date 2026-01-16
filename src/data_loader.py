@@ -14,6 +14,13 @@ import os
 import re
 from io import StringIO, BytesIO
 
+# Import streamlit at module level (not inside functions)
+try:
+    import streamlit as st
+    STREAMLIT_AVAILABLE = True
+except:
+    STREAMLIT_AVAILABLE = False
+
 try:
     import gdown
     GDOWN_AVAILABLE = True
@@ -31,21 +38,26 @@ except:
 
 def process_file_content(content):
     """Process file content - detect type and decompress if needed"""
-    import streamlit as st
     
     def safe_st_error(msg):
         """Safely call st.error, catching thread-related issues"""
-        try:
-            st.error(msg)
-        except:
-            pass  # Ignore errors when called from thread
+        if STREAMLIT_AVAILABLE:
+            try:
+                st.error(msg)
+            except:
+                pass  # Ignore errors when called from thread
+        else:
+            print(f"ERROR: {msg}")
     
     def safe_st_info(msg):
         """Safely call st.info, catching thread-related issues"""
-        try:
-            st.info(msg)
-        except:
-            pass  # Ignore errors when called from thread
+        if STREAMLIT_AVAILABLE:
+            try:
+                st.info(msg)
+            except:
+                pass  # Ignore errors when called from thread
+        else:
+            print(f"INFO: {msg}")
     
     try:
         # Check if Google Drive returned HTML error page
@@ -325,14 +337,16 @@ def load_csv_from_gdrive(file_id):
 
 def load_json_from_gdrive(file_id):
     """Load JSON file from Google Drive - returns dict of SERP templates {template_key: html_string}"""
-    import streamlit as st
     
     def safe_st_error(msg):
         """Safely call st.error, catching thread-related issues"""
-        try:
-            st.error(msg)
-        except:
-            pass  # Ignore errors when called from thread
+        if STREAMLIT_AVAILABLE:
+            try:
+                st.error(msg)
+            except:
+                pass  # Ignore errors when called from thread
+        else:
+            print(f"ERROR: {msg}")
     
     try:
         url = f"https://drive.google.com/uc?export=download&id={file_id}"

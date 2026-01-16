@@ -61,8 +61,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     
     # Initialize containers for both layouts
     stage_cols = None
-    vertical_preview_col = None
-    vertical_info_col = None
     stage_1_info_container = None
     stage_2_info_container = None
     stage_3_info_container = None
@@ -990,90 +988,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         # For horizontal layout: Landing URL will be displayed at the END after all cards
     
-    # Display all info AFTER all cards for horizontal layout
-    if st.session_state.flow_layout == 'horizontal':
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown("""
-            <h2 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 16px 0 12px 0;">
-                📋 Flow Details
-            </h2>
-        """, unsafe_allow_html=True)
-        
-        # Get all the info from current_flow
-        keyword = current_flow.get('keyword_term', 'N/A')
-        serp_template_key = current_flow.get('serp_template_key', '')
-        flow_serp_url = SERP_BASE_URL + str(serp_template_key) if serp_template_key and pd.notna(serp_template_key) and str(serp_template_key).strip() else 'N/A'
-        flow_serp_key = current_flow.get('serp_template_key', 'N/A')
-        flow_adv_url = current_flow.get('reporting_destination_url', '')
-        
-        # Get publisher domain and URL
-        flow_pub_domain = current_flow.get('publisher_domain', current_flow.get('domain', 'N/A'))
-        flow_pub_url = current_flow.get('publisher_url', current_flow.get('Serp_URL', ''))
-        
-        # Display in a grid
-        detail_cols = st.columns([1, 1, 1, 1])
-        with detail_cols[0]:
-            pub_url_html = ''
-            if flow_pub_url and pd.notna(flow_pub_url):
-                pub_url_short = html.escape(str(flow_pub_url)[:50])
-                pub_url_dots = "..." if len(str(flow_pub_url)) > 50 else ""
-                pub_url_html = f'<div style="margin-bottom: 8px;"><div style="font-weight: 700; color: #64748b; font-size: 12px;">URL</div><div style="font-size: 11px;"><a href="{flow_pub_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{pub_url_short}{pub_url_dots}</a></div></div>'
-            
-            st.markdown(f"""
-            <div style='font-size: 13px;'>
-                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>📰 Publisher</strong></div>
-                <div style='margin-bottom: 8px;'>
-                    <div style='font-weight: 700; color: #64748b; font-size: 12px;'>Domain</div>
-                    <div style='color: #0f172a; font-size: 12px;'>{html.escape(str(flow_pub_domain))}</div>
-                </div>
-                {pub_url_html}
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with detail_cols[1]:
-            st.markdown(f"""
-            <div style='font-size: 13px;'>
-                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>🎨 Creative</strong></div>
-                <div style='margin-bottom: 8px;'>
-                    <div style='font-weight: 700; color: #64748b; font-size: 12px;'>Keyword</div>
-                    <div style='color: #0f172a; font-size: 12px;'>{html.escape(str(keyword))}</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with detail_cols[2]:
-            serp_url_html = ''
-            if flow_serp_url and flow_serp_url != 'N/A':
-                serp_url_short = html.escape(str(flow_serp_url)[:50])
-                serp_url_dots = "..." if len(str(flow_serp_url)) > 50 else ""
-                serp_url_html = f'<div style="margin-bottom: 8px;"><div style="font-weight: 700; color: #64748b; font-size: 12px;">SERP URL</div><div style="font-size: 11px;"><a href="{flow_serp_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{serp_url_short}{serp_url_dots}</a></div></div>'
-            
-            st.markdown(f"""
-            <div style='font-size: 13px;'>
-                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>📄 SERP</strong></div>
-                <div style='margin-bottom: 8px;'>
-                    <div style='font-weight: 700; color: #64748b; font-size: 12px;'>SERP Key</div>
-                    <div style='color: #0f172a; font-size: 12px;'>{html.escape(str(flow_serp_key))}</div>
-                </div>
-                {serp_url_html}
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with detail_cols[3]:
-            landing_url_html = ''
-            if flow_adv_url and pd.notna(flow_adv_url) and str(flow_adv_url).strip():
-                landing_url_short = html.escape(str(flow_adv_url)[:50])
-                landing_url_dots = "..." if len(str(flow_adv_url)) > 50 else ""
-                landing_url_html = f'<div style="margin-bottom: 8px;"><div style="font-weight: 700; color: #64748b; font-size: 12px;">Landing URL</div><div style="font-size: 11px;"><a href="{flow_adv_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{landing_url_short}{landing_url_dots}</a></div></div>'
-            else:
-                landing_url_html = '<div style="margin-bottom: 8px;"><div style="font-weight: 700; color: #64748b; font-size: 12px;">Landing URL</div><div style="color: #94a3b8; font-size: 12px;">No URL</div></div>'
-            
-            st.markdown(f"""
-            <div style='font-size: 13px;'>
-                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>🎯 Landing Page</strong></div>
-                {landing_url_html}
-            </div>
-            """, unsafe_allow_html=True)
+    # NOTE: Flow details section removed - was causing variable scope errors and app crashes
     
     # Similarity Scores Section for Horizontal Layout
     if st.session_state.flow_layout == 'horizontal':
