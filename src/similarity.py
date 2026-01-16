@@ -14,15 +14,17 @@ from src.utils import safe_float
 
 def call_similarity_api(prompt):
     """Call FastRouter API for similarity scoring using OpenAI client"""
+    # Safe way to access Streamlit secrets
+    API_KEY = ""
+    
     try:
-        # Correct way to access Streamlit secrets
-        # st.secrets doesn't have .get() method - it raises error if key doesn't exist
-        if "FASTROUTER_API_KEY" in st.secrets:
-            API_KEY = st.secrets["FASTROUTER_API_KEY"]
-        elif "OPENAI_API_KEY" in st.secrets:
-            API_KEY = st.secrets["OPENAI_API_KEY"]
-        else:
-            API_KEY = ""
+        try:
+            API_KEY = str(st.secrets["FASTROUTER_API_KEY"]).strip()
+        except (KeyError, AttributeError, TypeError):
+            try:
+                API_KEY = str(st.secrets["OPENAI_API_KEY"]).strip()
+            except (KeyError, AttributeError, TypeError):
+                API_KEY = ""
     except Exception as e:
         return {
             "error": True,
