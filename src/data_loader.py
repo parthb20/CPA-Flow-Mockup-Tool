@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Data loading functions for Google Drive files
 """
@@ -5,6 +6,7 @@ Data loading functions for Google Drive files
 import requests
 import pandas as pd
 import json
+import csv
 import gzip
 import zipfile
 import tempfile
@@ -22,7 +24,6 @@ except:
 def process_file_content(content):
     """Process file content - detect type and decompress if needed"""
     import streamlit as st
-    import csv
     
     try:
         # Check if Google Drive returned HTML error page
@@ -41,14 +42,47 @@ def process_file_content(content):
                 # Read CSV with maximum field size to prevent truncation
                 csv.field_size_limit(100000000)  # 100MB per field
                 
-                # Read as CSV with comprehensive options
-                df = pd.read_csv(
-                    BytesIO(decompressed), 
-                    dtype=str, 
-                    on_bad_lines='skip',
-                    encoding='utf-8',
-                    engine='python'
-                )
+                # Read as CSV with comprehensive options - try multiple strategies
+                df = None
+                try:
+                    # Strategy 1: Python engine with error handling
+                    df = pd.read_csv(
+                        BytesIO(decompressed), 
+                        dtype=str, 
+                        on_bad_lines='skip',
+                        encoding='utf-8',
+                        engine='python',
+                        quoting=csv.QUOTE_MINIMAL,
+                        skipinitialspace=True,
+                        error_bad_lines=False,
+                        warn_bad_lines=False,
+                        low_memory=False
+                    )
+                except Exception as e1:
+                    try:
+                        # Strategy 2: Try with different quote handling
+                        df = pd.read_csv(
+                            BytesIO(decompressed), 
+                            dtype=str, 
+                            on_bad_lines='skip',
+                            encoding='utf-8',
+                            engine='python',
+                                quoting=csv.QUOTE_ALL,
+                                skipinitialspace=True,
+                                low_memory=False
+                        )
+                    except Exception as e2:
+                        # Strategy 3: Manual CSV parsing
+                        try:
+                            decoded = decompressed.decode('utf-8', errors='replace')
+                            csv_reader = csv.DictReader(StringIO(decoded))
+                            rows = []
+                            for row in csv_reader:
+                                rows.append(row)
+                            if rows:
+                                df = pd.DataFrame(rows, dtype=str)
+                        except Exception as e3:
+                            raise e1  # Raise original error
                 
                 return df
             except Exception as e:
@@ -68,13 +102,40 @@ def process_file_content(content):
                     
                     if csv_file:
                         csv_content = zip_file.read(csv_file)
-                        df = pd.read_csv(
-                            BytesIO(csv_content), 
-                            dtype=str, 
-                            on_bad_lines='skip',
-                            encoding='utf-8',
-                            engine='python'
-                        )
+                        # Try multiple parsing strategies
+                        df = None
+                        try:
+                            df = pd.read_csv(
+                                BytesIO(csv_content), 
+                                dtype=str, 
+                                on_bad_lines='skip',
+                                encoding='utf-8',
+                                engine='python',
+                                quoting=csv.QUOTE_MINIMAL,
+                                skipinitialspace=True,
+                                low_memory=False
+                            )
+                        except Exception:
+                            try:
+                                df = pd.read_csv(
+                                    BytesIO(csv_content), 
+                                    dtype=str, 
+                                    on_bad_lines='skip',
+                                    encoding='utf-8',
+                                    engine='python',
+                                quoting=csv.QUOTE_ALL,
+                                skipinitialspace=True,
+                                low_memory=False
+                                )
+                            except Exception:
+                                # Manual CSV parsing
+                                decoded = csv_content.decode('utf-8', errors='replace')
+                                csv_reader = csv.DictReader(StringIO(decoded))
+                                rows = []
+                                for row in csv_reader:
+                                    rows.append(row)
+                                if rows:
+                                    df = pd.DataFrame(rows, dtype=str)
                         return df
                     else:
                         st.error("❌ No CSV file found in ZIP")
@@ -83,18 +144,108 @@ def process_file_content(content):
                 st.error(f"❌ Error extracting ZIP: {str(e)}")
                 return None
         else:
-            # Try as CSV
+            # Try as CSV with robust parsing options
             try:
-                df = pd.read_csv(
-                    StringIO(content.decode('utf-8')), 
-                    dtype=str, 
-                    on_bad_lines='skip',
-                    encoding='utf-8',
-                    engine='python'
-                )
-                return df
+                # Increase field size limit for large fields
+                csv.field_size_limit(100000000)  # 100MB per field
+                
+                # Try multiple encoding options
+                encodings = ['utf-8', 'latin-1', 'iso-8859-1', 'cp1252']
+                df = None
+                last_error = None
+                
+                for encoding in encodings:
+                    try:
+                        # Decode content with current encoding
+                        try:
+                            decoded_content = content.decode(encoding)
+                        except UnicodeDecodeError:
+                            # Try with error handling
+                            decoded_content = content.decode(encoding, errors='replace')
+                        
+                        # Try reading CSV with multiple strategies
+                        # Strategy 1: Standard pandas with error handling
+                        try:
+                            df = pd.read_csv(
+                                StringIO(decoded_content),
+                                dtype=str,
+                                on_bad_lines='skip',
+                                encoding=encoding,
+                                engine='python',
+                                quoting=csv.QUOTE_MINIMAL,
+                                quotechar='"',
+                                escapechar='\\',
+                                skipinitialspace=True,
+                                error_bad_lines=False,
+                                warn_bad_lines=False,
+                                low_memory=False
+                            )
+                            if df is not None and len(df) > 0:
+                                break
+                        except Exception as e1:
+                            last_error = e1
+                            # Strategy 2: Try with different quote handling
+                            try:
+                                df = pd.read_csv(
+                                    StringIO(decoded_content),
+                                    dtype=str,
+                                    on_bad_lines='skip',
+                                    encoding=encoding,
+                                    engine='python',
+                                    quoting=csv.QUOTE_ALL,
+                                    quotechar='"',
+                                    skipinitialspace=True,
+                                    error_bad_lines=False,
+                                    warn_bad_lines=False,
+                                    low_memory=False
+                                )
+                                if df is not None and len(df) > 0:
+                                    break
+                            except Exception as e2:
+                                # Strategy 3: Try with C engine (faster but less forgiving)
+                                try:
+                                    df = pd.read_csv(
+                                        StringIO(decoded_content),
+                                        dtype=str,
+                                        on_bad_lines='skip',
+                                        encoding=encoding,
+                                        engine='c',
+                                        quoting=csv.QUOTE_MINIMAL,
+                                        skipinitialspace=True,
+                                        error_bad_lines=False,
+                                        warn_bad_lines=False,
+                                        low_memory=False
+                                    )
+                                    if df is not None and len(df) > 0:
+                                        break
+                                except Exception as e3:
+                                    # Strategy 4: Manual CSV parsing with csv module (most robust)
+                                    try:
+                                        csv_reader = csv.DictReader(StringIO(decoded_content))
+                                        rows = []
+                                        for row in csv_reader:
+                                            rows.append(row)
+                                        if rows:
+                                            df = pd.DataFrame(rows, dtype=str)
+                                            break
+                                    except Exception as e4:
+                                        last_error = e4
+                                        continue
+                        
+                    except Exception as e:
+                        last_error = e
+                        continue
+                
+                if df is not None and len(df) > 0:
+                    return df
+                else:
+                    st.error(f"❌ CSV parse error: {str(last_error) if last_error else 'Could not parse CSV with any method'}")
+                    st.info("💡 Tip: Check if CSV has proper quoting for fields containing commas")
+                    return None
+                    
             except Exception as e:
                 st.error(f"❌ CSV parse error: {str(e)}")
+                st.info("💡 Tip: The CSV file may have formatting issues. Try opening it in Excel and re-saving as CSV.")
                 return None
                 
     except Exception as e:
