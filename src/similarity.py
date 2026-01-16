@@ -15,15 +15,26 @@ from src.utils import safe_float
 def call_similarity_api(prompt):
     """Call FastRouter API for similarity scoring using OpenAI client"""
     try:
-        API_KEY = st.secrets.get("FASTROUTER_API_KEY") or st.secrets.get("OPENAI_API_KEY", "")
-    except:
-        API_KEY = ""
+        # Correct way to access Streamlit secrets
+        # st.secrets doesn't have .get() method - it raises error if key doesn't exist
+        if "FASTROUTER_API_KEY" in st.secrets:
+            API_KEY = st.secrets["FASTROUTER_API_KEY"]
+        elif "OPENAI_API_KEY" in st.secrets:
+            API_KEY = st.secrets["OPENAI_API_KEY"]
+        else:
+            API_KEY = ""
+    except Exception as e:
+        return {
+            "error": True,
+            "status_code": "secret_access_error",
+            "body": f"Error accessing secrets: {str(e)}"
+        }
     
     if not API_KEY:
         return {
             "error": True,
             "status_code": "no_api_key",
-            "body": "FASTROUTER_API_KEY not found in Streamlit secrets"
+            "body": "FASTROUTER_API_KEY or OPENAI_API_KEY not found in Streamlit secrets"
         }
     
     try:
@@ -47,26 +58,49 @@ def call_similarity_api(prompt):
         
         content = completion.choices[0].message.content.strip()
         
-        # Extract JSON from response
-        json_match = re.search(r'\{[^}]+\}', content, re.DOTALL)
-        if json_match:
-            score_data = json.loads(json_match.group())
-            return {
-                "error": False,
-                "final_score": float(score_data.get('final_score', score_data.get('score', 0))),
-                "reason": score_data.get('reason', 'N/A'),
-                "topic_match": score_data.get('topic_match', 0),
-                "brand_match": score_data.get('brand_match', 0),
-                "promise_match": score_data.get('promise_match', 0),
-                "utility_match": score_data.get('utility_match', 0),
-                "keyword_match": score_data.get('keyword_match', 0),
-                "intent_match": score_data.get('intent_match', 0),
-                "intent": score_data.get('intent', ''),
-                "band": score_data.get('band', '')
-            }
-        return {"error": True, "status_code": "parse_error", "body": content}
+        # Try to parse as JSON directly first
+        try:
+            score_data = json.loads(content)
+        except json.JSONDecodeError:
+            # Extract JSON from response using regex (handles nested objects)
+            json_match = re.search(r'\{.*\}', content, re.DOTALL)
+            if json_match:
+                try:
+                    score_data = json.loads(json_match.group())
+                except json.JSONDecodeError:
+                    return {
+                        "error": True,
+                        "status_code": "parse_error",
+                        "body": f"Could not parse JSON: {content[:300]}"
+                    }
+            else:
+                return {
+                    "error": True,
+                    "status_code": "parse_error",
+                    "body": f"No JSON found in response: {content[:300]}"
+                }
+        
+        # Return parsed data with safe_float for numeric conversions
+        return {
+            "error": False,
+            "final_score": safe_float(score_data.get('final_score', score_data.get('score', 0))),
+            "reason": score_data.get('reason', 'N/A'),
+            "topic_match": safe_float(score_data.get('topic_match', 0)),
+            "brand_match": safe_float(score_data.get('brand_match', 0)),
+            "promise_match": safe_float(score_data.get('promise_match', 0)),
+            "utility_match": safe_float(score_data.get('utility_match', 0)),
+            "keyword_match": safe_float(score_data.get('keyword_match', 0)),
+            "intent_match": safe_float(score_data.get('intent_match', 0)),
+            "intent": score_data.get('intent', ''),
+            "band": score_data.get('band', '')
+        }
     except Exception as e:
-        return {"error": True, "status_code": "exception", "body": str(e)}
+        # Return detailed error information
+        return {
+            "error": True,
+            "status_code": "exception",
+            "body": f"{type(e).__name__}: {str(e)}"
+        }
 
 
 def extract_text_from_html(html_content):
