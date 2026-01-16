@@ -76,16 +76,19 @@ def render_advanced_filters(campaign_df, current_flow):
             cursor: pointer !important;
             pointer-events: auto !important;
         }
-        /* Ensure dropdown arrow area is clickable */
-        .stSelectbox [data-baseweb="select"]::after {
-            content: '';
-            position: absolute;
-            right: 0;
-            top: 0;
-            bottom: 0;
-            width: 40px;
-            cursor: pointer !important;
+        /* Make entire selectbox clickable - override any blocking */
+        .stSelectbox [data-baseweb="select"] {
             pointer-events: auto !important;
+        }
+        .stSelectbox [data-baseweb="select"] * {
+            pointer-events: auto !important;
+            cursor: pointer !important;
+        }
+        /* Ensure the dropdown trigger is clickable */
+        .stSelectbox button {
+            pointer-events: auto !important;
+            cursor: pointer !important;
+            z-index: 999 !important;
         }
         </style>
         """, unsafe_allow_html=True)
