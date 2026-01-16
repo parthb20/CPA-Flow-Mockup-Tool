@@ -739,13 +739,15 @@ def get_score_class(score):
     else:
         return "score-poor", "Poor", "#ef4444"
 
-def render_similarity_score(score_type, similarities_data, show_explanation=False):
+def render_similarity_score(score_type, similarities_data, show_explanation=False, custom_title=None, tooltip_text=None):
     """Render a single similarity score card
     
     Args:
         score_type: 'kwd_to_ad', 'ad_to_page', or 'kwd_to_page'
         similarities_data: Dict with similarity results
         show_explanation: If True, show explanation of what similarity score is
+        custom_title: Custom title to display (e.g., "Ad Copy -> Landing page similarity")
+        tooltip_text: Tooltip text explaining what this score measures
     """
     if not similarities_data:
         return
@@ -776,6 +778,35 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
             Higher scores (0.8-1.0) mean better alignment, which typically leads to better performance.</small>
         </div>
         """, unsafe_allow_html=True)
+    
+    # Determine title and tooltip
+    if custom_title:
+        title_text = custom_title
+    else:
+        if score_type == 'kwd_to_ad':
+            title_text = "Keyword → Ad Similarity"
+            default_tooltip = "Measures how well the ad creative matches the search keyword. Higher scores indicate better keyword-ad alignment."
+        elif score_type == 'ad_to_page':
+            title_text = "Ad Copy → Landing Page Similarity"
+            default_tooltip = "Measures how well the landing page fulfills the promises made in the ad copy. Higher scores indicate better ad-page consistency."
+        elif score_type == 'kwd_to_page':
+            title_text = "Keyword → Landing Page Similarity"
+            default_tooltip = "Measures overall flow consistency from keyword to landing page. Higher scores indicate better end-to-end alignment."
+        else:
+            title_text = f"{label} Match"
+            default_tooltip = "Similarity score measuring alignment between different parts of your ad flow."
+    
+    tooltip = tooltip_text or default_tooltip
+    
+    # Score display with title and tooltip
+    st.markdown(f"""
+    <div style="margin-bottom: 8px;">
+        <span style="font-weight: 600; color: #0f172a; font-size: 14px;">
+            {title_text}
+            <span title="{tooltip}" style="cursor: help; color: #3b82f6; font-size: 12px; margin-left: 4px;">ℹ️</span>
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Score display with drilldown expander INSIDE the card
     st.markdown(f"""
@@ -1628,10 +1659,10 @@ def parse_creative_html(response_str):
         return None, None
 
 
-# Proper SaaS-style title - MUCH BIGGER and BOLDER
+# Proper SaaS-style title - DOUBLE SIZE and BOLD (like a logo)
 st.markdown("""
     <div style="margin-bottom: 40px; padding-bottom: 24px; border-bottom: 3px solid #e2e8f0;">
-        <h1 style="font-size: 96px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; text-align: left; line-height: 1; letter-spacing: -0.05em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif; text-shadow: 2px 2px 4px rgba(0,0,0,0.1);">
+        <h1 style="font-size: 192px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; text-align: left; line-height: 1; letter-spacing: -0.05em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif; text-shadow: 2px 2px 4px rgba(0,0,0,0.1); pointer-events: none; user-select: none;">
             <strong>📊 CPA Flow Analysis v2</strong>
         </h1>
         <p style="font-size: 20px; color: #64748b; margin: 16px 0 0 0; font-weight: 400;">Analyze and optimize your ad flow performance</p>
@@ -1909,8 +1940,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 if st.session_state.flow_layout == 'horizontal':
                     # Equal width columns for 4 cards + 3 arrows - minimize spacing to keep cards in one line
-                    # Use minimal gap and equal widths
-                    stage_cols = st.columns([1, 0.02, 1, 0.02, 1, 0.02, 1], gap='small')
+                    # Use minimal gap and equal widths - ensure truly in one line
+                    stage_cols = st.columns([1, 0.015, 1, 0.015, 1, 0.015, 1], gap='small')
                 else:
                     # Vertical layout - cards extend full width, details inline within card boundaries
                     # No separate columns - everything within each card
@@ -1918,7 +1949,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 # Stage 1: Publisher URL
                 if st.session_state.flow_layout == 'vertical':
-                    # Vertical: Full width card with inline details
+                    # Vertical: Full width card with inline details - add spacing for easier reading
+                    st.markdown("<br>", unsafe_allow_html=True)  # Add spacing between cards
                     stage_1_container = st.container()
                 else:
                     stage_1_container = stage_cols[0]
@@ -2245,7 +2277,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 # Stage 2: Creative
                 if st.session_state.flow_layout == 'vertical':
-                    # Vertical: Full width card with inline details
+                    # Vertical: Full width card with inline details - add spacing
+                    st.markdown("<br>", unsafe_allow_html=True)  # Add spacing between cards
                     stage_2_container = st.container()
                     creative_card_left = None
                     creative_card_right = None
@@ -2259,8 +2292,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 with stage_2_container:
                     if st.session_state.flow_layout == 'vertical':
-                        # Create inline columns within card
-                        creative_card_left, creative_card_right = st.columns([0.6, 0.4])
+                        # Create inline columns within card - increase creative size (equal to other cards)
+                        creative_card_left, creative_card_right = st.columns([0.5, 0.5])
                         with creative_card_left:
                             st.markdown('### 🎨 Creative', unsafe_allow_html=True)
                     else:
@@ -2304,7 +2337,15 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             except Exception as e:
                                 st.error(f"⚠️ Creative error: {str(e)[:100]}")
                         else:
-                            st.warning("⚠️ No creative data")
+                            # Keep equal space even when no creative - show placeholder
+                            st.markdown("""
+                            <div style="min-height: 400px; display: flex; align-items: center; justify-content: center; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px;">
+                                <div style="text-align: center; color: #64748b;">
+                                    <div style="font-size: 48px; margin-bottom: 8px;">⚠️</div>
+                                    <div style="font-weight: 600; font-size: 14px;">No creative data</div>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
                     
                     # Creative Details - Inline on RIGHT in vertical mode
                     if st.session_state.flow_layout == 'vertical' and creative_card_right:
@@ -2352,7 +2393,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     serp_url = None
                 
                 if st.session_state.flow_layout == 'vertical':
-                    # Vertical: Full width card with inline details
+                    # Vertical: Full width card with inline details - add spacing
+                    st.markdown("<br>", unsafe_allow_html=True)  # Add spacing between cards
                     stage_3_container = st.container()
                     serp_card_left = None
                     serp_card_right = None
@@ -2651,8 +2693,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     st.session_state.similarities = {}
                             
                             if 'similarities' in st.session_state and st.session_state.similarities:
-                                st.markdown("#### 🔗 Ad → Page")
-                                render_similarity_score('ad_to_page', st.session_state.similarities)
+                                render_similarity_score('ad_to_page', st.session_state.similarities,
+                                                       custom_title="Ad Copy → Landing Page Similarity",
+                                                       tooltip_text="Measures how well the landing page fulfills the promises made in the ad copy. Higher scores indicate better ad-page consistency.")
                 
                 if stage_cols:
                     with stage_cols[5]:
@@ -2665,7 +2708,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 # Stage 4: Landing Page
                 if st.session_state.flow_layout == 'vertical':
-                    # Vertical: Full width card with inline details
+                    # Vertical: Full width card with inline details - add spacing
+                    st.markdown("<br>", unsafe_allow_html=True)  # Add spacing between cards
                     stage_4_container = st.container()
                     landing_card_left = None
                     landing_card_right = None
@@ -2922,10 +2966,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             adv_url = current_flow.get('reporting_destination_url', '')
                             
                             st.markdown("**🎯 Landing Page Details**")
-                            # Inline horizontal layout - all on same line, landing URL on RIGHT
+                            # Inline horizontal layout - all on same line, landing URL on RIGHT (NO keyword here)
                             st.markdown(f"""
                             <div style="display: inline-flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 8px;">
-                                <span style="font-size: 12px; color: #64748b;"><strong>Keyword:</strong> {keyword}</span>
                                 {f'<span style="font-size: 12px; color: #64748b;"><strong>Landing URL:</strong> <a href="{adv_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{adv_url[:50]}{"..." if len(adv_url) > 50 else ""}</a></span>' if adv_url and pd.notna(adv_url) else ''}
                             </div>
                             """, unsafe_allow_html=True)
@@ -2938,8 +2981,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     st.session_state.similarities = {}
                             
                             if 'similarities' in st.session_state and st.session_state.similarities:
-                                st.markdown("#### 🔗 Keyword → Page")
-                                render_similarity_score('kwd_to_page', st.session_state.similarities)
+                                render_similarity_score('kwd_to_page', st.session_state.similarities,
+                                                       custom_title="Ad Copy → Landing Page Similarity",
+                                                       tooltip_text="Measures overall flow consistency from keyword to landing page. Higher scores indicate better end-to-end alignment.")
                 
                 # Fixed Similarity Scores Section for Horizontal Layout (BELOW frame line)
                 if st.session_state.flow_layout == 'horizontal':
@@ -2957,21 +3001,24 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         else:
                             st.session_state.similarities = {}
                     
-                    # Show all three scores in horizontal layout below frames
+                    # Show all three scores in horizontal layout below frames - in ONE line
                     if 'similarities' in st.session_state and st.session_state.similarities:
-                        score_cols = st.columns(3)
+                        score_cols = st.columns(3, gap='small')
                         
                         with score_cols[0]:
-                            st.markdown("#### 🔗 Keyword → Ad")
-                            render_similarity_score('kwd_to_ad', st.session_state.similarities)
+                            render_similarity_score('kwd_to_ad', st.session_state.similarities,
+                                                   custom_title="Ad Copy → Ad Similarity",
+                                                   tooltip_text="Measures how well the ad creative matches the search keyword. Higher scores indicate better keyword-ad alignment.")
                         
                         with score_cols[1]:
-                            st.markdown("#### 🔗 Ad → Page")
-                            render_similarity_score('ad_to_page', st.session_state.similarities)
+                            render_similarity_score('ad_to_page', st.session_state.similarities,
+                                                   custom_title="Ad Copy → Landing Page Similarity",
+                                                   tooltip_text="Measures how well the landing page fulfills the promises made in the ad copy. Higher scores indicate better ad-page consistency.")
                         
                         with score_cols[2]:
-                            st.markdown("#### 🔗 Keyword → Page")
-                            render_similarity_score('kwd_to_page', st.session_state.similarities)
+                            render_similarity_score('kwd_to_page', st.session_state.similarities,
+                                                   custom_title="Ad Copy → Landing Page Similarity",
+                                                   tooltip_text="Measures overall flow consistency from keyword to landing page. Higher scores indicate better end-to-end alignment.")
                     else:
                         st.info("⏳ Similarity scores will be calculated after data loads")
             
