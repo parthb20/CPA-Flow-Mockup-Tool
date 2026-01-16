@@ -2100,11 +2100,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         # Vertical: Full width card with inline details
                         card_col_left, card_col_right = st.columns([0.6, 0.4])
                         with card_col_left:
-                            if st.session_state.flow_layout != 'horizontal':
-                                st.markdown('### 📰 Publisher URL', unsafe_allow_html=True)
-                    else:
-                        if st.session_state.flow_layout != 'horizontal':
                             st.markdown('### 📰 Publisher URL', unsafe_allow_html=True)
+                    else:
+                        st.markdown('### 📰 Publisher URL', unsafe_allow_html=True)
                     
                     # Only show edit details in advanced mode
                     if st.session_state.view_mode == 'advanced':
@@ -2444,11 +2442,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         # Create inline columns within card - increase creative size (equal to other cards)
                         creative_card_left, creative_card_right = st.columns([0.5, 0.5])
                         with creative_card_left:
-                            if st.session_state.flow_layout != 'horizontal':
-                                st.markdown('### 🎨 Creative', unsafe_allow_html=True)
-                    else:
-                        if st.session_state.flow_layout != 'horizontal':
                             st.markdown('### 🎨 Creative', unsafe_allow_html=True)
+                    else:
+                        st.markdown('### 🎨 Creative', unsafe_allow_html=True)
                     
                     # Show details
                     creative_id = current_flow.get('creative_id', 'N/A')
@@ -2569,11 +2565,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         # Create inline columns within card
                         serp_card_left, serp_card_right = st.columns([0.6, 0.4])
                         with serp_card_left:
-                            if st.session_state.flow_layout != 'horizontal':
-                                st.markdown('### 📄 SERP', unsafe_allow_html=True)
-                    else:
-                        if st.session_state.flow_layout != 'horizontal':
                             st.markdown('### 📄 SERP', unsafe_allow_html=True)
+                    else:
+                        st.markdown('### 📄 SERP', unsafe_allow_html=True)
                     
                     if st.session_state.view_mode == 'advanced':
                         with st.expander("⚙️ Edit Details", expanded=False):
@@ -2894,8 +2888,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         with landing_card_left:
                             st.markdown('### 🎯 Landing Page', unsafe_allow_html=True)
                     else:
-                        if st.session_state.flow_layout != 'horizontal':
-                            st.markdown('### 🎯 Landing Page', unsafe_allow_html=True)
+                        st.markdown('### 🎯 Landing Page', unsafe_allow_html=True)
                     
                     # Get landing page URL
                     adv_url = current_flow.get('reporting_destination_url', '')
@@ -2931,8 +2924,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             # Show landing page URL
                             st.caption(f"📊 {len(keywords)} keywords available")
                     else:
-                        # Basic mode - show keyword only
-                        st.caption(f"**Keyword:** {current_kw}")
+                        # Basic mode - keyword removed (now shown in creative card only)
+                        pass
                     
                     # Get landing URL and check clicks from current_flow
                     # Use same logic as display (safe_int) for consistency
