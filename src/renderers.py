@@ -204,7 +204,14 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
     
     if not data or 'error' in data:
         if data and data.get('status_code') == 'no_api_key':
-            st.info("🔑 Add API key to calculate")
+            # Only show message if API key is actually missing
+            try:
+                api_key = st.secrets.get('FASTROUTER_API_KEY') or st.secrets.get('OPENAI_API_KEY')
+                if not api_key:
+                    st.info("🔑 Add API key to calculate")
+            except:
+                # If secrets not available, don't show message (assume configured)
+                pass
         else:
             st.info("⏳ Will calculate after data loads")
         return
