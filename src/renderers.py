@@ -283,18 +283,14 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
         score_components = [(component_labels[key], data.get(key, 0)) for key in relevant_components if key in data]
         
         if score_components:
-            # Use Streamlit columns for horizontal layout
-            cols = st.columns(len(score_components))
-            for idx, (name, val) in enumerate(score_components):
-                with cols[idx]:
-                    score_val = val * 100
-                    score_color = "#22c55e" if val >= 0.7 else "#f59e0b" if val >= 0.4 else "#ef4444"
-                    st.markdown(f"""
-                    <div style="text-align: center; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
-                        <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">{name}</div>
-                        <div style="font-size: 24px; font-weight: 700; color: {score_color};">{score_val:.0f}%</div>
-                    </div>
-                    """, unsafe_allow_html=True)
+            # Create horizontal bullet points
+            bullets = []
+            for name, val in score_components:
+                score_val = val * 100
+                score_color = "#22c55e" if val >= 0.7 else "#f59e0b" if val >= 0.4 else "#ef4444"
+                bullets.append(f'<span style="color: {score_color}; font-weight: 700;">{name}: {score_val:.0f}%</span>')
+            
+            st.markdown(" &nbsp;•&nbsp; ".join(bullets), unsafe_allow_html=True)
         
         # Show intent and band below
         extra_info = []
