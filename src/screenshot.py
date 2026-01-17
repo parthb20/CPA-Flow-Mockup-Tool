@@ -15,9 +15,9 @@ except:
     PLAYWRIGHT_AVAILABLE = False
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=604800, show_spinner=False)
 def get_screenshot_url(url, device='mobile', full_page=False):
-    """Generate ScreenshotOne API URL (cached for 1 hour)"""
+    """Generate ScreenshotOne API URL (cached for 7 days)"""
     try:
         # Try to get API key
         try:
@@ -110,9 +110,9 @@ def capture_with_playwright(url, device='mobile'):
         clean_url = clean_url.split('#')[0] if '#' in clean_url else clean_url
         
         viewports = {
-            'mobile': {'width': 390, 'height': 844},
-            'tablet': {'width': 820, 'height': 1180},
-            'laptop': {'width': 1440, 'height': 900}
+            'mobile': {'width': 390, 'height': 844},      # iPhone-like portrait
+            'tablet': {'width': 1024, 'height': 768},     # iPad landscape
+            'laptop': {'width': 1920, 'height': 1080}     # Full HD desktop
         }
         
         import random
