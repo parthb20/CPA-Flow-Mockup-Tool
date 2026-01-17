@@ -237,11 +237,18 @@ def render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs
     st.markdown("""
     <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #3b82f6; padding: 12px; border-radius: 8px; margin-bottom: 8px;">
         <h3 style="font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">🎯 Selected Flow</h3>
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 8px; font-size: 13px;">
-            <div><strong>Keyword:</strong> {keyword}</div>
-            <div><strong>Domain:</strong> {domain}</div>
-            <div style="grid-column: 1 / -1;"><strong>SERP:</strong> {serp}</div>
-            <div style="grid-column: 1 / -1; word-break: break-word; overflow-wrap: anywhere; font-size: 11px; color: #475569; max-width: 100%;"><strong style="color: #0f172a;">Landing URL:</strong> {landing_url}</div>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 8px; font-size: 13px;">
+            <div><strong style="color: #0f172a;">Keyword:</strong> <span style="color: #475569;">{keyword}</span></div>
+            <div><strong style="color: #0f172a;">Domain:</strong> <span style="color: #475569;">{domain}</span></div>
+        </div>
+        <div style="margin-bottom: 8px; font-size: 13px;">
+            <div><strong style="color: #0f172a;">SERP:</strong> <span style="color: #475569;">{serp}</span></div>
+        </div>
+        <div style="margin-bottom: 8px; padding: 8px; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
+            <div style="font-weight: 700; color: #0f172a; font-size: 12px; margin-bottom: 4px;">Landing URL:</div>
+            <div style="word-break: break-all; overflow-wrap: anywhere; font-size: 10px; color: #3b82f6; line-height: 1.4;">
+                <a href="{landing_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{landing_url}</a>
+            </div>
         </div>
         <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #cbd5e1;">
             <div><strong style="color: #64748b; font-size: 12px;">Impressions</strong><div style="font-size: 18px; font-weight: 700; color: #0f172a;">{impressions:,}</div></div>
