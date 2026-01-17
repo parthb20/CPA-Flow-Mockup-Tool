@@ -53,24 +53,38 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     """, unsafe_allow_html=True)
     device_all = st.radio("Device for all previews:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='device_all', index=0)
     
-    # Remove ALL spacing after device selector and before columns
+    # NUCLEAR OPTION: Kill ALL spacing between radio and columns
     st.markdown("""
     <style>
+    /* Remove spacing from radio button itself */
     .stRadio {
-        margin-bottom: 0 !important;
-        padding-bottom: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
     .stRadio > div {
-        margin-bottom: 0 !important;
-        padding-bottom: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
-    /* Remove spacing after radio - AGGRESSIVE */
-    .stRadio + div {
+    /* Kill spacing from element after radio */
+    .stRadio ~ div,
+    .stRadio + div,
+    .stRadio + .element-container {
         margin-top: 0 !important;
         padding-top: 0 !important;
     }
-    /* Remove spacing from next element after radio */
-    .stRadio + .element-container {
+    /* Target the horizontal block that contains columns */
+    div[data-testid="stHorizontalBlock"] {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+        gap: 0 !important;
+    }
+    /* Kill spacing from columns wrapper */
+    div[data-testid="stHorizontalBlock"]:has([data-testid="column"]) {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+    /* Kill spacing from element containers inside columns */
+    [data-testid="column"] > div > .element-container {
         margin-top: 0 !important;
         padding-top: 0 !important;
     }
@@ -137,6 +151,16 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             margin-top: 0 !important;
             padding-top: 0 !important;
         }
+        /* AGGRESSIVE: Remove spacing from ALL element-containers at start */
+        [data-testid="column"] > div > .element-container:first-of-type {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+        }
+        /* Remove spacing from markdown elements at top of columns */
+        [data-testid="column"] h3:first-child {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+        }
         /* Card wrapper - NO border, NO background, NO white box */
         .stage-card-wrapper {
             min-height: 600px;
@@ -190,6 +214,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         }
         </style>
         """, unsafe_allow_html=True)
+        
+        # CRITICAL: Use empty string to insert zero-height div before columns
+        st.markdown('<div style="height:0;margin:0;padding:0;line-height:0;"></div>', unsafe_allow_html=True)
         
         # Create columns for the actual cards - NO gap to prevent spacing
         stage_cols = st.columns([1, 0.7, 1, 1], gap='small')
