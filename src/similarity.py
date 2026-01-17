@@ -47,7 +47,7 @@ def call_similarity_api(prompt):
                 "temperature": 0.3,
                 "max_tokens": 500
             },
-            timeout=30
+            timeout=45  # Increased timeout for Claude
         )
         
         if response.status_code == 200:
@@ -116,8 +116,16 @@ def calculate_similarities(flow_data):
     keyword = flow_data.get('keyword_term', '')
     ad_title = flow_data.get('ad_title', '')
     ad_desc = flow_data.get('ad_description', '')
-    ad_text = f"{ad_title} {ad_desc}"
+    ad_text = f"{ad_title} {ad_desc}".strip()
     adv_url = flow_data.get('reporting_destination_url', '')
+    
+    # Quick validation
+    if not keyword or not ad_text:
+        return {
+            'kwd_to_ad': {"error": True, "status_code": "missing_data", "body": "Missing keyword or ad text"},
+            'ad_to_page': {"error": True, "status_code": "missing_data", "body": "Missing ad text"},
+            'kwd_to_page': {"error": True, "status_code": "missing_data", "body": "Missing keyword"}
+        }
     
     results = {}
     
