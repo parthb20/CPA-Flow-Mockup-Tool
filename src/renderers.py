@@ -79,7 +79,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         """
         
     elif device == 'tablet':
-        scale = 0.48
+        scale = 0.52
         frame_style = "border-radius: 16px; border: 12px solid #1f2937;"
         chrome_height_px = 68
         
@@ -107,7 +107,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         bottom_nav = ""
         
     else:  # laptop
-        scale = 0.35
+        scale = 0.37
         frame_style = "border-radius: 8px; border: 6px solid #374151;"
         chrome_height_px = 48
         
