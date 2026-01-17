@@ -18,18 +18,23 @@ except:
 def get_screenshot_url(url, device='mobile', full_page=False):
     """Generate ScreenshotOne API URL"""
     try:
-        SCREENSHOT_API_KEY = st.secrets.get("SCREENSHOT_API_KEY", "").strip()
+        # Try to get API key
+        try:
+            SCREENSHOT_API_KEY = st.secrets.get("SCREENSHOT_API_KEY", "").strip()
+        except Exception as e:
+            st.error(f"🔍 DEBUG: Failed to access secrets: {str(e)}")
+            return None
         
         # Check if API key is configured
         if not SCREENSHOT_API_KEY:
-            print(f"[DEBUG] Screenshot API key not found in secrets")
+            st.warning(f"🔍 DEBUG: Screenshot API key not found in secrets")
             return None
         
-        print(f"[DEBUG] Screenshot API key found: {SCREENSHOT_API_KEY[:10]}...")
+        st.success(f"🔍 DEBUG: Screenshot API key found! First 10 chars: {SCREENSHOT_API_KEY[:10]}...")
         
         # Ensure URL is properly formatted
         if not url or pd.isna(url):
-            print(f"[DEBUG] Invalid URL: {url}")
+            st.warning(f"🔍 DEBUG: Invalid URL: {url}")
             return None
         
         url = str(url).strip()
@@ -54,10 +59,10 @@ def get_screenshot_url(url, device='mobile', full_page=False):
         if full_page:
             screenshot_url += "&full_page=true"
         
-        print(f"[DEBUG] Generated screenshot URL: {screenshot_url[:100]}...")
+        st.info(f"🔍 DEBUG: Generated screenshot URL: {screenshot_url[:100]}...")
         return screenshot_url
     except Exception as e:
-        print(f"[DEBUG] Error generating screenshot URL: {str(e)}")
+        st.error(f"🔍 DEBUG: Error generating screenshot URL: {str(e)}")
         return None
 
 
