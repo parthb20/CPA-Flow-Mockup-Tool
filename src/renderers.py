@@ -128,10 +128,10 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         """
         bottom_nav = ""
     
-    # Calculate exact dimensions
-    total_content_height = device_h + chrome_height_px
+    # Calculate exact dimensions - chrome is INSIDE device frame, not added
     display_w = int(device_w * scale)
-    display_h = int(total_content_height * scale)
+    display_h = int(device_h * scale)
+    content_area_height = device_h - chrome_height_px
     
     # Prepare iframe content
     if is_url and not use_srcdoc:
@@ -151,25 +151,31 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                 padding: 0;
                 box-sizing: border-box;
             }}
-            html, body {{ 
-                width: {device_w}px;
-                height: {total_content_height}px;
-                overflow: hidden;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            }}
-            .device-chrome {{ 
-                width: 100%;
-                background: white;
-                flex-shrink: 0;
-            }}
-            .content-area {{ 
-                width: {device_w}px;
-                height: {device_h}px;
-                overflow-y: auto; 
-                overflow-x: hidden;
-                -webkit-overflow-scrolling: touch;
-                background: white;
-            }}
+        html, body {{ 
+            width: {device_w}px;
+            height: {device_h}px;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: white;
+        }}
+        body {{
+            display: flex;
+            flex-direction: column;
+        }}
+        .device-chrome {{ 
+            width: 100%;
+            height: {chrome_height_px}px;
+            flex-shrink: 0;
+        }}
+        .content-area {{ 
+            flex: 1;
+            width: {device_w}px;
+            height: {content_area_height}px;
+            overflow-y: auto; 
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            background: white;
+        }}
             .content-area * {{
                 max-width: {device_w}px !important;
             }}
@@ -189,7 +195,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     html_output = f"""
     <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
         <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-            <iframe srcdoc='{escaped}' style="width: {device_w}px; height: {total_content_height}px; border: none; transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"></iframe>
+            <iframe srcdoc='{escaped}' style="width: {device_w}px; height: {device_h}px; border: none; transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"></iframe>
         </div>
     </div>
     """
