@@ -20,7 +20,7 @@ from src.renderers import (
     create_screenshot_html,
     parse_creative_html
 )
-from src.screenshot import get_screenshot_url, capture_with_playwright
+from src.screenshot import get_screenshot_url, capture_with_playwright, capture_page_with_fallback
 from src.serp import generate_serp_mockup
 from src.similarity import calculate_similarities
 

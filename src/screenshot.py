@@ -18,21 +18,8 @@ except:
 def get_screenshot_url(url, device='mobile', full_page=False):
     """Generate thum.io screenshot URL"""
     try:
-        # Safe way to access Streamlit secrets
-        SCREENSHOT_API_KEY = ""
-        THUMIO_REFERER_DOMAIN = ""
-        
-        # Safe way to access Streamlit secrets - catch all exceptions
-        # Note: StreamlitSecretNotFoundError inherits from Exception, so catching Exception works
-        try:
-            SCREENSHOT_API_KEY = str(st.secrets["SCREENSHOT_API_KEY"]).strip()
-        except Exception:
-            SCREENSHOT_API_KEY = ""
-        
-        try:
-            THUMIO_REFERER_DOMAIN = str(st.secrets["THUMIO_REFERER_DOMAIN"]).strip()
-        except Exception:
-            THUMIO_REFERER_DOMAIN = ""
+        SCREENSHOT_API_KEY = st.secrets.get("SCREENSHOT_API_KEY", "").strip()
+        THUMIO_REFERER_DOMAIN = st.secrets.get("THUMIO_REFERER_DOMAIN", "").strip()
         
         # Ensure URL is properly formatted
         if not url or pd.isna(url):
@@ -60,10 +47,9 @@ def get_screenshot_url(url, device='mobile', full_page=False):
         }
         vp = viewports.get(device, viewports['mobile'])
         
-        # Use simple thum.io format: //image.thum.io/get/http://www.example.com/
-        # For referer-based keys or free tier, use simple format
-        if THUMIO_REFERER_DOMAIN or not SCREENSHOT_API_KEY:
-            # Simple format - thum.io handles encoding
+        # For referer-based keys, use simple format (URL should NOT be double-encoded)
+        if THUMIO_REFERER_DOMAIN:
+            # Don't encode - thum.io handles it
             screenshot_url = f"https://image.thum.io/get/{url}"
             return screenshot_url
         
@@ -75,21 +61,70 @@ def get_screenshot_url(url, device='mobile', full_page=False):
             else:
                 options.append(f"height/{vp['height']}")
             options.append(f"auth/{SCREENSHOT_API_KEY}")
-            # Simple format - thum.io handles URL encoding
+            # Don't double-encode - thum.io handles URL encoding
             screenshot_url = f"https://image.thum.io/get/{'/'.join(options)}/{url}"
             return screenshot_url
         
-        # Default: Simple format
-        screenshot_url = f"https://image.thum.io/get/{url}"
+        # FREE TIER (default): Simple format - encode only once
+        # Use quote with safe='' to encode properly, but don't double-encode if already encoded
+        if '%' in url:
+            # Already encoded, use as-is
+            screenshot_url = f"https://image.thum.io/get/{url}"
+        else:
+            # Encode once
+            encoded_url = quote(url, safe='')
+            screenshot_url = f"https://image.thum.io/get/{encoded_url}"
         return screenshot_url
     except Exception as e:
         return None
 
 
+def capture_page_with_fallback(url, device='mobile'):
+    """
+    Capture page - try Playwright first, fallback to screenshot API on 403
+    
+    Returns: (content, render_type)
+    - content: HTML string (if Playwright works) or screenshot URL (if fallback)
+    - render_type: 'html', 'screenshot', or 'error'
+    
+    Usage Example:
+        content, render_type = capture_page_with_fallback(url, device='mobile')
+        if render_type == 'html':
+            # Render HTML directly
+            preview_html, height, _ = render_mini_device_preview(content, is_url=False, device=device)
+            st.components.v1.html(preview_html, height=height)
+        elif render_type == 'screenshot':
+            # Render screenshot URL
+            screenshot_html = create_screenshot_html(content, device=device)
+            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device, use_srcdoc=True)
+            st.components.v1.html(preview_html, height=height)
+        else:
+            st.error("Failed to load")
+    """
+    # Try Playwright first
+    html_content, error_code = capture_with_playwright(url, device)
+    
+    if html_content:
+        return (html_content, 'html')
+    
+    # On 403 or error, use screenshot API as fallback
+    if error_code in [403, 'error', 'no_playwright']:
+        screenshot_url = get_screenshot_url(url, device=device, full_page=False)
+        if screenshot_url:
+            return (screenshot_url, 'screenshot')
+    
+    return (None, 'error')
+
+
 def capture_with_playwright(url, device='mobile'):
-    """Capture page using Playwright"""
+    """
+    Capture page using Playwright
+    Returns: (html_content, error_code) tuple
+    - html_content: HTML string if success, None if failed
+    - error_code: 403 if forbidden, 'error' for other errors, None if success
+    """
     if not PLAYWRIGHT_AVAILABLE:
-        return None
+        return (None, 'no_playwright')
     
     try:
         clean_url = url.split('?')[0] if '?' in url else url
@@ -120,11 +155,21 @@ def capture_with_playwright(url, device='mobile'):
             )
             
             page = context.new_page()
-            page.goto(clean_url, wait_until='networkidle', timeout=30000)
+            
+            # Capture response to check status code
+            response = page.goto(clean_url, wait_until='networkidle', timeout=30000)
+            
+            # Check if 403 Forbidden
+            if response and response.status == 403:
+                browser.close()
+                return (None, 403)
             
             html_content = page.content()
-            
             browser.close()
-            return html_content
+            return (html_content, None)
+            
     except Exception as e:
-        return None
+        error_str = str(e).lower()
+        if '403' in error_str or 'forbidden' in error_str:
+            return (None, 403)
+        return (None, 'error')
