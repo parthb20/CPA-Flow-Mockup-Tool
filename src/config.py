@@ -19,8 +19,8 @@ OPENAI_API_KEY = None  # Set via environment variable or Streamlit secrets
 # Device dimensions
 DEVICE_DIMENSIONS = {
     'mobile': {'width': 390, 'height': 844},      # iPhone-like portrait
-    'tablet': {'width': 1024, 'height': 768},     # iPad landscape
-    'laptop': {'width': 1920, 'height': 1080}     # Full HD desktop
+    'tablet': {'width': 768, 'height': 1024},     # iPad portrait (swapped)
+    'laptop': {'width': 1080, 'height': 1920}     # Full HD portrait (swapped)
 }
 
 # Default table settings
