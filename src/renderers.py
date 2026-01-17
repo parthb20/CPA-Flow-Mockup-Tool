@@ -75,7 +75,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     elif device == 'tablet':
         device_w = 1024
         container_height = 768
-        scale = 0.35
+        scale = 0.38
         frame_style = "border-radius: 16px; border: 12px solid #1f2937;"
         
         url_display = display_url if display_url else (content if is_url else "URL")
@@ -105,7 +105,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     else:  # laptop
         device_w = 1920
         container_height = 1080
-        scale = 0.25
+        scale = 0.22
         frame_style = "border-radius: 8px; border: 6px solid #374151;"
         
         url_display = display_url if display_url else (content if is_url else "URL")
@@ -128,6 +128,12 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     
     display_w = int(device_w * scale)
     display_h = int(container_height * scale)
+    
+    # Add extra height to prevent cutoff
+    if device == 'tablet':
+        display_h += 50
+    elif device == 'laptop':
+        display_h += 40
     
     if is_url and not use_srcdoc:
         # For URL-based iframes, wrap in device chrome
