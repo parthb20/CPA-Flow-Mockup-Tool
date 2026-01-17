@@ -153,34 +153,46 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                 padding: 0;
                 box-sizing: border-box;
             }}
-            html, body {{ 
+            html, body {{
                 width: {device_w}px;
-                height: {total_iframe_height}px;
+                height: {total_content_height}px;
                 overflow: hidden;
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            }}
-            .device-chrome {{ 
-                width: 100%;
                 background: white;
+            }}
+            body {{
+                display: flex;
+                flex-direction: column;
+                position: relative;
+            }}
+            .device-chrome {{
+                width: 100%;
                 flex-shrink: 0;
             }}
-            .content-area {{ 
-                width: {device_w}px;
+            .content-wrapper {{
+                flex: 1;
+                width: 100%;
                 height: {device_h}px;
-                overflow-y: auto; 
+                overflow-y: auto;
                 overflow-x: hidden;
                 -webkit-overflow-scrolling: touch;
                 background: white;
+                position: relative;
             }}
-            .content-area * {{
+            .content-wrapper > * {{
                 max-width: {device_w}px !important;
+            }}
+            .content-wrapper iframe {{
+                width: 100%;
+                height: 100%;
+                border: none;
             }}
         </style>
     </head>
     <body>
         <div class="device-chrome">{device_chrome}</div>
-        <div class="content-area">{iframe_content}</div>
-        {bottom_nav if device == 'mobile' else ''}
+        <div class="content-wrapper">{iframe_content}</div>
+        {bottom_nav}
     </body>
     </html>
     """
