@@ -538,6 +538,23 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 else:
                     st.info("🎯 Selected Flow: No data available")
                 
+                # ZERO spacing before Flow Journey - AGGRESSIVE CSS
+                st.markdown("""
+                <style>
+                /* Kill ALL spacing between success message and Flow Journey */
+                .stSuccess + div,
+                .stInfo + div {
+                    margin-top: 0 !important;
+                    padding-top: 0 !important;
+                }
+                /* Remove spacing from next section */
+                section[data-testid="stVerticalBlock"] > div {
+                    margin-top: 0 !important;
+                }
+                </style>
+                <div style="height:0;margin:0;padding:0;line-height:0;"></div>
+                """, unsafe_allow_html=True)
+                
                 # Render Flow Journey using module
                 render_flow_journey(
                     campaign_df=campaign_df,
