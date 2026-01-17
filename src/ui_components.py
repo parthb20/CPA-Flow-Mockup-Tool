@@ -235,15 +235,15 @@ completion = client.chat.completions.create(
 def render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs, flow_ctr, flow_cvr):
     """Render the Selected Flow display with performance metrics"""
     st.markdown("""
-    <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #3b82f6; padding: 16px; border-radius: 8px; margin-bottom: 12px;">
-        <h3 style="font-size: 20px; font-weight: 700; color: #0f172a; margin: 0 0 12px 0;">🎯 Selected Flow</h3>
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; font-size: 14px;">
+    <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #3b82f6; padding: 12px; border-radius: 8px; margin-bottom: 8px;">
+        <h3 style="font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">🎯 Selected Flow</h3>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 8px; font-size: 13px;">
             <div><strong>Keyword:</strong> {keyword}</div>
             <div><strong>Domain:</strong> {domain}</div>
-            <div><strong>SERP:</strong> {serp}</div>
-            <div><strong>Landing URL:</strong> {landing_url}</div>
+            <div style="grid-column: 1 / -1;"><strong>SERP:</strong> {serp}</div>
+            <div style="grid-column: 1 / -1; word-break: break-all; font-size: 11px; color: #475569;"><strong style="color: #0f172a;">Landing URL:</strong> {landing_url}</div>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #cbd5e1;">
+        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #cbd5e1;">
             <div><strong style="color: #64748b; font-size: 12px;">Impressions</strong><div style="font-size: 18px; font-weight: 700; color: #0f172a;">{impressions:,}</div></div>
             <div><strong style="color: #64748b; font-size: 12px;">Clicks</strong><div style="font-size: 18px; font-weight: 700; color: #0f172a;">{clicks:,}</div></div>
             <div><strong style="color: #64748b; font-size: 12px;">Conversions</strong><div style="font-size: 18px; font-weight: 700; color: #0f172a;">{conversions:,}</div></div>
@@ -255,7 +255,7 @@ def render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs
         keyword=html.escape(str(single_view.get('keyword_term', 'N/A'))),
         domain=html.escape(str(single_view.get('publisher_domain', 'N/A'))),
         serp=html.escape(str(single_view.get('serp_template_name', 'N/A'))),
-        landing_url=html.escape(str(single_view.get('reporting_destination_url', 'N/A'))[:60] + ('...' if len(str(single_view.get('reporting_destination_url', ''))) > 60 else '')),
+        landing_url=html.escape(str(single_view.get('reporting_destination_url', 'N/A'))),
         impressions=flow_imps,
         clicks=flow_clicks,
         conversions=flow_convs,
