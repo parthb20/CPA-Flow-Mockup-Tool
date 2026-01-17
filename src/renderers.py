@@ -44,7 +44,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         url_display = display_url if display_url else (content if is_url else "URL")
         url_display_short = url_display[:40] + "..." if len(url_display) > 40 else url_display
         device_chrome = f"""
-        <div style="background: #000; color: white; padding: 6px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500;">
+        <div style="background: #000; color: white; padding: 6px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500; height: 44px; box-sizing: border-box;">
             <div>9:41</div>
             <div style="display: flex; gap: 4px; align-items: center;">
                 <span>📶</span>
@@ -97,7 +97,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                 <span>🔋</span>
             </div>
         </div>
-        <div style="background: #f0f0f0; border-bottom: 1px solid #d0d0d0; padding: 12px 16px; display: flex; align-items: center; gap: 12px;">
+        <div style="background: #f0f0f0; border-bottom: 1px solid #d0d0d0; padding: 12px 16px; display: flex; align-items: center; gap: 12px; height: 32px; box-sizing: border-box;">
             <div style="flex: 1; background: white; border-radius: 10px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; border: 1px solid #e0e0e0;">
                 <span style="font-size: 18px;">🔒</span>
                 <span style="color: #666; font-size: 15px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{url_display_short}</span>
@@ -114,7 +114,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         url_display = display_url if display_url else (content if is_url else "URL")
         url_display_short = url_display[:60] + "..." if len(url_display) > 60 else url_display
         device_chrome = f"""
-        <div style="background: #e8e8e8; padding: 12px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #d0d0d0;">
+        <div style="background: #e8e8e8; padding: 12px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #d0d0d0; height: 48px; box-sizing: border-box;">
             <div style="display: flex; gap: 8px;">
                 <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f57;"></div>
                 <div style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e;"></div>
