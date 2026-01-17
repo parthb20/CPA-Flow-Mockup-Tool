@@ -6,7 +6,7 @@ Modular architecture for maintainability
 
 import streamlit as st
 
-# Page config - MUST be first Streamlit command (before any other Streamlit calls or imports that use Streamlit)
+# Page config - MUST be FIRST Streamlit command (before any imports that use Streamlit)
 st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊", layout="wide")
 
 import pandas as pd
@@ -52,8 +52,7 @@ API_KEY = ""
 SCREENSHOT_API_KEY = ""
 THUMIO_REFERER_DOMAIN = ""
 
-# Safely access secrets - catch all exceptions including StreamlitSecretNotFoundError
-# Note: StreamlitSecretNotFoundError inherits from Exception, so catching Exception works
+# Safely access secrets - catch all exceptions
 try:
     try:
         API_KEY = str(st.secrets["FASTROUTER_API_KEY"]).strip()
@@ -320,7 +319,7 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# Auto-load from Google Drive (sequential loading for better Streamlit Cloud compatibility)
+# Auto-load from Google Drive (sequential loading for Streamlit Cloud compatibility)
 if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
         try:
@@ -331,26 +330,8 @@ if not st.session_state.loading_done:
             st.session_state.data_b = load_json_from_gdrive(FILE_B_ID)
             
             st.session_state.loading_done = True
-            
-            # Check if data loaded successfully
-            if st.session_state.data_a is None:
-                st.error(f"❌ Could not load CSV data from Google Drive")
-                st.info(f"**File ID:** `{FILE_A_ID}`")
-                st.markdown("""
-                **Troubleshooting:**
-                - Make sure the Google Drive file is shared with "Anyone with the link can view"
-                - Verify the file is a valid CSV
-                - Check that the file ID is correct
-                - The CSV may have formatting issues (unescaped commas, multiline fields)
-                """)
-            if st.session_state.data_b is None:
-                st.warning(f"⚠️ Could not load SERP templates JSON (File ID: `{FILE_B_ID}`)")
         except Exception as e:
-            st.error(f"❌ Error loading data: {str(e)[:200]}")
-            st.info(f"**CSV File ID:** `{FILE_A_ID}`")
-            st.info(f"**JSON File ID:** `{FILE_B_ID}`")
-            st.session_state.data_a = None
-            st.session_state.data_b = None
+            st.error(f"❌ Error loading data: {str(e)}")
             st.session_state.loading_done = True
 
 # View mode toggle
@@ -548,7 +529,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     flow_ctr = (flow_clicks / flow_imps * 100) if flow_imps > 0 else 0
                     flow_cvr = (flow_convs / flow_clicks * 100) if flow_clicks > 0 else 0
                     
-                    # Display flow summary
                     render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs, flow_ctr, flow_cvr)
                     
                     if st.session_state.view_mode == 'basic':
@@ -557,6 +537,23 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         st.success("✨ Use filters above to change flow")
                 else:
                     st.info("🎯 Selected Flow: No data available")
+                
+                # ZERO spacing before Flow Journey - AGGRESSIVE CSS
+                st.markdown("""
+                <style>
+                /* Kill ALL spacing between success message and Flow Journey */
+                .stSuccess + div,
+                .stInfo + div {
+                    margin-top: 0 !important;
+                    padding-top: 0 !important;
+                }
+                /* Remove spacing from next section */
+                section[data-testid="stVerticalBlock"] > div {
+                    margin-top: 0 !important;
+                }
+                </style>
+                <div style="height:0;margin:0;padding:0;line-height:0;"></div>
+                """, unsafe_allow_html=True)
                 
                 # Render Flow Journey using module
                 render_flow_journey(
@@ -572,20 +569,3 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.warning("No data available for this campaign")
 else:
     st.error("❌ Could not load data - Check FILE_A_ID and file sharing settings")
-    st.info(f"**CSV File ID:** `{FILE_A_ID}`")
-    st.markdown("""
-    **Troubleshooting:**
-    
-    1. **File Sharing:** Make sure the Google Drive file is shared with "Anyone with the link can view"
-    2. **File Format:** Verify the file is a valid CSV (not Excel or other format)
-    3. **File ID:** Check that the file ID is correct in `src/config.py`
-    4. **CSV Formatting:** The CSV may have formatting issues:
-       - Fields with commas should be quoted: `"Field, with comma"`
-       - Multiline fields should be properly quoted
-       - Check for special characters or encoding issues
-    
-    **Common CSV Issues:**
-    - Unescaped commas in fields → Wrap fields in quotes
-    - Multiline text → Ensure proper quoting
-    - Encoding issues → Save CSV as UTF-8
-    """)
