@@ -79,7 +79,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         """
         
     elif device == 'tablet':
-        scale = 0.35
+        scale = 0.40
         frame_style = "border-radius: 16px; border: 12px solid #1f2937;"
         chrome_height_px = 68
         
@@ -97,8 +97,8 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                 <span>🔋</span>
             </div>
         </div>
-        <div style="background: #f0f0f0; border-bottom: 1px solid #d0d0d0; padding: 12px 16px; display: flex; align-items: center; gap: 12px; height: 32px; box-sizing: border-box;">
-            <div style="flex: 1; background: white; border-radius: 10px; padding: 10px 16px; display: flex; align-items: center; gap: 10px; border: 1px solid #e0e0e0;">
+        <div style="background: #f0f0f0; border-bottom: 1px solid #d0d0d0; padding: 6px 16px; display: flex; align-items: center; gap: 12px; height: 32px; box-sizing: border-box;">
+            <div style="flex: 1; background: white; border-radius: 10px; padding: 4px 16px; display: flex; align-items: center; gap: 10px; border: 1px solid #e0e0e0;">
                 <span style="font-size: 18px;">🔒</span>
                 <span style="color: #666; font-size: 15px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{url_display_short}</span>
             </div>
@@ -114,13 +114,13 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         url_display = display_url if display_url else (content if is_url else "URL")
         url_display_short = url_display[:60] + "..." if len(url_display) > 60 else url_display
         device_chrome = f"""
-        <div style="background: #e8e8e8; padding: 12px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #d0d0d0; height: 48px; box-sizing: border-box;">
+        <div style="background: #e8e8e8; padding: 6px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #d0d0d0; height: 48px; box-sizing: border-box;">
             <div style="display: flex; gap: 8px;">
                 <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f57;"></div>
                 <div style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e;"></div>
                 <div style="width: 12px; height: 12px; border-radius: 50%; background: #28c840;"></div>
             </div>
-            <div style="flex: 1; background: white; border-radius: 6px; padding: 8px 16px; display: flex; align-items: center; gap: 12px; border: 1px solid #d0d0d0;">
+            <div style="flex: 1; background: white; border-radius: 6px; padding: 4px 16px; display: flex; align-items: center; gap: 12px; border: 1px solid #d0d0d0;">
                 <span style="font-size: 16px;">🔒</span>
                 <span style="color: #333; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{url_display_short}</span>
             </div>
