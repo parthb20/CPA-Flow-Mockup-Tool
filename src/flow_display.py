@@ -1093,8 +1093,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             if api_key:
                 with st.spinner("Calculating similarity scores..."):
                     st.session_state.similarities = calculate_similarities(current_flow)
-                    # DEBUG: Show what was returned
-                    st.write("🔍 DEBUG - Similarities:", st.session_state.similarities)
             else:
                 st.session_state.similarities = {}
         

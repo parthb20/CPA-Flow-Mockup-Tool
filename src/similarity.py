@@ -161,9 +161,6 @@ Formula: 0.15×K + 0.35×T + 0.50×I"""
     
     if adv_url and pd.notna(adv_url) and str(adv_url).lower() != 'null' and str(adv_url).strip():
         page_text = fetch_page_content(adv_url)
-        # DEBUG: Show page content length
-        import streamlit as st
-        st.write(f"🔍 DEBUG - Page text length for {adv_url[:50]}...: {len(page_text) if page_text else 0} chars")
         
         if page_text:
             # Ad → Page

@@ -206,17 +206,7 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
         if data and data.get('status_code') == 'no_api_key':
             # Only show message if API key is actually missing
             try:
-                # Safe way to access Streamlit secrets - catch all exceptions
-                # Note: StreamlitSecretNotFoundError inherits from Exception, so catching Exception works
-                api_key = ""
-                try:
-                    api_key = str(st.secrets["FASTROUTER_API_KEY"]).strip()
-                except Exception:
-                    try:
-                        api_key = str(st.secrets["OPENAI_API_KEY"]).strip()
-                    except Exception:
-                        api_key = ""
-                
+                api_key = st.secrets.get('FASTROUTER_API_KEY') or st.secrets.get('OPENAI_API_KEY')
                 if not api_key:
                     st.info("🔑 Add API key to calculate")
             except:
@@ -258,25 +248,51 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
     """, unsafe_allow_html=True)
     
     st.markdown(f"""
-    <div style="background: white; border: 2px solid {color}; border-radius: 8px; padding: 12px; margin: 8px 0;">
-        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px;">
-            <div style="font-size: 32px; font-weight: 700; color: {color}; flex-shrink: 0;">{score:.0%}</div>
-            <div style="flex: 1; min-width: 0;">
-                <div style="font-weight: 600; color: {color}; font-size: 13px; margin-bottom: 4px;">{label} Match</div>
-                <div style="font-size: 11px; color: #64748b; line-height: 1.3;">{reason[:70]}{'...' if len(reason) > 70 else ''}</div>
+    <div style="background: linear-gradient(135deg, {color}15 0%, {color}08 100%); border: 2px solid {color}; border-radius: 12px; padding: 16px; margin: 8px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+        <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+            <div style="background: white; border-radius: 12px; padding: 12px 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+                <div style="font-size: 40px; font-weight: 900; color: {color}; line-height: 1;">{score:.0%}</div>
+            </div>
+            <div style="flex: 1; min-width: 200px;">
+                <div style="font-weight: 700; color: {color}; font-size: 15px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">{label} Match</div>
+                <div style="font-size: 12px; color: #475569; line-height: 1.4;">{reason}</div>
             </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
     
-    with st.expander(f"🔍 How was this calculated?", expanded=False):
-        st.markdown(f"**Reason:** {reason}")
+    with st.expander("📊 View Detailed Breakdown", expanded=False):
+        score_components = []
         if 'topic_match' in data:
-            st.markdown(f"**Topic Match:** {data.get('topic_match', 0):.0%}")
+            score_components.append(("🎯 Topic Match", data.get('topic_match', 0)))
         if 'brand_match' in data:
-            st.markdown(f"**Brand Match:** {data.get('brand_match', 0):.0%}")
+            score_components.append(("🏷️ Brand Match", data.get('brand_match', 0)))
         if 'promise_match' in data:
-            st.markdown(f"**Promise Match:** {data.get('promise_match', 0):.0%}")
+            score_components.append(("✅ Promise Match", data.get('promise_match', 0)))
+        if 'keyword_match' in data:
+            score_components.append(("🔑 Keyword Match", data.get('keyword_match', 0)))
+        if 'intent_match' in data:
+            score_components.append(("💡 Intent Match", data.get('intent_match', 0)))
+        if 'utility_match' in data:
+            score_components.append(("⚙️ Utility Match", data.get('utility_match', 0)))
+        
+        if score_components:
+            cols = st.columns(len(score_components))
+            for idx, (name, val) in enumerate(score_components):
+                with cols[idx]:
+                    score_val = val * 100
+                    score_color = "#22c55e" if val >= 0.7 else "#f59e0b" if val >= 0.4 else "#ef4444"
+                    st.markdown(f"""
+                    <div style="text-align: center; padding: 8px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">{name}</div>
+                        <div style="font-size: 20px; font-weight: 700; color: {score_color};">{score_val:.0f}%</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+        
+        if 'intent' in data and data['intent']:
+            st.markdown(f"**🎯 Detected Intent:** {data['intent']}")
+        if 'band' in data and data['band']:
+            st.markdown(f"**📈 Score Band:** {data['band'].title()}")
 
 
 def inject_unique_id(html_content, prefix, url, device, flow_data=None):
