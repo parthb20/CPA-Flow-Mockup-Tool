@@ -73,9 +73,9 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         chrome_height = "90px"
         
     elif device == 'tablet':
-        device_w = 820
-        container_height = 1180
-        scale = 0.4
+        device_w = 1024
+        container_height = 768
+        scale = 0.45
         frame_style = "border-radius: 16px; border: 12px solid #1f2937;"
         
         url_display = display_url if display_url else (content if is_url else "URL")
