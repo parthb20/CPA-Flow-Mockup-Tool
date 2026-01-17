@@ -14,33 +14,38 @@ from src.utils import safe_float
 
 def call_similarity_api(prompt):
     """Call FastRouter API for similarity scoring"""
+    # Try to get API key from Streamlit secrets
+    API_KEY = ""
     try:
-        API_KEY = st.secrets.get("FASTROUTER_API_KEY") or st.secrets.get("OPENAI_API_KEY", "")
+        API_KEY = str(st.secrets["FASTROUTER_API_KEY"]).strip()
     except:
-        API_KEY = ""
+        try:
+            API_KEY = str(st.secrets["OPENAI_API_KEY"]).strip()
+        except:
+            API_KEY = ""
     
     if not API_KEY:
         return {
             "error": True,
             "status_code": "no_api_key",
-            "body": "FASTROUTER_API_KEY not found in Streamlit secrets"
+            "body": "FASTROUTER_API_KEY not found in Streamlit secrets. Add it to .streamlit/secrets.toml"
         }
     
     try:
+        # Use correct FastRouter URL and Claude model
         response = requests.post(
-            "https://api.fastrouter.ai/v1/chat/completions",
+            "https://go.fastrouter.ai/api/v1/chat/completions",
             headers={
                 "Authorization": f"Bearer {API_KEY}",
                 "Content-Type": "application/json"
             },
             json={
-                "model": "openai/gpt-4o-mini",
+                "model": "anthropic/claude-sonnet-4-20250514",
                 "messages": [
-                    {"role": "system", "content": "You are a similarity scoring expert. Analyze text and return ONLY a JSON object with the requested fields."},
                     {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.3,
-                "max_tokens": 300
+                "max_tokens": 500
             },
             timeout=30
         )
@@ -66,11 +71,12 @@ def call_similarity_api(prompt):
                     "intent": score_data.get('intent', ''),
                     "band": score_data.get('band', '')
                 }
-            return {"error": True, "status_code": response.status_code, "body": content}
+            return {"error": True, "status_code": response.status_code, "body": f"No JSON in response: {content[:200]}"}
         else:
-            return {"error": True, "status_code": response.status_code, "body": response.text}
+            error_msg = f"API returned {response.status_code}: {response.text[:300]}"
+            return {"error": True, "status_code": response.status_code, "body": error_msg}
     except Exception as e:
-        return {"error": True, "status_code": "exception", "body": str(e)}
+        return {"error": True, "status_code": "exception", "body": f"Exception: {str(e)}"}
 
 
 def extract_text_from_html(html_content):
