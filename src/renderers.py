@@ -107,11 +107,9 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         bottom_nav = ""
         
     else:  # laptop
-        device_w = DEVICE_DIMENSIONS['laptop']['width']
-        device_h = DEVICE_DIMENSIONS['laptop']['height']
-        scale = 0.22
+        scale = 0.2
         frame_style = "border-radius: 8px; border: 6px solid #374151;"
-        chrome_height_px = 52
+        chrome_height_px = 48
         
         url_display = display_url if display_url else (content if is_url else "URL")
         url_display_short = url_display[:60] + "..." if len(url_display) > 60 else url_display
@@ -153,46 +151,34 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                 padding: 0;
                 box-sizing: border-box;
             }}
-            html, body {{
+            html, body {{ 
                 width: {device_w}px;
                 height: {total_content_height}px;
                 overflow: hidden;
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-                background: white;
             }}
-            body {{
-                display: flex;
-                flex-direction: column;
-                position: relative;
-            }}
-            .device-chrome {{
+            .device-chrome {{ 
                 width: 100%;
+                background: white;
                 flex-shrink: 0;
             }}
-            .content-wrapper {{
-                flex: 1;
-                width: 100%;
+            .content-area {{ 
+                width: {device_w}px;
                 height: {device_h}px;
-                overflow-y: auto;
+                overflow-y: auto; 
                 overflow-x: hidden;
                 -webkit-overflow-scrolling: touch;
                 background: white;
-                position: relative;
             }}
-            .content-wrapper > * {{
+            .content-area * {{
                 max-width: {device_w}px !important;
-            }}
-            .content-wrapper iframe {{
-                width: 100%;
-                height: 100%;
-                border: none;
             }}
         </style>
     </head>
     <body>
         <div class="device-chrome">{device_chrome}</div>
-        <div class="content-wrapper">{iframe_content}</div>
-        {bottom_nav}
+        <div class="content-area">{iframe_content}</div>
+        {bottom_nav if device == 'mobile' else ''}
     </body>
     </html>
     """
