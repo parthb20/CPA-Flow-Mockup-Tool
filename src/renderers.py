@@ -262,37 +262,50 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
     """, unsafe_allow_html=True)
     
     with st.expander("📊 View Detailed Breakdown", expanded=False):
-        score_components = []
-        if 'topic_match' in data:
-            score_components.append(("🎯 Topic Match", data.get('topic_match', 0)))
-        if 'brand_match' in data:
-            score_components.append(("🏷️ Brand Match", data.get('brand_match', 0)))
-        if 'promise_match' in data:
-            score_components.append(("✅ Promise Match", data.get('promise_match', 0)))
-        if 'keyword_match' in data:
-            score_components.append(("🔑 Keyword Match", data.get('keyword_match', 0)))
-        if 'intent_match' in data:
-            score_components.append(("💡 Intent Match", data.get('intent_match', 0)))
-        if 'utility_match' in data:
-            score_components.append(("⚙️ Utility Match", data.get('utility_match', 0)))
+        # Define which components belong to which score type
+        component_mapping = {
+            'kwd_to_ad': ['keyword_match', 'topic_match', 'intent_match'],
+            'ad_to_page': ['topic_match', 'brand_match', 'promise_match'],
+            'kwd_to_page': ['topic_match', 'utility_match', 'intent_match']
+        }
+        
+        component_labels = {
+            'keyword_match': '🔑 Keyword Match',
+            'topic_match': '🎯 Topic Match',
+            'intent_match': '💡 Intent Match',
+            'brand_match': '🏷️ Brand Match',
+            'promise_match': '✅ Promise Match',
+            'utility_match': '⚙️ Utility Match'
+        }
+        
+        # Get relevant components for this score type
+        relevant_components = component_mapping.get(score_type, [])
+        score_components = [(component_labels[key], data.get(key, 0)) for key in relevant_components if key in data]
         
         if score_components:
-            cols = st.columns(len(score_components))
-            for idx, (name, val) in enumerate(score_components):
-                with cols[idx]:
-                    score_val = val * 100
-                    score_color = "#22c55e" if val >= 0.7 else "#f59e0b" if val >= 0.4 else "#ef4444"
-                    st.markdown(f"""
-                    <div style="text-align: center; padding: 8px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
-                        <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">{name}</div>
-                        <div style="font-size: 20px; font-weight: 700; color: {score_color};">{score_val:.0f}%</div>
-                    </div>
-                    """, unsafe_allow_html=True)
+            # Create horizontal layout as HTML for better control
+            components_html = '<div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">'
+            for name, val in score_components:
+                score_val = val * 100
+                score_color = "#22c55e" if val >= 0.7 else "#f59e0b" if val >= 0.4 else "#ef4444"
+                components_html += f"""
+                <div style="flex: 1; min-width: 120px; text-align: center; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">{name}</div>
+                    <div style="font-size: 24px; font-weight: 700; color: {score_color};">{score_val:.0f}%</div>
+                </div>
+                """
+            components_html += '</div>'
+            st.markdown(components_html, unsafe_allow_html=True)
         
+        # Show intent and band below
+        extra_info = []
         if 'intent' in data and data['intent']:
-            st.markdown(f"**🎯 Detected Intent:** {data['intent']}")
+            extra_info.append(f"**🎯 Detected Intent:** {data['intent']}")
         if 'band' in data and data['band']:
-            st.markdown(f"**📈 Score Band:** {data['band'].title()}")
+            extra_info.append(f"**📈 Score Band:** {data['band'].title()}")
+        
+        if extra_info:
+            st.markdown(" &nbsp;|&nbsp; ".join(extra_info))
 
 
 def inject_unique_id(html_content, prefix, url, device, flow_data=None):
