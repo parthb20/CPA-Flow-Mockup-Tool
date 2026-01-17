@@ -35,8 +35,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         current_flow: Current flow dictionary
         api_key: API key for similarity calculations
         playwright_available: Boolean indicating if Playwright is available
-        thumio_configured: Boolean indicating if Thum.io is configured
-        thumio_referer_domain: Thum.io referer domain
+        thumio_configured: Boolean indicating if screenshot API is configured (kept for backwards compatibility)
+        thumio_referer_domain: Referer domain (kept for backwards compatibility)
     """
     # Add Flow Journey title - BIG and BOLD with proper spacing
     st.markdown("""
@@ -334,7 +334,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                             preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
                                             preview_html = inject_unique_id(preview_html, 'pub_screenshot', pub_url, device_all, current_flow)
                                             st.components.v1.html(preview_html, height=height, scrolling=False)
-                                            st.caption("📸 Screenshot (thum.io)")
+                                            st.caption("📸 Screenshot")
                                         else:
                                             st.error(f"❌ HTML rendering failed: {str(html_error)[:100]}")
                                     except:
@@ -370,7 +370,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                                 display_height = height
                                                 st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                                 if st.session_state.flow_layout != 'horizontal':
-                                                    st.caption("📸 Screenshot (thum.io)")
+                                                    st.caption("📸 Screenshot")
                                             else:
                                                 st.error(f"❌ HTTP {response.status_code}")
                                         except:
@@ -743,7 +743,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                             preview_html = inject_unique_id(preview_html, 'serp_screenshot', serp_url, device_all, current_flow)
                                             display_height = height
                                             st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                                            st.caption("📸 Screenshot (thum.io)")
+                                            st.caption("📸 Screenshot")
                                     else:
                                         st.warning("⚠️ Could not load SERP. Set SCREENSHOT_API_KEY in secrets")
                         else:
@@ -929,7 +929,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                             preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
                                             display_height = height
                                             st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                                            st.caption("📸 Screenshot (thum.io)")
+                                            st.caption("📸 Screenshot")
                                         else:
                                             st.error(f"❌ HTML rendering failed: {str(html_error)[:100]}")
                                     except:
@@ -969,7 +969,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                                 display_height = height
                                                 st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                                 if st.session_state.flow_layout != 'horizontal':
-                                                    st.caption("📸 Screenshot (thum.io)")
+                                                    st.caption("📸 Screenshot")
                                             else:
                                                 st.error(f"❌ HTTP {response.status_code}")
                                         except:
