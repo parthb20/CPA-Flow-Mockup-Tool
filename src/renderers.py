@@ -62,7 +62,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         """
         
         bottom_nav = """
-        <div style="position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e0e0e0; padding: 8px 0; display: flex; justify-content: space-around; align-items: center; z-index: 1000;">
+        <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); border-top: 1px solid #e0e0e0; padding: 8px 0; display: flex; justify-content: space-around; align-items: center; height: 70px;">
             <div style="text-align: center; flex: 1;">
                 <div style="font-size: 20px;">🏠</div>
                 <div style="font-size: 10px; color: #666;">Home</div>
@@ -86,7 +86,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         url_display = display_url if display_url else (content if is_url else "URL")
         url_display_short = url_display[:50] + "..." if len(url_display) > 50 else url_display
         device_chrome = f"""
-        <div style="background: #000; color: white; padding: 8px 24px; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 500;">
+        <div style="background: #000; color: white; padding: 8px 24px; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 500; height: 36px; box-sizing: border-box;">
             <div style="display: flex; gap: 12px;">
                 <span>9:41 AM</span>
                 <span>Wed Jan 13</span>
@@ -107,7 +107,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         bottom_nav = ""
         
     else:  # laptop
-        scale = 0.2
+        scale = 0.25
         frame_style = "border-radius: 8px; border: 6px solid #374151;"
         chrome_height_px = 48
         
