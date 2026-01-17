@@ -17,7 +17,6 @@ from src.renderers import (
     render_mini_device_preview,
     render_similarity_score,
     inject_unique_id,
-    create_screenshot_html,
     parse_creative_html
 )
 from src.screenshot import get_screenshot_url, capture_with_playwright, capture_page_with_fallback
