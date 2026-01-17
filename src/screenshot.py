@@ -15,9 +15,9 @@ except:
     PLAYWRIGHT_AVAILABLE = False
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=604800, show_spinner=False)
 def get_screenshot_url(url, device='mobile', full_page=False):
-    """Generate ScreenshotOne API URL (cached for 1 hour)"""
+    """Generate ScreenshotOne API URL (cached for 7 days)"""
     try:
         # Try to get API key
         try:
