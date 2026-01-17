@@ -3,6 +3,7 @@
 CPA Flow Analysis Tool - Main Application Entry Point
 This file is the entry point for Streamlit Cloud deployment
 It executes the main application code from cpa_flow_mockup.py
+Version: 2.0 - with ScreenshotOne API integration
 """
 
 # Execute the main application file
