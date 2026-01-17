@@ -52,7 +52,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                 <span>🔋</span>
             </div>
         </div>
-        <div style="background: #f7f7f7; border-bottom: 1px solid #d1d1d1; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
+        <div style="background: #f7f7f7; border-bottom: 1px solid #d1d1d1; padding: 8px 12px; display: flex; align-items: center; gap: 8px; height: 46px; box-sizing: border-box;">
             <div style="flex: 1; background: white; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; border: 1px solid #e0e0e0;">
                 <span style="font-size: 16px;">🔒</span>
                 <span style="color: #666; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{url_display_short}</span>
@@ -79,14 +79,14 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         """
         
     elif device == 'tablet':
-        scale = 0.40
+        scale = 0.55
         frame_style = "border-radius: 16px; border: 12px solid #1f2937;"
         chrome_height_px = 68
         
         url_display = display_url if display_url else (content if is_url else "URL")
         url_display_short = url_display[:50] + "..." if len(url_display) > 50 else url_display
         device_chrome = f"""
-        <div style="background: #000; color: white; padding: 8px 24px; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 500; height: 36px; box-sizing: border-box;">
+        <div style="background: #000; color: white; padding: 8px 24px; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 500;">
             <div style="display: flex; gap: 12px;">
                 <span>9:41 AM</span>
                 <span>Wed Jan 13</span>
@@ -107,7 +107,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         bottom_nav = ""
         
     else:  # laptop
-        scale = 0.25
+        scale = 0.39
         frame_style = "border-radius: 8px; border: 6px solid #374151;"
         chrome_height_px = 48
         
