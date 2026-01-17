@@ -1093,6 +1093,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             if api_key:
                 with st.spinner("Calculating similarity scores..."):
                     st.session_state.similarities = calculate_similarities(current_flow)
+                    # DEBUG: Show what was returned
+                    st.write("🔍 DEBUG - Similarities:", st.session_state.similarities)
             else:
                 st.session_state.similarities = {}
         
@@ -1105,7 +1107,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 for key in ['kwd_to_ad', 'ad_to_page', 'kwd_to_page']:
                     if key in similarities:
                         score_data = similarities[key]
-                        if isinstance(score_data, dict) and 'error' not in score_data and 'final_score' in score_data:
+                        if isinstance(score_data, dict) and not score_data.get('error', False) and 'final_score' in score_data:
                             has_similarities = True
                             break
         
@@ -1136,7 +1138,13 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         error_keys = [k for k, v in similarities.items() if isinstance(v, dict) and v.get('error')]
                         valid_keys = [k for k, v in similarities.items() if isinstance(v, dict) and not v.get('error') and 'final_score' in v]
                         if error_keys and not valid_keys:
-                            st.warning(f"⚠️ Similarity calculation failed. Check API key and network connection. Errors: {', '.join(error_keys)}")
+                            # Show actual error details
+                            error_details = []
+                            for k in error_keys:
+                                err = similarities[k]
+                                error_msg = err.get('body', err.get('status_code', 'unknown'))
+                                error_details.append(f"**{k}**: {error_msg}")
+                            st.error(f"❌ **Similarity calculation failed:**\n\n" + "\n\n".join(error_details))
                         elif valid_keys:
                             st.info(f"⏳ Some similarity scores are still calculating... ({len(valid_keys)}/{len(similarities)} complete)")
                         else:
