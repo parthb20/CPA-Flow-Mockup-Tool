@@ -27,12 +27,17 @@ except:
 
 def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdoc=False, display_url=None):
     """Render device preview with realistic chrome for mobile/tablet/laptop"""
-    # Device dimensions and styling
+    
+    # Import dimensions from config
+    from src.config import DEVICE_DIMENSIONS
+    
+    # Device configurations
     if device == 'mobile':
-        device_w = 390
-        container_height = 844
+        device_w = DEVICE_DIMENSIONS['mobile']['width']
+        device_h = DEVICE_DIMENSIONS['mobile']['height']
         scale = 0.5
         frame_style = "border-radius: 30px; border: 5px solid #000000;"
+        chrome_height_px = 90
         
         url_display = display_url if display_url else (content if is_url else "URL")
         url_display_short = url_display[:40] + "..." if len(url_display) > 40 else url_display
@@ -70,13 +75,13 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
             </div>
         </div>
         """
-        chrome_height = "90px"
         
     elif device == 'tablet':
-        device_w = 1024
-        container_height = 768
+        device_w = DEVICE_DIMENSIONS['tablet']['width']
+        device_h = DEVICE_DIMENSIONS['tablet']['height']
         scale = 0.38
         frame_style = "border-radius: 16px; border: 12px solid #1f2937;"
+        chrome_height_px = 68
         
         url_display = display_url if display_url else (content if is_url else "URL")
         url_display_short = url_display[:50] + "..." if len(url_display) > 50 else url_display
@@ -100,13 +105,13 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         </div>
         """
         bottom_nav = ""
-        chrome_height = "60px"
         
     else:  # laptop
-        device_w = 1920
-        container_height = 1080
+        device_w = DEVICE_DIMENSIONS['laptop']['width']
+        device_h = DEVICE_DIMENSIONS['laptop']['height']
         scale = 0.22
         frame_style = "border-radius: 8px; border: 6px solid #374151;"
+        chrome_height_px = 52
         
         url_display = display_url if display_url else (content if is_url else "URL")
         url_display_short = url_display[:60] + "..." if len(url_display) > 60 else url_display
@@ -124,17 +129,11 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         </div>
         """
         bottom_nav = ""
-        chrome_height = "52px"
     
-    # Calculate actual chrome heights in pixels
-    chrome_h_px = 90 if device == 'mobile' else 68 if device == 'tablet' else 52
-    
-    # Total iframe height = device height + chrome
-    total_iframe_h = container_height + chrome_h_px
-    
-    # Display dimensions = scaled total size
+    # Calculate dimensions properly
+    total_iframe_height = device_h + chrome_height_px
     display_w = int(device_w * scale)
-    display_h = int(total_iframe_h * scale)
+    display_h = int(total_iframe_height * scale)
     
     if is_url and not use_srcdoc:
         # For URL-based iframes, wrap in device chrome
@@ -149,34 +148,31 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         <meta name="viewport" content="width={device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <meta charset="utf-8">
         <style>
-            body {{ 
-                margin: 0; 
-                padding: 0; 
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            * {{
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }}
+            html, body {{ 
                 width: {device_w}px;
-                max-width: {device_w}px;
-                overflow-x: hidden;
+                height: {total_iframe_height}px;
+                overflow: hidden;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             }}
             .device-chrome {{ 
-                width: 100%; 
-                max-width: {device_w}px;
-                background: white; 
+                width: 100%;
+                background: white;
+                flex-shrink: 0;
             }}
             .content-area {{ 
                 width: {device_w}px;
-                max-width: {device_w}px;
-                height: {container_height}px;
+                height: {device_h}px;
                 overflow-y: auto; 
                 overflow-x: hidden;
                 -webkit-overflow-scrolling: touch;
+                background: white;
             }}
             .content-area * {{
-                max-width: {device_w}px !important;
-                box-sizing: border-box !important;
-            }}
-            html, body {{
-                overflow-x: hidden !important;
-                width: {device_w}px !important;
                 max-width: {device_w}px !important;
             }}
         </style>
@@ -194,7 +190,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     html_output = f"""
     <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
         <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-            <iframe srcdoc='{escaped}' style="width: {device_w}px; height: {total_iframe_h}px; border: none; transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"></iframe>
+            <iframe srcdoc='{escaped}' style="width: {device_w}px; height: {total_iframe_height}px; border: none; transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"></iframe>
         </div>
     </div>
     """
