@@ -52,7 +52,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                 <span>🔋</span>
             </div>
         </div>
-        <div style="background: #f7f7f7; border-bottom: 1px solid #d1d1d1; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
+        <div style="background: #f7f7f7; border-bottom: 1px solid #d1d1d1; padding: 8px 12px; display: flex; align-items: center; gap: 8px; height: 46px; box-sizing: border-box;">
             <div style="flex: 1; background: white; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; border: 1px solid #e0e0e0;">
                 <span style="font-size: 16px;">🔒</span>
                 <span style="color: #666; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{url_display_short}</span>
@@ -107,7 +107,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         bottom_nav = ""
         
     else:  # laptop
-        scale = 0.2
+        scale = 0.25
         frame_style = "border-radius: 8px; border: 6px solid #374151;"
         chrome_height_px = 48
         
