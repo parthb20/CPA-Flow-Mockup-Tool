@@ -157,9 +157,13 @@ def capture_with_playwright(url, device='mobile'):
             # Capture response to check status code
             response = page.goto(clean_url, wait_until='networkidle', timeout=30000)
             
-            # On 403, just return None (no fallback)
+            # On 403, try screenshot API fallback
             if response and response.status == 403:
                 browser.close()
+                screenshot_url = get_screenshot_url(url, device=device)
+                if screenshot_url:
+                    # Return special marker HTML that flow_display can detect
+                    return f'<!-- SCREENSHOT_FALLBACK --><img src="{screenshot_url}" style="width:100%;height:auto;" />'
                 return None
             
             html_content = page.content()
@@ -167,5 +171,10 @@ def capture_with_playwright(url, device='mobile'):
             return html_content
             
     except Exception as e:
-        # Just return None on any error (no fallback)
+        # On any error, try screenshot API fallback
+        error_str = str(e).lower()
+        if '403' in error_str or 'forbidden' in error_str:
+            screenshot_url = get_screenshot_url(url, device=device)
+            if screenshot_url:
+                return f'<!-- SCREENSHOT_FALLBACK --><img src="{screenshot_url}" style="width:100%;height:auto;" />'
         return None
