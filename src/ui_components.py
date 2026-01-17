@@ -241,7 +241,7 @@ def render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs
             <div><strong>Keyword:</strong> {keyword}</div>
             <div><strong>Domain:</strong> {domain}</div>
             <div style="grid-column: 1 / -1;"><strong>SERP:</strong> {serp}</div>
-            <div style="grid-column: 1 / -1; word-break: break-all; font-size: 11px; color: #475569;"><strong style="color: #0f172a;">Landing URL:</strong> {landing_url}</div>
+            <div style="grid-column: 1 / -1; word-break: break-word; overflow-wrap: anywhere; font-size: 11px; color: #475569; max-width: 100%;"><strong style="color: #0f172a;">Landing URL:</strong> {landing_url}</div>
         </div>
         <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #cbd5e1;">
             <div><strong style="color: #64748b; font-size: 12px;">Impressions</strong><div style="font-size: 18px; font-weight: 700; color: #0f172a;">{impressions:,}</div></div>
