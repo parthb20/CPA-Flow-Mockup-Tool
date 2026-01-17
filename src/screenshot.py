@@ -15,26 +15,22 @@ except:
     PLAYWRIGHT_AVAILABLE = False
 
 
+@st.cache_data(ttl=3600, show_spinner=False)
 def get_screenshot_url(url, device='mobile', full_page=False):
-    """Generate ScreenshotOne API URL"""
+    """Generate ScreenshotOne API URL (cached for 1 hour)"""
     try:
         # Try to get API key
         try:
             SCREENSHOT_API_KEY = st.secrets.get("SCREENSHOT_API_KEY", "").strip()
-        except Exception as e:
-            st.error(f"🔍 DEBUG: Failed to access secrets: {str(e)}")
+        except Exception:
             return None
         
         # Check if API key is configured
         if not SCREENSHOT_API_KEY:
-            st.warning(f"🔍 DEBUG: Screenshot API key not found in secrets")
             return None
-        
-        st.success(f"🔍 DEBUG: Screenshot API key found! First 10 chars: {SCREENSHOT_API_KEY[:10]}...")
         
         # Ensure URL is properly formatted
         if not url or pd.isna(url):
-            st.warning(f"🔍 DEBUG: Invalid URL: {url}")
             return None
         
         url = str(url).strip()
@@ -43,26 +39,24 @@ def get_screenshot_url(url, device='mobile', full_page=False):
         if not url.startswith(('http://', 'https://')):
             url = f"https://{url}"
         
-        # Device viewport sizes
+        # Device viewport sizes - proper dimensions for each device type
         viewports = {
-            'mobile': {'width': 390, 'height': 844},
-            'tablet': {'width': 820, 'height': 1180},
-            'laptop': {'width': 1440, 'height': 900}
+            'mobile': {'width': 390, 'height': 844},      # iPhone-like portrait
+            'tablet': {'width': 1024, 'height': 768},     # iPad landscape
+            'laptop': {'width': 1920, 'height': 1080}     # Full HD desktop
         }
         vp = viewports.get(device, viewports['mobile'])
         
         # Build ScreenshotOne API URL
         # Format: https://api.screenshotone.com/take?url=<url>&access_key=<key>&viewport_width=<w>&viewport_height=<h>
         encoded_url = quote(url, safe='')
-        screenshot_url = f"https://api.screenshotone.com/take?url={encoded_url}&access_key={SCREENSHOT_API_KEY}&viewport_width={vp['width']}&viewport_height={vp['height']}&format=png"
+        screenshot_url = f"https://api.screenshotone.com/take?url={encoded_url}&access_key={SCREENSHOT_API_KEY}&viewport_width={vp['width']}&viewport_height={vp['height']}&format=png&device_scale_factor=1"
         
         if full_page:
             screenshot_url += "&full_page=true"
         
-        st.info(f"🔍 DEBUG: Generated screenshot URL: {screenshot_url[:100]}...")
         return screenshot_url
-    except Exception as e:
-        st.error(f"🔍 DEBUG: Error generating screenshot URL: {str(e)}")
+    except Exception:
         return None
 
 
@@ -147,32 +141,19 @@ def capture_with_playwright(url, device='mobile'):
             # On 403, try screenshot API fallback
             if response and response.status == 403:
                 browser.close()
-                st.warning(f"🔍 DEBUG: Playwright got 403, trying screenshot API for {url[:50]}...")
                 screenshot_url = get_screenshot_url(url, device=device)
                 if screenshot_url:
-                    st.success(f"🔍 DEBUG: Screenshot URL generated successfully!")
                     # Return special marker HTML that flow_display can detect
                     return f'<!-- SCREENSHOT_FALLBACK --><img src="{screenshot_url}" style="width:100%;height:auto;" />'
-                else:
-                    st.error(f"🔍 DEBUG: Screenshot URL generation returned None!")
                 return None
             
             html_content = page.content()
             browser.close()
             return html_content
             
-    except Exception as e:
-        # On any error, try screenshot API fallback
-        error_str = str(e).lower()
-        st.warning(f"🔍 DEBUG: Playwright exception: {str(e)[:100]}")
-        
-        # Try screenshot API for any Playwright error (403, executable missing, etc)
-        st.info(f"🔍 DEBUG: Trying screenshot API fallback...")
+    except Exception:
+        # On any error, try screenshot API fallback (403, executable missing, etc)
         screenshot_url = get_screenshot_url(url, device=device)
         if screenshot_url:
-            st.success(f"🔍 DEBUG: Screenshot fallback URL generated!")
             return f'<!-- SCREENSHOT_FALLBACK --><img src="{screenshot_url}" style="width:100%;height:auto;" />'
-        else:
-            st.error(f"🔍 DEBUG: Screenshot fallback returned None!")
-        
         return None
