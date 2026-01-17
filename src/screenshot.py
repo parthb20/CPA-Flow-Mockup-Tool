@@ -82,9 +82,24 @@ def get_screenshot_url(url, device='mobile', full_page=False):
 def capture_page_with_fallback(url, device='mobile'):
     """
     Capture page - try Playwright first, fallback to screenshot API on 403
-    Returns: (html_or_screenshot_url, render_type)
-    - html_or_screenshot_url: HTML string or screenshot URL
+    
+    Returns: (content, render_type)
+    - content: HTML string (if Playwright works) or screenshot URL (if fallback)
     - render_type: 'html', 'screenshot', or 'error'
+    
+    Usage Example:
+        content, render_type = capture_page_with_fallback(url, device='mobile')
+        if render_type == 'html':
+            # Render HTML directly
+            preview_html, height, _ = render_mini_device_preview(content, is_url=False, device=device)
+            st.components.v1.html(preview_html, height=height)
+        elif render_type == 'screenshot':
+            # Render screenshot URL
+            screenshot_html = create_screenshot_html(content, device=device)
+            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device, use_srcdoc=True)
+            st.components.v1.html(preview_html, height=height)
+        else:
+            st.error("Failed to load")
     """
     # Try Playwright first
     html_content, error_code = capture_with_playwright(url, device)
