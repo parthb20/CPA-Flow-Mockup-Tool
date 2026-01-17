@@ -377,19 +377,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                             st.error(f"❌ HTTP {response.status_code}")
                                     else:
                                         st.error(f"❌ HTTP {response.status_code}")
-                            elif thumio_configured:
-                                try:
-                                    screenshot_url = get_screenshot_url(pub_url, device=device_all, full_page=False)
-                                    if screenshot_url:
-                                        screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=thumio_referer_domain)
-                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                        preview_html = inject_unique_id(preview_html, 'pub_screenshot', pub_url, device_all, current_flow)
-                                        st.components.v1.html(preview_html, height=height, scrolling=False)
-                                        st.caption("📸 Screenshot (thum.io)")
-                                    else:
-                                        st.error(f"❌ HTTP {response.status_code}")
-                                except:
-                                    st.error(f"❌ HTTP {response.status_code}")
                             else:
                                 st.error(f"❌ HTTP {response.status_code}")
                     except Exception as e:
@@ -989,21 +976,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                             st.error(f"❌ HTTP {response.status_code}")
                                     else:
                                         st.error(f"❌ HTTP {response.status_code}")
-                            elif thumio_configured:
-                                try:
-                                    screenshot_url = get_screenshot_url(adv_url, device=device_all, full_page=False)
-                                    if screenshot_url:
-                                        screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=thumio_referer_domain)
-                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                        preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
-                                        display_height = height
-                                        st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                                        if st.session_state.flow_layout != 'horizontal':
-                                            st.caption("📸 Screenshot (thum.io)")
-                                    else:
-                                        st.error(f"❌ HTTP {response.status_code}")
-                                except:
-                                    st.error(f"❌ HTTP {response.status_code}")
                             else:
                                 st.error(f"❌ HTTP {response.status_code}")
                     except Exception as e:
