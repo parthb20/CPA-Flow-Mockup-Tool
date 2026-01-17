@@ -303,45 +303,11 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                         else:
                                             raise Exception("Playwright returned empty HTML")
                                 except Exception:
-                                    if thumio_configured:
-                                        try:
-                                            screenshot_url = get_screenshot_url(pub_url, device=device_all, full_page=False)
-                                            if screenshot_url:
-                                                screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=thumio_referer_domain)
-                                                preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                                preview_html = inject_unique_id(preview_html, 'pub_screenshot', pub_url, device_all, current_flow)
-                                                display_height = height
-                                                st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                                                if st.session_state.flow_layout != 'horizontal':
-                                                    st.caption("📸 Screenshot (thum.io)")
-                                            else:
-                                                st.warning("🚫 Site blocks access (403)")
-                                                st.markdown(f"[🔗 Open in new tab]({pub_url})")
-                                        except:
-                                            st.warning("🚫 Site blocks access (403)")
-                                            st.markdown(f"[🔗 Open in new tab]({pub_url})")
-                                    else:
-                                        st.warning("🚫 Site blocks access (403)")
-                                        st.info("💡 Install Playwright for better rendering")
-                                        st.markdown(f"[🔗 Open in new tab]({pub_url})")
-                            elif thumio_configured:
-                                try:
-                                    screenshot_url = get_screenshot_url(pub_url, device=device_all, full_page=False)
-                                    if screenshot_url:
-                                        screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=thumio_referer_domain)
-                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                        preview_html = inject_unique_id(preview_html, 'pub_screenshot', pub_url, device_all, current_flow)
-                                        st.components.v1.html(preview_html, height=height, scrolling=False)
-                                        st.caption("📸 Screenshot (thum.io)")
-                                    else:
-                                        st.warning("🚫 Site blocks access (403)")
-                                        st.markdown(f"[🔗 Open in new tab]({pub_url})")
-                                except:
-                                    st.warning("🚫 Site blocks access (403)")
+                                    st.warning("🚫 Could not load page")
+                                    st.info("💡 Set SCREENSHOT_API_KEY in secrets for screenshot fallback")
                                     st.markdown(f"[🔗 Open in new tab]({pub_url})")
                             else:
-                                st.warning("🚫 Site blocks access (403)")
-                                st.info("💡 Install Playwright for better rendering, or screenshots will use thum.io free tier (1000/month)")
+                                st.warning("🚫 Could not load page")
                                 st.markdown(f"[🔗 Open in new tab]({pub_url})")
                         elif response.status_code == 200:
                             try:
@@ -792,7 +758,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                             st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                             st.caption("📸 Screenshot (thum.io)")
                                     else:
-                                        st.warning("⚠️ Could not load SERP. Install Playwright for better rendering")
+                                        st.warning("⚠️ Could not load SERP. Set SCREENSHOT_API_KEY in secrets")
                         else:
                             st.error(f"HTTP {response.status_code} - Install Playwright for 403 bypass")
                     else:
@@ -944,47 +910,11 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                         else:
                                             raise Exception("Playwright returned empty HTML")
                                 except Exception:
-                                    if thumio_configured:
-                                        try:
-                                            screenshot_url = get_screenshot_url(adv_url, device=device_all, full_page=False)
-                                            if screenshot_url:
-                                                screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=thumio_referer_domain)
-                                                preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                                preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
-                                                display_height = height
-                                                st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                                                if st.session_state.flow_layout != 'horizontal':
-                                                    st.caption("📸 Screenshot (thum.io)")
-                                            else:
-                                                st.warning("🚫 Site blocks access (403)")
-                                                st.markdown(f"[🔗 Open in new tab]({adv_url})")
-                                        except:
-                                            st.warning("🚫 Site blocks access (403)")
-                                            st.markdown(f"[🔗 Open in new tab]({adv_url})")
-                                    else:
-                                        st.warning("🚫 Site blocks access (403)")
-                                        st.info("💡 Install Playwright for better rendering")
-                                        st.markdown(f"[🔗 Open in new tab]({adv_url})")
-                            elif thumio_configured:
-                                try:
-                                    screenshot_url = get_screenshot_url(adv_url, device=device_all, full_page=False)
-                                    if screenshot_url:
-                                        screenshot_html = create_screenshot_html(screenshot_url, device=device_all, referer_domain=thumio_referer_domain)
-                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all, use_srcdoc=True)
-                                        preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
-                                        display_height = height
-                                        st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                                        if st.session_state.flow_layout != 'horizontal':
-                                            st.caption("📸 Screenshot (thum.io)")
-                                    else:
-                                        st.warning("🚫 Site blocks access (403)")
-                                        st.markdown(f"[🔗 Open in new tab]({adv_url})")
-                                except:
-                                    st.warning("🚫 Site blocks access (403)")
+                                    st.warning("🚫 Could not load page")
+                                    st.info("💡 Set SCREENSHOT_API_KEY in secrets for screenshot fallback")
                                     st.markdown(f"[🔗 Open in new tab]({adv_url})")
                             else:
-                                st.warning("🚫 Site blocks access (403)")
-                                st.info("💡 Install Playwright for better rendering, or screenshots will use thum.io free tier (1000/month)")
+                                st.warning("🚫 Could not load page")
                                 st.markdown(f"[🔗 Open landing page]({adv_url})")
                         elif response.status_code == 200:
                             try:
