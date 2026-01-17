@@ -53,38 +53,26 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     """, unsafe_allow_html=True)
     device_all = st.radio("Device for all previews:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='device_all', index=0)
     
-    # NUCLEAR OPTION: Kill ALL spacing between radio and columns
+    # AGGRESSIVE FIX: Negative margin to pull columns UP
     st.markdown("""
     <style>
-    /* Remove spacing from radio button itself */
-    .stRadio {
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    .stRadio > div {
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    /* Kill spacing from element after radio */
-    .stRadio ~ div,
-    .stRadio + div,
-    .stRadio + .element-container {
-        margin-top: 0 !important;
-        padding-top: 0 !important;
-    }
-    /* Target the horizontal block that contains columns */
-    div[data-testid="stHorizontalBlock"] {
-        margin-top: 0 !important;
-        padding-top: 0 !important;
-        gap: 0 !important;
-    }
-    /* Kill spacing from columns wrapper */
+    /* Remove ALL spacing from radio */
+    .stRadio { margin: 0 !important; padding: 0 !important; }
+    
+    /* CRITICAL: Use negative margin to pull columns up */
     div[data-testid="stHorizontalBlock"]:has([data-testid="column"]) {
-        margin-top: 0 !important;
+        margin-top: -20px !important;  /* Negative margin pulls it up */
         padding-top: 0 !important;
     }
-    /* Kill spacing from element containers inside columns */
-    [data-testid="column"] > div > .element-container {
+    
+    /* Remove spacing from columns themselves */
+    [data-testid="column"] {
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+    }
+    
+    /* Remove spacing from first element in columns */
+    [data-testid="column"] > div > .element-container:first-child {
         margin-top: 0 !important;
         padding-top: 0 !important;
     }
