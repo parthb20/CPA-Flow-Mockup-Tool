@@ -75,7 +75,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     elif device == 'tablet':
         device_w = 1024
         container_height = 768
-        scale = 0.5
+        scale = 0.4
         frame_style = "border-radius: 16px; border: 12px solid #1f2937;"
         
         url_display = display_url if display_url else (content if is_url else "URL")
@@ -105,7 +105,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     else:  # laptop
         device_w = 1920
         container_height = 1080
-        scale = 0.6
+        scale = 0.42
         frame_style = "border-radius: 8px; border: 6px solid #374151;"
         
         url_display = display_url if display_url else (content if is_url else "URL")
