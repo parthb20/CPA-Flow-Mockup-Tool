@@ -202,7 +202,7 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
     
     data = similarities_data.get(score_type, {})
     
-    if not data or 'error' in data:
+    if not data or data.get('error', False):
         if data and data.get('status_code') == 'no_api_key':
             # Only show message if API key is actually missing
             try:
