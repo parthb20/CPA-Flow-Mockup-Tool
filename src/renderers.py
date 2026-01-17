@@ -151,25 +151,31 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                 padding: 0;
                 box-sizing: border-box;
             }}
-            html, body {{ 
-                width: {device_w}px;
-                height: {total_content_height}px;
-                overflow: hidden;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            }}
-            .device-chrome {{ 
-                width: 100%;
-                background: white;
-                flex-shrink: 0;
-            }}
-            .content-area {{ 
-                width: {device_w}px;
-                height: {device_h}px;
-                overflow-y: auto; 
-                overflow-x: hidden;
-                -webkit-overflow-scrolling: touch;
-                background: white;
-            }}
+        html, body {{ 
+            width: {device_w}px;
+            height: {device_h}px;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: white;
+        }}
+        body {{
+            display: flex;
+            flex-direction: column;
+        }}
+        .device-chrome {{ 
+            width: 100%;
+            height: {chrome_height_px}px;
+            flex-shrink: 0;
+        }}
+        .content-area {{ 
+            flex: 1;
+            width: {device_w}px;
+            height: {content_area_height}px;
+            overflow-y: auto; 
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            background: white;
+        }}
             .content-area * {{
                 max-width: {device_w}px !important;
             }}
