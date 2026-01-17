@@ -116,27 +116,27 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         url_display = display_url if display_url else (content if is_url else "URL")
         url_display_short = url_display[:60] + "..." if len(url_display) > 60 else url_display
         device_chrome = f"""
-        <div style="background: #e8e8e8; padding: 8px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #d0d0d0; height: 48px;">
-            <div style="display: flex; gap: 8px; align-items: center;">
+        <div style="background: #e8e8e8; padding: 12px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #d0d0d0;">
+            <div style="display: flex; gap: 8px;">
                 <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f57;"></div>
                 <div style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e;"></div>
                 <div style="width: 12px; height: 12px; border-radius: 50%; background: #28c840;"></div>
             </div>
-            <div style="flex: 1; background: white; border-radius: 6px; padding: 6px 16px; display: flex; align-items: center; gap: 12px; border: 1px solid #d0d0d0;">
-                <span style="font-size: 14px;">🔒</span>
-                <span style="color: #333; font-size: 13px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{url_display_short}</span>
+            <div style="flex: 1; background: white; border-radius: 6px; padding: 8px 16px; display: flex; align-items: center; gap: 12px; border: 1px solid #d0d0d0;">
+                <span style="font-size: 16px;">🔒</span>
+                <span style="color: #333; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{url_display_short}</span>
             </div>
         </div>
         """
         bottom_nav = ""
     
-    # Calculate dimensions properly
-    total_iframe_height = device_h + chrome_height_px
+    # Calculate exact dimensions
+    total_content_height = device_h + chrome_height_px
     display_w = int(device_w * scale)
-    display_h = int(total_iframe_height * scale)
+    display_h = int(total_content_height * scale)
     
+    # Prepare iframe content
     if is_url and not use_srcdoc:
-        # For URL-based iframes, wrap in device chrome
         iframe_content = f'<iframe src="{content}" style="width: 100%; height: 100%; border: none;"></iframe>'
     else:
         iframe_content = content
@@ -187,10 +187,11 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     
     escaped = full_content.replace("'", "&apos;").replace('"', '&quot;')
     
+    # Final wrapper HTML
     html_output = f"""
     <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
-        <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-            <iframe srcdoc='{escaped}' style="width: {device_w}px; height: {total_iframe_height}px; border: none; transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"></iframe>
+        <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+            <iframe srcdoc='{escaped}' style="width: {device_w}px; height: {total_content_height}px; border: none; transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"></iframe>
         </div>
     </div>
     """
