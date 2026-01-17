@@ -16,24 +16,19 @@ except:
 
 
 def get_screenshot_url(url, device='mobile', full_page=False):
-    """Generate thum.io screenshot URL"""
+    """Generate ScreenshotOne API URL"""
     try:
         SCREENSHOT_API_KEY = st.secrets.get("SCREENSHOT_API_KEY", "").strip()
-        THUMIO_REFERER_DOMAIN = st.secrets.get("THUMIO_REFERER_DOMAIN", "").strip()
+        
+        # Check if API key is configured
+        if not SCREENSHOT_API_KEY:
+            return None
         
         # Ensure URL is properly formatted
         if not url or pd.isna(url):
             return None
         
         url = str(url).strip()
-        
-        # If URL contains encoded characters but doesn't start with http, it might be double-encoded
-        # Decode once to get clean URL
-        if '%' in url and not url.startswith(('http://', 'https://')):
-            try:
-                url = unquote(url)
-            except:
-                pass
         
         # Ensure URL starts with http/https
         if not url.startswith(('http://', 'https://')):
@@ -47,33 +42,14 @@ def get_screenshot_url(url, device='mobile', full_page=False):
         }
         vp = viewports.get(device, viewports['mobile'])
         
-        # For referer-based keys, use simple format (URL should NOT be double-encoded)
-        if THUMIO_REFERER_DOMAIN:
-            # Don't encode - thum.io handles it
-            screenshot_url = f"https://image.thum.io/get/{url}"
-            return screenshot_url
+        # Build ScreenshotOne API URL
+        # Format: https://api.screenshotone.com/take?url=<url>&access_key=<key>&viewport_width=<w>&viewport_height=<h>
+        encoded_url = quote(url, safe='')
+        screenshot_url = f"https://api.screenshotone.com/take?url={encoded_url}&access_key={SCREENSHOT_API_KEY}&viewport_width={vp['width']}&viewport_height={vp['height']}&format=png"
         
-        # For auth token keys, add options with auth
-        if SCREENSHOT_API_KEY:
-            options = [f"width/{vp['width']}"]
-            if full_page:
-                options.append("fullpage")
-            else:
-                options.append(f"height/{vp['height']}")
-            options.append(f"auth/{SCREENSHOT_API_KEY}")
-            # Don't double-encode - thum.io handles URL encoding
-            screenshot_url = f"https://image.thum.io/get/{'/'.join(options)}/{url}"
-            return screenshot_url
+        if full_page:
+            screenshot_url += "&full_page=true"
         
-        # FREE TIER (default): Simple format - encode only once
-        # Use quote with safe='' to encode properly, but don't double-encode if already encoded
-        if '%' in url:
-            # Already encoded, use as-is
-            screenshot_url = f"https://image.thum.io/get/{url}"
-        else:
-            # Encode once
-            encoded_url = quote(url, safe='')
-            screenshot_url = f"https://image.thum.io/get/{encoded_url}"
         return screenshot_url
     except Exception as e:
         return None
