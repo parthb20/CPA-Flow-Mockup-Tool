@@ -380,7 +380,7 @@ def create_screenshot_html(screenshot_url, device='mobile', referer_domain=None)
                 }}, 1000 * retryCount);
             }} else {{
                 const urlShort = screenshotUrl.substring(0, 60);
-                showError('⚠️ Screenshot failed to load<br><small>Network error - Thum.io API issue</small><br><small style="font-size: 10px;">URL: ' + urlShort + '...</small><br><br><small>💡 This may be a Thum.io API limitation or rate limit<br>Try refreshing or check if the URL is accessible</small>');
+                showError('⚠️ Failed to load preview<br><small>Network error or site blocking</small><br><small style="font-size: 10px;">URL: ' + urlShort + '...</small><br><br><small>💡 This site may block automated access<br>Try opening the link directly</small>');
             }}
         }};
         
