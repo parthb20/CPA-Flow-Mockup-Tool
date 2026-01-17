@@ -283,26 +283,25 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
         score_components = [(component_labels[key], data.get(key, 0)) for key in relevant_components if key in data]
         
         if score_components:
-            # Create horizontal layout as HTML for better control
-            components_html = '<div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">'
-            for name, val in score_components:
-                score_val = val * 100
-                score_color = "#22c55e" if val >= 0.7 else "#f59e0b" if val >= 0.4 else "#ef4444"
-                components_html += f"""
-                <div style="flex: 1; min-width: 120px; text-align: center; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
-                    <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">{name}</div>
-                    <div style="font-size: 24px; font-weight: 700; color: {score_color};">{score_val:.0f}%</div>
-                </div>
-                """
-            components_html += '</div>'
-            st.markdown(components_html, unsafe_allow_html=True)
+            # Use Streamlit columns for horizontal layout
+            cols = st.columns(len(score_components))
+            for idx, (name, val) in enumerate(score_components):
+                with cols[idx]:
+                    score_val = val * 100
+                    score_color = "#22c55e" if val >= 0.7 else "#f59e0b" if val >= 0.4 else "#ef4444"
+                    st.markdown(f"""
+                    <div style="text-align: center; padding: 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">{name}</div>
+                        <div style="font-size: 24px; font-weight: 700; color: {score_color};">{score_val:.0f}%</div>
+                    </div>
+                    """, unsafe_allow_html=True)
         
         # Show intent and band below
         extra_info = []
         if 'intent' in data and data['intent']:
-            extra_info.append(f"**🎯 Detected Intent:** {data['intent']}")
+            extra_info.append(f"🎯 **Intent:** {data['intent']}")
         if 'band' in data and data['band']:
-            extra_info.append(f"**📈 Score Band:** {data['band'].title()}")
+            extra_info.append(f"📈 **Band:** {data['band'].title()}")
         
         if extra_info:
             st.markdown(" &nbsp;|&nbsp; ".join(extra_info))
