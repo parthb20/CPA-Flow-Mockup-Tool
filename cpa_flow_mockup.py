@@ -74,7 +74,7 @@ try:
 except Exception:
     THUMIO_REFERER_DOMAIN = ""
 
-THUMIO_CONFIGURED = True  # Always True - free tier works without setup!
+THUMIO_CONFIGURED = False  # Disabled - Playwright only!
 
 # Custom CSS
 st.markdown("""
