@@ -381,10 +381,16 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                     with st.spinner("🔄 Trying browser automation..."):
                                         page_html = capture_with_playwright(pub_url, device=device_all)
                                         if page_html:
-                                            preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                            preview_html = inject_unique_id(preview_html, 'pub_playwright', pub_url, device_all, current_flow)
-                                            st.components.v1.html(preview_html, height=height, scrolling=False)
-                                            st.caption("🤖 Rendered via browser automation")
+                                            if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
+                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                                preview_html = inject_unique_id(preview_html, 'pub_screenshot_fallback', pub_url, device_all, current_flow)
+                                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                st.caption("📸 Screenshot (ScreenshotOne API)")
+                                            else:
+                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                                preview_html = inject_unique_id(preview_html, 'pub_playwright', pub_url, device_all, current_flow)
+                                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                st.caption("🤖 Rendered via browser automation")
                                         else:
                                             raise Exception("Playwright returned empty HTML")
                                 except Exception:
@@ -713,7 +719,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         if playwright_available:
                             with st.spinner("🔄 Using browser automation..."):
                                 page_html = capture_with_playwright(serp_url, device=device_all)
-                                if page_html:
+                                if page_html and '<!-- SCREENSHOT_FALLBACK -->' not in page_html:
                                     soup = BeautifulSoup(page_html, 'html.parser')
                                     
                                     for text_node in soup.find_all(string=True):
@@ -925,10 +931,16 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                     with st.spinner("🔄 Trying browser automation..."):
                                         page_html = capture_with_playwright(adv_url, device=device_all)
                                         if page_html:
-                                            preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                            preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
-                                            st.components.v1.html(preview_html, height=height, scrolling=False)
-                                            st.caption("🤖 Rendered via browser automation (bypassed 403)")
+                                            if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
+                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                                preview_html = inject_unique_id(preview_html, 'landing_screenshot_fallback', adv_url, device_all, current_flow)
+                                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                st.caption("📸 Screenshot (ScreenshotOne API)")
+                                            else:
+                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                                preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
+                                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                st.caption("🤖 Rendered via browser automation (bypassed 403)")
                                         else:
                                             raise Exception("Playwright returned empty HTML")
                                 except Exception:
@@ -1013,12 +1025,20 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                     with st.spinner("🔄 Trying browser automation..."):
                                         page_html = capture_with_playwright(adv_url, device=device_all)
                                         if page_html:
-                                            preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                            preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
-                                            display_height = height
-                                            st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                                            if st.session_state.flow_layout != 'horizontal':
-                                                st.caption("🤖 Rendered via browser automation")
+                                            if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
+                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                                preview_html = inject_unique_id(preview_html, 'landing_screenshot_fallback', adv_url, device_all, current_flow)
+                                                display_height = height
+                                                st.components.v1.html(preview_html, height=display_height, scrolling=False)
+                                                if st.session_state.flow_layout != 'horizontal':
+                                                    st.caption("📸 Screenshot (ScreenshotOne API)")
+                                            else:
+                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                                preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
+                                                display_height = height
+                                                st.components.v1.html(preview_html, height=display_height, scrolling=False)
+                                                if st.session_state.flow_layout != 'horizontal':
+                                                    st.caption("🤖 Rendered via browser automation")
                                         else:
                                             raise Exception("Playwright returned empty HTML")
                                 except Exception:
