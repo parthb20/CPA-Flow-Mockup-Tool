@@ -22,10 +22,14 @@ def get_screenshot_url(url, device='mobile', full_page=False):
         
         # Check if API key is configured
         if not SCREENSHOT_API_KEY:
+            print(f"[DEBUG] Screenshot API key not found in secrets")
             return None
+        
+        print(f"[DEBUG] Screenshot API key found: {SCREENSHOT_API_KEY[:10]}...")
         
         # Ensure URL is properly formatted
         if not url or pd.isna(url):
+            print(f"[DEBUG] Invalid URL: {url}")
             return None
         
         url = str(url).strip()
@@ -50,8 +54,10 @@ def get_screenshot_url(url, device='mobile', full_page=False):
         if full_page:
             screenshot_url += "&full_page=true"
         
+        print(f"[DEBUG] Generated screenshot URL: {screenshot_url[:100]}...")
         return screenshot_url
     except Exception as e:
+        print(f"[DEBUG] Error generating screenshot URL: {str(e)}")
         return None
 
 
