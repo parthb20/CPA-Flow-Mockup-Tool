@@ -79,10 +79,37 @@ def get_screenshot_url(url, device='mobile', full_page=False):
         return None
 
 
+def capture_page_with_fallback(url, device='mobile'):
+    """
+    Capture page - try Playwright first, fallback to screenshot API on 403
+    Returns: (html_or_screenshot_url, render_type)
+    - html_or_screenshot_url: HTML string or screenshot URL
+    - render_type: 'html', 'screenshot', or 'error'
+    """
+    # Try Playwright first
+    html_content, error_code = capture_with_playwright(url, device)
+    
+    if html_content:
+        return (html_content, 'html')
+    
+    # On 403 or error, use screenshot API as fallback
+    if error_code in [403, 'error', 'no_playwright']:
+        screenshot_url = get_screenshot_url(url, device=device, full_page=False)
+        if screenshot_url:
+            return (screenshot_url, 'screenshot')
+    
+    return (None, 'error')
+
+
 def capture_with_playwright(url, device='mobile'):
-    """Capture page using Playwright"""
+    """
+    Capture page using Playwright
+    Returns: (html_content, error_code) tuple
+    - html_content: HTML string if success, None if failed
+    - error_code: 403 if forbidden, 'error' for other errors, None if success
+    """
     if not PLAYWRIGHT_AVAILABLE:
-        return None
+        return (None, 'no_playwright')
     
     try:
         clean_url = url.split('?')[0] if '?' in url else url
@@ -113,11 +140,21 @@ def capture_with_playwright(url, device='mobile'):
             )
             
             page = context.new_page()
-            page.goto(clean_url, wait_until='networkidle', timeout=30000)
+            
+            # Capture response to check status code
+            response = page.goto(clean_url, wait_until='networkidle', timeout=30000)
+            
+            # Check if 403 Forbidden
+            if response and response.status == 403:
+                browser.close()
+                return (None, 403)
             
             html_content = page.content()
-            
             browser.close()
-            return html_content
+            return (html_content, None)
+            
     except Exception as e:
-        return None
+        error_str = str(e).lower()
+        if '403' in error_str or 'forbidden' in error_str:
+            return (None, 403)
+        return (None, 'error')
