@@ -137,33 +137,24 @@ def apply_flow_filtering(campaign_df, current_flow, filters_changed, selected_ke
             if 'serp_template_name' in campaign_df.columns:
                 final_filtered = final_filtered[final_filtered['serp_template_name'] == current_flow.get('serp_template_name', '')]
             if len(final_filtered) > 0:
-                # IMPORTANT: Ensure conversions require clicks > 0, clicks require impressions > 0
-                # Prefer views with conversions > 0 AND clicks > 0, then clicks > 0 AND impressions > 0, then impressions > 0
-                conv_with_clicks = final_filtered[
-                    (final_filtered['conversions'].apply(safe_float) > 0) & 
-                    (final_filtered['clicks'].apply(safe_float) > 0)
-                ]
-                if len(conv_with_clicks) > 0:
-                    final_filtered = conv_with_clicks
+                # Prefer views with conversions > 0, then clicks > 0, then impressions > 0
+                conv_positive = final_filtered[final_filtered['conversions'].apply(safe_float) > 0]
+                if len(conv_positive) > 0:
+                    final_filtered = conv_positive
                 else:
-                    clicks_with_imps = final_filtered[
-                        (final_filtered['clicks'].apply(safe_float) > 0) & 
-                        (final_filtered['impressions'].apply(safe_float) > 0)
-                    ]
-                    if len(clicks_with_imps) > 0:
-                        final_filtered = clicks_with_imps
+                    clicks_positive = final_filtered[final_filtered['clicks'].apply(safe_float) > 0]
+                    if len(clicks_positive) > 0:
+                        final_filtered = clicks_positive
                     else:
                         imps_positive = final_filtered[final_filtered['impressions'].apply(safe_float) > 0]
                         if len(imps_positive) > 0:
                             final_filtered = imps_positive
                 
                 if 'timestamp' in final_filtered.columns:
-                    # Sort by conversions desc, then clicks desc, then timestamp desc
-                    final_filtered = final_filtered.sort_values(['conversions', 'clicks', 'timestamp'], ascending=[False, False, False])
-                    best_view = final_filtered.iloc[0]
+                    best_view = final_filtered.loc[final_filtered['timestamp'].idxmax()]
                 else:
                     # Sort by conversions desc, then clicks desc, then impressions desc
-                    final_filtered = final_filtered.sort_values(['conversions', 'clicks', 'impressions'], ascending=[False, False, False])
+                    final_filtered = final_filtered.sort_values(['conversions', 'clicks', 'impressions'], ascending=False)
                     best_view = final_filtered.iloc[0]
                 current_flow.update(best_view.to_dict())
     
