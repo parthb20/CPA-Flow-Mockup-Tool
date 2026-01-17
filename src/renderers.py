@@ -193,7 +193,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     html_output = f"""
     <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
         <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-            <iframe srcdoc='{escaped}' style="width: {device_w}px; height: {total_iframe_h}px; border: none; transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"></iframe>
+            <iframe srcdoc='{escaped}' style="width: {device_w}px; height: {total_iframe_height}px; border: none; transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"></iframe>
         </div>
     </div>
     """
