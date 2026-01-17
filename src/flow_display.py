@@ -38,26 +38,26 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         thumio_configured: Boolean indicating if Thum.io is configured
         thumio_referer_domain: Thum.io referer domain
     """
-    # MODERATE: Pull Flow Journey section UP slightly (not too much)
+    # MINIMAL: Pull Flow Journey section UP just a little bit
     st.markdown("""
     <style>
-    /* Pull this entire section UP with negative margin - REDUCED to prevent overlap */
+    /* Pull this entire section UP with MINIMAL negative margin */
     section.main > div > div.block-container > div:last-of-type {
-        margin-top: -30px !important;
+        margin-top: -10px !important;
     }
     </style>
     """, unsafe_allow_html=True)
     
-    # Add Flow Journey title - BIG and BOLD with proper spacing
+    # Add Flow Journey title - BIG and BOLD with MORE spacing to prevent overlap
     st.markdown("""
-    <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 16px 0 16px 0; padding: 0; line-height: 1;">
+    <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 24px 0 20px 0; padding: 0; line-height: 1;">
         🔄 Flow Journey
     </h2>
     """, unsafe_allow_html=True)
     
-    # Single device selector for ALL cards with tooltip - highlighted
+    # Single device selector for ALL cards with tooltip - highlighted (with MORE bottom margin)
     st.markdown("""
-    <div style="margin: 0 0 8px 0; padding: 12px; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 4px;">
+    <div style="margin: 0 0 16px 0; padding: 12px; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 4px;">
         <span style="font-size: 15px; font-weight: 600; color: #0f172a;">💡 <strong>Select a device</strong> to preview how the ad flow appears on different screen sizes</span>
     </div>
     """, unsafe_allow_html=True)
@@ -437,6 +437,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         if st.session_state.flow_layout == 'vertical' and card_col_right:
             with card_col_right:
+                # Add spacing at top to push info down and prevent overlap
+                st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
                 st.markdown("""
                 <div style="margin-bottom: 12px;">
                     <span style="font-weight: 900; color: #0f172a; font-size: 18px;">
@@ -533,6 +535,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         if st.session_state.flow_layout == 'vertical' and creative_card_right:
             with creative_card_right:
+                # Add spacing at top
+                st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
+                
                 keyword = current_flow.get('keyword_term', 'N/A')
                 creative_size = current_flow.get('creative_size', 'N/A')
                 creative_name = current_flow.get('creative_template_name', 'N/A')
@@ -804,6 +809,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         if st.session_state.flow_layout == 'vertical' and serp_card_right:
             with serp_card_right:
+                # Add spacing at top
+                st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
+                
                 serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
                 
                 st.markdown("<h4 style='font-size: 18px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0;'>📄 SERP Details</h4>", unsafe_allow_html=True)
@@ -1088,9 +1096,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     
     # Similarity Scores Section for Horizontal Layout
     if st.session_state.flow_layout == 'horizontal':
-        st.markdown("<div style='margin-top: 8px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
+        # Add MORE spacing before Similarity Scores to prevent overlap
+        st.markdown("<div style='margin-top: 40px; margin-bottom: 8px;'></div>", unsafe_allow_html=True)
         st.markdown("""
-            <h2 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 12px 0 15px 0; display: block;">
+            <h2 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 20px 0 15px 0; display: block;">
                 🧠 Similarity Scores
             </h2>
         """, unsafe_allow_html=True)
