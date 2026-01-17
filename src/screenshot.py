@@ -165,12 +165,14 @@ def capture_with_playwright(url, device='mobile'):
         # On any error, try screenshot API fallback
         error_str = str(e).lower()
         st.warning(f"🔍 DEBUG: Playwright exception: {str(e)[:100]}")
-        if '403' in error_str or 'forbidden' in error_str:
-            st.warning(f"🔍 DEBUG: 403 in exception, trying screenshot API...")
-            screenshot_url = get_screenshot_url(url, device=device)
-            if screenshot_url:
-                st.success(f"🔍 DEBUG: Screenshot fallback URL generated!")
-                return f'<!-- SCREENSHOT_FALLBACK --><img src="{screenshot_url}" style="width:100%;height:auto;" />'
-            else:
-                st.error(f"🔍 DEBUG: Screenshot fallback returned None!")
+        
+        # Try screenshot API for any Playwright error (403, executable missing, etc)
+        st.info(f"🔍 DEBUG: Trying screenshot API fallback...")
+        screenshot_url = get_screenshot_url(url, device=device)
+        if screenshot_url:
+            st.success(f"🔍 DEBUG: Screenshot fallback URL generated!")
+            return f'<!-- SCREENSHOT_FALLBACK --><img src="{screenshot_url}" style="width:100%;height:auto;" />'
+        else:
+            st.error(f"🔍 DEBUG: Screenshot fallback returned None!")
+        
         return None
