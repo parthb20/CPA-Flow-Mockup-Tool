@@ -148,34 +148,31 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         <meta name="viewport" content="width={device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <meta charset="utf-8">
         <style>
-            body {{ 
-                margin: 0; 
-                padding: 0; 
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            * {{
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }}
+            html, body {{ 
                 width: {device_w}px;
-                max-width: {device_w}px;
-                overflow-x: hidden;
+                height: {total_iframe_height}px;
+                overflow: hidden;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             }}
             .device-chrome {{ 
-                width: 100%; 
-                max-width: {device_w}px;
-                background: white; 
+                width: 100%;
+                background: white;
+                flex-shrink: 0;
             }}
             .content-area {{ 
                 width: {device_w}px;
-                max-width: {device_w}px;
-                height: {container_height}px;
+                height: {device_h}px;
                 overflow-y: auto; 
                 overflow-x: hidden;
                 -webkit-overflow-scrolling: touch;
+                background: white;
             }}
             .content-area * {{
-                max-width: {device_w}px !important;
-                box-sizing: border-box !important;
-            }}
-            html, body {{
-                overflow-x: hidden !important;
-                width: {device_w}px !important;
                 max-width: {device_w}px !important;
             }}
         </style>
