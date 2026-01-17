@@ -13,98 +13,70 @@ from src.utils import safe_float
 
 
 def call_similarity_api(prompt):
-    """Call FastRouter API for similarity scoring using OpenAI client"""
-    # Safe way to access Streamlit secrets
+    """Call FastRouter API for similarity scoring"""
+    # Try to get API key from Streamlit secrets
     API_KEY = ""
-    
-    # Safe way to access Streamlit secrets - catch all exceptions
-    # Note: StreamlitSecretNotFoundError inherits from Exception, so catching Exception works
     try:
+        API_KEY = str(st.secrets["FASTROUTER_API_KEY"]).strip()
+    except:
         try:
-            API_KEY = str(st.secrets["FASTROUTER_API_KEY"]).strip()
-        except Exception:
-            try:
-                API_KEY = str(st.secrets["OPENAI_API_KEY"]).strip()
-            except Exception:
-                API_KEY = ""
-    except Exception as e:
-        return {
-            "error": True,
-            "status_code": "secret_access_error",
-            "body": f"Error accessing secrets: {str(e)}"
-        }
+            API_KEY = str(st.secrets["OPENAI_API_KEY"]).strip()
+        except:
+            API_KEY = ""
     
     if not API_KEY:
         return {
             "error": True,
             "status_code": "no_api_key",
-            "body": "FASTROUTER_API_KEY or OPENAI_API_KEY not found in Streamlit secrets"
+            "body": "FASTROUTER_API_KEY not found in Streamlit secrets. Add it to .streamlit/secrets.toml"
         }
     
     try:
-        # Use OpenAI client with FastRouter base URL
-        from openai import OpenAI
-        
-        client = OpenAI(
-            base_url="https://go.fastrouter.ai/api/v1",
-            api_key=API_KEY,
+        # Use correct FastRouter URL and Claude model
+        response = requests.post(
+            "https://go.fastrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "anthropic/claude-sonnet-4-20250514",
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.3,
+                "max_tokens": 500
+            },
+            timeout=30
         )
         
-        completion = client.chat.completions.create(
-            model="anthropic/claude-sonnet-4-20250514",
-            messages=[
-                {"role": "system", "content": "You are a similarity scoring expert. Analyze text and return ONLY a JSON object with the requested fields."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.3,
-            max_tokens=300
-        )
-        
-        content = completion.choices[0].message.content.strip()
-        
-        # Try to parse as JSON directly first
-        try:
-            score_data = json.loads(content)
-        except json.JSONDecodeError:
-            # Extract JSON from response using regex (handles nested objects)
-            json_match = re.search(r'\{.*\}', content, re.DOTALL)
+        if response.status_code == 200:
+            result = response.json()
+            content = result['choices'][0]['message']['content'].strip()
+            
+            # Extract JSON from response
+            json_match = re.search(r'\{[^}]+\}', content, re.DOTALL)
             if json_match:
-                try:
-                    score_data = json.loads(json_match.group())
-                except json.JSONDecodeError:
-                    return {
-                        "error": True,
-                        "status_code": "parse_error",
-                        "body": f"Could not parse JSON: {content[:300]}"
-                    }
-            else:
+                score_data = json.loads(json_match.group())
                 return {
-                    "error": True,
-                    "status_code": "parse_error",
-                    "body": f"No JSON found in response: {content[:300]}"
+                    "error": False,
+                    "final_score": float(score_data.get('final_score', score_data.get('score', 0))),
+                    "reason": score_data.get('reason', 'N/A'),
+                    "topic_match": score_data.get('topic_match', 0),
+                    "brand_match": score_data.get('brand_match', 0),
+                    "promise_match": score_data.get('promise_match', 0),
+                    "utility_match": score_data.get('utility_match', 0),
+                    "keyword_match": score_data.get('keyword_match', 0),
+                    "intent_match": score_data.get('intent_match', 0),
+                    "intent": score_data.get('intent', ''),
+                    "band": score_data.get('band', '')
                 }
-        
-        # Return parsed data with safe_float for numeric conversions
-        return {
-            "error": False,
-            "final_score": safe_float(score_data.get('final_score', score_data.get('score', 0))),
-            "reason": score_data.get('reason', 'N/A'),
-            "topic_match": safe_float(score_data.get('topic_match', 0)),
-            "brand_match": safe_float(score_data.get('brand_match', 0)),
-            "promise_match": safe_float(score_data.get('promise_match', 0)),
-            "utility_match": safe_float(score_data.get('utility_match', 0)),
-            "keyword_match": safe_float(score_data.get('keyword_match', 0)),
-            "intent_match": safe_float(score_data.get('intent_match', 0)),
-            "intent": score_data.get('intent', ''),
-            "band": score_data.get('band', '')
-        }
+            return {"error": True, "status_code": response.status_code, "body": f"No JSON in response: {content[:200]}"}
+        else:
+            error_msg = f"API returned {response.status_code}: {response.text[:300]}"
+            return {"error": True, "status_code": response.status_code, "body": error_msg}
     except Exception as e:
-        # Return detailed error information
-        return {
-            "error": True,
-            "status_code": "exception",
-            "body": f"{type(e).__name__}: {str(e)}"
-        }
+        return {"error": True, "status_code": "exception", "body": f"Exception: {str(e)}"}
 
 
 def extract_text_from_html(html_content):
