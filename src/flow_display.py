@@ -38,6 +38,16 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         thumio_configured: Boolean indicating if Thum.io is configured
         thumio_referer_domain: Thum.io referer domain
     """
+    # EXTREME: Pull entire Flow Journey section UP with negative margin
+    st.markdown("""
+    <style>
+    /* Pull this entire section UP with negative margin */
+    section.main > div > div.block-container > div:last-of-type {
+        margin-top: -60px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     # Add Flow Journey title - BIG and BOLD with NO spacing
     st.markdown("""
     <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; padding: 0; line-height: 1;">
@@ -53,26 +63,40 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     """, unsafe_allow_html=True)
     device_all = st.radio("Device for all previews:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='device_all', index=0)
     
-    # AGGRESSIVE FIX: Negative margin to pull columns UP
+    # NUCLEAR CSS - Use NEGATIVE margin to pull UP
     st.markdown("""
     <style>
-    /* Remove ALL spacing from radio */
+    /* Remove radio spacing */
     .stRadio { margin: 0 !important; padding: 0 !important; }
     
-    /* CRITICAL: Use negative margin to pull columns up */
+    /* CRITICAL: Apply NEGATIVE margin to pull sections up */
+    div.main > div:nth-child(1) > div.block-container > div > div > div > div:last-child {
+        margin-top: -50px !important;
+    }
+    
+    /* Alternative selectors for different Streamlit versions */
+    [data-testid="stVerticalBlock"] > div:last-child {
+        margin-top: -50px !important;
+    }
+    
+    /* Target the specific section after device selector */
+    .stRadio ~ div {
+        margin-top: -30px !important;
+    }
+    
+    /* Remove ALL default spacing from horizontal blocks */
     div[data-testid="stHorizontalBlock"]:has([data-testid="column"]) {
-        margin-top: -20px !important;  /* Negative margin pulls it up */
+        margin-top: -20px !important;
         padding-top: 0 !important;
     }
     
-    /* Remove spacing from columns themselves */
+    /* Column spacing */
     [data-testid="column"] {
-        padding-top: 0 !important;
-        margin-top: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
     
-    /* Remove spacing from first element in columns */
-    [data-testid="column"] > div > .element-container:first-child {
+    [data-testid="column"] h3:first-child {
         margin-top: 0 !important;
         padding-top: 0 !important;
     }
@@ -202,9 +226,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         }
         </style>
         """, unsafe_allow_html=True)
-        
-        # CRITICAL: Use empty string to insert zero-height div before columns
-        st.markdown('<div style="height:0;margin:0;padding:0;line-height:0;"></div>', unsafe_allow_html=True)
         
         # Create columns for the actual cards - NO gap to prevent spacing
         stage_cols = st.columns([1, 0.7, 1, 1], gap='small')
