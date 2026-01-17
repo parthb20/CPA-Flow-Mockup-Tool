@@ -315,7 +315,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                             st.markdown(f"[🔗 Open in new tab]({pub_url})")
                                     else:
                                         st.warning("🚫 Site blocks access (403)")
-                                        st.info("💡 Install Playwright for better rendering, or screenshots will use thum.io free tier (1000/month)")
+                                        st.info("💡 Install Playwright for better rendering")
                                         st.markdown(f"[🔗 Open in new tab]({pub_url})")
                             elif thumio_configured:
                                 try:
@@ -779,7 +779,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                             st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                             st.caption("📸 Screenshot (thum.io)")
                                     else:
-                                        st.warning("⚠️ Could not load SERP. Install Playwright for better rendering, or screenshots will use thum.io free tier")
+                                        st.warning("⚠️ Could not load SERP. Install Playwright for better rendering")
                         else:
                             st.error(f"HTTP {response.status_code} - Install Playwright for 403 bypass")
                     else:
@@ -944,7 +944,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                             st.markdown(f"[🔗 Open in new tab]({adv_url})")
                                     else:
                                         st.warning("🚫 Site blocks access (403)")
-                                        st.info("💡 Install Playwright for better rendering, or screenshots will use thum.io free tier (1000/month)")
+                                        st.info("💡 Install Playwright for better rendering")
                                         st.markdown(f"[🔗 Open in new tab]({adv_url})")
                             elif thumio_configured:
                                 try:
