@@ -38,19 +38,19 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         thumio_configured: Boolean indicating if Thum.io is configured
         thumio_referer_domain: Thum.io referer domain
     """
-    # EXTREME: Pull entire Flow Journey section UP with negative margin
+    # MODERATE: Pull Flow Journey section UP slightly (not too much)
     st.markdown("""
     <style>
-    /* Pull this entire section UP with negative margin */
+    /* Pull this entire section UP with negative margin - REDUCED to prevent overlap */
     section.main > div > div.block-container > div:last-of-type {
-        margin-top: -60px !important;
+        margin-top: -30px !important;
     }
     </style>
     """, unsafe_allow_html=True)
     
-    # Add Flow Journey title - BIG and BOLD with NO spacing
+    # Add Flow Journey title - BIG and BOLD with proper spacing
     st.markdown("""
-    <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; padding: 0; line-height: 1;">
+    <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 16px 0 16px 0; padding: 0; line-height: 1;">
         🔄 Flow Journey
     </h2>
     """, unsafe_allow_html=True)
