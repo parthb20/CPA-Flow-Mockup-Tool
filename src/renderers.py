@@ -153,7 +153,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
             }}
             html, body {{ 
                 width: {device_w}px;
-                height: {total_iframe_height}px;
+                height: {total_content_height}px;
                 overflow: hidden;
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             }}
