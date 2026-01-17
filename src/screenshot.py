@@ -147,10 +147,14 @@ def capture_with_playwright(url, device='mobile'):
             # On 403, try screenshot API fallback
             if response and response.status == 403:
                 browser.close()
+                st.warning(f"🔍 DEBUG: Playwright got 403, trying screenshot API for {url[:50]}...")
                 screenshot_url = get_screenshot_url(url, device=device)
                 if screenshot_url:
+                    st.success(f"🔍 DEBUG: Screenshot URL generated successfully!")
                     # Return special marker HTML that flow_display can detect
                     return f'<!-- SCREENSHOT_FALLBACK --><img src="{screenshot_url}" style="width:100%;height:auto;" />'
+                else:
+                    st.error(f"🔍 DEBUG: Screenshot URL generation returned None!")
                 return None
             
             html_content = page.content()
@@ -160,8 +164,13 @@ def capture_with_playwright(url, device='mobile'):
     except Exception as e:
         # On any error, try screenshot API fallback
         error_str = str(e).lower()
+        st.warning(f"🔍 DEBUG: Playwright exception: {str(e)[:100]}")
         if '403' in error_str or 'forbidden' in error_str:
+            st.warning(f"🔍 DEBUG: 403 in exception, trying screenshot API...")
             screenshot_url = get_screenshot_url(url, device=device)
             if screenshot_url:
+                st.success(f"🔍 DEBUG: Screenshot fallback URL generated!")
                 return f'<!-- SCREENSHOT_FALLBACK --><img src="{screenshot_url}" style="width:100%;height:auto;" />'
+            else:
+                st.error(f"🔍 DEBUG: Screenshot fallback returned None!")
         return None
