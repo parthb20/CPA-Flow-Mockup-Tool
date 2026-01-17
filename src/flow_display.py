@@ -38,19 +38,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         thumio_configured: Boolean indicating if Thum.io is configured
         thumio_referer_domain: Thum.io referer domain
     """
-    # MINIMAL: Pull Flow Journey section UP just a little bit
+    # Add Flow Journey title - BIG and BOLD with proper spacing
     st.markdown("""
-    <style>
-    /* Pull this entire section UP with MINIMAL negative margin */
-    section.main > div > div.block-container > div:last-of-type {
-        margin-top: -10px !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # Add Flow Journey title - BIG and BOLD with MORE spacing to prevent overlap
-    st.markdown("""
-    <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 24px 0 20px 0; padding: 0; line-height: 1;">
+    <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 20px 0 24px 0; padding: 0; line-height: 1;">
         🔄 Flow Journey
     </h2>
     """, unsafe_allow_html=True)
@@ -63,42 +53,36 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     """, unsafe_allow_html=True)
     device_all = st.radio("Device for all previews:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='device_all', index=0)
     
-    # NUCLEAR CSS - Use NEGATIVE margin to pull UP
+    # CLEAN CSS - Proper spacing without negative margins
     st.markdown("""
     <style>
-    /* Remove radio spacing */
-    .stRadio { margin: 0 !important; padding: 0 !important; }
-    
-    /* CRITICAL: Apply NEGATIVE margin to pull sections up */
-    div.main > div:nth-child(1) > div.block-container > div > div > div > div:last-child {
-        margin-top: -50px !important;
+    /* Remove excess radio spacing but add breathing room */
+    .stRadio { 
+        margin: 0 0 20px 0 !important; 
+        padding: 0 !important; 
     }
     
-    /* Alternative selectors for different Streamlit versions */
-    [data-testid="stVerticalBlock"] > div:last-child {
-        margin-top: -50px !important;
-    }
-    
-    /* Target the specific section after device selector */
-    .stRadio ~ div {
-        margin-top: -30px !important;
-    }
-    
-    /* Remove ALL default spacing from horizontal blocks */
-    div[data-testid="stHorizontalBlock"]:has([data-testid="column"]) {
-        margin-top: -20px !important;
-        padding-top: 0 !important;
-    }
-    
-    /* Column spacing */
+    /* Add padding to columns to prevent text overlap with cards */
     [data-testid="column"] {
+        padding: 12px 8px !important;
         margin: 0 !important;
-        padding: 0 !important;
     }
     
+    /* Ensure titles have proper spacing */
     [data-testid="column"] h3:first-child {
         margin-top: 0 !important;
         padding-top: 0 !important;
+        margin-bottom: 12px !important;
+    }
+    
+    /* Add spacing between elements inside columns */
+    [data-testid="column"] .element-container {
+        margin-top: 12px !important;
+    }
+    
+    /* First element should have no top margin */
+    [data-testid="column"] > div > .element-container:first-child {
+        margin-top: 0 !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -438,7 +422,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         if st.session_state.flow_layout == 'vertical' and card_col_right:
             with card_col_right:
                 # Add spacing at top to push info down and prevent overlap
-                st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
+                st.markdown("<div style='margin-top: 8px;'></div>", unsafe_allow_html=True)
                 st.markdown("""
                 <div style="margin-bottom: 12px;">
                     <span style="font-weight: 900; color: #0f172a; font-size: 18px;">
@@ -536,7 +520,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         if st.session_state.flow_layout == 'vertical' and creative_card_right:
             with creative_card_right:
                 # Add spacing at top
-                st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
+                st.markdown("<div style='margin-top: 8px;'></div>", unsafe_allow_html=True)
                 
                 keyword = current_flow.get('keyword_term', 'N/A')
                 creative_size = current_flow.get('creative_size', 'N/A')
@@ -810,7 +794,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         if st.session_state.flow_layout == 'vertical' and serp_card_right:
             with serp_card_right:
                 # Add spacing at top
-                st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
+                st.markdown("<div style='margin-top: 8px;'></div>", unsafe_allow_html=True)
                 
                 serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
                 
