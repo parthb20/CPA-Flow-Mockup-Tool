@@ -126,14 +126,15 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         bottom_nav = ""
         chrome_height = "52px"
     
-    display_w = int(device_w * scale)
-    display_h = int(container_height * scale)
+    # Calculate actual chrome heights in pixels
+    chrome_h_px = 90 if device == 'mobile' else 68 if device == 'tablet' else 52
     
-    # Add extra height to prevent cutoff
-    if device == 'tablet':
-        display_h += 50
-    elif device == 'laptop':
-        display_h += 40
+    # Total iframe height = device height + chrome
+    total_iframe_h = container_height + chrome_h_px
+    
+    # Display dimensions = scaled total size
+    display_w = int(device_w * scale)
+    display_h = int(total_iframe_h * scale)
     
     if is_url and not use_srcdoc:
         # For URL-based iframes, wrap in device chrome
@@ -164,7 +165,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
             .content-area {{ 
                 width: {device_w}px;
                 max-width: {device_w}px;
-                height: calc(100vh - {chrome_height}); 
+                height: {container_height}px;
                 overflow-y: auto; 
                 overflow-x: hidden;
                 -webkit-overflow-scrolling: touch;
