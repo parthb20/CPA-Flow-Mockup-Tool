@@ -747,7 +747,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                     else:
                                         st.warning("⚠️ Could not load SERP. Set SCREENSHOT_API_KEY in secrets")
                         else:
-                            st.error(f"HTTP {response.status_code} - Install Playwright for 403 bypass")
+                            st.error(f"HTTP {response.status_code}")
                     else:
                         st.error(f"HTTP {response.status_code}")
                     
