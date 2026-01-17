@@ -38,25 +38,43 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         thumio_configured: Boolean indicating if Thum.io is configured
         thumio_referer_domain: Thum.io referer domain
     """
+    # Add Flow Journey title - BIG and BOLD with NO spacing
+    st.markdown("""
+    <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; padding: 0; line-height: 1;">
+        🔄 Flow Journey
+    </h2>
+    """, unsafe_allow_html=True)
+    
     # Single device selector for ALL cards with tooltip - highlighted
     st.markdown("""
-    <div style="margin-bottom: 8px; padding: 12px; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 4px;">
+    <div style="margin: 0 0 8px 0; padding: 12px; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 4px;">
         <span style="font-size: 15px; font-weight: 600; color: #0f172a;">💡 <strong>Select a device</strong> to preview how the ad flow appears on different screen sizes</span>
     </div>
     """, unsafe_allow_html=True)
     device_all = st.radio("Device for all previews:", ['mobile', 'tablet', 'laptop'], horizontal=True, key='device_all', index=0)
     
-    # Remove ALL spacing after device selector
+    # Remove ALL spacing after device selector and before columns
     st.markdown("""
     <style>
     .stRadio {
         margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
     }
     .stRadio > div {
         margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    /* Remove spacing after radio - AGGRESSIVE */
+    .stRadio + div {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+    /* Remove spacing from next element after radio */
+    .stRadio + .element-container {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
     }
     </style>
-    <div style='margin: 0; padding: 0; height: 0; line-height: 0;'></div>
     """, unsafe_allow_html=True)
     
     # Initialize containers for both layouts
@@ -73,6 +91,11 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         # Match advanced-horizontal mode alignment - AGGRESSIVE FIXES
         st.markdown("""
         <style>
+        /* CRITICAL: Remove ALL top spacing from everything */
+        .block-container {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
         /* Target Streamlit columns directly - remove ALL padding/margin */
         [data-testid="column"] {
             flex-shrink: 0 !important;
@@ -82,10 +105,14 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             align-items: stretch !important;
             padding: 0 !important;
             margin: 0 !important;
+            padding-top: 0 !important;
+            margin-top: 0 !important;
         }
         [data-testid="column"] > div {
             padding: 0 !important;
             margin: 0 !important;
+            padding-top: 0 !important;
+            margin-top: 0 !important;
         }
         .stColumn > div {
             overflow: hidden !important;
@@ -95,12 +122,20 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             align-items: stretch !important;
             padding: 0 !important;
             margin: 0 !important;
+            padding-top: 0 !important;
+            margin-top: 0 !important;
         }
         /* Remove Streamlit's default element-container spacing */
         [data-testid="column"] .element-container {
             padding: 0 !important;
             margin: 0 !important;
             margin-top: 0 !important;
+            padding-top: 0 !important;
+        }
+        /* Remove spacing from first element-container */
+        [data-testid="column"] .element-container:first-child {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
         }
         /* Card wrapper - NO border, NO background, NO white box */
         .stage-card-wrapper {
@@ -156,7 +191,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         </style>
         """, unsafe_allow_html=True)
         
-        # Create columns for the actual cards - removed description layer and arrow columns to avoid duplicates
+        # Create columns for the actual cards - NO gap to prevent spacing
         stage_cols = st.columns([1, 0.7, 1, 1], gap='small')
     else:
         # Vertical layout - cards extend full width, details inline within card boundaries
