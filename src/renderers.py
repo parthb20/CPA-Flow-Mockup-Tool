@@ -31,10 +31,12 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     # Import dimensions from config
     from src.config import DEVICE_DIMENSIONS
     
-    # Device configurations
+    # Get base device dimensions
+    device_w = DEVICE_DIMENSIONS[device]['width']
+    device_h = DEVICE_DIMENSIONS[device]['height']
+    
+    # Device-specific styling and chrome
     if device == 'mobile':
-        device_w = DEVICE_DIMENSIONS['mobile']['width']
-        device_h = DEVICE_DIMENSIONS['mobile']['height']
         scale = 0.5
         frame_style = "border-radius: 30px; border: 5px solid #000000;"
         chrome_height_px = 90
@@ -77,9 +79,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         """
         
     elif device == 'tablet':
-        device_w = DEVICE_DIMENSIONS['tablet']['width']
-        device_h = DEVICE_DIMENSIONS['tablet']['height']
-        scale = 0.38
+        scale = 0.35
         frame_style = "border-radius: 16px; border: 12px solid #1f2937;"
         chrome_height_px = 68
         
@@ -107,11 +107,9 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         bottom_nav = ""
         
     else:  # laptop
-        device_w = DEVICE_DIMENSIONS['laptop']['width']
-        device_h = DEVICE_DIMENSIONS['laptop']['height']
-        scale = 0.22
+        scale = 0.2
         frame_style = "border-radius: 8px; border: 6px solid #374151;"
-        chrome_height_px = 52
+        chrome_height_px = 48
         
         url_display = display_url if display_url else (content if is_url else "URL")
         url_display_short = url_display[:60] + "..." if len(url_display) > 60 else url_display
@@ -130,13 +128,13 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         """
         bottom_nav = ""
     
-    # Calculate dimensions properly
-    total_iframe_height = device_h + chrome_height_px
+    # Calculate exact dimensions
+    total_content_height = device_h + chrome_height_px
     display_w = int(device_w * scale)
-    display_h = int(total_iframe_height * scale)
+    display_h = int(total_content_height * scale)
     
+    # Prepare iframe content
     if is_url and not use_srcdoc:
-        # For URL-based iframes, wrap in device chrome
         iframe_content = f'<iframe src="{content}" style="width: 100%; height: 100%; border: none;"></iframe>'
     else:
         iframe_content = content
@@ -187,10 +185,11 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     
     escaped = full_content.replace("'", "&apos;").replace('"', '&quot;')
     
+    # Final wrapper HTML
     html_output = f"""
     <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
-        <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-            <iframe srcdoc='{escaped}' style="width: {device_w}px; height: {total_iframe_height}px; border: none; transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"></iframe>
+        <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+            <iframe srcdoc='{escaped}' style="width: {device_w}px; height: {total_content_height}px; border: none; transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"></iframe>
         </div>
     </div>
     """
