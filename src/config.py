@@ -27,13 +27,13 @@ DEVICE_DIMENSIONS = {
     'tablet': {
         'width': 1024, 
         'height': 768,
-        'scale': 0.32,  # 328px wide × 246px tall (small landscape)
+        'scale': 0.36,  # 369px wide × 276px tall (proper landscape tablet!)
         'chrome_height': 68
     },
     'laptop': {
         'width': 1920, 
         'height': 1080,
-        'scale': 0.18,  # 346px wide × 194px tall (small widescreen)
+        'scale': 0.24,  # 461px wide × 259px tall (wide laptop!)
         'chrome_height': 48
     }
 }
