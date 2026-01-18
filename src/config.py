@@ -37,7 +37,7 @@ DEVICE_DIMENSIONS = {
         'width': 1920,  # Wider laptop (16:9 ratio for true widescreen)
         'height': 1080,  # Standard height
         'target_width_portrait': 300,  # Target display width when in portrait (tall view)
-        'target_width_landscape': 580,  # Target display width when in landscape (much wider)
+        'target_width_landscape': 640,  # Target display width when in landscape (very wide)
         'chrome_height': 48
     }
 }
