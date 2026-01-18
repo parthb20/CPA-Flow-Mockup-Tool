@@ -71,9 +71,9 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         </div>
         <div style="background: #f7f7f7; border-bottom: 1px solid #d1d1d1; padding: 8px 12px; display: flex; align-items: center; gap: 8px; height: 46px; box-sizing: border-box;">
             <div style="flex: 1; background: white; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; border: 1px solid #e0e0e0;">
-                <span style="font-size: 16px;">🔒</span>
-                <span style="color: #666; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{url_display_short}</span>
-                <span style="font-size: 16px;">🔄</span>
+                <span style="font-size: 16px; flex-shrink: 0;">🔒</span>
+                <span style="color: #666; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;">{url_display_short}</span>
+                <span style="font-size: 16px; flex-shrink: 0;">🔄</span>
             </div>
         </div>
         """
@@ -114,8 +114,8 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         </div>
         <div style="background: #f0f0f0; border-bottom: 1px solid #d0d0d0; padding: 6px 16px; display: flex; align-items: center; gap: 12px; height: 40px; box-sizing: border-box;">
             <div style="flex: 1; background: white; border-radius: 10px; padding: 6px 16px; display: flex; align-items: center; gap: 10px; border: 1px solid #e0e0e0;">
-                <span style="font-size: 18px;">🔒</span>
-                <span style="color: #666; font-size: 15px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{url_display_short}</span>
+                <span style="font-size: 18px; flex-shrink: 0;">🔒</span>
+                <span style="color: #666; font-size: 15px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;">{url_display_short}</span>
             </div>
         </div>
         """
@@ -125,17 +125,17 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         frame_style = "border-radius: 8px; border: 6px solid #374151;"
         
         url_display = display_url if display_url else (content if is_url else "URL")
-        url_display_short = url_display[:70] + "..." if len(url_display) > 70 else url_display
+        url_display_short = url_display[:80] + "..." if len(url_display) > 80 else url_display
         device_chrome = f"""
         <div style="background: #e8e8e8; padding: 8px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #d0d0d0; height: 48px; box-sizing: border-box;">
-            <div style="display: flex; gap: 8px;">
+            <div style="display: flex; gap: 8px; flex-shrink: 0;">
                 <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f57;"></div>
                 <div style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e;"></div>
                 <div style="width: 12px; height: 12px; border-radius: 50%; background: #28c840;"></div>
             </div>
-            <div style="flex: 1; background: white; border-radius: 6px; padding: 6px 16px; display: flex; align-items: center; gap: 12px; border: 1px solid #d0d0d0;">
-                <span style="font-size: 16px;">🔒</span>
-                <span style="color: #333; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{url_display_short}</span>
+            <div style="flex: 1; background: white; border-radius: 6px; padding: 6px 16px; display: flex; align-items: center; gap: 12px; border: 1px solid #d0d0d0; min-width: 0;">
+                <span style="font-size: 16px; flex-shrink: 0;">🔒</span>
+                <span style="color: #333; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;">{url_display_short}</span>
             </div>
         </div>
         """
