@@ -30,14 +30,14 @@ DEVICE_DIMENSIONS = {
         'width': 820,  # Portrait width
         'height': 1180,  # Portrait height
         'target_width_portrait': 280,  # Target display width when in portrait
-        'target_width_landscape': 420,  # Target display width when in landscape
+        'target_width_landscape': 380,  # Target display width when in landscape (wider)
         'chrome_height': 88
     },
     'laptop': {
         'width': 1440,  # Standard width (16:10 ratio)
         'height': 900,  # Standard height
-        'target_width_portrait': 340,  # Target display width when in portrait (tall view)
-        'target_width_landscape': 440,  # Target display width when in landscape (normal laptop)
+        'target_width_portrait': 300,  # Target display width when in portrait (tall view)
+        'target_width_landscape': 520,  # Target display width when in landscape (much wider for laptop look)
         'chrome_height': 48
     }
 }
