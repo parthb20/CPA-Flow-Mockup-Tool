@@ -16,11 +16,26 @@ THUMIO_REFERER_DOMAIN = None  # Set via environment variable or Streamlit secret
 # API Configuration
 OPENAI_API_KEY = None  # Set via environment variable or Streamlit secrets
 
-# Device dimensions
+# Device dimensions and scales - CONTROL EVERYTHING FROM HERE
 DEVICE_DIMENSIONS = {
-    'mobile': {'width': 390, 'height': 844},      # iPhone-like portrait
-    'tablet': {'width': 1024, 'height': 768},     # iPad landscape
-    'laptop': {'width': 1920, 'height': 1080}     # Full HD desktop
+    'mobile': {
+        'width': 390, 
+        'height': 844,
+        'scale': 0.5,  # 195px wide × 422px tall (tall phone)
+        'chrome_height': 90
+    },
+    'tablet': {
+        'width': 1024, 
+        'height': 768,
+        'scale': 0.32,  # 328px wide × 246px tall (small landscape)
+        'chrome_height': 68
+    },
+    'laptop': {
+        'width': 1920, 
+        'height': 1080,
+        'scale': 0.18,  # 346px wide × 194px tall (small widescreen)
+        'chrome_height': 48
+    }
 }
 
 # Default table settings
