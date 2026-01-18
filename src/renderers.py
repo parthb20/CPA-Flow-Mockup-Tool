@@ -195,6 +195,11 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                 overflow-wrap: break-word !important;
                 box-sizing: border-box !important;
             }}
+            .content-area p, .content-area div, .content-area span {{
+                text-align: left !important;
+                margin-left: 0 !important;
+                padding-left: 0 !important;
+            }}
             .content-area img {{
                 max-width: 100% !important;
                 height: auto !important;
