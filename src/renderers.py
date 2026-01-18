@@ -25,16 +25,31 @@ except:
     PLAYWRIGHT_AVAILABLE = False
 
 
-def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdoc=False, display_url=None):
-    """Render device preview with realistic chrome for mobile/tablet/laptop"""
+def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdoc=False, display_url=None, orientation='vertical'):
+    """Render device preview with realistic chrome for mobile/tablet/laptop
+    
+    Args:
+        orientation: 'vertical' (portrait) or 'horizontal' (landscape)
+    """
     
     from src.config import DEVICE_DIMENSIONS
     
-    # Get base dimensions and target from config
-    base_width = DEVICE_DIMENSIONS[device]['width']
-    base_height = DEVICE_DIMENSIONS[device]['height']
-    target_width = DEVICE_DIMENSIONS[device]['target_width']
+    # Get base dimensions from config (these are portrait dimensions)
+    portrait_width = DEVICE_DIMENSIONS[device]['width']
+    portrait_height = DEVICE_DIMENSIONS[device]['height']
     chrome_height_px = DEVICE_DIMENSIONS[device]['chrome_height']
+    
+    # Determine actual dimensions based on orientation
+    if orientation == 'horizontal':
+        # Swap for landscape
+        base_width = portrait_height
+        base_height = portrait_width
+        target_width = DEVICE_DIMENSIONS[device]['target_width_landscape']
+    else:
+        # Keep portrait
+        base_width = portrait_width
+        base_height = portrait_height
+        target_width = DEVICE_DIMENSIONS[device]['target_width_portrait']
     
     # Calculate scale to achieve target width
     scale = target_width / base_width
