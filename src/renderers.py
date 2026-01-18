@@ -105,9 +105,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         bottom_nav = ""
         
     else:  # laptop
-        scale = 0.37
         frame_style = "border-radius: 8px; border: 6px solid #374151;"
-        chrome_height_px = 48
         
         url_display = display_url if display_url else (content if is_url else "URL")
         url_display_short = url_display[:60] + "..." if len(url_display) > 60 else url_display
