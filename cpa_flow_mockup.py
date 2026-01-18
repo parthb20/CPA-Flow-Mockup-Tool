@@ -456,41 +456,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             if st.session_state.current_flow:
                 current_flow = st.session_state.current_flow
                 
-                # Flow layout toggle - lighter colors, bold and large
-                st.markdown("""
-                <style>
-                button[key='horiz_btn'], button[key='vert_btn'] {
-                    font-weight: 700 !important;
-                    font-size: 16px !important;
-                }
-                button[key='horiz_btn'][data-testid="baseButton-primary"] {
-                    background-color: #86efac !important;
-                    color: #166534 !important;
-                    border-color: #86efac !important;
-                }
-                button[key='vert_btn'][data-testid="baseButton-primary"] {
-                    background-color: #86efac !important;
-                    color: #166534 !important;
-                    border-color: #86efac !important;
-                }
-                button[key='horiz_btn'][data-testid="baseButton-secondary"],
-                button[key='vert_btn'][data-testid="baseButton-secondary"] {
-                    background-color: white !important;
-                    color: #0f172a !important;
-                    border-color: #cbd5e1 !important;
-                }
-                </style>
-                """, unsafe_allow_html=True)
-                layout_col1, layout_col2, layout_col3, layout_col4 = st.columns([1, 1, 3, 1])
-                with layout_col1:
-                    if st.button("↔️ **Horizontal**", key='horiz_btn', type="primary" if st.session_state.flow_layout == 'horizontal' else "secondary", use_container_width=True):
-                        st.session_state.flow_layout = 'horizontal'
-                        st.rerun()
-                with layout_col2:
-                    if st.button("↕️ **Vertical**", key='vert_btn', type="primary" if st.session_state.flow_layout == 'vertical' else "secondary", use_container_width=True):
-                        st.session_state.flow_layout = 'vertical'
-                        st.rerun()
-                
                 # Advanced mode: Show keyword and domain filters
                 if st.session_state.view_mode == 'advanced':
                     with layout_col3:
