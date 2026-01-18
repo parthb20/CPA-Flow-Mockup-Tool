@@ -16,24 +16,25 @@ THUMIO_REFERER_DOMAIN = None  # Set via environment variable or Streamlit secret
 # API Configuration
 OPENAI_API_KEY = None  # Set via environment variable or Streamlit secrets
 
-# Device dimensions and scales - CONTROL EVERYTHING FROM HERE
+# Device dimensions and scales
+# Scale is calculated to fit nicely in the UI while maintaining aspect ratio
 DEVICE_DIMENSIONS = {
     'mobile': {
         'width': 390, 
         'height': 844,
-        'scale': 0.5,  # 195px wide × 422px tall (tall phone)
+        'target_width': 280,  # Target display width in pixels
         'chrome_height': 90
     },
     'tablet': {
-        'width': 1024, 
-        'height': 768,
-        'scale': 0.36,  # 369px wide × 276px tall (proper landscape tablet!)
+        'width': 820,  # Standard tablet width
+        'height': 1180,  # Standard tablet height (portrait)
+        'target_width': 320,  # Target display width in pixels
         'chrome_height': 68
     },
     'laptop': {
-        'width': 1920, 
-        'height': 1080,
-        'scale': 0.24,  # 461px wide × 259px tall (wide laptop!)
+        'width': 1440, 
+        'height': 900,  # Standard laptop aspect ratio (16:10)
+        'target_width': 400,  # Target display width in pixels
         'chrome_height': 48
     }
 }
