@@ -45,7 +45,13 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     """, unsafe_allow_html=True)
     
     # Show flow info first
-    render_selected_flow_display(current_flow, show_edit_button=True)
+    from src.ui_components import render_selected_flow_display
+    flow_imps = current_flow.get('impressions', 0)
+    flow_clicks = current_flow.get('clicks', 0)
+    flow_convs = current_flow.get('conversions', 0)
+    flow_ctr = (flow_clicks / flow_imps * 100) if flow_imps > 0 else 0
+    flow_cvr = (flow_convs / flow_clicks * 100) if flow_clicks > 0 else 0
+    render_selected_flow_display(current_flow, flow_imps, flow_clicks, flow_convs, flow_ctr, flow_cvr)
     
     # Layout and device selection on ONE LINE - after flow info
     st.markdown("<div style='margin-bottom: 16px; margin-top: 24px;'></div>", unsafe_allow_html=True)
