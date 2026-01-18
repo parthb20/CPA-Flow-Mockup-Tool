@@ -16,25 +16,28 @@ THUMIO_REFERER_DOMAIN = None  # Set via environment variable or Streamlit secret
 # API Configuration
 OPENAI_API_KEY = None  # Set via environment variable or Streamlit secrets
 
-# Device dimensions and scales
-# Scale is calculated to fit nicely in the UI while maintaining aspect ratio
+# Device dimensions - these are PORTRAIT dimensions
+# Horizontal orientation will swap width/height automatically
 DEVICE_DIMENSIONS = {
     'mobile': {
-        'width': 390, 
-        'height': 844,
-        'target_width': 280,  # Target display width in pixels
+        'width': 390,  # Portrait width
+        'height': 844,  # Portrait height
+        'target_width_portrait': 280,  # Target display width when in portrait
+        'target_width_landscape': 360,  # Target display width when in landscape (wider to show landscape properly)
         'chrome_height': 90
     },
     'tablet': {
-        'width': 820,  # Standard tablet width
-        'height': 1180,  # Standard tablet height (portrait)
-        'target_width': 320,  # Target display width in pixels
-        'chrome_height': 68
+        'width': 820,  # Portrait width
+        'height': 1180,  # Portrait height
+        'target_width_portrait': 280,  # Target display width when in portrait
+        'target_width_landscape': 420,  # Target display width when in landscape
+        'chrome_height': 88
     },
     'laptop': {
-        'width': 1440, 
-        'height': 900,  # Standard laptop aspect ratio (16:10)
-        'target_width': 400,  # Target display width in pixels
+        'width': 1440,  # Standard width (16:10 ratio)
+        'height': 900,  # Standard height
+        'target_width_portrait': 340,  # Target display width when in portrait (tall view)
+        'target_width_landscape': 440,  # Target display width when in landscape (normal laptop)
         'chrome_height': 48
     }
 }
