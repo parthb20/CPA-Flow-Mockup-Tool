@@ -31,15 +31,15 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     # Import dimensions from config
     from src.config import DEVICE_DIMENSIONS
     
-    # Get base device dimensions
+    # Get ALL settings from config - simple!
     device_w = DEVICE_DIMENSIONS[device]['width']
     device_h = DEVICE_DIMENSIONS[device]['height']
+    scale = DEVICE_DIMENSIONS[device]['scale']
+    chrome_height_px = DEVICE_DIMENSIONS[device]['chrome_height']
     
-    # Device-specific styling and chrome
+    # Device-specific styling ONLY
     if device == 'mobile':
-        scale = 0.5
         frame_style = "border-radius: 30px; border: 5px solid #000000;"
-        chrome_height_px = 90
         
         url_display = display_url if display_url else (content if is_url else "URL")
         url_display_short = url_display[:40] + "..." if len(url_display) > 40 else url_display
@@ -79,9 +79,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         """
         
     elif device == 'tablet':
-        scale = 0.52
         frame_style = "border-radius: 16px; border: 12px solid #1f2937;"
-        chrome_height_px = 68
         
         url_display = display_url if display_url else (content if is_url else "URL")
         url_display_short = url_display[:50] + "..." if len(url_display) > 50 else url_display
@@ -107,9 +105,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         bottom_nav = ""
         
     else:  # laptop
-        scale = 0.37
         frame_style = "border-radius: 8px; border: 6px solid #374151;"
-        chrome_height_px = 48
         
         url_display = display_url if display_url else (content if is_url else "URL")
         url_display_short = url_display[:60] + "..." if len(url_display) > 60 else url_display
