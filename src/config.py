@@ -21,19 +21,19 @@ DEVICE_DIMENSIONS = {
     'mobile': {
         'width': 390, 
         'height': 844,
-        'scale': 0.5,
+        'scale': 0.5,  # 195px wide × 422px tall (tall phone)
         'chrome_height': 90
     },
     'tablet': {
         'width': 1024, 
         'height': 768,
-        'scale': 0.52,  # Makes tablet 532px wide × 400px tall (landscape)
+        'scale': 0.32,  # 328px wide × 246px tall (small landscape)
         'chrome_height': 68
     },
     'laptop': {
         'width': 1920, 
         'height': 1080,
-        'scale': 0.37,  # Makes laptop 710px wide × 400px tall (widescreen!)
+        'scale': 0.18,  # 346px wide × 194px tall (small widescreen)
         'chrome_height': 48
     }
 }
