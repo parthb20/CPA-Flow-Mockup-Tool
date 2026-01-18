@@ -174,6 +174,12 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         }}
             .content-area * {{
                 max-width: {device_w}px !important;
+                word-wrap: break-word !important;
+                overflow-wrap: break-word !important;
+            }}
+            .content-area img {{
+                max-width: 100% !important;
+                height: auto !important;
             }}
         </style>
     </head>
