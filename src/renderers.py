@@ -28,16 +28,18 @@ except:
 def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdoc=False, display_url=None):
     """Render device preview with realistic chrome for mobile/tablet/laptop"""
     
-    # Import dimensions from config
     from src.config import DEVICE_DIMENSIONS
     
-    # Get ALL settings from config - simple!
-    device_w = DEVICE_DIMENSIONS[device]['width']
-    device_h = DEVICE_DIMENSIONS[device]['height']
-    scale = DEVICE_DIMENSIONS[device]['scale']
+    # Get base dimensions and target from config
+    base_width = DEVICE_DIMENSIONS[device]['width']
+    base_height = DEVICE_DIMENSIONS[device]['height']
+    target_width = DEVICE_DIMENSIONS[device]['target_width']
     chrome_height_px = DEVICE_DIMENSIONS[device]['chrome_height']
     
-    # Device-specific styling ONLY
+    # Calculate scale to achieve target width
+    scale = target_width / base_width
+    
+    # Device-specific styling
     if device == 'mobile':
         frame_style = "border-radius: 30px; border: 5px solid #000000;"
         
@@ -79,12 +81,12 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         """
         
     elif device == 'tablet':
-        frame_style = "border-radius: 16px; border: 12px solid #1f2937;"
+        frame_style = "border-radius: 16px; border: 8px solid #1f2937;"
         
         url_display = display_url if display_url else (content if is_url else "URL")
-        url_display_short = url_display[:50] + "..." if len(url_display) > 50 else url_display
+        url_display_short = url_display[:60] + "..." if len(url_display) > 60 else url_display
         device_chrome = f"""
-        <div style="background: #000; color: white; padding: 8px 24px; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 500;">
+        <div style="background: #000; color: white; padding: 8px 24px; display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 500; height: 48px; box-sizing: border-box;">
             <div style="display: flex; gap: 12px;">
                 <span>9:41 AM</span>
                 <span>Wed Jan 13</span>
@@ -95,8 +97,8 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                 <span>🔋</span>
             </div>
         </div>
-        <div style="background: #f0f0f0; border-bottom: 1px solid #d0d0d0; padding: 6px 16px; display: flex; align-items: center; gap: 12px; height: 32px; box-sizing: border-box;">
-            <div style="flex: 1; background: white; border-radius: 10px; padding: 4px 16px; display: flex; align-items: center; gap: 10px; border: 1px solid #e0e0e0;">
+        <div style="background: #f0f0f0; border-bottom: 1px solid #d0d0d0; padding: 6px 16px; display: flex; align-items: center; gap: 12px; height: 40px; box-sizing: border-box;">
+            <div style="flex: 1; background: white; border-radius: 10px; padding: 6px 16px; display: flex; align-items: center; gap: 10px; border: 1px solid #e0e0e0;">
                 <span style="font-size: 18px;">🔒</span>
                 <span style="color: #666; font-size: 15px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{url_display_short}</span>
             </div>
@@ -108,15 +110,15 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         frame_style = "border-radius: 8px; border: 6px solid #374151;"
         
         url_display = display_url if display_url else (content if is_url else "URL")
-        url_display_short = url_display[:60] + "..." if len(url_display) > 60 else url_display
+        url_display_short = url_display[:70] + "..." if len(url_display) > 70 else url_display
         device_chrome = f"""
-        <div style="background: #e8e8e8; padding: 6px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #d0d0d0; height: 48px; box-sizing: border-box;">
+        <div style="background: #e8e8e8; padding: 8px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #d0d0d0; height: 48px; box-sizing: border-box;">
             <div style="display: flex; gap: 8px;">
                 <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f57;"></div>
                 <div style="width: 12px; height: 12px; border-radius: 50%; background: #ffbd2e;"></div>
                 <div style="width: 12px; height: 12px; border-radius: 50%; background: #28c840;"></div>
             </div>
-            <div style="flex: 1; background: white; border-radius: 6px; padding: 4px 16px; display: flex; align-items: center; gap: 12px; border: 1px solid #d0d0d0;">
+            <div style="flex: 1; background: white; border-radius: 6px; padding: 6px 16px; display: flex; align-items: center; gap: 12px; border: 1px solid #d0d0d0;">
                 <span style="font-size: 16px;">🔒</span>
                 <span style="color: #333; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{url_display_short}</span>
             </div>
@@ -124,10 +126,10 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         """
         bottom_nav = ""
     
-    # Calculate exact dimensions - chrome is INSIDE device frame, not added
-    display_w = int(device_w * scale)
-    display_h = int(device_h * scale)
-    content_area_height = device_h - chrome_height_px
+    # Calculate display dimensions
+    display_width = int(base_width * scale)
+    display_height = int(base_height * scale)
+    content_area_height = base_height - chrome_height_px
     
     # Prepare iframe content
     if is_url and not use_srcdoc:
@@ -139,7 +141,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     <!DOCTYPE html>
     <html>
     <head>
-        <meta name="viewport" content="width={device_w}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <meta name="viewport" content="width={base_width}, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <meta charset="utf-8">
         <style>
             * {{
@@ -147,33 +149,33 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                 padding: 0;
                 box-sizing: border-box;
             }}
-        html, body {{ 
-            width: {device_w}px;
-            height: {device_h}px;
-            overflow: hidden;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: white;
-        }}
-        body {{
-            display: flex;
-            flex-direction: column;
-        }}
-        .device-chrome {{ 
-            width: 100%;
-            height: {chrome_height_px}px;
-            flex-shrink: 0;
-        }}
-        .content-area {{ 
-            flex: 1;
-            width: {device_w}px;
-            height: {content_area_height}px;
-            overflow-y: auto; 
-            overflow-x: hidden;
-            -webkit-overflow-scrolling: touch;
-            background: white;
-        }}
+            html, body {{ 
+                width: {base_width}px;
+                height: {base_height}px;
+                overflow: hidden;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                background: white;
+            }}
+            body {{
+                display: flex;
+                flex-direction: column;
+            }}
+            .device-chrome {{ 
+                width: 100%;
+                height: {chrome_height_px}px;
+                flex-shrink: 0;
+            }}
+            .content-area {{ 
+                flex: 1;
+                width: {base_width}px;
+                height: {content_area_height}px;
+                overflow-y: auto; 
+                overflow-x: hidden;
+                -webkit-overflow-scrolling: touch;
+                background: white;
+            }}
             .content-area * {{
-                max-width: {device_w}px !important;
+                max-width: {base_width}px !important;
                 word-wrap: break-word !important;
                 overflow-wrap: break-word !important;
             }}
@@ -196,13 +198,13 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     # Final wrapper HTML
     html_output = f"""
     <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
-        <div style="width: {display_w}px; height: {display_h}px; {frame_style} overflow: hidden; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-            <iframe srcdoc='{escaped}' style="width: {device_w}px; height: {device_h}px; border: none; transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"></iframe>
+        <div style="width: {display_width}px; height: {display_height}px; {frame_style} overflow: hidden; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+            <iframe srcdoc='{escaped}' style="width: {base_width}px; height: {base_height}px; border: none; transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"></iframe>
         </div>
     </div>
     """
     
-    return html_output, display_h + 30, is_url
+    return html_output, display_height + 30, is_url
 
 
 def render_similarity_score(score_type, similarities_data, show_explanation=False, custom_title=None, tooltip_text=None):
@@ -214,13 +216,11 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
     
     if not data or data.get('error', False):
         if data and data.get('status_code') == 'no_api_key':
-            # Only show message if API key is actually missing
             try:
                 api_key = st.secrets.get('FASTROUTER_API_KEY') or st.secrets.get('OPENAI_API_KEY')
                 if not api_key:
                     st.info("🔑 Add API key to calculate")
             except:
-                # If secrets not available, don't show message (assume configured)
                 pass
         else:
             st.info("⏳ Will calculate after data loads")
@@ -272,7 +272,6 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
     """, unsafe_allow_html=True)
     
     with st.expander("📊 View Detailed Breakdown", expanded=False):
-        # Define which components belong to which score type
         component_mapping = {
             'kwd_to_ad': ['keyword_match', 'topic_match', 'intent_match'],
             'ad_to_page': ['topic_match', 'brand_match', 'promise_match'],
@@ -288,18 +287,15 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
             'utility_match': '⚙️ Utility Match'
         }
         
-        # Get relevant components for this score type
         relevant_components = component_mapping.get(score_type, [])
         score_components = [(component_labels[key], data.get(key, 0)) for key in relevant_components if key in data]
         
         if score_components:
-            # Display each component on its own line
             for name, val in score_components:
                 score_val = val * 100
                 score_color = "#22c55e" if val >= 0.7 else "#f59e0b" if val >= 0.4 else "#ef4444"
                 st.markdown(f'<div style="margin: 4px 0;"><span style="color: {score_color}; font-weight: 700; font-size: 14px;">{name}: {score_val:.0f}%</span></div>', unsafe_allow_html=True)
         
-        # Show intent and band below
         extra_info = []
         if 'intent' in data and data['intent']:
             extra_info.append(f"🎯 **Intent:** {data['intent']}")
@@ -334,13 +330,11 @@ def create_screenshot_html(screenshot_url, device='mobile', referer_domain=None)
     """Create HTML for screenshot with proper referer handling"""
     vw = 390 if device == 'mobile' else 820 if device == 'tablet' else 1440
     
-    # Ensure URL is properly formatted - don't double-encode
     if screenshot_url and '%' in screenshot_url:
-        # Already encoded, use as-is but escape for HTML
         screenshot_url_escaped = screenshot_url.replace("'", "\\'").replace('"', '\\"')
     else:
-        # Not encoded, escape for HTML
         screenshot_url_escaped = screenshot_url.replace("'", "\\'").replace('"', '\\"') if screenshot_url else ""
+    
     screenshot_html = f'''<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width={vw}">
 <style>* {{margin:0;padding:0;box-sizing:border-box}} body {{background:#f5f5f5}} img {{width:100%;height:auto;display:block;max-width:100%;}} .error {{padding: 20px; text-align: center; color: #dc2626; background: #fef2f2; border: 2px solid #fca5a5; border-radius: 8px; margin: 10px; font-family: system-ui, -apple-system, sans-serif;}} .loading {{padding: 20px; text-align: center; color: #64748b; background: #f8fafc; border-radius: 8px; margin: 10px;}}</style>
@@ -412,14 +406,10 @@ def unescape_adcode(adcode):
     import re
     
     try:
-        # Handle double-stringified JSON
         if isinstance(adcode, str) and adcode.startswith('"'):
             adcode = json.loads(adcode)
         
-        # Replace unicode escapes
         adcode = adcode.encode().decode('unicode_escape')
-        
-        # Handle HTML entities
         adcode = adcode.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
         
         return adcode
@@ -448,7 +438,6 @@ def parse_creative_html(response_str):
         if not raw_adcode:
             return None, None
         
-        # Unescape adcode
         adcode = unescape_adcode(raw_adcode)
         
         html_content = f"""
