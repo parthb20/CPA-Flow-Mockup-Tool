@@ -190,13 +190,21 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                 background: white;
             }}
             .content-area * {{
-                max-width: {base_width}px !important;
+                max-width: 100% !important;
                 word-wrap: break-word !important;
                 overflow-wrap: break-word !important;
+                box-sizing: border-box !important;
             }}
             .content-area img {{
                 max-width: 100% !important;
                 height: auto !important;
+            }}
+            .content-area table {{
+                width: 100% !important;
+                table-layout: auto !important;
+            }}
+            .content-area td, .content-area th {{
+                word-break: break-word !important;
             }}
         </style>
     </head>
