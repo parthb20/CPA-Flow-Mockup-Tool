@@ -100,10 +100,12 @@ def capture_page_with_fallback(url, device='mobile'):
 def capture_with_playwright(url, device='mobile'):
     """
     Capture page using Playwright
-    Returns: HTML string if success, None if failed
+    Returns: (html_content, status_code) tuple
+    - html_content: HTML string if success, None if failed
+    - status_code: HTTP status code (403, etc) or 'error'
     """
     if not PLAYWRIGHT_AVAILABLE:
-        return None
+        return (None, 'no_playwright')
     
     try:
         clean_url = url.split('?')[0] if '?' in url else url
@@ -138,22 +140,15 @@ def capture_with_playwright(url, device='mobile'):
             # Capture response to check status code
             response = page.goto(clean_url, wait_until='networkidle', timeout=30000)
             
-            # On 403, try screenshot API fallback
+            # Return status code for caller to handle
             if response and response.status == 403:
                 browser.close()
-                screenshot_url = get_screenshot_url(url, device=device)
-                if screenshot_url:
-                    # Return special marker HTML that flow_display can detect
-                    return f'<!-- SCREENSHOT_FALLBACK --><img src="{screenshot_url}" style="width:100%;height:auto;" />'
-                return None
+                return (None, 403)
             
             html_content = page.content()
             browser.close()
-            return html_content
+            return (html_content, 200)
             
-    except Exception:
-        # On any error, try screenshot API fallback (403, executable missing, etc)
-        screenshot_url = get_screenshot_url(url, device=device)
-        if screenshot_url:
-            return f'<!-- SCREENSHOT_FALLBACK --><img src="{screenshot_url}" style="width:100%;height:auto;" />'
-        return None
+    except Exception as e:
+        # Return error without calling screenshot API
+        return (None, 'error')
