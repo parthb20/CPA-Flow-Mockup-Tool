@@ -316,7 +316,7 @@ st.markdown("""
                         <h1 class="main-title" style="font-size: 72px !important; font-weight: 900 !important; color: #0f172a !important; margin: 0 !important; padding: 0 !important; text-align: left !important; line-height: 1.3 !important; letter-spacing: 0.01em !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif !important; text-shadow: 1px 1px 2px rgba(0,0,0,0.1) !important; pointer-events: none !important; user-select: none !important; word-spacing: normal !important;">
                             📊 CPA Flow Analysis
                         </h1>
-    </div>
+            </div>
 """, unsafe_allow_html=True)
 
 # Auto-load from Google Drive (sequential loading for Streamlit Cloud compatibility)
@@ -481,7 +481,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.session_state.current_flow = current_flow
                 
                 # Show selected flow details using module
-                if len(final_filtered) > 0:
+                                    if len(final_filtered) > 0:
                     # Select view_id with max timestamp
                     if 'timestamp' in final_filtered.columns:
                         single_view = final_filtered.loc[final_filtered['timestamp'].idxmax()]
@@ -498,13 +498,13 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     
                     if st.session_state.view_mode == 'basic':
                         st.success("✨ Auto-selected based on best performance")
-                    else:
+                                            else:
                         st.success("✨ Use filters above to change flow")
-                else:
+                                                else:
                     st.info("🎯 Selected Flow: No data available")
                 
                 # ZERO spacing before Flow Journey - AGGRESSIVE CSS
-                st.markdown("""
+                        st.markdown("""
                 <style>
                 /* Kill ALL spacing between success message and Flow Journey */
                 .stSuccess + div,
@@ -518,7 +518,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 }
                 </style>
                 <div style="height:0;margin:0;padding:0;line-height:0;"></div>
-                """, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
                 
                 # Render Flow Journey using module
                 render_flow_journey(
