@@ -498,10 +498,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 # Add Flow Journey title FIRST with explanation
                 st.markdown("""
-                <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 20px 0 16px 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui;">
-                    🔄 <strong>Flow Journey</strong>
+                <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 20px 0 12px 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui;">
+                    🔄 Flow Journey
                 </h2>
-                <p style="font-size: 15px; color: #64748b; margin: 0 0 16px 0; line-height: 1.6; font-family: system-ui;">
+                <p style="font-size: 15px; color: #64748b; font-weight: 400; margin: 0 0 12px 0; line-height: 1.6; font-family: system-ui;">
                     A flow is the complete user journey: Publisher → Creative → SERP → Landing Page. 
                     Each stage can be customized using the filters above. We automatically select the best-performing combination based on conversions, clicks, and impressions.
                 </p>
