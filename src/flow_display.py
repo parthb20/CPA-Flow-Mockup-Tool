@@ -545,9 +545,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         if st.session_state.flow_layout == 'vertical':
             serp_card_left, serp_card_right = st.columns([0.6, 0.4])
             with serp_card_left:
-                st.markdown('<h3 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 0 0 16px 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;">📄 SERP</h3>', unsafe_allow_html=True)
+                st.markdown('<h3 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>📄 SERP</strong></h3>', unsafe_allow_html=True)
         else:
-            st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; font-family: system-ui;">📄 SERP</h3>', unsafe_allow_html=True)
+            st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;"><strong>📄 SERP</strong></h3>', unsafe_allow_html=True)
         
         serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
         serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
@@ -746,16 +746,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 # Add spacing at top
                 st.markdown("<div style='margin-top: 8px;'></div>", unsafe_allow_html=True)
                 
-                serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
-                
-                st.markdown("<h4 style='font-size: 18px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0;'>📄 SERP Details</h4>", unsafe_allow_html=True)
-                st.markdown(f"""
-                <div style="margin-bottom: 12px; font-size: 13px;">
-                    <div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>Template</strong></div>
-                    <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;">{html.escape(str(serp_name))}</div>
-                    {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{serp_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(serp_url))}</a></div>' if serp_url else ''}
-                </div>
-                """, unsafe_allow_html=True)
+                # SERP Details removed - already shown below card in horizontal layout
                 
                 if 'similarities' not in st.session_state or st.session_state.similarities is None:
                     if api_key:
@@ -803,9 +794,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         if st.session_state.flow_layout == 'vertical':
             landing_card_left, landing_card_right = st.columns([0.6, 0.4])
             with landing_card_left:
-                st.markdown('<h3 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 0 0 16px 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;">🎯 Landing Page</h3>', unsafe_allow_html=True)
+                st.markdown('<h3 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>🎯 Landing Page</strong></h3>', unsafe_allow_html=True)
         else:
-            st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; font-family: system-ui;">🎯 Landing Page</h3>', unsafe_allow_html=True)
+            st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;"><strong>🎯 Landing Page</strong></h3>', unsafe_allow_html=True)
         
         adv_url = current_flow.get('reporting_destination_url', '')
         flow_clicks = current_flow.get('clicks', 0)
