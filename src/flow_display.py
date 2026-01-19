@@ -52,8 +52,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     </style>
     """, unsafe_allow_html=True)
     
-    # Bring dropdowns closer together
-    control_col1, control_col2, spacer = st.columns([1.5, 1.5, 5])
+    # All controls in one row - Layout, Device, Domain, Keyword
+    control_col1, control_col2, control_col3, control_col4 = st.columns([1.2, 1.2, 2, 2])
     
     with control_col1:
         st.markdown('<p style="font-size: 13px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;">Layout</p>', unsafe_allow_html=True)
@@ -71,6 +71,20 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                  key='device_all', index=0, label_visibility="collapsed")
         # Extract actual device name
         device_all = device_all.split(' ')[1].lower()
+    
+    with control_col3:
+        st.markdown('<p style="font-size: 13px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;">Domain</p>', unsafe_allow_html=True)
+        domains = ['All Domains'] + sorted(campaign_df['publisher_domain'].dropna().unique().tolist()) if 'publisher_domain' in campaign_df.columns else ['All Domains']
+        selected_domain_inline = st.selectbox("", domains, key='domain_inline_filter', label_visibility="collapsed")
+        if selected_domain_inline != 'All Domains':
+            campaign_df = campaign_df[campaign_df['publisher_domain'] == selected_domain_inline]
+    
+    with control_col4:
+        st.markdown('<p style="font-size: 13px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;">Keyword</p>', unsafe_allow_html=True)
+        keywords = ['All Keywords'] + sorted(campaign_df['keyword_term'].dropna().unique().tolist()) if 'keyword_term' in campaign_df.columns else ['All Keywords']
+        selected_keyword_inline = st.selectbox("", keywords, key='keyword_inline_filter', label_visibility="collapsed")
+        if selected_keyword_inline != 'All Keywords':
+            campaign_df = campaign_df[campaign_df['keyword_term'] == selected_keyword_inline]
     
     # CLEAN CSS - MINIMAL spacing
     st.markdown("""
@@ -456,7 +470,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         if st.session_state.flow_layout == 'horizontal':
                             st.components.v1.html(creative_html, height=400, scrolling=True)
                         else:
-                            st.components.v1.html(creative_html, height=400, scrolling=True)
+                            # Increase height in vertical to match other boxes
+                            st.components.v1.html(creative_html, height=600, scrolling=True)
                         
                         if st.session_state.view_mode == 'advanced' or st.session_state.flow_layout == 'vertical':
                             with st.expander("👁️ View Raw Ad Code"):
@@ -746,19 +761,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 # Add spacing at top
                 st.markdown("<div style='margin-top: 8px;'></div>", unsafe_allow_html=True)
                 
-                # Show SERP details to the RIGHT
-                serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
-                serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
-                
-                st.markdown("<h4 style='font-size: 18px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0;'>📄 SERP Details</h4>", unsafe_allow_html=True)
-                st.markdown(f"""
-                <div style="margin-bottom: 12px; font-size: 13px;">
-                    <div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>Template</strong></div>
-                    <div style="margin-left: 0; margin-top: 4px; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 12px;">{html.escape(str(serp_name))}</div>
-                    {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 11px;"><a href="{serp_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(serp_url))}</a></div>' if serp_url and serp_url != 'N/A' else ''}
-                </div>
-                """, unsafe_allow_html=True)
-                
+                # Show SERP details to the RIGHT - Template AFTER similarity
                 if 'similarities' not in st.session_state or st.session_state.similarities is None:
                     if api_key:
                         st.session_state.similarities = calculate_similarities(current_flow)
@@ -769,20 +772,25 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     render_similarity_score('ad_to_page', st.session_state.similarities,
                                            custom_title="Ad Copy → Landing Page Similarity",
                                            tooltip_text="Measures how well the landing page fulfills the promises made in the ad copy. Higher scores indicate better ad-page consistency.")
+                
+                # NOW show template below similarity
+                serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
+                serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
+                
+                st.markdown("<div style='margin-top: 12px;'></div>", unsafe_allow_html=True)
+                st.markdown("<h4 style='font-size: 18px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0;'>📄 SERP Details</h4>", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div style="margin-bottom: 12px; font-size: 13px;">
+                    <div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>Template</strong></div>
+                    <div style="margin-left: 0; margin-top: 4px; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 12px;">{html.escape(str(serp_name))}</div>
+                    {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 11px;"><a href="{serp_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(serp_url))}</a></div>' if serp_url and serp_url != 'N/A' else ''}
+                </div>
+                """, unsafe_allow_html=True)
         
         # Close wrapper div for horizontal layout
         if st.session_state.flow_layout == 'horizontal':
-            # Show SERP info BELOW card preview in horizontal layout - ALWAYS show
-            serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
-            serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
-            serp_key = current_flow.get('serp_template_key', 'N/A')
-            st.markdown(f"""
-            <div style='margin-top: 12px; font-size: 13px;'>
-                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Template</strong></div>
-                <div style='margin-left: 0; margin-top: 4px; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 12px;'>{html.escape(str(serp_name))}</div>
-                {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 11px;"><a href="{serp_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(serp_url))}</a></div>' if serp_url and serp_url != 'N/A' else ''}
-            </div>
-            """, unsafe_allow_html=True)
+            # Show SERP info BELOW card preview in horizontal layout - moved below HTML
+            pass
     
     # Arrow divs removed - no longer needed
     
