@@ -233,9 +233,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         if st.session_state.flow_layout == 'vertical':
             card_col_left, card_col_right = st.columns([0.6, 0.4])
             with card_col_left:
-                st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">📰 Publisher URL</h3>', unsafe_allow_html=True)
+                st.markdown('<h3 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>📰 Publisher URL</strong></h3>', unsafe_allow_html=True)
         else:
-            st.markdown('<h3 style="font-size: 36px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; padding-top: 0; text-shadow: 0 1px 2px rgba(0,0,0,0.1); letter-spacing: -1px; font-family: system-ui, -apple-system, sans-serif;"><strong>📰 Publisher URL</strong></h3>', unsafe_allow_html=True)
+            st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;"><strong>📰 Publisher URL</strong></h3>', unsafe_allow_html=True)
         
         pub_url = current_flow.get('publisher_url', '')
         preview_container = card_col_left if st.session_state.flow_layout == 'vertical' and card_col_left else stage_1_container
