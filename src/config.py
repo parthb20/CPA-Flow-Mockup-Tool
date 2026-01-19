@@ -24,7 +24,7 @@ DEVICE_DIMENSIONS = {
         'height': 844,  # Portrait height
         'target_width_portrait': 280,  # Target display width when in portrait
         'target_width_landscape': 360,  # Target display width when in landscape (wider to show landscape properly)
-        'chrome_height': 90
+        'chrome_height': 68  # 22px status bar + 46px URL bar
     },
     'tablet': {
         'width': 820,  # Portrait width
