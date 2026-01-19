@@ -162,6 +162,17 @@ Formula: 0.15×K + 0.35×T + 0.50×I"""
     if adv_url and pd.notna(adv_url) and str(adv_url).lower() != 'null' and str(adv_url).strip():
         page_text = fetch_page_content(adv_url)
         
+        # If page fetch failed (403/etc), try OCR fallback from screenshot
+        if not page_text:
+            try:
+                from src.ocr_utils import extract_text_from_screenshot_url
+                from src.screenshot import get_screenshot_url
+                screenshot_url = get_screenshot_url(adv_url, 'laptop')
+                if screenshot_url:
+                    page_text = extract_text_from_screenshot_url(screenshot_url)
+            except:
+                pass
+        
         if page_text:
             # Ad → Page
             ad_to_page_prompt = f"""Score page vs ad promises. Judge meaning, not keyword stuffing. Penalize deceptive content.
