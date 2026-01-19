@@ -458,11 +458,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 # Advanced mode: Show keyword and domain filters
                 if st.session_state.view_mode == 'advanced':
-                    with layout_col3:
-                        st.markdown("")  # spacing
-                    with layout_col4:
-                        st.markdown("")  # spacing
-                    
                     # Reduce spacing
                     st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
                 
