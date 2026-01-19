@@ -504,8 +504,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         st.session_state.similarities = {}
                 
                 if 'similarities' in st.session_state and st.session_state.similarities:
-                    # Similarity score already shown in horizontal layout, skip duplicate
-                    pass
+                    # Show Keyword → Ad similarity
+                    render_similarity_score('kwd_to_ad', st.session_state.similarities,
+                                           custom_title="Keyword → Ad Copy Similarity",
+                                           tooltip_text="Measures how well the ad creative matches the search keyword. Higher scores indicate better keyword-ad alignment.")
         
         # Close wrapper div for horizontal layout
         if st.session_state.flow_layout == 'horizontal':
