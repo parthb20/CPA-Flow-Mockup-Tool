@@ -427,9 +427,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         if st.session_state.flow_layout == 'vertical':
             creative_card_left, creative_card_right = st.columns([0.5, 0.5])
             with creative_card_left:
-                st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">🎨 Creative</h3>', unsafe_allow_html=True)
+                st.markdown('<h3 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>🎨 Creative</strong></h3>', unsafe_allow_html=True)
         else:
-            st.markdown('<h3 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 0 0 16px 0; padding-top: 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui, -apple-system, sans-serif;"><strong>🎨 Creative</strong></h3>', unsafe_allow_html=True)
+            st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;"><strong>🎨 Creative</strong></h3>', unsafe_allow_html=True)
         
         creative_id = current_flow.get('creative_id', 'N/A')
         creative_name = current_flow.get('creative_template_name', 'N/A')
