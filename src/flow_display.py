@@ -37,24 +37,25 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         thumio_configured: Boolean indicating if screenshot API is configured (kept for backwards compatibility)
         thumio_referer_domain: Referer domain (kept for backwards compatibility)
     """
-    # Layout and Device controls with labels ABOVE (Flow Journey title now shown in caller)
-    control_col1, control_col2, control_col3 = st.columns([1, 1, 1])
+    # Layout and Device controls - COMPACT with clickable dropdowns
+    control_col1, control_col2, control_col3, spacer = st.columns([1.5, 1.5, 1.5, 3])
     
     with control_col1:
-        st.markdown('<p style="font-size: 16px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; font-family: system-ui;">Layout</p>', unsafe_allow_html=True)
-        if st.button("↔️ Horizontal", key='horiz_flow_btn', type="primary" if st.session_state.flow_layout == 'horizontal' else "secondary", use_container_width=True):
-            st.session_state.flow_layout = 'horizontal'
-            st.rerun()
-    
-    with control_col2:
-        st.markdown('<p style="font-size: 16px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; font-family: system-ui;">&nbsp;</p>', unsafe_allow_html=True)
-        if st.button("↕️ Vertical", key='vert_flow_btn', type="primary" if st.session_state.flow_layout == 'vertical' else "secondary", use_container_width=True):
-            st.session_state.flow_layout = 'vertical'
+        st.markdown('<p style="font-size: 14px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;">Layout</p>', unsafe_allow_html=True)
+        layout_choice = st.selectbox("", ['↔️ Horizontal', '↕️ Vertical'], 
+                                     index=0 if st.session_state.flow_layout == 'horizontal' else 1, 
+                                     key='layout_dropdown', label_visibility="collapsed")
+        if (layout_choice == '↔️ Horizontal' and st.session_state.flow_layout != 'horizontal') or \
+           (layout_choice == '↕️ Vertical' and st.session_state.flow_layout != 'vertical'):
+            st.session_state.flow_layout = 'horizontal' if layout_choice == '↔️ Horizontal' else 'vertical'
             st.rerun()
     
     with control_col3:
-        st.markdown('<p style="font-size: 16px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; font-family: system-ui;">Device</p>', unsafe_allow_html=True)
-        device_all = st.selectbox("", ['mobile', 'tablet', 'laptop'], key='device_all', index=0, label_visibility="collapsed")
+        st.markdown('<p style="font-size: 14px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;">Device</p>', unsafe_allow_html=True)
+        device_all = st.selectbox("", ['📱 Mobile', '📱 Tablet', '💻 Laptop'], 
+                                 key='device_all', index=0, label_visibility="collapsed")
+        # Extract actual device name
+        device_all = device_all.split(' ')[1].lower()
     
     # CLEAN CSS - Proper spacing without negative margins
     st.markdown("""

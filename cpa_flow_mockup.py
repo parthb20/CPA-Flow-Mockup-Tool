@@ -498,19 +498,29 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 else:
                     st.info("🎯 Selected Flow: No data available")
                 
-                # Add Flow Journey title HERE (after stats) - consistent font
+                # Add Flow Journey title FIRST with explanation
                 st.markdown("""
-                <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 32px 0 24px 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui, -apple-system, sans-serif;">
+                <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 20px 0 16px 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui;">
                     🔄 <strong>Flow Journey</strong>
                 </h2>
+                <p style="font-size: 15px; color: #64748b; margin: 0 0 20px 0; line-height: 1.6; font-family: system-ui;">
+                    A <strong style="color: #0f172a;">flow</strong> is the complete user journey: <strong style="color: #0f172a;">Publisher → Creative → SERP → Landing Page</strong>. 
+                    Each stage can be customized using the filters above. We automatically select the best-performing combination based on conversions, clicks, and impressions.
+                </p>
                 """, unsafe_allow_html=True)
                 
-                # Show status message after Flow Journey title
-                if len(final_filtered) > 0:
+                # Show status message
+                if single_view is not None:
                     if st.session_state.view_mode == 'basic':
                         st.success("✨ Auto-selected based on best performance")
                     else:
                         st.success("✨ Use filters above to change flow")
+                
+                # Show selected flow stats AFTER title and status
+                if single_view is not None:
+                    render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs, flow_ctr, flow_cvr)
+                else:
+                    st.info("🎯 Selected Flow: No data available")
                 
                 # Render Flow Journey using module (heading now shown above)
                 render_flow_journey(
