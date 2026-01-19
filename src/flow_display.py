@@ -446,7 +446,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     st.caption(f"**Name:** {creative_name}")
                     st.caption(f"**Size:** {creative_size}")
         
-        creative_preview_container = creative_card_left if st.session_state.flow_layout == 'vertical' and creative_card_left else stage_2_container
+        creative_preview_container = stage_2_container
         response_value = current_flow.get('response', None)
         
         with creative_preview_container:
@@ -477,37 +477,35 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 </div>
                 """, unsafe_allow_html=True)
         
-        if st.session_state.flow_layout == 'vertical' and creative_card_right:
-            with creative_card_right:
-                # Add spacing at top
-                st.markdown("<div style='margin-top: 8px;'></div>", unsafe_allow_html=True)
-                
-                keyword = current_flow.get('keyword_term', 'N/A')
-                creative_size = current_flow.get('creative_size', 'N/A')
-                creative_name = current_flow.get('creative_template_name', 'N/A')
-                
-                st.markdown("<h4 style='font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;'>🎨 Creative Details</h4>", unsafe_allow_html=True)
-                st.markdown(f"""
-                <div style="margin-bottom: 12px;">
-                    <div style="margin-bottom: 4px;"><strong style="font-size: 13px; color: #0f172a;">Keyword:</strong></div>
-                    <div style="margin-left: 8px; margin-bottom: 8px; color: #64748b;">{keyword}</div>
-                    <div style="margin-bottom: 4px;"><strong style="font-size: 13px; color: #0f172a;">Size:</strong></div>
-                    <div style="margin-left: 8px; margin-bottom: 8px; color: #64748b;">{creative_size}</div>
-                    {f'<div style="margin-bottom: 4px;"><strong style="font-size: 13px; color: #0f172a;">Template:</strong></div><div style="margin-left: 8px; margin-bottom: 8px; color: #64748b;">{creative_name}</div>' if creative_name != 'N/A' else ''}
-                </div>
-                """, unsafe_allow_html=True)
-                
-                if 'similarities' not in st.session_state or st.session_state.similarities is None:
-                    if api_key:
-                        st.session_state.similarities = calculate_similarities(current_flow)
-                    else:
-                        st.session_state.similarities = {}
-                
-                if 'similarities' in st.session_state and st.session_state.similarities:
-                    # Show Keyword → Ad similarity
-                    render_similarity_score('kwd_to_ad', st.session_state.similarities,
-                                           custom_title="Keyword → Ad Copy Similarity",
-                                           tooltip_text="Measures how well the ad creative matches the search keyword. Higher scores indicate better keyword-ad alignment.")
+        if st.session_state.flow_layout == 'vertical':
+            # Show creative details BELOW the card
+            keyword = current_flow.get('keyword_term', 'N/A')
+            creative_size = current_flow.get('creative_size', 'N/A')
+            creative_name = current_flow.get('creative_template_name', 'N/A')
+            
+            st.markdown("<div style='margin-top: 12px;'></div>", unsafe_allow_html=True)
+            st.markdown("<h4 style='font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;'>🎨 Creative Details</h4>", unsafe_allow_html=True)
+            st.markdown(f"""
+            <div style="margin-bottom: 12px;">
+                <div style="margin-bottom: 4px;"><strong style="font-size: 13px; color: #0f172a;">Keyword:</strong></div>
+                <div style="margin-left: 8px; margin-bottom: 8px; color: #64748b;">{keyword}</div>
+                <div style="margin-bottom: 4px;"><strong style="font-size: 13px; color: #0f172a;">Size:</strong></div>
+                <div style="margin-left: 8px; margin-bottom: 8px; color: #64748b;">{creative_size}</div>
+                {f'<div style="margin-bottom: 4px;"><strong style="font-size: 13px; color: #0f172a;">Template:</strong></div><div style="margin-left: 8px; margin-bottom: 8px; color: #64748b;">{creative_name}</div>' if creative_name != 'N/A' else ''}
+            </div>
+            """, unsafe_allow_html=True)
+            
+            if 'similarities' not in st.session_state or st.session_state.similarities is None:
+                if api_key:
+                    st.session_state.similarities = calculate_similarities(current_flow)
+                else:
+                    st.session_state.similarities = {}
+            
+            if 'similarities' in st.session_state and st.session_state.similarities:
+                # Show Keyword → Ad similarity
+                render_similarity_score('kwd_to_ad', st.session_state.similarities,
+                                       custom_title="Keyword → Ad Copy Similarity",
+                                       tooltip_text="Measures how well the ad creative matches the search keyword. Higher scores indicate better keyword-ad alignment.")
         
         # Close wrapper div for horizontal layout
         if st.session_state.flow_layout == 'horizontal':
