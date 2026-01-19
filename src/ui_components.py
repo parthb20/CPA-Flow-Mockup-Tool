@@ -15,14 +15,14 @@ def render_flow_combinations_table(campaign_df):
         st.warning("Could not generate table - missing required columns")
         return
     
-    # Table filter controls
-    table_col1, table_col2, table_col3 = st.columns(3)
+    # Table filter controls - COMPACT
+    table_col1, table_col2, table_col3, spacer = st.columns([1, 1, 1.5, 2])
     with table_col1:
         table_filter = st.selectbox("Filter:", ['Best', 'Worst', 'Overall'], index=0, key='table_filter')
     with table_col2:
         table_count = st.selectbox("Rows:", [5, 10, 15], index=1, key='table_count')
     with table_col3:
-        table_sort = st.selectbox("Sort by:", ['Impressions', 'Clicks', 'Conversions', 'CTR', 'CVR'], index=0, key='table_sort')
+        table_sort = st.selectbox("Sort:", ['Impressions', 'Clicks', 'Conversions', 'CTR', 'CVR'], index=0, key='table_sort')
     
     # Aggregate by domain + keyword
     agg_df = campaign_df.groupby(['publisher_domain', 'keyword_term']).agg({
