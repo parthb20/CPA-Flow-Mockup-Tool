@@ -495,32 +495,24 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     flow_cvr = (flow_convs / flow_clicks * 100) if flow_clicks > 0 else 0
                     
                     render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs, flow_ctr, flow_cvr)
-                    
+                else:
+                    st.info("🎯 Selected Flow: No data available")
+                
+                # Add Flow Journey title HERE (after stats) - consistent font
+                st.markdown("""
+                <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 32px 0 24px 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui, -apple-system, sans-serif;">
+                    🔄 <strong>Flow Journey</strong>
+                </h2>
+                """, unsafe_allow_html=True)
+                
+                # Show status message after Flow Journey title
+                if len(final_filtered) > 0:
                     if st.session_state.view_mode == 'basic':
                         st.success("✨ Auto-selected based on best performance")
                     else:
                         st.success("✨ Use filters above to change flow")
-                else:
-                    st.info("🎯 Selected Flow: No data available")
                 
-                # ZERO spacing before Flow Journey - AGGRESSIVE CSS
-                st.markdown("""
-                <style>
-                /* Kill ALL spacing between success message and Flow Journey */
-                .stSuccess + div,
-                .stInfo + div {
-                    margin-top: 0 !important;
-                    padding-top: 0 !important;
-                }
-                /* Remove spacing from next section */
-                section[data-testid="stVerticalBlock"] > div {
-                    margin-top: 0 !important;
-                }
-                </style>
-                <div style="height:0;margin:0;padding:0;line-height:0;"></div>
-                """, unsafe_allow_html=True)
-                
-                # Render Flow Journey using module
+                # Render Flow Journey using module (heading now shown above)
                 render_flow_journey(
                     campaign_df=campaign_df,
                     current_flow=current_flow,
