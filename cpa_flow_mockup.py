@@ -334,25 +334,7 @@ if not st.session_state.loading_done:
             st.error(f"❌ Error loading data: {str(e)}")
             st.session_state.loading_done = True
 
-# View mode toggle
-view_col1, view_col2, view_col3 = st.columns([1, 1, 4])
-with view_col1:
-    if st.button("📊 Basic View", type="primary" if st.session_state.view_mode == 'basic' else "secondary"):
-        # Preserve current flow when switching modes
-        if 'current_flow' in st.session_state and st.session_state.current_flow:
-            # Keep the current flow, don't reset it
-            pass
-        st.session_state.view_mode = 'basic'
-        st.rerun()
-with view_col2:
-    if st.button("⚙️ Advanced View", type="primary" if st.session_state.view_mode == 'advanced' else "secondary"):
-        # Preserve current flow when switching modes
-        if 'current_flow' in st.session_state and st.session_state.current_flow:
-            # Keep the current flow, don't reset it
-            pass
-        st.session_state.view_mode = 'advanced'
-        st.rerun()
-
+# No view mode toggle here - moved to flow controls
 # Reduce spacing - minimal margin
 st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
 
