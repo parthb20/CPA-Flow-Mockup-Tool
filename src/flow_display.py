@@ -37,14 +37,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         thumio_configured: Boolean indicating if screenshot API is configured (kept for backwards compatibility)
         thumio_referer_domain: Referer domain (kept for backwards compatibility)
     """
-    # Add Flow Journey title - NO gap above, consistent font
-    st.markdown("""
-    <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 0 0 24px 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui, -apple-system, sans-serif;">
-        🔄 <strong>Flow Journey</strong>
-    </h2>
-    """, unsafe_allow_html=True)
-    
-    # Layout and Device controls with labels ABOVE
+    # Layout and Device controls with labels ABOVE (Flow Journey title now shown in caller)
     control_col1, control_col2, control_col3 = st.columns([1, 1, 1])
     
     with control_col1:
@@ -789,7 +782,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         if st.session_state.flow_layout == 'vertical':
             landing_card_left, landing_card_right = st.columns([0.6, 0.4])
             with landing_card_left:
-                st.markdown('<h3 style="font-size: 36px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; letter-spacing: -1px; font-family: system-ui, -apple-system, sans-serif;"><strong>🎯 Landing Page</strong></h3>', unsafe_allow_html=True)
+                st.markdown('<h3 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 0 0 16px 0; padding-top: 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui, -apple-system, sans-serif;"><strong>🎯 Landing Page</strong></h3>', unsafe_allow_html=True)
         else:
             st.markdown('<h3 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; padding-top: 0;"><strong>🎯 Landing Page</strong></h3>', unsafe_allow_html=True)
         
