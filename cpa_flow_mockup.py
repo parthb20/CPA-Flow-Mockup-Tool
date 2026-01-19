@@ -310,13 +310,13 @@ for key in ['data_a', 'data_b', 'loading_done', 'default_flow', 'current_flow', 
         else:
             st.session_state[key] = None
 
-# Proper SaaS-style title - REALLY BIG and BOLD (like a logo)
+# Main title - BIG and BOLD at top
 st.markdown("""
-    <div style="margin-bottom: 8px; margin-top: -60px; padding-top: 0px; padding-bottom: 8px; border-bottom: 3px solid #e2e8f0;">
-                        <h1 class="main-title" style="font-size: 72px !important; font-weight: 900 !important; color: #0f172a !important; margin: 0 !important; padding: 0 !important; text-align: left !important; line-height: 1.3 !important; letter-spacing: 0.01em !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif !important; text-shadow: 1px 1px 2px rgba(0,0,0,0.1) !important; pointer-events: none !important; user-select: none !important; word-spacing: normal !important;">
-                            📊 CPA Flow Analysis
-                        </h1>
-            </div>
+    <div style="margin: 0 0 20px 0; padding: 20px 0 16px 0; border-bottom: 3px solid #e2e8f0;">
+        <h1 style="font-size: 64px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui, -apple-system, sans-serif;">
+            📊 <strong>CPA Flow Analysis</strong>
+        </h1>
+    </div>
 """, unsafe_allow_html=True)
 
 # Auto-load from Google Drive (sequential loading for Streamlit Cloud compatibility)
