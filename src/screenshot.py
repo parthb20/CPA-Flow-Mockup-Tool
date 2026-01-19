@@ -147,8 +147,14 @@ def capture_with_playwright(url, device='mobile'):
             
             html_content = page.content()
             browser.close()
-            return (html_content, 200)
+            return html_content
             
     except Exception as e:
-        # Return error without calling screenshot API
-        return (None, 'error')
+        # ONLY use screenshot API on 403 errors - not for other errors!
+        # This prevents burning through API credits on Playwright missing, timeouts, etc
+        error_str = str(e).lower()
+        if '403' in error_str or 'forbidden' in error_str:
+            screenshot_url = get_screenshot_url(url, device=device)
+            if screenshot_url:
+                return f'<!-- SCREENSHOT_FALLBACK --><img src="{screenshot_url}" style="width:100%;height:auto;" />'
+        return None
