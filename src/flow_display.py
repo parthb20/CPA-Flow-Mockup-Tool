@@ -37,7 +37,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         thumio_configured: Boolean indicating if screenshot API is configured (kept for backwards compatibility)
         thumio_referer_domain: Referer domain (kept for backwards compatibility)
     """
-    # Layout and Device controls - EXTRA COMPACT with custom CSS
+    # Layout and Device controls - COMPACT and TOGETHER
     st.markdown("""
     <style>
     /* Make dropdowns extra compact */
@@ -52,10 +52,11 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     </style>
     """, unsafe_allow_html=True)
     
-    control_col1, control_col2, control_col3, spacer = st.columns([1.2, 1.2, 1.2, 4])
+    # Bring dropdowns closer together
+    control_col1, control_col2, spacer = st.columns([1.5, 1.5, 5])
     
     with control_col1:
-        st.markdown('<p style="font-size: 13px; font-weight: 900; color: #0f172a; margin: 0 0 4px 0; font-family: system-ui;">Layout</p>', unsafe_allow_html=True)
+        st.markdown('<p style="font-size: 13px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;">Layout</p>', unsafe_allow_html=True)
         layout_choice = st.selectbox("", ['↔️ Horizontal', '↕️ Vertical'], 
                                      index=0 if st.session_state.flow_layout == 'horizontal' else 1, 
                                      key='layout_dropdown', label_visibility="collapsed")
@@ -64,8 +65,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             st.session_state.flow_layout = 'horizontal' if layout_choice == '↔️ Horizontal' else 'vertical'
             st.rerun()
     
-    with control_col3:
-        st.markdown('<p style="font-size: 13px; font-weight: 900; color: #0f172a; margin: 0 0 4px 0; font-family: system-ui;">Device</p>', unsafe_allow_html=True)
+    with control_col2:
+        st.markdown('<p style="font-size: 13px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;">Device</p>', unsafe_allow_html=True)
         device_all = st.selectbox("", ['📱 Mobile', '📱 Tablet', '💻 Laptop'], 
                                  key='device_all', index=0, label_visibility="collapsed")
         # Extract actual device name
