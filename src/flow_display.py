@@ -72,36 +72,41 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         # Extract actual device name
         device_all = device_all.split(' ')[1].lower()
     
-    # CLEAN CSS - Proper spacing without negative margins
+    # CLEAN CSS - MINIMAL spacing
     st.markdown("""
     <style>
-    /* Remove excess radio spacing but add breathing room */
+    /* Minimal spacing */
     .stRadio { 
-        margin: 0 0 20px 0 !important; 
+        margin: 0 0 8px 0 !important; 
         padding: 0 !important; 
     }
     
-    /* Add padding to columns to prevent text overlap with cards */
+    /* Minimal padding for columns */
     [data-testid="column"] {
-        padding: 12px 8px !important;
+        padding: 8px 6px !important;
         margin: 0 !important;
     }
     
-    /* Ensure titles have proper spacing */
+    /* Minimal title spacing */
     [data-testid="column"] h3:first-child {
         margin-top: 0 !important;
         padding-top: 0 !important;
-        margin-bottom: 12px !important;
+        margin-bottom: 8px !important;
     }
     
-    /* Add spacing between elements inside columns */
+    /* Minimal spacing between elements */
     [data-testid="column"] .element-container {
-        margin-top: 12px !important;
+        margin-top: 6px !important;
     }
     
-    /* First element should have no top margin */
+    /* First element no margin */
     [data-testid="column"] > div > .element-container:first-child {
         margin-top: 0 !important;
+    }
+    
+    /* Reduce gap before similarity section */
+    section[data-testid="stVerticalBlock"] {
+        gap: 0.5rem !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -499,8 +504,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         st.session_state.similarities = {}
                 
                 if 'similarities' in st.session_state and st.session_state.similarities:
-                    st.markdown("<h4 style='font-size: 18px; font-weight: 700; color: #0f172a; margin: 12px 0 8px 0;'>🔗 Keyword → Ad Copy Similarity</h4>", unsafe_allow_html=True)
-                    render_similarity_score('kwd_to_ad', st.session_state.similarities)
+                    # Similarity score already shown in horizontal layout, skip duplicate
         
         # Close wrapper div for horizontal layout
         if st.session_state.flow_layout == 'horizontal':
