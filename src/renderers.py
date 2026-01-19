@@ -61,9 +61,9 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         url_display = display_url if display_url else (content if is_url else "URL")
         url_display_short = url_display[:40] + "..." if len(url_display) > 40 else url_display
         device_chrome = f"""
-        <div style="background: #000; color: white; padding: 6px 20px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 500; height: 44px; box-sizing: border-box;">
+        <div style="background: #000; color: white; padding: 4px 16px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 500; height: 22px; box-sizing: border-box;">
             <div>9:41</div>
-            <div style="display: flex; gap: 4px; align-items: center;">
+            <div style="display: flex; gap: 3px; align-items: center; font-size: 11px;">
                 <span>📶</span>
                 <span>📡</span>
                 <span>🔋</span>
