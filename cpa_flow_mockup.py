@@ -491,18 +491,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 else:
                     single_view = None
                 
-                # View mode toggle BEFORE Flow Journey title
-                toggle_col1, toggle_col2, toggle_col3 = st.columns([1, 1, 5])
-                with toggle_col1:
-                    if st.button("📊 Basic View", use_container_width=True, type="primary" if st.session_state.view_mode == 'basic' else "secondary"):
-                        st.session_state.view_mode = 'basic'
-                        st.rerun()
-                with toggle_col2:
-                    if st.button("🔧 Advanced", use_container_width=True, type="primary" if st.session_state.view_mode == 'advanced' else "secondary"):
-                        st.session_state.view_mode = 'advanced'
-                        st.rerun()
-                
-                st.markdown("<div style='margin: 6px 0;'></div>", unsafe_allow_html=True)
+                # No toggle here - will be added near the flow
+                st.markdown("<div style='margin: 2px 0;'></div>", unsafe_allow_html=True)
                 
                 # Add Flow Journey title with explanation - REDUCED GAPS
                 st.markdown("""
