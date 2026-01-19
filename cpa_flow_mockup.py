@@ -445,7 +445,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             render_what_is_flow_section()
             
             # NO spacing before Flow Journey
-            st.markdown("<div style='margin-top: 0; margin-bottom: 0;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top: 2px; margin-bottom: 2px;'></div>", unsafe_allow_html=True)
             
             # Find default flow if not set
             if st.session_state.default_flow is None:
@@ -491,12 +491,25 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 else:
                     single_view = None
                 
-                # Add Flow Journey title FIRST with explanation
+                # View mode toggle BEFORE Flow Journey title
+                toggle_col1, toggle_col2, toggle_col3 = st.columns([1, 1, 5])
+                with toggle_col1:
+                    if st.button("📊 Basic View", use_container_width=True, type="primary" if st.session_state.view_mode == 'basic' else "secondary"):
+                        st.session_state.view_mode = 'basic'
+                        st.rerun()
+                with toggle_col2:
+                    if st.button("🔧 Advanced", use_container_width=True, type="primary" if st.session_state.view_mode == 'advanced' else "secondary"):
+                        st.session_state.view_mode = 'advanced'
+                        st.rerun()
+                
+                st.markdown("<div style='margin: 6px 0;'></div>", unsafe_allow_html=True)
+                
+                # Add Flow Journey title with explanation - REDUCED GAPS
                 st.markdown("""
-                <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 20px 0 12px 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui;">
-                    🔄 Flow Journey
+                <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 4px 0 4px 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui;">
+                    <strong>🔄 Flow Journey</strong>
                 </h2>
-                <p style="font-size: 15px; color: #64748b; font-weight: 400; margin: 0 0 12px 0; line-height: 1.6; font-family: system-ui;">
+                <p style="font-size: 15px; color: #64748b; font-weight: 400; margin: 0 0 4px 0; line-height: 1.6; font-family: system-ui;">
                     A flow is the complete user journey: Publisher → Creative → SERP → Landing Page. 
                     Each stage can be customized using the filters above. We automatically select the best-performing combination based on conversions, clicks, and impressions.
                 </p>
