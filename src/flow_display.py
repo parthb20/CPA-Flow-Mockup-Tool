@@ -37,28 +37,21 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         thumio_configured: Boolean indicating if screenshot API is configured (kept for backwards compatibility)
         thumio_referer_domain: Referer domain (kept for backwards compatibility)
     """
-    # Add Flow Journey title - REDUCED gap above
+    # Add Flow Journey title - NO gap above
     st.markdown("""
-    <h2 style="font-size: 52px; font-weight: 900; color: #0f172a; margin: 4px 0 16px 0; padding: 0; line-height: 1;">
+    <h2 style="font-size: 56px; font-weight: 900; color: #0f172a; margin: 0 0 20px 0; padding: 0; line-height: 1; letter-spacing: -1px;">
         🔄 <strong>Flow Journey</strong>
     </h2>
     """, unsafe_allow_html=True)
     
-    # Headings in ONE LINE
+    # Layout heading and buttons
     st.markdown("""
-    <div style="display: flex; gap: 20px; margin-bottom: 8px;">
-        <h3 style="font-size: 16px; font-weight: 700; color: #475569; margin: 0; flex: 2;">
-            <strong>Layout:</strong>
-        </h3>
-        <h3 style="font-size: 16px; font-weight: 700; color: #475569; margin: 0; flex: 2;">
-            <strong>Device:</strong>
-        </h3>
-    </div>
+    <h3 style="font-size: 18px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">
+        <strong>Layout</strong>
+    </h3>
     """, unsafe_allow_html=True)
     
-    # Buttons and dropdown in ONE LINE below headings
-    layout_col1, layout_col2, device_col = st.columns([1, 1, 2])
-    
+    layout_col1, layout_col2 = st.columns([1, 1])
     with layout_col1:
         if st.button("↔️ Horizontal", key='horiz_flow_btn', type="primary" if st.session_state.flow_layout == 'horizontal' else "secondary", use_container_width=True):
             st.session_state.flow_layout = 'horizontal'
@@ -67,11 +60,15 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         if st.button("↕️ Vertical", key='vert_flow_btn', type="primary" if st.session_state.flow_layout == 'vertical' else "secondary", use_container_width=True):
             st.session_state.flow_layout = 'vertical'
             st.rerun()
-    with device_col:
-        device_all = st.selectbox("", ['mobile', 'tablet', 'laptop'], key='device_all', index=0, label_visibility="collapsed")
     
-    # Add minimal spacing before flow cards
-    st.markdown("<div style='margin: 12px 0;'></div>", unsafe_allow_html=True)
+    # Device heading and dropdown
+    st.markdown("""
+    <h3 style="font-size: 18px; font-weight: 900; color: #0f172a; margin: 16px 0 8px 0;">
+        <strong>Device</strong>
+    </h3>
+    """, unsafe_allow_html=True)
+    
+    device_all = st.selectbox("", ['mobile', 'tablet', 'laptop'], key='device_all', index=0, label_visibility="collapsed")
     
     # CLEAN CSS - Proper spacing without negative margins
     st.markdown("""
@@ -231,7 +228,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             with card_col_left:
                 st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">📰 Publisher URL</h3>', unsafe_allow_html=True)
         else:
-            st.markdown('<h3 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; padding-top: 0; text-shadow: 0 1px 2px rgba(0,0,0,0.1); letter-spacing: -0.5px;"><strong>📰 Publisher URL</strong></h3>', unsafe_allow_html=True)
+            st.markdown('<h3 style="font-size: 36px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; padding-top: 0; text-shadow: 0 1px 2px rgba(0,0,0,0.1); letter-spacing: -1px; font-family: system-ui, -apple-system, sans-serif;"><strong>📰 Publisher URL</strong></h3>', unsafe_allow_html=True)
         
         pub_url = current_flow.get('publisher_url', '')
         preview_container = card_col_left if st.session_state.flow_layout == 'vertical' and card_col_left else stage_1_container
@@ -426,7 +423,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             with creative_card_left:
                 st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">🎨 Creative</h3>', unsafe_allow_html=True)
         else:
-            st.markdown('<h3 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; padding-top: 0; text-shadow: 0 1px 2px rgba(0,0,0,0.1); letter-spacing: -0.5px;"><strong>🎨 Creative</strong></h3>', unsafe_allow_html=True)
+            st.markdown('<h3 style="font-size: 36px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; padding-top: 0; text-shadow: 0 1px 2px rgba(0,0,0,0.1); letter-spacing: -1px; font-family: system-ui, -apple-system, sans-serif;"><strong>🎨 Creative</strong></h3>', unsafe_allow_html=True)
         
         creative_id = current_flow.get('creative_id', 'N/A')
         creative_name = current_flow.get('creative_template_name', 'N/A')
@@ -541,7 +538,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         if st.session_state.flow_layout == 'vertical':
             serp_card_left, serp_card_right = st.columns([0.6, 0.4])
             with serp_card_left:
-                st.markdown('<h3 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; letter-spacing: -0.5px;"><strong>📄 SERP</strong></h3>', unsafe_allow_html=True)
+                st.markdown('<h3 style="font-size: 36px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; letter-spacing: -1px; font-family: system-ui, -apple-system, sans-serif;"><strong>📄 SERP</strong></h3>', unsafe_allow_html=True)
         else:
             st.markdown('<h3 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; padding-top: 0;">📄 SERP</h3>', unsafe_allow_html=True)
         
@@ -799,7 +796,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         if st.session_state.flow_layout == 'vertical':
             landing_card_left, landing_card_right = st.columns([0.6, 0.4])
             with landing_card_left:
-                st.markdown('<h3 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; letter-spacing: -0.5px;"><strong>🎯 Landing Page</strong></h3>', unsafe_allow_html=True)
+                st.markdown('<h3 style="font-size: 36px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; letter-spacing: -1px; font-family: system-ui, -apple-system, sans-serif;"><strong>🎯 Landing Page</strong></h3>', unsafe_allow_html=True)
         else:
             st.markdown('<h3 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; padding-top: 0;"><strong>🎯 Landing Page</strong></h3>', unsafe_allow_html=True)
         
