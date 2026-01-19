@@ -44,14 +44,19 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     </h2>
     """, unsafe_allow_html=True)
     
-    # Layout heading and buttons
+    # Layout and Device in ONE LINE with headings
     st.markdown("""
-    <h3 style="font-size: 18px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;">
-        <strong>Layout</strong>
-    </h3>
+    <div style="display: flex; gap: 24px; align-items: flex-start; margin-bottom: 8px;">
+        <div style="flex: 1;">
+            <h3 style="font-size: 18px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;"><strong>Layout</strong></h3>
+        </div>
+        <div style="flex: 1;">
+            <h3 style="font-size: 18px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0;"><strong>Device</strong></h3>
+        </div>
+    </div>
     """, unsafe_allow_html=True)
     
-    layout_col1, layout_col2 = st.columns([1, 1])
+    layout_col1, layout_col2, device_col = st.columns([1, 1, 1])
     with layout_col1:
         if st.button("↔️ Horizontal", key='horiz_flow_btn', type="primary" if st.session_state.flow_layout == 'horizontal' else "secondary", use_container_width=True):
             st.session_state.flow_layout = 'horizontal'
@@ -60,15 +65,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         if st.button("↕️ Vertical", key='vert_flow_btn', type="primary" if st.session_state.flow_layout == 'vertical' else "secondary", use_container_width=True):
             st.session_state.flow_layout = 'vertical'
             st.rerun()
-    
-    # Device heading and dropdown
-    st.markdown("""
-    <h3 style="font-size: 18px; font-weight: 900; color: #0f172a; margin: 16px 0 8px 0;">
-        <strong>Device</strong>
-    </h3>
-    """, unsafe_allow_html=True)
-    
-    device_all = st.selectbox("", ['mobile', 'tablet', 'laptop'], key='device_all', index=0, label_visibility="collapsed")
+    with device_col:
+        device_all = st.selectbox("", ['mobile', 'tablet', 'laptop'], key='device_all', index=0, label_visibility="collapsed")
     
     # CLEAN CSS - Proper spacing without negative margins
     st.markdown("""
