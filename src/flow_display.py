@@ -505,6 +505,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 
                 if 'similarities' in st.session_state and st.session_state.similarities:
                     # Similarity score already shown in horizontal layout, skip duplicate
+                    pass
         
         # Close wrapper div for horizontal layout
         if st.session_state.flow_layout == 'horizontal':
