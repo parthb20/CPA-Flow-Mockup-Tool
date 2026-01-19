@@ -219,7 +219,7 @@ completion = client.chat.completions.create(
 def render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs, flow_ctr, flow_cvr):
     """Render the Selected Flow display with performance metrics"""
     st.markdown("""
-    <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #3b82f6; padding: 12px; border-radius: 8px; margin: 0 0 6px 0;">
+    <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #3b82f6; padding: 10px; border-radius: 8px; margin: 0 0 4px 0;">
         <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;">
             <div><strong style="color: #64748b; font-size: 13px; font-weight: 700;">Impressions</strong><div style="font-size: 20px; font-weight: 900; color: #0f172a;">{impressions:,}</div></div>
             <div><strong style="color: #64748b; font-size: 13px; font-weight: 700;">Clicks</strong><div style="font-size: 20px; font-weight: 900; color: #0f172a;">{clicks:,}</div></div>
