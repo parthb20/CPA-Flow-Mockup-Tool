@@ -235,34 +235,16 @@ completion = client.chat.completions.create(
 def render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs, flow_ctr, flow_cvr):
     """Render the Selected Flow display with performance metrics"""
     st.markdown("""
-    <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #3b82f6; padding: 12px; border-radius: 8px; margin-bottom: 8px;">
-        <h3 style="font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 8px 0;">🎯 Selected Flow</h3>
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 8px; font-size: 13px;">
-            <div><strong style="color: #0f172a;">Keyword:</strong> <span style="color: #475569;">{keyword}</span></div>
-            <div><strong style="color: #0f172a;">Domain:</strong> <span style="color: #475569;">{domain}</span></div>
-        </div>
-        <div style="margin-bottom: 8px; font-size: 13px;">
-            <div><strong style="color: #0f172a;">SERP:</strong> <span style="color: #475569;">{serp}</span></div>
-        </div>
-        <div style="margin-bottom: 8px; padding: 8px; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
-            <div style="font-weight: 700; color: #0f172a; font-size: 12px; margin-bottom: 4px;">Landing URL:</div>
-            <div style="word-break: break-all; overflow-wrap: anywhere; font-size: 10px; color: #3b82f6; line-height: 1.4;">
-                <a href="{landing_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{landing_url}</a>
-            </div>
-        </div>
-        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #cbd5e1;">
-            <div><strong style="color: #64748b; font-size: 12px;">Impressions</strong><div style="font-size: 18px; font-weight: 700; color: #0f172a;">{impressions:,}</div></div>
-            <div><strong style="color: #64748b; font-size: 12px;">Clicks</strong><div style="font-size: 18px; font-weight: 700; color: #0f172a;">{clicks:,}</div></div>
-            <div><strong style="color: #64748b; font-size: 12px;">Conversions</strong><div style="font-size: 18px; font-weight: 700; color: #0f172a;">{conversions:,}</div></div>
-            <div><strong style="color: #64748b; font-size: 12px;">CTR</strong><div style="font-size: 18px; font-weight: 700; color: #0f172a;">{ctr:.2f}%</div></div>
-            <div><strong style="color: #64748b; font-size: 12px;">CVR</strong><div style="font-size: 18px; font-weight: 700; color: #0f172a;">{cvr:.2f}%</div></div>
+    <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #3b82f6; padding: 16px; border-radius: 8px; margin: 0;">
+        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;">
+            <div><strong style="color: #64748b; font-size: 13px; font-weight: 700;">Impressions</strong><div style="font-size: 20px; font-weight: 900; color: #0f172a;">{impressions:,}</div></div>
+            <div><strong style="color: #64748b; font-size: 13px; font-weight: 700;">Clicks</strong><div style="font-size: 20px; font-weight: 900; color: #0f172a;">{clicks:,}</div></div>
+            <div><strong style="color: #64748b; font-size: 13px; font-weight: 700;">Conversions</strong><div style="font-size: 20px; font-weight: 900; color: #0f172a;">{conversions:,}</div></div>
+            <div><strong style="color: #64748b; font-size: 13px; font-weight: 700;">CTR</strong><div style="font-size: 20px; font-weight: 900; color: #0f172a;">{ctr:.2f}%</div></div>
+            <div><strong style="color: #64748b; font-size: 13px; font-weight: 700;">CVR</strong><div style="font-size: 20px; font-weight: 900; color: #0f172a;">{cvr:.2f}%</div></div>
         </div>
     </div>
     """.format(
-        keyword=html.escape(str(single_view.get('keyword_term', 'N/A'))),
-        domain=html.escape(str(single_view.get('publisher_domain', 'N/A'))),
-        serp=html.escape(str(single_view.get('serp_template_name', 'N/A'))),
-        landing_url=html.escape(str(single_view.get('reporting_destination_url', 'N/A'))),
         impressions=flow_imps,
         clicks=flow_clicks,
         conversions=flow_convs,

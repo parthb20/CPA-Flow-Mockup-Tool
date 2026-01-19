@@ -39,18 +39,24 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     """
     # Add Flow Journey title - REDUCED gap above
     st.markdown("""
-    <h2 style="font-size: 52px; font-weight: 900; color: #0f172a; margin: 8px 0 20px 0; padding: 0; line-height: 1;">
+    <h2 style="font-size: 52px; font-weight: 900; color: #0f172a; margin: 4px 0 16px 0; padding: 0; line-height: 1;">
         🔄 <strong>Flow Journey</strong>
     </h2>
     """, unsafe_allow_html=True)
     
-    # Layout and Device selection in ONE LINE - before flow info
+    # Headings in ONE LINE
     st.markdown("""
-    <h3 style="font-size: 18px; font-weight: 700; color: #475569; margin: 0 0 12px 0;">
-        <strong>Layout & Device Selection</strong>
-    </h3>
+    <div style="display: flex; gap: 20px; margin-bottom: 8px;">
+        <h3 style="font-size: 16px; font-weight: 700; color: #475569; margin: 0; flex: 2;">
+            <strong>Layout:</strong>
+        </h3>
+        <h3 style="font-size: 16px; font-weight: 700; color: #475569; margin: 0; flex: 2;">
+            <strong>Device:</strong>
+        </h3>
+    </div>
     """, unsafe_allow_html=True)
     
+    # Buttons and dropdown in ONE LINE below headings
     layout_col1, layout_col2, device_col = st.columns([1, 1, 2])
     
     with layout_col1:
@@ -62,7 +68,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             st.session_state.flow_layout = 'vertical'
             st.rerun()
     with device_col:
-        device_all = st.selectbox("**Device:**", ['mobile', 'tablet', 'laptop'], key='device_all', index=0)
+        device_all = st.selectbox("", ['mobile', 'tablet', 'laptop'], key='device_all', index=0, label_visibility="collapsed")
+    
+    # Add minimal spacing before flow cards
+    st.markdown("<div style='margin: 12px 0;'></div>", unsafe_allow_html=True)
     
     # CLEAN CSS - Proper spacing without negative margins
     st.markdown("""
