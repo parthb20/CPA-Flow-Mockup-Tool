@@ -15,14 +15,14 @@ def render_flow_combinations_table(campaign_df):
         st.warning("Could not generate table - missing required columns")
         return
     
-    # Table filter controls
-    table_col1, table_col2, table_col3 = st.columns(3)
+    # Table filter controls - COMPACT
+    table_col1, table_col2, table_col3, spacer = st.columns([1, 1, 1.5, 2])
     with table_col1:
         table_filter = st.selectbox("Filter:", ['Best', 'Worst', 'Overall'], index=0, key='table_filter')
     with table_col2:
         table_count = st.selectbox("Rows:", [5, 10, 15], index=1, key='table_count')
     with table_col3:
-        table_sort = st.selectbox("Sort by:", ['Impressions', 'Clicks', 'Conversions', 'CTR', 'CVR'], index=0, key='table_sort')
+        table_sort = st.selectbox("Sort:", ['Impressions', 'Clicks', 'Conversions', 'CTR', 'CVR'], index=0, key='table_sort')
     
     # Aggregate by domain + keyword
     agg_df = campaign_df.groupby(['publisher_domain', 'keyword_term']).agg({
@@ -170,24 +170,8 @@ def render_flow_combinations_table(campaign_df):
 
 
 def render_what_is_flow_section():
-    """Render the 'What is a Flow?' explanation section"""
-    st.markdown("""
-    <h2 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; display: block;"><strong>🔄 Flow Journey</strong></h2>
-    <div style="background: #f8fafc; padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6; margin: 4px 0;">
-        <h3 style="font-size: 20px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0;">What is a Flow?</h3>
-        <p style="font-size: 15px; color: #334155; margin: 8px 0; line-height: 1.6;">
-            A <strong style="font-weight: 700; color: #0f172a;">flow</strong> is the complete path a user takes from seeing your ad to reaching your landing page.
-        </p>
-        <p style="font-size: 15px; color: #334155; margin: 8px 0; line-height: 1.6;">
-            <strong style="font-weight: 700; color: #0f172a;">Publisher</strong> → <strong style="font-weight: 700; color: #0f172a;">Creative</strong> → <strong style="font-weight: 700; color: #0f172a;">SERP</strong> → <strong style="font-weight: 700; color: #0f172a;">Landing Page</strong>
-        </p>
-        <ul style="font-size: 15px; color: #334155; margin: 8px 0; padding-left: 20px; line-height: 1.8;">
-            <li>Each combination creates a <strong style="font-weight: 600;">unique flow</strong></li>
-            <li>We show the <strong style="font-weight: 600;">best performing flow</strong> automatically</li>
-            <li>You can <strong style="font-weight: 600;">customize any part</strong> to see how it changes</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
+    """Render the 'What is a Flow?' explanation section - DISABLED"""
+    pass  # Removed per user request
 
 
 def render_api_key_info_section():
