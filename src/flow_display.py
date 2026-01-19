@@ -401,15 +401,14 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         # Close wrapper div for horizontal layout
         if st.session_state.flow_layout == 'horizontal':
-            # Show info BELOW card preview in horizontal layout
-            if st.session_state.view_mode == 'basic':
-                st.markdown(f"""
-                <div style='margin-top: 8px; font-size: 13px;'>
-                    <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Domain</strong></div>
-                    <div style='margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;'>{html.escape(str(current_dom))}</div>
-                    {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{current_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
-                </div>
-                """, unsafe_allow_html=True)
+            # Show info BELOW card preview in horizontal layout - ALWAYS show
+            st.markdown(f"""
+            <div style='margin-top: 12px; font-size: 13px;'>
+                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'><strong>Domain</strong></div>
+                <div style='margin-left: 0; margin-top: 4px; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 12px;'>{html.escape(str(current_dom))}</div>
+                {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 11px;"><a href="{current_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
+            </div>
+            """, unsafe_allow_html=True)
     
     # Arrow divs removed - no longer needed
     
