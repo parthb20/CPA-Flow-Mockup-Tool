@@ -310,12 +310,12 @@ for key in ['data_a', 'data_b', 'loading_done', 'default_flow', 'current_flow', 
         else:
             st.session_state[key] = None
 
-# Proper SaaS-style title - REALLY BIG and BOLD (like a logo)
+# Main title - BIG and BOLD at top
 st.markdown("""
-    <div style="margin-bottom: 8px; margin-top: -60px; padding-top: 0px; padding-bottom: 8px; border-bottom: 3px solid #e2e8f0;">
-                        <h1 class="main-title" style="font-size: 72px !important; font-weight: 900 !important; color: #0f172a !important; margin: 0 !important; padding: 0 !important; text-align: left !important; line-height: 1.3 !important; letter-spacing: 0.01em !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif !important; text-shadow: 1px 1px 2px rgba(0,0,0,0.1) !important; pointer-events: none !important; user-select: none !important; word-spacing: normal !important;">
-                            📊 CPA Flow Analysis
-                        </h1>
+    <div style="margin: 0 0 20px 0; padding: 20px 0 16px 0; border-bottom: 3px solid #e2e8f0;">
+        <h1 style="font-size: 64px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui, -apple-system, sans-serif;">
+            📊 <strong>CPA Flow Analysis</strong>
+        </h1>
     </div>
 """, unsafe_allow_html=True)
 
@@ -455,41 +455,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             
             if st.session_state.current_flow:
                 current_flow = st.session_state.current_flow
-                
-                # Flow layout toggle - lighter colors, bold and large
-                st.markdown("""
-                <style>
-                button[key='horiz_btn'], button[key='vert_btn'] {
-                    font-weight: 700 !important;
-                    font-size: 16px !important;
-                }
-                button[key='horiz_btn'][data-testid="baseButton-primary"] {
-                    background-color: #86efac !important;
-                    color: #166534 !important;
-                    border-color: #86efac !important;
-                }
-                button[key='vert_btn'][data-testid="baseButton-primary"] {
-                    background-color: #86efac !important;
-                    color: #166534 !important;
-                    border-color: #86efac !important;
-                }
-                button[key='horiz_btn'][data-testid="baseButton-secondary"],
-                button[key='vert_btn'][data-testid="baseButton-secondary"] {
-                    background-color: white !important;
-                    color: #0f172a !important;
-                    border-color: #cbd5e1 !important;
-                }
-                </style>
-                """, unsafe_allow_html=True)
-                layout_col1, layout_col2, layout_col3, layout_col4 = st.columns([1, 1, 3, 1])
-                with layout_col1:
-                    if st.button("↔️ **Horizontal**", key='horiz_btn', type="primary" if st.session_state.flow_layout == 'horizontal' else "secondary", use_container_width=True):
-                        st.session_state.flow_layout = 'horizontal'
-                        st.rerun()
-                with layout_col2:
-                    if st.button("↕️ **Vertical**", key='vert_btn', type="primary" if st.session_state.flow_layout == 'vertical' else "secondary", use_container_width=True):
-                        st.session_state.flow_layout = 'vertical'
-                        st.rerun()
                 
                 # Advanced mode: Show keyword and domain filters
                 if st.session_state.view_mode == 'advanced':
