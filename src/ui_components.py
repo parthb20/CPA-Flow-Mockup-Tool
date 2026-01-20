@@ -161,9 +161,9 @@ def render_flow_combinations_table(campaign_df):
     </table>
     """
     
-    # Calculate dynamic height - cap at 500px
+    # Calculate dynamic height - cap at 460px
     num_rows = len(agg_df)
-    table_height = min(500, max(200, 80 + (num_rows * 45)))
+    table_height = min(460, max(200, 80 + (num_rows * 45)))
     
     # Render table
     st.components.v1.html(table_html, height=table_height, scrolling=False)
@@ -221,11 +221,11 @@ def render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs
     st.markdown("""
     <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #3b82f6; padding: 10px; border-radius: 8px; margin: 0;">
         <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;">
-            <div><strong style="color: #64748b; font-size: 13px; font-weight: 700;">Impressions</strong><div style="font-size: 20px; font-weight: 900; color: #0f172a;">{impressions:,}</div></div>
-            <div><strong style="color: #64748b; font-size: 13px; font-weight: 700;">Clicks</strong><div style="font-size: 20px; font-weight: 900; color: #0f172a;">{clicks:,}</div></div>
-            <div><strong style="color: #64748b; font-size: 13px; font-weight: 700;">Conversions</strong><div style="font-size: 20px; font-weight: 900; color: #0f172a;">{conversions:,}</div></div>
-            <div><strong style="color: #64748b; font-size: 13px; font-weight: 700;">CTR</strong><div style="font-size: 20px; font-weight: 900; color: #0f172a;">{ctr:.2f}%</div></div>
-            <div><strong style="color: #64748b; font-size: 13px; font-weight: 700;">CVR</strong><div style="font-size: 20px; font-weight: 900; color: #0f172a;">{cvr:.2f}%</div></div>
+            <div><strong style="color: #64748b; font-size: 15px; font-weight: 700;">Impressions</strong><div style="font-size: 22px; font-weight: 900; color: #0f172a;">{impressions:,}</div></div>
+            <div><strong style="color: #64748b; font-size: 15px; font-weight: 700;">Clicks</strong><div style="font-size: 22px; font-weight: 900; color: #0f172a;">{clicks:,}</div></div>
+            <div><strong style="color: #64748b; font-size: 15px; font-weight: 700;">Conversions</strong><div style="font-size: 22px; font-weight: 900; color: #0f172a;">{conversions:,}</div></div>
+            <div><strong style="color: #64748b; font-size: 15px; font-weight: 700;">CTR</strong><div style="font-size: 22px; font-weight: 900; color: #0f172a;">{ctr:.2f}%</div></div>
+            <div><strong style="color: #64748b; font-size: 15px; font-weight: 700;">CVR</strong><div style="font-size: 22px; font-weight: 900; color: #0f172a;">{cvr:.2f}%</div></div>
         </div>
     </div>
     """.format(
