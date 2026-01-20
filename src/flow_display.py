@@ -74,6 +74,11 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         visibility: hidden !important;
         position: absolute !important;
     }
+    
+    /* Increase horizontal layout container height for URL space */
+    [data-testid="stHorizontalBlock"] {
+        min-height: 900px !important;
+    }
     </style>
     """, unsafe_allow_html=True)
     
