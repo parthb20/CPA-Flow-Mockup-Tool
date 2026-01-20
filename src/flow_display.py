@@ -40,37 +40,42 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     # Layout and Device controls - COMPACT and TOGETHER
     st.markdown("""
     <style>
-    /* Make dropdowns extra compact */
+    /* Make dropdowns extra compact and arrows clickable */
     div[data-testid="stSelectbox"] > div > div {
         min-height: 36px !important;
         height: 36px !important;
+        cursor: pointer !important;
     }
     div[data-testid="stSelectbox"] > div > div > div {
         padding: 6px 10px !important;
         font-size: 14px !important;
     }
+    div[data-testid="stSelectbox"] svg {
+        pointer-events: auto !important;
+        cursor: pointer !important;
+    }
     </style>
     """, unsafe_allow_html=True)
     
     # All controls in one row - Layout, Device, Domain, Keyword
-    control_col1, control_col2, control_col3, control_col4 = st.columns([1.2, 1.2, 2, 2])
+    control_col1, control_col2, control_col3, control_col4 = st.columns([1.2, 1.2, 1.5, 1.5])
     
     with control_col1:
         st.markdown('<p style="font-size: 13px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;">Layout</p>', unsafe_allow_html=True)
-        layout_choice = st.selectbox("", ['↔️ Horizontal', '↕️ Vertical'], 
+        layout_choice = st.selectbox("", ['Horizontal ↔️', 'Vertical ↕️'], 
                                      index=0 if st.session_state.flow_layout == 'horizontal' else 1, 
                                      key='layout_dropdown', label_visibility="collapsed")
-        if (layout_choice == '↔️ Horizontal' and st.session_state.flow_layout != 'horizontal') or \
-           (layout_choice == '↕️ Vertical' and st.session_state.flow_layout != 'vertical'):
-            st.session_state.flow_layout = 'horizontal' if layout_choice == '↔️ Horizontal' else 'vertical'
+        if (layout_choice == 'Horizontal ↔️' and st.session_state.flow_layout != 'horizontal') or \
+           (layout_choice == 'Vertical ↕️' and st.session_state.flow_layout != 'vertical'):
+            st.session_state.flow_layout = 'horizontal' if layout_choice == 'Horizontal ↔️' else 'vertical'
             st.rerun()
     
     with control_col2:
         st.markdown('<p style="font-size: 13px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;">Device</p>', unsafe_allow_html=True)
-        device_all = st.selectbox("", ['📱 Mobile', '📱 Tablet', '💻 Laptop'], 
+        device_all = st.selectbox("", ['Mobile', 'Tablet', 'Laptop'], 
                                  key='device_all', index=0, label_visibility="collapsed")
         # Extract actual device name
-        device_all = device_all.split(' ')[1].lower()
+        device_all = device_all.lower()
     
     with control_col3:
         st.markdown('<p style="font-size: 13px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;">Domain</p>', unsafe_allow_html=True)
@@ -253,9 +258,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         if st.session_state.flow_layout == 'vertical':
             card_col_left, card_col_right = st.columns([0.6, 0.4])
             with card_col_left:
-                st.markdown('<h3 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>📰 Publisher URL</strong></h3>', unsafe_allow_html=True)
+                st.markdown('<h3 style="font-size: 36px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>📰 Publisher URL</strong></h3>', unsafe_allow_html=True)
         else:
-            st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;"><strong>📰 Publisher URL</strong></h3>', unsafe_allow_html=True)
+            st.markdown('<h3 style="font-size: 26px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;"><strong>📰 Publisher URL</strong></h3>', unsafe_allow_html=True)
         
         pub_url = current_flow.get('publisher_url', '')
         preview_container = card_col_left if st.session_state.flow_layout == 'vertical' and card_col_left else stage_1_container
@@ -413,9 +418,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 """, unsafe_allow_html=True)
                 st.markdown(f"""
                 <div style="margin-bottom: 12px; font-size: 13px;">
-                    <div style="font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>Domain</strong></div>
-                    <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;">{html.escape(str(current_dom))}</div>
-                    {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 11px;"><a href="{current_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
+                    <div style="font-weight: 900; color: #0f172a; font-size: 16px; margin-bottom: 4px;"><strong>Domain</strong></div>
+                    <div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 13px;">{html.escape(str(current_dom))}</div>
+                    {f'<div style="margin-top: 10px; font-weight: 900; color: #0f172a; font-size: 16px; margin-bottom: 4px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 4px; word-break: break-word; color: #64748b; font-size: 12px;"><a href="{current_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
                 </div>
                 """, unsafe_allow_html=True)
         
@@ -447,9 +452,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         if st.session_state.flow_layout == 'vertical':
             creative_card_left, creative_card_right = st.columns([0.5, 0.5])
             with creative_card_left:
-                st.markdown('<h3 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>🎨 Creative</strong></h3>', unsafe_allow_html=True)
+                st.markdown('<h3 style="font-size: 36px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>🎨 Creative</strong></h3>', unsafe_allow_html=True)
         else:
-            st.markdown('<h3 style="font-size: 24px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;"><strong>🎨 Creative</strong></h3>', unsafe_allow_html=True)
+            st.markdown('<h3 style="font-size: 26px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;"><strong>🎨 Creative</strong></h3>', unsafe_allow_html=True)
         
         creative_id = current_flow.get('creative_id', 'N/A')
         creative_name = current_flow.get('creative_template_name', 'N/A')
@@ -562,9 +567,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         if st.session_state.flow_layout == 'vertical':
             serp_card_left, serp_card_right = st.columns([0.6, 0.4])
             with serp_card_left:
-                st.markdown('<h3 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>📄 SERP</strong></h3>', unsafe_allow_html=True)
+                st.markdown('<h3 style="font-size: 36px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>📄 SERP</strong></h3>', unsafe_allow_html=True)
         else:
-            st.markdown('<h3 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; font-family: system-ui;"><strong>📄 SERP</strong></h3>', unsafe_allow_html=True)
+            st.markdown('<h3 style="font-size: 26px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;"><strong>📄 SERP</strong></h3>', unsafe_allow_html=True)
         
         serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
         serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
@@ -816,9 +821,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         if st.session_state.flow_layout == 'vertical':
             landing_card_left, landing_card_right = st.columns([0.6, 0.4])
             with landing_card_left:
-                st.markdown('<h3 style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>🎯 Landing Page</strong></h3>', unsafe_allow_html=True)
+                st.markdown('<h3 style="font-size: 36px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>🎯 Landing Page</strong></h3>', unsafe_allow_html=True)
         else:
-            st.markdown('<h3 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 0 0 8px 0; font-family: system-ui;"><strong>🎯 Landing Page</strong></h3>', unsafe_allow_html=True)
+            st.markdown('<h3 style="font-size: 26px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;"><strong>🎯 Landing Page</strong></h3>', unsafe_allow_html=True)
         
         adv_url = current_flow.get('reporting_destination_url', '')
         flow_clicks = current_flow.get('clicks', 0)
