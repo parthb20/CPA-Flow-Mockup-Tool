@@ -995,11 +995,11 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     
     # Similarity Scores Section for Horizontal Layout
     if st.session_state.flow_layout == 'horizontal':
-        # No extra spacing
+        # Ultra-compact heading - 23px total height to avoid hiding URL
         st.markdown("""
-            <h2 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 20px 0 15px 0; display: block;">
+            <div style="font-size: 16px; font-weight: 900; color: #0f172a; margin: 2px 0 2px 0; padding: 0; line-height: 1.2; height: 23px; display: block;">
                 🧠 Similarity Scores
-            </h2>
+            </div>
         """, unsafe_allow_html=True)
         
         # Calculate similarities if not already calculated
