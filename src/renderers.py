@@ -238,7 +238,16 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
     data = similarities_data.get(score_type, {})
     
     if not data or data.get('error', False):
-        # Don't show any message - just skip rendering this score
+        # Show informative message based on the error type
+        if data and data.get('status_code') == 'no_api_key':
+            st.info("🔑 Add FASTROUTER_API_KEY or OPENAI_API_KEY to secrets to calculate similarity scores")
+        elif data and data.get('error'):
+            # Data is available but API call failed - show reason
+            error_msg = data.get('message', 'Unknown error')
+            st.warning(f"⚠️ Similarity calculation failed: {error_msg}")
+        else:
+            # No data yet - will calculate after data loads
+            st.info("⏳ Similarity scores will calculate after flow data loads")
         return
     
     score = data.get('final_score', 0)
