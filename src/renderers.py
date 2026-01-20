@@ -237,6 +237,16 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
     
     data = similarities_data.get(score_type, {})
     
+    # Show title first, then handle missing/error data
+    title_text = custom_title or f"{score_type} Similarity"
+    st.markdown(f"""
+    <div style="margin-bottom: 8px; display: flex; align-items: center; justify-content: center;">
+        <span style="font-weight: 900; color: #0f172a; font-size: 18px;">
+            <strong>{title_text}</strong>
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+    
     # If this specific score is missing, show wait message
     if not data:
         st.markdown("""
@@ -288,14 +298,7 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
     
     tooltip = tooltip_text or default_tooltip
     
-    st.markdown(f"""
-    <div style="margin-bottom: 8px;">
-        <span style="font-weight: 900; color: #0f172a; font-size: 18px;">
-            <strong>{title_text}</strong>
-        </span>
-    </div>
-    """, unsafe_allow_html=True)
-    
+    # Main score card (title already shown above)
     st.markdown(f"""
     <div style="background: linear-gradient(135deg, {color}15 0%, {color}08 100%); border: 2px solid {color}; border-radius: 12px; padding: 16px; margin: 8px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
         <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
