@@ -104,6 +104,9 @@ def process_file_content(content):
 
 def load_csv_from_gdrive(file_id):
     """Load CSV from Google Drive - handles CSV, ZIP, GZIP, and large file virus scan"""
+    import streamlit as st
+    
+    st.info(f"🔄 Loading file from Google Drive (ID: {file_id[:10]}...)")
     
     # Method 1: Try gdown if available (best for large files)
     if GDOWN_AVAILABLE:
