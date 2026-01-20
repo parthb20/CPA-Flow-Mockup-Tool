@@ -75,10 +75,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         position: absolute !important;
     }
     
-    /* Increase only the FLOW CARDS horizontal container height for URL space */
-    section[data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"] {
-        min-height: 900px !important;
-    }
+    /* Removed - moved to inline after columns creation for better targeting */
     
     /* AGGRESSIVE GAP REMOVAL */
     .element-container {
@@ -259,6 +256,16 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         # Create columns for the actual cards - NO gap to prevent spacing
         stage_cols = st.columns([1, 0.7, 1, 1], gap='small')
+        # Force this specific horizontal block to be 900px
+        st.markdown("""
+        <style>
+        /* Target the flow cards horizontal container - must be 900px not 883px */
+        [data-testid="stHorizontalBlock"]:has([data-testid="stColumn"]:nth-child(4)) {
+            min-height: 900px !important;
+            height: auto !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
     else:
         # Vertical layout - cards extend full width, details inline within card boundaries
         stage_cols = None
