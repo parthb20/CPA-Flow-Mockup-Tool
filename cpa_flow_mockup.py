@@ -426,8 +426,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             # Render "What is Flow" section using module
             render_what_is_flow_section()
             
-            # NO spacing before Flow Journey
-            st.markdown("<div style='margin-top: 2px; margin-bottom: 2px;'></div>", unsafe_allow_html=True)
+            # NO spacing before Flow Journey - completely remove gap
+            pass
             
             # Find default flow if not set
             if st.session_state.default_flow is None:
@@ -473,27 +473,22 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 else:
                     single_view = None
                 
-                # No toggle here - will be added near the flow
-                st.markdown("<div style='margin: 2px 0;'></div>", unsafe_allow_html=True)
+                # No extra spacing needed
+                pass
                 
-                # Add Flow Journey title with explanation - REDUCED GAPS
+                # Add Flow Journey title with explanation - ZERO GAPS
                 st.markdown("""
-                <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 4px 0 4px 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui;">
+                <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui;">
                     <strong>🔄 Flow Journey</strong>
                 </h2>
-                <p style="font-size: 15px; color: #64748b; font-weight: 400; margin: 0 0 4px 0; line-height: 1.6; font-family: system-ui;">
+                <p style="font-size: 15px; color: #64748b; font-weight: 400; margin: 0 0 2px 0; line-height: 1.6; font-family: system-ui;">
                     A flow is the complete user journey: Publisher → Creative → SERP → Landing Page. 
                     Each stage can be customized using the filters above. We automatically select the best-performing combination based on conversions, clicks, and impressions.
                 </p>
                 """, unsafe_allow_html=True)
                 
-                # Show status message and stats AFTER title
+                # Show flow stats directly (no success messages)
                 if len(final_filtered) > 0:
-                    if st.session_state.view_mode == 'basic':
-                        st.success("✨ Auto-selected based on best performance")
-                    else:
-                        st.success("✨ Use filters above to change flow")
-                    
                     # Show selected flow stats
                     single_view = final_filtered.iloc[0]
                     flow_imps = safe_int(single_view.get('impressions', 0))
@@ -503,8 +498,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     flow_cvr = (flow_convs / flow_clicks * 100) if flow_clicks > 0 else 0
                     
                     render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs, flow_ctr, flow_cvr)
-                else:
-                    st.info("🎯 Selected Flow: No data available")
                 
                 # Render Flow Journey using module (heading now shown above)
                 render_flow_journey(
