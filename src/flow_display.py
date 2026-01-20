@@ -1024,8 +1024,19 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             else:
                 st.session_state.similarities = {}
         
-        # Always render - let render_similarity_score handle errors/missing data
+        # Show all 3 similarity scores in horizontal mode - same as vertical
         if 'similarities' in st.session_state and st.session_state.similarities:
+            # Show Keyword → Ad Copy
+            render_similarity_score('kwd_to_ad', st.session_state.similarities,
+                                   custom_title="Keyword → Ad Copy Similarity",
+                                   tooltip_text="Measures how well the ad creative matches the search keyword. Higher scores indicate better keyword-ad alignment.")
+            
+            # Show Ad Copy → Landing Page
+            render_similarity_score('ad_to_page', st.session_state.similarities,
+                                   custom_title="Ad Copy → Landing Page Similarity",
+                                   tooltip_text="Measures how well the landing page fulfills the promises made in the ad copy. Higher scores indicate better ad-page consistency.")
+            
+            # Show Keyword → Landing Page
             render_similarity_score('kwd_to_page', st.session_state.similarities,
                                    custom_title="Keyword → Landing Page Similarity",
                                    tooltip_text="Measures overall flow consistency from keyword to landing page. Higher scores indicate better end-to-end alignment.")
