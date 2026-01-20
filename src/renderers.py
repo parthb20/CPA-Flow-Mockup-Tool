@@ -273,9 +273,9 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
     
     st.markdown(f"""
     <div style="margin-bottom: 8px;">
-        <span style="font-weight: 600; color: #0f172a; font-size: 14px;">
-            {title_text}
-            <span title="{tooltip}" style="cursor: help; color: #3b82f6; font-size: 12px; margin-left: 4px;">ℹ️</span>
+        <span style="font-weight: 900; color: #0f172a; font-size: 18px;">
+            <strong>{title_text}</strong>
+            <span title="{tooltip}" style="cursor: help; color: #3b82f6; font-size: 13px; margin-left: 4px;"><strong>ℹ️</strong></span>
         </span>
     </div>
     """, unsafe_allow_html=True)
@@ -284,11 +284,11 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
     <div style="background: linear-gradient(135deg, {color}15 0%, {color}08 100%); border: 2px solid {color}; border-radius: 12px; padding: 16px; margin: 8px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
         <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
             <div style="background: white; border-radius: 12px; padding: 12px 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
-                <div style="font-size: 40px; font-weight: 900; color: {color}; line-height: 1;">{score:.0%}</div>
+                <div style="font-size: 44px; font-weight: 900; color: {color}; line-height: 1;">{score:.0%}</div>
             </div>
             <div style="flex: 1; min-width: 200px;">
-                <div style="font-weight: 700; color: {color}; font-size: 15px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">{label} Match</div>
-                <div style="font-size: 12px; color: #475569; line-height: 1.4;">{reason}</div>
+                <div style="font-weight: 700; color: {color}; font-size: 16px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">{label} Match</div>
+                <div style="font-size: 13px; color: #475569; line-height: 1.4;">{reason}</div>
             </div>
         </div>
     </div>
