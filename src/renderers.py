@@ -237,42 +237,18 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
     
     data = similarities_data.get(score_type, {})
     
-    if not data or data.get('error', False):
-        # Show informative message as proper UI card
-        if data and data.get('status_code') == 'no_api_key':
-            st.markdown("""
-                <div style="padding: 20px; background: #eff6ff; border: 2px solid #3b82f6; border-radius: 12px; text-align: center;">
-                    <div style="font-size: 48px; margin-bottom: 8px;">🔑</div>
-                    <div style="font-size: 16px; font-weight: 600; color: #1e40af; margin-bottom: 4px;">API Key Required</div>
-                    <div style="font-size: 13px; color: #3b82f6;">Add FASTROUTER_API_KEY or OPENAI_API_KEY to secrets</div>
-                </div>
-            """, unsafe_allow_html=True)
-        elif data and data.get('status_code') == 'missing_data':
-            missing_reason = data.get('body', 'Missing required data')
-            st.markdown(f"""
-                <div style="padding: 20px; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 12px; text-align: center;">
-                    <div style="font-size: 48px; margin-bottom: 8px;">⚠️</div>
-                    <div style="font-size: 16px; font-weight: 600; color: #92400e; margin-bottom: 4px;">Cannot Calculate</div>
-                    <div style="font-size: 13px; color: #b45309;">{html.escape(missing_reason)}</div>
-                </div>
-            """, unsafe_allow_html=True)
-        elif data and data.get('error'):
-            error_msg = data.get('message', data.get('body', 'Unknown error'))
-            st.markdown(f"""
-                <div style="padding: 20px; background: #fee2e2; border: 2px solid #ef4444; border-radius: 12px; text-align: center;">
-                    <div style="font-size: 48px; margin-bottom: 8px;">❌</div>
-                    <div style="font-size: 16px; font-weight: 600; color: #991b1b; margin-bottom: 4px;">Calculation Failed</div>
-                    <div style="font-size: 13px; color: #dc2626;">{html.escape(str(error_msg)[:100])}</div>
-                </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown("""
-                <div style="padding: 20px; background: #f0f9ff; border: 2px solid #0ea5e9; border-radius: 12px; text-align: center;">
-                    <div style="font-size: 48px; margin-bottom: 8px;">⏳</div>
-                    <div style="font-size: 16px; font-weight: 600; color: #075985; margin-bottom: 4px;">Loading...</div>
-                    <div style="font-size: 13px; color: #0284c7;">Similarity scores will calculate after flow data loads</div>
-                </div>
-            """, unsafe_allow_html=True)
+    # If this specific score is missing but other scores exist, just skip silently
+    if not data:
+        return
+    
+    # If there's an error, show it briefly without big cards
+    if data.get('error', False):
+        error_status = data.get('status_code', '')
+        if error_status == 'no_api_key':
+            st.info("🔑 API key required")
+        elif error_status in ['missing_data', 'page_fetch_failed']:
+            # Skip silently - data not available
+            return
         return
     
     score = data.get('final_score', 0)
@@ -301,7 +277,6 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
     <div style="margin-bottom: 8px;">
         <span style="font-weight: 900; color: #0f172a; font-size: 18px;">
             <strong>{title_text}</strong>
-            <span title="{tooltip}" style="cursor: help; color: #3b82f6; font-size: 13px; margin-left: 4px;"><strong>ℹ️</strong></span>
         </span>
     </div>
     """, unsafe_allow_html=True)
@@ -320,39 +295,35 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
     </div>
     """, unsafe_allow_html=True)
     
-    with st.expander("📊 View Detailed Breakdown", expanded=False):
-        component_mapping = {
-            'kwd_to_ad': ['keyword_match', 'topic_match', 'intent_match'],
-            'ad_to_page': ['topic_match', 'brand_match', 'promise_match'],
-            'kwd_to_page': ['topic_match', 'utility_match', 'intent_match']
-        }
-        
-        component_labels = {
-            'keyword_match': '🔑 Keyword Match',
-            'topic_match': '🎯 Topic Match',
-            'intent_match': '💡 Intent Match',
-            'brand_match': '🏷️ Brand Match',
-            'promise_match': '✅ Promise Match',
-            'utility_match': '⚙️ Utility Match'
-        }
-        
-        relevant_components = component_mapping.get(score_type, [])
-        score_components = [(component_labels[key], data.get(key, 0)) for key in relevant_components if key in data]
-        
-        if score_components:
-            for name, val in score_components:
+    # Show component scores inline - one per line
+    component_mapping = {
+        'kwd_to_ad': ['keyword_match', 'topic_match', 'intent_match'],
+        'ad_to_page': ['topic_match', 'brand_match', 'promise_match'],
+        'kwd_to_page': ['topic_match', 'utility_match']
+    }
+    
+    component_labels = {
+        'keyword_match': 'Keyword Match',
+        'topic_match': 'Topic Match',
+        'intent_match': 'Intent Match',
+        'brand_match': 'Brand Match',
+        'promise_match': 'Promise Match',
+        'utility_match': 'Utility Match'
+    }
+    
+    relevant_components = component_mapping.get(score_type, [])
+    if relevant_components:
+        scores_html = ""
+        for key in relevant_components:
+            if key in data:
+                val = data.get(key, 0)
                 score_val = val * 100
                 score_color = "#22c55e" if val >= 0.7 else "#f59e0b" if val >= 0.4 else "#ef4444"
-                st.markdown(f'<div style="margin: 4px 0;"><span style="color: {score_color}; font-weight: 700; font-size: 14px;">{name}: {score_val:.0f}%</span></div>', unsafe_allow_html=True)
+                label = component_labels.get(key, key.replace('_', ' ').title())
+                scores_html += f'<div style="margin: 3px 0; padding: 4px 8px; background: #f8fafc; border-left: 3px solid {score_color}; font-size: 13px;"><span style="color: #0f172a; font-weight: 600;">{label}:</span> <span style="color: {score_color}; font-weight: 700;">{score_val:.0f}%</span></div>'
         
-        extra_info = []
-        if 'intent' in data and data['intent']:
-            extra_info.append(f"🎯 **Intent:** {data['intent']}")
-        if 'band' in data and data['band']:
-            extra_info.append(f"📈 **Band:** {data['band'].title()}")
-        
-        if extra_info:
-            st.markdown(" &nbsp;|&nbsp; ".join(extra_info))
+        if scores_html:
+            st.markdown(f'<div style="margin-top: 8px;">{scores_html}</div>', unsafe_allow_html=True)
 
 
 def inject_unique_id(html_content, prefix, url, device, flow_data=None):
