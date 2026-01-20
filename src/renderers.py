@@ -237,18 +237,33 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
     
     data = similarities_data.get(score_type, {})
     
-    # If this specific score is missing but other scores exist, just skip silently
+    # If this specific score is missing, show wait message
     if not data:
+        st.markdown("""
+            <div style="padding: 16px; background: #f0f9ff; border: 2px solid #bfdbfe; border-radius: 8px; text-align: center;">
+                <div style="font-size: 32px; margin-bottom: 6px;">⏳</div>
+                <div style="font-size: 14px; font-weight: 600; color: #075985;">Wait for data to load</div>
+            </div>
+        """, unsafe_allow_html=True)
         return
     
-    # If there's an error, show it briefly without big cards
+    # If there's an error, show it briefly
     if data.get('error', False):
         error_status = data.get('status_code', '')
         if error_status == 'no_api_key':
-            st.info("🔑 API key required")
+            st.markdown("""
+                <div style="padding: 16px; background: #eff6ff; border: 2px solid #bfdbfe; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 32px; margin-bottom: 6px;">🔑</div>
+                    <div style="font-size: 14px; font-weight: 600; color: #1e40af;">API key required</div>
+                </div>
+            """, unsafe_allow_html=True)
         elif error_status in ['missing_data', 'page_fetch_failed']:
-            # Skip silently - data not available
-            return
+            st.markdown("""
+                <div style="padding: 16px; background: #f0f9ff; border: 2px solid #bfdbfe; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 32px; margin-bottom: 6px;">⏳</div>
+                    <div style="font-size: 14px; font-weight: 600; color: #075985;">Wait for data to load</div>
+                </div>
+            """, unsafe_allow_html=True)
         return
     
     score = data.get('final_score', 0)
