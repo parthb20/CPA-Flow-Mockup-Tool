@@ -427,7 +427,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             render_what_is_flow_section()
             
             # NO spacing before Flow Journey
-            st.markdown("<div style='margin-top: 2px; margin-bottom: 2px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin: 0; padding: 0;'></div>", unsafe_allow_html=True)
             
             # Find default flow if not set
             if st.session_state.default_flow is None:
@@ -473,15 +473,15 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 else:
                     single_view = None
                 
-                # No toggle here - will be added near the flow
-                st.markdown("<div style='margin: 2px 0;'></div>", unsafe_allow_html=True)
+                # No extra spacing needed
+                pass
                 
-                # Add Flow Journey title with explanation - REDUCED GAPS
+                # Add Flow Journey title with explanation - ZERO GAPS
                 st.markdown("""
-                <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 4px 0 4px 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui;">
+                <h2 style="font-size: 52px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui;">
                     <strong>🔄 Flow Journey</strong>
                 </h2>
-                <p style="font-size: 15px; color: #64748b; font-weight: 400; margin: 0 0 4px 0; line-height: 1.6; font-family: system-ui;">
+                <p style="font-size: 14px; color: #64748b; font-weight: 400; margin: 0 0 2px 0; line-height: 1.6; font-family: system-ui;">
                     A flow is the complete user journey: Publisher → Creative → SERP → Landing Page. 
                     Each stage can be customized using the filters above. We automatically select the best-performing combination based on conversions, clicks, and impressions.
                 </p>
