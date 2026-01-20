@@ -54,6 +54,20 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         pointer-events: auto !important;
         cursor: pointer !important;
     }
+    
+    /* Hide all empty divs with 0 height (1195.2x0 elements) */
+    div[style*="margin-top: 4px; margin-bottom: 4px"] {
+        display: none !important;
+    }
+    div[style*="margin: 0; padding: 0"]:empty {
+        display: none !important;
+    }
+    div.element-container:empty {
+        display: none !important;
+    }
+    [data-testid="stVerticalBlock"] > div:empty {
+        display: none !important;
+    }
     </style>
     """, unsafe_allow_html=True)
     
@@ -134,13 +148,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         padding-bottom: 0 !important;
     }
     
-    /* Hide empty containers with 0 height */
-    div[style*="margin-top: 4px; margin-bottom: 4px"] {
-        display: none !important;
-    }
-    div[style*="margin: 0; padding: 0"] {
-        display: none !important;
-    }
+    /* Hide empty containers with 0 height - already in control section above */
     </style>
     """, unsafe_allow_html=True)
     
@@ -457,7 +465,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     
     with stage_2_container:
         if st.session_state.flow_layout == 'vertical':
-            creative_card_left, creative_card_right = st.columns([0.5, 0.5])
+            creative_card_left, creative_card_right = st.columns([0.6, 0.4])
             with creative_card_left:
                 st.markdown('<h3 style="font-size: 40px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>🎨 Creative</strong></h3>', unsafe_allow_html=True)
         else:
