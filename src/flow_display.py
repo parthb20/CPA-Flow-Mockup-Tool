@@ -91,7 +91,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         if selected_keyword_inline != 'All Keywords':
             campaign_df = campaign_df[campaign_df['keyword_term'] == selected_keyword_inline]
     
-    # ZERO GAPS CSS
+    # ZERO GAPS CSS - Remove empty containers
     st.markdown("""
     <style>
     /* Zero spacing */
@@ -132,6 +132,14 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     .main .block-container {
         padding-top: 2rem !important;
         padding-bottom: 0 !important;
+    }
+    
+    /* Hide empty containers with 0 height */
+    div[style*="margin-top: 4px; margin-bottom: 4px"] {
+        display: none !important;
+    }
+    div[style*="margin: 0; padding: 0"] {
+        display: none !important;
     }
     </style>
     """, unsafe_allow_html=True)
