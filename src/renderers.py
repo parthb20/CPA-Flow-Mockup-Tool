@@ -238,6 +238,14 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
     data = similarities_data.get(score_type, {})
     
     if not data or data.get('error', False):
+        # Debug: Show what we received
+        with st.expander("🔍 Debug: Similarity Data", expanded=False):
+            st.json({
+                "score_type": score_type,
+                "data_received": data,
+                "similarities_full": similarities_data
+            })
+        
         # Show informative message based on the error type
         if data and data.get('status_code') == 'no_api_key':
             st.info("🔑 Add FASTROUTER_API_KEY or OPENAI_API_KEY to secrets to calculate similarity scores")
