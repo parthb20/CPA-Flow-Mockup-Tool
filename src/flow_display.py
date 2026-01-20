@@ -55,18 +55,17 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         cursor: pointer !important;
     }
     
-    /* Hide all empty divs with 0 height (1195.2x0 elements) */
-    div[style*="margin-top: 4px; margin-bottom: 4px"] {
-        display: none !important;
-    }
-    div[style*="margin: 0; padding: 0"]:empty {
-        display: none !important;
-    }
-    div.element-container:empty {
-        display: none !important;
-    }
+    /* Completely remove empty spacing elements */
+    div[style*="margin-top: 4px; margin-bottom: 4px"],
+    div[style*="margin: 0; padding: 0"]:empty,
+    div.element-container:empty,
     [data-testid="stVerticalBlock"] > div:empty {
         display: none !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        visibility: hidden !important;
+        position: absolute !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -147,8 +146,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         padding-top: 2rem !important;
         padding-bottom: 0 !important;
     }
-    
-    /* Hide empty containers with 0 height - already in control section above */
     </style>
     """, unsafe_allow_html=True)
     
@@ -370,10 +367,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                 except Exception:
                                     st.warning("🚫 Could not load page")
                                     st.info("💡 Set SCREENSHOT_API_KEY in secrets for screenshot fallback")
-                                    st.markdown(f"[🔗 Open in new tab]({pub_url})")
                             else:
                                 st.warning("🚫 Could not load page")
-                                st.markdown(f"[🔗 Open in new tab]({pub_url})")
                         elif response.status_code == 200:
                             try:
                                 page_html = response.text
@@ -435,7 +430,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 <div style="margin-bottom: 6px; font-size: 14px;">
                     <div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Domain</strong></div>
                     <div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 14px;">{html.escape(str(current_dom))}</div>
-                    {f'<div style="margin-top: 6px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{current_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
+                    {f'<div style="margin-top: 6px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{current_url}" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
                 </div>
                 """, unsafe_allow_html=True)
         
@@ -446,7 +441,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             <div style='margin-top: 8px; font-size: 14px;'>
                 <div style='font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;'><strong>Domain</strong></div>
                 <div style='margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 14px;'>{html.escape(str(current_dom))}</div>
-                {f'<div style="margin-top: 6px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{current_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
+                {f'<div style="margin-top: 6px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{current_url}" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
             </div>
             """, unsafe_allow_html=True)
     
@@ -799,7 +794,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 st.markdown("<h4 style='font-size: 20px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0;'><strong>📄 SERP Details</strong></h4>", unsafe_allow_html=True)
                 st.markdown(f"""
                 <div style="margin-bottom: 6px; font-size: 14px;">
-                    {f'<div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{serp_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(serp_url))}</a></div>' if serp_url and serp_url != 'N/A' else ''}
+                    {f'<div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{serp_url}" style="color: #3b82f6; text-decoration: none;">{html.escape(str(serp_url))}</a></div>' if serp_url and serp_url != 'N/A' else ''}
                     <div style="margin-top: 6px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Template</strong></div>
                     <div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;">{html.escape(str(serp_name))}</div>
                 </div>
@@ -811,7 +806,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
             st.markdown(f"""
             <div style='margin-top: 8px; font-size: 14px;'>
-                {f'<div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{serp_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(serp_url))}</a></div>' if serp_url and serp_url != 'N/A' else ''}
+                {f'<div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{serp_url}" style="color: #3b82f6; text-decoration: none;">{html.escape(str(serp_url))}</a></div>' if serp_url and serp_url != 'N/A' else ''}
             </div>
             """, unsafe_allow_html=True)
     
@@ -849,7 +844,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             st.markdown(f"""
             <div style="margin-bottom: 8px; font-size: 14px;">
                 <div style="font-weight: 700; color: #0f172a; font-size: 17px; margin-bottom: 4px;"><strong>Landing URL:</strong></div>
-                <div style="margin-left: 8px; word-break: break-word;"><a href="{adv_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(adv_url))}</a></div>
+                <div style="margin-left: 8px; word-break: break-word;"><a href="{adv_url}" style="color: #3b82f6; text-decoration: none;">{html.escape(str(adv_url))}</a></div>
             </div>
             """, unsafe_allow_html=True)
         
@@ -915,7 +910,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                 except Exception:
                                     st.warning("🚫 Could not load page")
                                     st.info("💡 Set SCREENSHOT_API_KEY in secrets for screenshot fallback")
-                                    st.markdown(f"[🔗 Open in new tab]({adv_url})")
                             else:
                                 st.warning("🚫 Could not load page")
                                 st.markdown(f"[🔗 Open landing page]({adv_url})")
@@ -976,7 +970,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 st.markdown("<h4 style='font-size: 20px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0;'><strong>🎯 Landing Page Details</strong></h4>", unsafe_allow_html=True)
                 st.markdown(f"""
                 <div style="margin-bottom: 6px; font-size: 14px;">
-                    {f'<div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Landing URL</strong></div><div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{adv_url}" target="_blank" style="color: #3b82f6; text-decoration: none;">{html.escape(str(adv_url))}</a></div>' if adv_url and pd.notna(adv_url) else ''}
+                    {f'<div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Landing URL</strong></div><div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{adv_url}" style="color: #3b82f6; text-decoration: none;">{html.escape(str(adv_url))}</a></div>' if adv_url and pd.notna(adv_url) else ''}
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -987,7 +981,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         st.session_state.similarities = {}
                 
                 if 'similarities' in st.session_state and st.session_state.similarities:
-                    st.markdown("<h4 style='font-size: 18px; font-weight: 700; color: #0f172a; margin: 12px 0 8px 0;'>🔗 Keyword → Landing Page Similarity</h4>", unsafe_allow_html=True)
+                    st.markdown("<h4 style='font-size: 18px; font-weight: 900; color: #0f172a; margin: 12px 0 8px 0;'><strong>🔗 Keyword → Landing Page Similarity</strong></h4>", unsafe_allow_html=True)
                     render_similarity_score('kwd_to_page', st.session_state.similarities,
                                            custom_title="Keyword → Landing Page Similarity",
                                            tooltip_text="Measures overall flow consistency from keyword to landing page. Higher scores indicate better end-to-end alignment.")
