@@ -115,7 +115,8 @@ def load_csv_from_gdrive(file_id):
                 url = f"https://drive.google.com/uc?id={file_id}"
                 output = tmp_file.name
                 
-                gdown.download(url, output, quiet=True, fuzzy=True)
+                st.info("🔄 Attempting download with gdown...")
+                gdown.download(url, output, quiet=False, fuzzy=True)
                 
                 # Read the downloaded file
                 with open(output, 'rb') as f:
@@ -128,18 +129,22 @@ def load_csv_from_gdrive(file_id):
                     pass
                 
                 # Process the content (detect type and decompress if needed)
+                st.success("✅ File downloaded successfully!")
                 return process_file_content(content)
                 
         except Exception as e:
-            pass  # Silently try alternative
+            st.warning(f"⚠️ gdown failed: {str(e)[:100]}, trying alternative method...")
     
     # Method 2: Manual download (fallback)
     try:
+        st.info("🔄 Attempting manual download...")
         session = requests.Session()
         
         # Initial request
         url = f"https://drive.google.com/uc?export=download&id={file_id}"
         response = session.get(url, timeout=30, stream=False)
+        
+        st.info(f"📊 Response status: {response.status_code}, Content-Type: {response.headers.get('content-type', 'unknown')}")
         
         content = response.content
         
