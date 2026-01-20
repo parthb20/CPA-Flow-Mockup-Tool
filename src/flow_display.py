@@ -1024,48 +1024,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             else:
                 st.session_state.similarities = {}
         
-        # Render similarity scores - check if we have actual valid data (not just error dicts)
-        has_similarities = False
+        # Always render - let render_similarity_score handle errors/missing data
         if 'similarities' in st.session_state and st.session_state.similarities:
-            similarities = st.session_state.similarities
-            if isinstance(similarities, dict) and len(similarities) > 0:
-                # Check if we have at least one valid score (not an error)
-                for key in ['kwd_to_ad', 'ad_to_page', 'kwd_to_page']:
-                    if key in similarities:
-                        score_data = similarities[key]
-                        if isinstance(score_data, dict) and not score_data.get('error', False) and 'final_score' in score_data:
-                            has_similarities = True
-                            break
-        
-        if has_similarities:
-            # Only show blue (kwd_to_page) in horizontal mode
             render_similarity_score('kwd_to_page', st.session_state.similarities,
                                    custom_title="Keyword → Landing Page Similarity",
                                    tooltip_text="Measures overall flow consistency from keyword to landing page. Higher scores indicate better end-to-end alignment.")
-        else:
-            # Show helpful error message
-            if api_key:
-                if 'similarities' in st.session_state and st.session_state.similarities:
-                    similarities = st.session_state.similarities
-                    if isinstance(similarities, dict):
-                        # Check what's in similarities
-                        error_keys = [k for k, v in similarities.items() if isinstance(v, dict) and v.get('error')]
-                        valid_keys = [k for k, v in similarities.items() if isinstance(v, dict) and not v.get('error') and 'final_score' in v]
-                        if error_keys and not valid_keys:
-                            # Show actual error details
-                            error_details = []
-                            for k in error_keys:
-                                err = similarities[k]
-                                error_msg = err.get('body', err.get('status_code', 'unknown'))
-                                error_details.append(f"**{k}**: {error_msg}")
-                            st.error(f"❌ **Similarity calculation failed:**\n\n" + "\n\n".join(error_details))
-                        elif valid_keys:
-                            st.info(f"⏳ Some similarity scores are still calculating... ({len(valid_keys)}/{len(similarities)} complete)")
-                        else:
-                            st.info("⏳ Similarity scores are being calculated...")
-                    else:
-                        st.warning("⚠️ Similarity scores format error.")
-                else:
-                    st.warning("⚠️ Similarity scores could not be calculated. Check API key configuration.")
-            else:
-                st.info("⏳ Add API key to calculate similarity scores")
