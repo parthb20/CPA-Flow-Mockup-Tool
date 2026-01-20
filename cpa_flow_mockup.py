@@ -313,8 +313,8 @@ for key in ['data_a', 'data_b', 'loading_done', 'default_flow', 'current_flow', 
 # Main title - BIG and BOLD at top
 st.markdown("""
     <div style="margin: 0 0 20px 0; padding: 20px 0 16px 0; border-bottom: 3px solid #e2e8f0;">
-        <h1 style="font-size: 64px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui, -apple-system, sans-serif;">
-            📊 <strong>CPA Flow Analysis</strong>
+        <h1 style="font-size: 72px; font-weight: 700; color: #0f172a; margin: 0; padding: 0; line-height: 1.2;">
+            📊 CPA Flow Analysis
         </h1>
     </div>
 """, unsafe_allow_html=True)
@@ -335,8 +335,6 @@ if not st.session_state.loading_done:
             st.session_state.loading_done = True
 
 # No view mode toggle here - moved to flow controls
-# No spacing here - causes purple gap
-pass
 
 if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
     df = st.session_state.data_a
@@ -423,8 +421,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             # Render "What is Flow" section using module
             render_what_is_flow_section()
             
-            # Remove ALL spacing/containers before Flow Journey
-            pass
+            # No spacing before Flow Journey
             
             # Find default flow if not set
             if st.session_state.default_flow is None:
