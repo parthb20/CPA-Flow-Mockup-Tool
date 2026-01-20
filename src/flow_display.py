@@ -439,10 +439,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 </div>
                 """, unsafe_allow_html=True)
                 st.markdown(f"""
-                <div style="margin-bottom: 6px; font-size: 14px; padding-bottom: 24px;">
+                <div style="margin-bottom: 6px; font-size: 14px;">
                     <div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Domain</strong></div>
                     <div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 14px;">{html.escape(str(current_dom))}</div>
-                    {f'<div style="margin-top: 6px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 0; margin-bottom: 16px; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{current_url}" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
+                    {f'<div style="margin-top: 6px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{current_url}" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
                 </div>
                 """, unsafe_allow_html=True)
         
@@ -1000,9 +1000,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     
     # Similarity Scores Section for Horizontal Layout
     if st.session_state.flow_layout == 'horizontal':
-        # Add significant spacing to prevent URL overlap
+        # Minimal spacing
         st.markdown("""
-            <div style="font-size: 20px; font-weight: 900; color: #0f172a; margin: 32px 0 12px 0; padding: 0; line-height: 1.2; display: block;">
+            <div style="font-size: 20px; font-weight: 900; color: #0f172a; margin: 8px 0 8px 0; padding: 0; line-height: 1.2; display: block;">
                 🧠 Similarity Scores
             </div>
         """, unsafe_allow_html=True)
