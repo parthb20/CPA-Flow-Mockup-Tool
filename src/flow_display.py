@@ -493,9 +493,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 try:
                     creative_html, raw_adcode = parse_creative_html(response_value)
                     if creative_html and raw_adcode:
-                        # Match exact dimensions of other cards
+                        # Match exact dimensions of other cards (708x650 in vertical)
                         if st.session_state.flow_layout == 'vertical':
-                            st.components.v1.html(creative_html, height=600, scrolling=False)
+                            st.components.v1.html(creative_html, height=650, scrolling=False)
                         else:
                             st.components.v1.html(creative_html, height=500, scrolling=False)
                         
@@ -507,7 +507,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 except Exception as e:
                     st.error(f"⚠️ Creative error: {str(e)[:100]}")
             else:
-                min_height = 600
+                # Match dimensions of other cards in vertical (650px)
+                min_height = 650 if st.session_state.flow_layout == 'vertical' else 500
                 st.markdown(f"""
                 <div style="min-height: {min_height}px; display: flex; align-items: center; justify-content: center; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px;">
                     <div style="text-align: center; color: #64748b;">
