@@ -159,6 +159,7 @@ Formula: 0.15×K + 0.35×T + 0.50×I"""
     results['kwd_to_ad'] = call_similarity_api(kwd_to_ad_prompt)
     time.sleep(1)
     
+    # Check if we have a valid landing page URL
     if adv_url and pd.notna(adv_url) and str(adv_url).lower() != 'null' and str(adv_url).strip():
         page_text = fetch_page_content(adv_url)
         
@@ -231,6 +232,14 @@ JSON only: {{"intent":"","topic_match":0.0,"utility_match":0.0,"final_score":0.0
 Formula: 0.40×T + 0.60×U"""
             
             results['kwd_to_page'] = call_similarity_api(kwd_to_page_prompt)
+        else:
+            # Page text is empty (403, fetch failed, etc.)
+            results['ad_to_page'] = {"error": True, "status_code": "page_fetch_failed", "body": "Could not fetch landing page content (403 or network error)"}
+            results['kwd_to_page'] = {"error": True, "status_code": "page_fetch_failed", "body": "Could not fetch landing page content (403 or network error)"}
+    else:
+        # No landing page URL provided
+        results['ad_to_page'] = {"error": True, "status_code": "missing_data", "body": "No landing page URL available"}
+        results['kwd_to_page'] = {"error": True, "status_code": "missing_data", "body": "No landing page URL available"}
     
     return results
 
