@@ -40,7 +40,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     # Layout and Device controls - COMPACT and TOGETHER
     st.markdown("""
     <style>
-    /* Make dropdowns extra compact and arrows clickable */
+    /* Make dropdowns extra compact and entire area clickable including arrows */
     div[data-testid="stSelectbox"] > div > div {
         min-height: 36px !important;
         height: 36px !important;
@@ -49,9 +49,16 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     div[data-testid="stSelectbox"] > div > div > div {
         padding: 6px 10px !important;
         font-size: 14px !important;
+        cursor: pointer !important;
     }
     div[data-testid="stSelectbox"] svg {
-        pointer-events: auto !important;
+        pointer-events: all !important;
+        cursor: pointer !important;
+    }
+    div[data-testid="stSelectbox"] [data-baseweb="select"] {
+        cursor: pointer !important;
+    }
+    div[data-testid="stSelectbox"] [data-baseweb="select"] > div {
         cursor: pointer !important;
     }
     
@@ -988,8 +995,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     
     # Similarity Scores Section for Horizontal Layout
     if st.session_state.flow_layout == 'horizontal':
-        # Add MORE spacing before Similarity Scores to prevent overlap
-        st.markdown("<div style='margin-top: 40px; margin-bottom: 8px;'></div>", unsafe_allow_html=True)
+        # No extra spacing
         st.markdown("""
             <h2 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 20px 0 15px 0; display: block;">
                 🧠 Similarity Scores
@@ -1018,22 +1024,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             break
         
         if has_similarities:
-            score_cols = st.columns(3, gap='small')
-            
-            with score_cols[0]:
-                render_similarity_score('kwd_to_ad', st.session_state.similarities,
-                                       custom_title="Keyword → Ad Copy Similarity",
-                                       tooltip_text="Measures how well the ad creative matches the search keyword. Higher scores indicate better keyword-ad alignment.")
-            
-            with score_cols[1]:
-                render_similarity_score('ad_to_page', st.session_state.similarities,
-                                       custom_title="Ad Copy → Landing Page Similarity",
-                                       tooltip_text="Measures how well the landing page fulfills the promises made in the ad copy. Higher scores indicate better ad-page consistency.")
-            
-            with score_cols[2]:
-                render_similarity_score('kwd_to_page', st.session_state.similarities,
-                                       custom_title="Keyword → Landing Page Similarity",
-                                       tooltip_text="Measures overall flow consistency from keyword to landing page. Higher scores indicate better end-to-end alignment.")
+            # Only show blue (kwd_to_page) in horizontal mode
+            render_similarity_score('kwd_to_page', st.session_state.similarities,
+                                   custom_title="Keyword → Landing Page Similarity",
+                                   tooltip_text="Measures overall flow consistency from keyword to landing page. Higher scores indicate better end-to-end alignment.")
         else:
             # Show helpful error message
             if api_key:
