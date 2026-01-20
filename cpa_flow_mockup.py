@@ -313,8 +313,8 @@ for key in ['data_a', 'data_b', 'loading_done', 'default_flow', 'current_flow', 
 # Main title - BIG and BOLD at top
 st.markdown("""
     <div style="margin: 0 0 20px 0; padding: 20px 0 16px 0; border-bottom: 3px solid #e2e8f0;">
-        <h1 style="font-size: 72px; font-weight: 700; color: #0f172a; margin: 0; padding: 0; line-height: 1.2;">
-            📊 CPA Flow Analysis
+        <h1 style="font-size: 96px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; text-transform: uppercase; letter-spacing: -2px;">
+            📊 CPA FLOW ANALYSIS
         </h1>
     </div>
 """, unsafe_allow_html=True)
