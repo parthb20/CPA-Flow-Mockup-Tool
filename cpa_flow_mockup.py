@@ -313,8 +313,8 @@ for key in ['data_a', 'data_b', 'loading_done', 'default_flow', 'current_flow', 
 # Main title - BIG and BOLD at top
 st.markdown("""
     <div style="margin: 0 0 20px 0; padding: 20px 0 16px 0; border-bottom: 3px solid #e2e8f0;">
-        <h1 style="font-size: 96px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; text-transform: uppercase; letter-spacing: -2px;">
-            📊 CPA FLOW ANALYSIS
+        <h1 style="font-size: 64px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui, -apple-system, sans-serif;">
+            📊 CPA Flow Analysis
         </h1>
     </div>
 """, unsafe_allow_html=True)
@@ -471,7 +471,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 <h2 style="font-size: 56px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui;">
                     <strong>🔄 Flow Journey</strong>
                 </h2>
-                <p style="font-size: 14px; color: #64748b; font-weight: 300; margin: 0; line-height: 1.6; font-family: system-ui;">
+                <p style="font-size: 14px; color: #64748b; font-weight: normal; margin: 0; line-height: 1.6; font-family: system-ui;">
                     A flow is the complete user journey: Publisher → Creative → SERP → Landing Page. Each stage can be customized using the filters above. We automatically select the best-performing combination based on conversions, clicks, and impressions.
                 </p>
                 """, unsafe_allow_html=True)
