@@ -241,9 +241,13 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
         # Show informative message based on the error type
         if data and data.get('status_code') == 'no_api_key':
             st.info("🔑 Add FASTROUTER_API_KEY or OPENAI_API_KEY to secrets to calculate similarity scores")
+        elif data and data.get('status_code') == 'missing_data':
+            # Missing required data (keyword, ad, or URL)
+            missing_reason = data.get('body', 'Missing required data')
+            st.warning(f"⚠️ Cannot calculate: {missing_reason}")
         elif data and data.get('error'):
             # Data is available but API call failed - show reason
-            error_msg = data.get('message', 'Unknown error')
+            error_msg = data.get('message', data.get('body', 'Unknown error'))
             st.warning(f"⚠️ Similarity calculation failed: {error_msg}")
         else:
             # No data yet - will calculate after data loads
