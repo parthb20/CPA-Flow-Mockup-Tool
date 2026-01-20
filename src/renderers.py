@@ -238,28 +238,41 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
     data = similarities_data.get(score_type, {})
     
     if not data or data.get('error', False):
-        # Debug: Show what we received
-        with st.expander("🔍 Debug: Similarity Data", expanded=False):
-            st.json({
-                "score_type": score_type,
-                "data_received": data,
-                "similarities_full": similarities_data
-            })
-        
-        # Show informative message based on the error type
+        # Show informative message as proper UI card
         if data and data.get('status_code') == 'no_api_key':
-            st.info("🔑 Add FASTROUTER_API_KEY or OPENAI_API_KEY to secrets to calculate similarity scores")
+            st.markdown("""
+                <div style="padding: 20px; background: #eff6ff; border: 2px solid #3b82f6; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 8px;">🔑</div>
+                    <div style="font-size: 16px; font-weight: 600; color: #1e40af; margin-bottom: 4px;">API Key Required</div>
+                    <div style="font-size: 13px; color: #3b82f6;">Add FASTROUTER_API_KEY or OPENAI_API_KEY to secrets</div>
+                </div>
+            """, unsafe_allow_html=True)
         elif data and data.get('status_code') == 'missing_data':
-            # Missing required data (keyword, ad, or URL)
             missing_reason = data.get('body', 'Missing required data')
-            st.warning(f"⚠️ Cannot calculate: {missing_reason}")
+            st.markdown(f"""
+                <div style="padding: 20px; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 8px;">⚠️</div>
+                    <div style="font-size: 16px; font-weight: 600; color: #92400e; margin-bottom: 4px;">Cannot Calculate</div>
+                    <div style="font-size: 13px; color: #b45309;">{html.escape(missing_reason)}</div>
+                </div>
+            """, unsafe_allow_html=True)
         elif data and data.get('error'):
-            # Data is available but API call failed - show reason
             error_msg = data.get('message', data.get('body', 'Unknown error'))
-            st.warning(f"⚠️ Similarity calculation failed: {error_msg}")
+            st.markdown(f"""
+                <div style="padding: 20px; background: #fee2e2; border: 2px solid #ef4444; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 8px;">❌</div>
+                    <div style="font-size: 16px; font-weight: 600; color: #991b1b; margin-bottom: 4px;">Calculation Failed</div>
+                    <div style="font-size: 13px; color: #dc2626;">{html.escape(str(error_msg)[:100])}</div>
+                </div>
+            """, unsafe_allow_html=True)
         else:
-            # No data yet - will calculate after data loads
-            st.info("⏳ Similarity scores will calculate after flow data loads")
+            st.markdown("""
+                <div style="padding: 20px; background: #f0f9ff; border: 2px solid #0ea5e9; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 8px;">⏳</div>
+                    <div style="font-size: 16px; font-weight: 600; color: #075985; margin-bottom: 4px;">Loading...</div>
+                    <div style="font-size: 13px; color: #0284c7;">Similarity scores will calculate after flow data loads</div>
+                </div>
+            """, unsafe_allow_html=True)
         return
     
     score = data.get('final_score', 0)
