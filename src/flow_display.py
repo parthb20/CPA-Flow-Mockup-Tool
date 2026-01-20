@@ -75,9 +75,18 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         position: absolute !important;
     }
     
-    /* Increase horizontal layout container height for URL space */
-    [data-testid="stHorizontalBlock"] {
+    /* Increase only the FLOW CARDS horizontal container height for URL space */
+    section[data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"] {
         min-height: 900px !important;
+    }
+    
+    /* AGGRESSIVE GAP REMOVAL */
+    .element-container {
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+    }
+    .main > div > div > div > div {
+        gap: 0 !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -1002,7 +1011,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     if st.session_state.flow_layout == 'horizontal':
         # Minimal spacing
         st.markdown("""
-            <div style="font-size: 20px; font-weight: 900; color: #0f172a; margin: 8px 0 8px 0; padding: 0; line-height: 1.2; display: block;">
+            <div style="font-size: 20px; font-weight: 900; color: #0f172a; margin: 4px 0 4px 0; padding: 0; line-height: 1.2; display: block;">
                 🧠 Similarity Scores
             </div>
         """, unsafe_allow_html=True)
