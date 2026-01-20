@@ -312,7 +312,7 @@ for key in ['data_a', 'data_b', 'loading_done', 'default_flow', 'current_flow', 
 
 # Main title - BIG and BOLD at top
 st.markdown("""
-    <div style="margin: 0 0 20px 0; padding: 20px 0 16px 0; border-bottom: 3px solid #e2e8f0;">
+    <div style="margin: 0 0 8px 0; padding: 12px 0 12px 0; border-bottom: 3px solid #e2e8f0;">
         <h1 style="font-size: 64px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui, -apple-system, sans-serif;">
             📊 CPA Flow Analysis
         </h1>
@@ -405,7 +405,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             
             # Show aggregated table with big title
             st.markdown("""
-            <div style="margin-bottom: 15px;">
+            <div style="margin-bottom: 8px;">
                 <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; text-align: left; line-height: 1;">
                     📊 Flow Combinations Overview
                 </h2>
@@ -415,13 +415,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             # Render table using module
             render_flow_combinations_table(campaign_df)
             
-            # NO spacing between table and What is Flow
-            st.markdown("<div style='margin-top: 0; margin-bottom: 0;'></div>", unsafe_allow_html=True)
-            
             # Render "What is Flow" section using module
             render_what_is_flow_section()
-            
-            # No spacing before Flow Journey
             
             # Find default flow if not set
             if st.session_state.default_flow is None:
