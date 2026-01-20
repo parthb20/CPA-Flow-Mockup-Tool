@@ -335,14 +335,14 @@ if not st.session_state.loading_done:
             st.session_state.loading_done = True
 
 # No view mode toggle here - moved to flow controls
-# Reduce spacing - minimal margin
-st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
+# No spacing here - causes purple gap
+pass
 
 if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
     df = st.session_state.data_a
     
-    # Select Advertiser and Campaign - preserve selection when switching views
-    col1, col2 = st.columns(2)
+    # Select Advertiser and Campaign - make dropdowns smaller
+    col1, col2, col3 = st.columns([1, 1, 2])
     with col1:
         advertisers = ['-- Select Advertiser --'] + sorted(df['Advertiser_Name'].dropna().unique().tolist())
         # Preserve advertiser selection
@@ -405,9 +405,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             avg_ctr = (total_clicks / total_impressions * 100) if total_impressions > 0 else 0
             avg_cvr = (total_conversions / total_clicks * 100) if total_clicks > 0 else 0
             
-            # Reduce spacing - minimal margin
-            st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
-            
             # Show aggregated table with big title
             st.markdown("""
             <div style="margin-bottom: 15px;">
@@ -426,8 +423,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             # Render "What is Flow" section using module
             render_what_is_flow_section()
             
-            # NO spacing before Flow Journey
-            st.markdown("<div style='margin: 0; padding: 0;'></div>", unsafe_allow_html=True)
+            # Remove ALL spacing/containers before Flow Journey
+            pass
             
             # Find default flow if not set
             if st.session_state.default_flow is None:
@@ -440,14 +437,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 # Advanced mode: Show keyword and domain filters
                 if st.session_state.view_mode == 'advanced':
-                    # Reduce spacing
-                    st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
+                    pass
                 
                 # Render filters and get filter state
                 filters_changed, selected_keyword_filter, selected_domain_filter = render_advanced_filters(campaign_df, current_flow)
-                
-                # Reduce spacing - minimal margin instead of divider
-                st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
                 
                 # Apply filtering logic using module
                 current_flow, final_filtered = apply_flow_filtering(
@@ -473,17 +466,16 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 else:
                     single_view = None
                 
-                # No extra spacing needed
+                # Remove any spacing containers
                 pass
                 
-                # Add Flow Journey title with explanation - MINIMAL GAPS
+                # Add Flow Journey title with explanation - NOT BOLD
                 st.markdown("""
                 <h2 style="font-size: 56px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui;">
                     <strong>🔄 Flow Journey</strong>
                 </h2>
                 <p style="font-size: 14px; color: #64748b; font-weight: 400; margin: 0; line-height: 1.6; font-family: system-ui;">
-                    A flow is the complete user journey: Publisher → Creative → SERP → Landing Page. 
-                    Each stage can be customized using the filters above. We automatically select the best-performing combination based on conversions, clicks, and impressions.
+                    A flow is the complete user journey: Publisher → Creative → SERP → Landing Page. Each stage can be customized using the filters above. We automatically select the best-performing combination based on conversions, clicks, and impressions.
                 </p>
                 """, unsafe_allow_html=True)
                 
