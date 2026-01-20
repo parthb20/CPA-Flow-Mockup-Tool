@@ -106,8 +106,6 @@ def load_csv_from_gdrive(file_id):
     """Load CSV from Google Drive - handles CSV, ZIP, GZIP, and large file virus scan"""
     import streamlit as st
     
-    st.info(f"🔄 Loading file from Google Drive (ID: {file_id[:10]}...)")
-    
     # Method 1: Try gdown if available (best for large files)
     if GDOWN_AVAILABLE:
         try:
@@ -115,8 +113,7 @@ def load_csv_from_gdrive(file_id):
                 url = f"https://drive.google.com/uc?id={file_id}"
                 output = tmp_file.name
                 
-                st.info("🔄 Attempting download with gdown...")
-                gdown.download(url, output, quiet=False, fuzzy=True)
+                gdown.download(url, output, quiet=True, fuzzy=True)
                 
                 # Read the downloaded file
                 with open(output, 'rb') as f:
@@ -129,22 +126,18 @@ def load_csv_from_gdrive(file_id):
                     pass
                 
                 # Process the content (detect type and decompress if needed)
-                st.success("✅ File downloaded successfully!")
                 return process_file_content(content)
                 
         except Exception as e:
-            st.warning(f"⚠️ gdown failed: {str(e)[:100]}, trying alternative method...")
+            pass  # Silently try alternative
     
     # Method 2: Manual download (fallback)
     try:
-        st.info("🔄 Attempting manual download...")
         session = requests.Session()
         
         # Initial request
         url = f"https://drive.google.com/uc?export=download&id={file_id}"
         response = session.get(url, timeout=30, stream=False)
-        
-        st.info(f"📊 Response status: {response.status_code}, Content-Type: {response.headers.get('content-type', 'unknown')}")
         
         content = response.content
         
