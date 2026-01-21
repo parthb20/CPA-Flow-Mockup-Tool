@@ -28,7 +28,6 @@ def load_creative_requests(file_id):
     Expected columns: creative_id, rensize, request
     """
     from src.data_loader import load_csv_from_gdrive
-    import streamlit as st
     
     if not file_id or file_id.strip() == "":
         return None
@@ -47,16 +46,12 @@ def load_creative_requests(file_id):
         
         # Verify we have data in all columns
         if df['creative_id'].isna().all() or df['rensize'].isna().all() or df['request'].isna().all():
-            st.error("❌ File C has empty columns")
             return None
         
-        st.success(f"✅ File C loaded: {len(df)} rows")
         return df
         
     except Exception as e:
-        st.error(f"❌ Failed to load File C: {str(e)[:200]}")
-    
-    return None
+        return None
 
 
 def parse_keyword_array_from_flow(flow_data):
@@ -273,13 +268,18 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
     request_data_str = matching_rows.iloc[0]['request']
     
     try:
-        # Parse request JSON
+        # Parse request JSON - handle escaped JSON
         if isinstance(request_data_str, str):
-            request_data = json.loads(request_data_str)
+            try:
+                request_data = json.loads(request_data_str)
+            except json.JSONDecodeError:
+                # Try removing backslashes (double-escaped JSON from CSV)
+                unescaped = request_data_str.replace('\\', '')
+                request_data = json.loads(unescaped)
         else:
             request_data = request_data_str
     except Exception as e:
-        return None, f"Invalid request JSON: {str(e)}"
+        return None, "Cannot parse request JSON"
     
     # Encrypt and encode keywords
     encrypted_kd = encrypt_and_encode_keywords(keyword_array, cipher_key)
