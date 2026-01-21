@@ -590,32 +590,41 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 </div>
                 """, unsafe_allow_html=True)
         
+        # Show creative details - ALWAYS
         if st.session_state.flow_layout == 'vertical' and creative_card_right:
-            with creative_card_right:
-                # Show creative details to the RIGHT - tight spacing
-                keyword = current_flow.get('keyword_term', 'N/A')
-                creative_size = current_flow.get('Creative_Size_Final', 'N/A')
-                creative_name = current_flow.get('creative_template_name', 'N/A')
+            details_container = creative_card_right
+        elif st.session_state.flow_layout != 'vertical':
+            details_container = creative_preview_container
+        else:
+            details_container = creative_preview_container  # Fallback
+            
+        with details_container:
+            keyword = current_flow.get('keyword_term', 'N/A')
+            creative_size = current_flow.get('Creative_Size_Final', 'N/A')
+            creative_name = current_flow.get('creative_template_name', 'N/A')
+            
+            st.markdown("<h4 style='font-size: 20px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0;'><strong>🎨 Creative Details</strong></h4>", unsafe_allow_html=True)
+            st.markdown(f"""
+            <div style="margin-bottom: 6px; font-size: 14px;">
+                <div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Keyword</strong></div>
+                <div style="margin-left: 0; margin-top: 0; word-break: break-word; color: #64748b; font-size: 14px;">{html.escape(str(keyword))}</div>
                 
-                st.markdown("<h4 style='font-size: 20px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0;'><strong>🎨 Creative Details</strong></h4>", unsafe_allow_html=True)
-                st.markdown(f"""
-                <div style="margin-bottom: 6px; font-size: 14px;">
-                    <div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Keyword</strong></div>
-                    <div style="margin-left: 0; margin-top: 0; word-break: break-word; color: #64748b; font-size: 14px;">{html.escape(str(keyword))}</div>
-                    
-                    <div style="margin-top: 8px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Creative ID</strong></div>
-                    <div style="margin-left: 0; margin-top: 0; word-break: break-word; color: #64748b; font-size: 14px;">{html.escape(str(creative_id))}</div>
-                    
-                    <div style="margin-top: 8px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Creative Size</strong></div>
-                    <div style="margin-left: 0; margin-top: 0; word-break: break-word; color: #64748b; font-size: 14px;">{html.escape(str(creative_size))}</div>
-                </div>
-                """, unsafe_allow_html=True)
+                <div style="margin-top: 8px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Creative ID</strong></div>
+                <div style="margin-left: 0; margin-top: 0; word-break: break-word; color: #64748b; font-size: 14px;">{html.escape(str(creative_id))}</div>
                 
-                if 'similarities' not in st.session_state or st.session_state.similarities is None:
-                    if api_key:
-                        st.session_state.similarities = calculate_similarities(current_flow)
-                    else:
-                        st.session_state.similarities = {}
+                <div style="margin-top: 8px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Creative Size</strong></div>
+                <div style="margin-left: 0; margin-top: 0; word-break: break-word; color: #64748b; font-size: 14px;">{html.escape(str(creative_size))}</div>
+                
+                <div style="margin-top: 8px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Template</strong></div>
+                <div style="margin-left: 0; margin-top: 0; word-break: break-word; color: #64748b; font-size: 14px;">{html.escape(str(creative_name))}</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            if 'similarities' not in st.session_state or st.session_state.similarities is None:
+                if api_key:
+                    st.session_state.similarities = calculate_similarities(current_flow)
+                else:
+                    st.session_state.similarities = {}
                 
                 if 'similarities' in st.session_state and st.session_state.similarities:
                     # Show Keyword → Ad similarity
