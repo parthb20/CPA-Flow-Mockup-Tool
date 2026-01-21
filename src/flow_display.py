@@ -1,525 +1,1104 @@
 # -*- coding: utf-8 -*-
 """
-CPA Flow Analysis Tool - Main Application
-Modular architecture for maintainability
+Flow Display Module for CPA Flow Analysis Tool
+Handles rendering of the Flow Journey (Publisher, Creative, SERP, Landing Page)
 """
 
 import streamlit as st
-
-# Page config - MUST be FIRST Streamlit command (before any imports that use Streamlit)
-st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊", layout="wide")
-
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-import json
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urljoin
 import re
 import html
 
-# Import from modules (after page config)
-from src.config import FILE_A_ID, FILE_B_ID, FILE_C_ID, SERP_BASE_URL
-from src.data_loader import load_csv_from_gdrive, load_json_from_gdrive
-from src.creative_renderer import load_creative_requests, render_creative_via_weaver, parse_keyword_array_from_flow
-from src.utils import safe_float, safe_int
-from src.flow_analysis import find_default_flow
-from src.similarity import calculate_similarities
-from src.serp import generate_serp_mockup
+from src.config import SERP_BASE_URL
 from src.renderers import (
     render_mini_device_preview,
     render_similarity_score,
-    inject_unique_id,
-    create_screenshot_html
+    inject_unique_id
 )
-from src.screenshot import get_screenshot_url, capture_with_playwright
-from src.ui_components import render_flow_combinations_table, render_what_is_flow_section, render_selected_flow_display
-from src.filters import render_advanced_filters, apply_flow_filtering
-from src.flow_display import render_flow_journey
+from src.screenshot import get_screenshot_url, capture_with_playwright, capture_page_with_fallback
+from src.serp import generate_serp_mockup
+from src.similarity import calculate_similarities
+from src.creative_renderer import render_creative_via_weaver, parse_keyword_array_from_flow
 
-# Try to import playwright (for 403 bypass)
-try:
-    from playwright.sync_api import sync_playwright
-    PLAYWRIGHT_AVAILABLE = True
+
+def render_flow_journey(campaign_df, current_flow, api_key, playwright_available, thumio_configured, thumio_referer_domain):
+    """
+    Render the complete Flow Journey section with all stages:
+    Publisher URL, Creative, SERP, Landing Page, and Similarity Scores
     
-    # Note: Browsers should be pre-installed via packages.txt
-    # Skip auto-install to prevent blocking app startup
-except Exception:
-    PLAYWRIGHT_AVAILABLE = False
-    # Don't show warning here - it's optional
-
-# Get API keys from secrets - safe access pattern
-API_KEY = ""
-SCREENSHOT_API_KEY = ""
-THUMIO_REFERER_DOMAIN = ""
-
-# Safely access secrets - catch all exceptions
-try:
-    try:
-        API_KEY = str(st.secrets["FASTROUTER_API_KEY"]).strip()
-    except Exception:
-        try:
-            API_KEY = str(st.secrets["OPENAI_API_KEY"]).strip()
-        except Exception:
-            API_KEY = ""
-except Exception:
-    API_KEY = ""
-
-try:
-    SCREENSHOT_API_KEY = str(st.secrets["SCREENSHOT_API_KEY"]).strip()
-except Exception:
-    SCREENSHOT_API_KEY = ""
-
-try:
-    THUMIO_REFERER_DOMAIN = str(st.secrets["THUMIO_REFERER_DOMAIN"]).strip()
-except Exception:
-    THUMIO_REFERER_DOMAIN = ""
-
-THUMIO_CONFIGURED = False  # Disabled - Playwright only!
-
-# Custom CSS
-st.markdown("""
+    Args:
+        campaign_df: Filtered campaign dataframe
+        current_flow: Current flow dictionary
+        api_key: API key for similarity calculations
+        playwright_available: Boolean indicating if Playwright is available
+        thumio_configured: Boolean indicating if screenshot API is configured (kept for backwards compatibility)
+        thumio_referer_domain: Referer domain (kept for backwards compatibility)
+    """
+    # Layout and Device controls - COMPACT and TOGETHER
+    st.markdown("""
     <style>
-    /* Background */
-    .main { background-color: #f8fafc !important; }
-    .stApp { background-color: #f8fafc !important; }
-    
-    /* Force light backgrounds everywhere */
-    [data-testid="stExpander"],
-    [data-testid="stExpander"] > div,
-    [data-testid="stExpander"] details,
-    [data-testid="stExpander"] summary {
-        background: white !important;
+    /* Make dropdowns extra compact and entire area clickable including arrows */
+    div[data-testid="stSelectbox"] > div > div {
+        min-height: 36px !important;
+        height: 36px !important;
+        cursor: pointer !important;
+    }
+    div[data-testid="stSelectbox"] > div > div > div {
+        padding: 6px 10px !important;
+        font-size: 14px !important;
+        cursor: pointer !important;
+    }
+    div[data-testid="stSelectbox"] svg {
+        pointer-events: all !important;
+        cursor: pointer !important;
+    }
+    div[data-testid="stSelectbox"] [data-baseweb="select"] {
+        cursor: pointer !important;
+    }
+    div[data-testid="stSelectbox"] [data-baseweb="select"] > div {
+        cursor: pointer !important;
     }
     
-    /* All text elements */
-    h1:not(.main-title), h2, h3, h4, h5, h6, p, span, div, label, .stMarkdown {
-        color: #0f172a !important;
-        font-weight: 500 !important;
-        font-size: 16px !important;
-    }
-    
-    /* Don't override the main title - it has its own inline styles */
-    h1:not(.main-title) { font-weight: 700 !important; font-size: 32px !important; }
-    
-    /* Ensure main title is properly sized - override everything - VERY BIG */
-    .main-title {
-        font-size: 72px !important;
-        font-weight: 900 !important;
-        color: #0f172a !important;
+    /* Completely remove empty spacing elements */
+    div[style*="margin-top: 4px; margin-bottom: 4px"],
+    div[style*="margin: 0; padding: 0"]:empty,
+    div.element-container:empty,
+    [data-testid="stVerticalBlock"] > div:empty {
+        display: none !important;
+        height: 0 !important;
         margin: 0 !important;
         padding: 0 !important;
-        line-height: 1.3 !important;
-        letter-spacing: 0.01em !important;
-        word-spacing: normal !important;
-        white-space: normal !important;
+        visibility: hidden !important;
+        position: absolute !important;
     }
     
-    h2 { font-weight: 700 !important; font-size: 26px !important; }
-    h3 { font-weight: 700 !important; font-size: 22px !important; }
-    
-    /* Buttons */
-    .stButton > button {
-        background-color: white !important;
-        color: #0f172a !important;
-        border: 2px solid #cbd5e1 !important;
-        font-weight: 600 !important;
-        font-size: 16px !important;
-    }
-    .stButton > button:hover {
-        background-color: #f1f5f9 !important;
-        border-color: #94a3b8 !important;
-    }
-    .stButton > button[kind="primary"],
-    .stButton > button[data-testid="baseButton-primary"] {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-        color: white !important;
-        border: none !important;
-    }
-    .stButton > button[kind="secondary"],
-    .stButton > button[data-testid="baseButton-secondary"] {
-        background: white !important;
-        color: #0f172a !important;
-        border: 2px solid #e2e8f0 !important;
+    /* Increase only the FLOW CARDS horizontal container height for URL space */
+    section[data-testid="stVerticalBlock"] > [data-testid="stHorizontalBlock"] {
+        min-height: 900px !important;
     }
     
-    /* Dropdowns */
-    [data-baseweb="select"] { background-color: white !important; }
-    [data-baseweb="select"] > div { 
-        background-color: white !important; 
-        border-color: #cbd5e1 !important; 
+    /* AGGRESSIVE GAP REMOVAL */
+    .element-container {
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
     }
-    [data-baseweb="select"] span { 
-        color: #0f172a !important; 
-        font-weight: 500 !important; 
-        font-size: 16px !important; 
-    }
-    [role="listbox"] { 
-        background-color: white !important; 
-    }
-    [role="option"] { 
-        background-color: white !important; 
-        color: #0f172a !important; 
-    }
-    [role="option"]:hover { 
-        background-color: #f8fafc !important; 
-        color: #0f172a !important; 
-    }
-    [role="option"][aria-selected="true"] { 
-        background-color: #e0f2fe !important; 
-        color: #0369a1 !important; 
-    }
-    
-    /* Global dropdown arrow for all selectboxes */
-    .stSelectbox [data-baseweb="select"] {
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%23666' d='M8 11L3 6h10z'/%3E%3C/svg%3E") !important;
-        background-repeat: no-repeat !important;
-        background-position: right 12px center !important;
-        padding-right: 40px !important;
-    }
-    .stSelectbox [data-baseweb="select"] > div {
-        background-color: white !important;
-    }
-    .stSelectbox input {
-        background-color: white !important;
-        color: #0f172a !important;
-        border-color: #cbd5e1 !important;
-    }
-    
-    /* Metrics */
-    [data-testid="stMetric"] {
-        background: white;
-        padding: 16px;
-        border-radius: 8px;
-        border: 2px solid #e2e8f0;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-    [data-testid="stMetricValue"] {
-        color: #0f172a !important;
-        font-weight: 700 !important;
-        font-size: 28px !important;
-    }
-    [data-testid="stMetricLabel"] {
-        color: #64748b !important;
-        font-weight: 600 !important;
-        font-size: 14px !important;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    /* Individual metric colors */
-    [data-testid="stMetric"]:nth-of-type(1) {
-        border-left: 4px solid #8b5cf6;
-        background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
-    }
-    [data-testid="stMetric"]:nth-of-type(2) {
-        border-left: 4px solid #3b82f6;
-        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-    }
-    [data-testid="stMetric"]:nth-of-type(3) {
-        border-left: 4px solid #10b981;
-        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-    }
-    [data-testid="stMetric"]:nth-of-type(4) {
-        border-left: 4px solid #f59e0b;
-        background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
-    }
-    [data-testid="stMetric"]:nth-of-type(5) {
-        border-left: 4px solid #ef4444;
-        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-    }
-    
-    /* Flow Card */
-    .flow-card {
-        background: white;
-        border: 2px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 20px;
-        margin: 10px 0;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    
-    .flow-stage {
-        text-align: center;
-        padding: 16px;
-        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-        border: 2px solid #3b82f6;
-        border-radius: 8px;
-        margin: 0 10px;
-    }
-    
-    .flow-arrow {
-        font-size: 32px;
-        color: #3b82f6;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 5px;
-    }
-    
-    .similarity-card {
-        background: white;
-        border-radius: 12px;
-        padding: 20px;
-        border: 2px solid #e2e8f0;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    
-    .score-box {
-        display: inline-block;
-        padding: 16px 24px;
-        border-radius: 10px;
-        border: 3px solid;
-        font-size: 42px;
-        font-weight: 700;
-        margin: 15px 0;
-    }
-    
-    .score-excellent { border-color: #22c55e; background: linear-gradient(135deg, #22c55e15, #22c55e08); color: #22c55e; }
-    .score-good { border-color: #3b82f6; background: linear-gradient(135deg, #3b82f615, #3b82f608); color: #3b82f6; }
-    .score-moderate { border-color: #eab308; background: linear-gradient(135deg, #eab30815, #eab30808); color: #eab308; }
-    .score-weak { border-color: #f97316; background: linear-gradient(135deg, #f9731615, #f9731608); color: #f97316; }
-    .score-poor { border-color: #ef4444; background: linear-gradient(135deg, #ef444415, #ef444408); color: #ef4444; }
-    
-    .info-box {
-        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-        padding: 18px;
-        border-radius: 8px;
-        border: 1px solid #bae6fd;
-        border-left: 4px solid #3b82f6;
-        margin: 15px 0;
-        line-height: 1.8;
-        font-size: 16px;
-        color: #0f172a !important;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        font-weight: 500;
-    }
-    .info-box p, .info-box div, .info-box span {
-        color: #0f172a !important;
-        background: transparent !important;
+    .main > div > div > div > div {
+        gap: 0 !important;
     }
     </style>
-""", unsafe_allow_html=True)
-
-# Session state initialization
-for key in ['data_a', 'data_b', 'data_c', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'similarities', 'last_campaign_key']:
-    if key not in st.session_state:
-        if key == 'view_mode':
-            st.session_state[key] = 'basic'
-        elif key == 'flow_layout':
-            st.session_state[key] = 'horizontal'
-        else:
-            st.session_state[key] = None
-
-# Main title - BIG and BOLD at top
-st.markdown("""
-    <div style="margin: 0 0 4px 0; padding: 8px 0 8px 0; border-bottom: 3px solid #e2e8f0;">
-        <h1 style="font-size: 64px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui, -apple-system, sans-serif;">
-            📊 CPA Flow Analysis
-        </h1>
-    </div>
-""", unsafe_allow_html=True)
-
-# Auto-load from Google Drive (sequential loading for Streamlit Cloud compatibility)
-if not st.session_state.loading_done:
-    with st.spinner("Loading data..."):
-        try:
-            # Load CSV first (critical)
-            st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
-            
-            # Load JSON second (nice to have)
-            st.session_state.data_b = load_json_from_gdrive(FILE_B_ID)
-            
-            # Load File C third (creative requests) - optional
-            if FILE_C_ID:
-                st.session_state.data_c = load_creative_requests(FILE_C_ID)
-            
-            st.session_state.loading_done = True
-        except Exception as e:
-            st.error(f"❌ Error loading data: {str(e)}")
-            st.session_state.loading_done = True
-
-# No view mode toggle here - moved to flow controls
-
-if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
-    df = st.session_state.data_a
+    """, unsafe_allow_html=True)
     
-    # Select Advertiser and Campaign - make dropdowns smaller
-    col1, col2, col3 = st.columns([1, 1, 2])
-    with col1:
-        # Find advertiser column (handle case variations)
-        adv_col = next((col for col in df.columns if col.lower() == 'advertiser_name'), 'Advertiser_Name')
-        advertisers = ['-- Select Advertiser --'] + sorted(df[adv_col].dropna().unique().tolist())
-        # Preserve advertiser selection
-        default_adv_idx = 0
-        if 'preserved_advertiser' in st.session_state and st.session_state.preserved_advertiser in advertisers:
-            default_adv_idx = advertisers.index(st.session_state.preserved_advertiser)
-        selected_advertiser = st.selectbox("Advertiser", advertisers, index=default_adv_idx)
-        if selected_advertiser != '-- Select Advertiser --':
-            st.session_state.preserved_advertiser = selected_advertiser
+    # All controls in one row - Layout, Device, Domain, Keyword
+    control_col1, control_col2, control_col3, control_col4 = st.columns([1.2, 1.2, 1.5, 1.5])
     
-    if selected_advertiser and selected_advertiser != '-- Select Advertiser --':
-        with col2:
-            # Find campaign column (handle case variations)
-            camp_col = next((col for col in df.columns if col.lower() == 'campaign_name'), 'Campaign_Name')
-            campaigns = ['-- Select Campaign --'] + sorted(df[df[adv_col] == selected_advertiser][camp_col].dropna().unique().tolist())
-            # Preserve campaign selection
-            default_camp_idx = 0
-            if 'preserved_campaign' in st.session_state and st.session_state.preserved_campaign in campaigns:
-                default_camp_idx = campaigns.index(st.session_state.preserved_campaign)
-            selected_campaign = st.selectbox("Campaign", campaigns, key='campaign_selector', index=default_camp_idx)
-            if selected_campaign != '-- Select Campaign --':
-                st.session_state.preserved_campaign = selected_campaign
-        
-        # Reset flow when campaign changes - CLEAR ALL OLD DATA IMMEDIATELY
-        campaign_key = f"{selected_advertiser}_{selected_campaign}"
-        if 'last_campaign_key' not in st.session_state:
-            st.session_state.last_campaign_key = None
-        
-        # Preserve campaign selection when switching views
-        if 'preserved_campaign' not in st.session_state:
-            st.session_state.preserved_campaign = None
-        
-        if st.session_state.last_campaign_key != campaign_key:
-            # Clear ALL flow-related state immediately when campaign changes
-            st.session_state.default_flow = None
-            st.session_state.current_flow = None
-            st.session_state.similarities = None
-            st.session_state.last_campaign_key = campaign_key
-            # Clear any cached previews/components by forcing a complete rerun
-            st.empty()  # Clear any lingering containers
+    with control_col1:
+        st.markdown('<p style="font-size: 13px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;">Layout</p>', unsafe_allow_html=True)
+        layout_choice = st.selectbox("", ['Horizontal', 'Vertical'], 
+                                     index=0 if st.session_state.flow_layout == 'horizontal' else 1, 
+                                     key='layout_dropdown', label_visibility="collapsed")
+        if (layout_choice == 'Horizontal' and st.session_state.flow_layout != 'horizontal') or \
+           (layout_choice == 'Vertical' and st.session_state.flow_layout != 'vertical'):
+            st.session_state.flow_layout = 'horizontal' if layout_choice == 'Horizontal' else 'vertical'
             st.rerun()
+    
+    with control_col2:
+        st.markdown('<p style="font-size: 13px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;">Device</p>', unsafe_allow_html=True)
+        device_all = st.selectbox("", ['Mobile', 'Tablet', 'Laptop'], 
+                                 key='device_all', index=0, label_visibility="collapsed")
+        # Extract actual device name
+        device_all = device_all.lower()
+    
+    with control_col3:
+        st.markdown('<p style="font-size: 13px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;">Domain</p>', unsafe_allow_html=True)
+        domains = ['All Domains'] + sorted(campaign_df['publisher_domain'].dropna().unique().tolist()) if 'publisher_domain' in campaign_df.columns else ['All Domains']
+        selected_domain_inline = st.selectbox("", domains, key='domain_inline_filter', label_visibility="collapsed")
+        if selected_domain_inline != 'All Domains':
+            campaign_df = campaign_df[campaign_df['publisher_domain'] == selected_domain_inline]
+    
+    with control_col4:
+        st.markdown('<p style="font-size: 13px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;">Keyword</p>', unsafe_allow_html=True)
+        keywords = ['All Keywords'] + sorted(campaign_df['keyword_term'].dropna().unique().tolist()) if 'keyword_term' in campaign_df.columns else ['All Keywords']
+        selected_keyword_inline = st.selectbox("", keywords, key='keyword_inline_filter', label_visibility="collapsed")
+        if selected_keyword_inline != 'All Keywords':
+            campaign_df = campaign_df[campaign_df['keyword_term'] == selected_keyword_inline]
+    
+    # ZERO GAPS CSS - Remove empty containers
+    st.markdown("""
+    <style>
+    /* Zero spacing */
+    .stRadio { 
+        margin: 0 !important; 
+        padding: 0 !important; 
+    }
+    
+    /* Zero padding for columns */
+    [data-testid="column"] {
+        padding: 4px !important;
+        margin: 0 !important;
+    }
+    
+    /* Zero title spacing */
+    [data-testid="column"] h3:first-child {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+        margin-bottom: 4px !important;
+    }
+    
+    /* Zero spacing between elements */
+    [data-testid="column"] .element-container {
+        margin-top: 0 !important;
+    }
+    
+    /* First element no margin */
+    [data-testid="column"] > div > .element-container:first-child {
+        margin-top: 0 !important;
+    }
+    
+    /* Zero gap in sections */
+    section[data-testid="stVerticalBlock"] {
+        gap: 0 !important;
+    }
+    
+    /* Remove all streamlit default spacing */
+    .main .block-container {
+        padding-top: 2rem !important;
+        padding-bottom: 0 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Initialize containers for both layouts
+    stage_cols = None
+    vertical_preview_col = None
+    vertical_info_col = None
+    stage_1_info_container = None
+    stage_2_info_container = None
+    stage_3_info_container = None
+    stage_4_info_container = None
+    
+    if st.session_state.flow_layout == 'horizontal':
+        # Add CSS to force single line and prevent wrapping, ensure equal card heights and boundaries
+        # Match advanced-horizontal mode alignment - AGGRESSIVE FIXES
+        st.markdown("""
+        <style>
+        /* CRITICAL: Remove ALL top spacing from everything */
+        .block-container {
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+        /* Target Streamlit columns directly - remove ALL padding/margin */
+        [data-testid="column"] {
+            flex-shrink: 0 !important;
+            min-width: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+        [data-testid="column"] > div {
+            padding: 0 !important;
+            margin: 0 !important;
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+        .stColumn > div {
+            overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+            height: 100% !important;
+            align-items: stretch !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+        /* Remove Streamlit's default element-container spacing */
+        [data-testid="column"] .element-container {
+            padding: 0 !important;
+            margin: 0 !important;
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+        }
+        /* Remove spacing from first element-container */
+        [data-testid="column"] .element-container:first-child {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+        }
+        /* AGGRESSIVE: Remove spacing from ALL element-containers at start */
+        [data-testid="column"] > div > .element-container:first-of-type {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+        }
+        /* Remove spacing from markdown elements at top of columns */
+        [data-testid="column"] h3:first-child {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+        }
+        /* Remove spacing from radio button container */
+        .stRadio {
+            margin-bottom: 0 !important;
+            padding-bottom: 0 !important;
+        }
+        /* Remove spacing from horizontal block containers */
+        .stHorizontalBlock {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .stHorizontalBlock > div {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
         
-        if selected_campaign and selected_campaign != '-- Select Campaign --':
-            campaign_df = df[(df[adv_col] == selected_advertiser) & (df[camp_col] == selected_campaign)].copy()
-            
-            # Convert numeric columns to proper types FIRST
-            campaign_df['impressions'] = campaign_df['impressions'].apply(safe_float)
-            campaign_df['clicks'] = campaign_df['clicks'].apply(safe_float)
-            campaign_df['conversions'] = campaign_df['conversions'].apply(safe_float)
-            
-            # Calculate CTR and CVR per row
-            campaign_df['ctr'] = campaign_df.apply(lambda x: (x['clicks'] / x['impressions'] * 100) if x['impressions'] > 0 else 0, axis=1)
-            campaign_df['cvr'] = campaign_df.apply(lambda x: (x['conversions'] / x['clicks'] * 100) if x['clicks'] > 0 else 0, axis=1)
-            
-            # Add publisher_domain from URL if not present
-            if 'publisher_url' in campaign_df.columns:
-                campaign_df['publisher_domain'] = campaign_df['publisher_url'].apply(
-                    lambda x: urlparse(str(x)).netloc if pd.notna(x) and str(x).strip() else ''
-                )
-            
-            total_impressions = campaign_df['impressions'].sum()
-            total_clicks = campaign_df['clicks'].sum()
-            total_conversions = campaign_df['conversions'].sum()
-            avg_ctr = (total_clicks / total_impressions * 100) if total_impressions > 0 else 0
-            avg_cvr = (total_conversions / total_clicks * 100) if total_clicks > 0 else 0
-            
-            # Show aggregated table with big title
-            st.markdown("""
-            <div style="margin-bottom: 4px; margin-top: 4px;">
-                <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; text-align: left; line-height: 1;">
-                    📊 Flow Combinations Overview
-                </h2>
+        # Create columns for the actual cards - NO gap to prevent spacing
+        stage_cols = st.columns([1, 0.7, 1, 1], gap='small')
+    else:
+        # Vertical layout - cards extend full width, details inline within card boundaries
+        stage_cols = None
+    
+    # Stage 1: Publisher URL
+    if st.session_state.flow_layout == 'vertical':
+        st.markdown("<br>", unsafe_allow_html=True)
+        stage_1_container = st.container()
+    else:
+        stage_1_container = stage_cols[0]
+    
+    # Initialize card columns for vertical layout
+    card_col_left = None
+    card_col_right = None
+    
+    # Get current domain and URL for Publisher URL section
+    current_dom = current_flow.get('publisher_domain', '')
+    current_url = current_flow.get('publisher_url', '')
+    
+    # Get domains and URLs for filtering
+    keywords = sorted(campaign_df['keyword_term'].dropna().unique().tolist())
+    current_kw = current_flow.get('keyword_term', keywords[0] if keywords else '')
+    kw_filtered = campaign_df[campaign_df['keyword_term'] == current_kw]
+    domains = sorted(kw_filtered['publisher_domain'].dropna().unique().tolist()) if 'publisher_domain' in kw_filtered.columns else []
+    
+    # Get URLs for current domain
+    dom_filtered = kw_filtered[kw_filtered['publisher_domain'] == current_dom] if current_dom and domains else kw_filtered
+    urls = dom_filtered['publisher_url'].dropna().unique().tolist() if 'publisher_url' in dom_filtered.columns else []
+    
+    with stage_1_container:
+        if st.session_state.flow_layout == 'vertical':
+            card_col_left, card_col_right = st.columns([0.6, 0.4])
+            with card_col_left:
+                st.markdown('<h3 style="font-size: 40px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>📰 Publisher URL</strong></h3>', unsafe_allow_html=True)
+        else:
+            st.markdown('<h3 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;"><strong>📰 Publisher URL</strong></h3>', unsafe_allow_html=True)
+        
+        pub_url = current_flow.get('publisher_url', '')
+        preview_container = card_col_left if st.session_state.flow_layout == 'vertical' and card_col_left else stage_1_container
+        
+        if pub_url and pub_url != 'NOT_FOUND' and pd.notna(pub_url) and str(pub_url).strip():
+            with preview_container:
+                try:
+                    user_agents = [
+                        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0'
+                    ]
+                    head_response = None
+                    for ua in user_agents:
+                        try:
+                            head_response = requests.head(pub_url, timeout=5, headers={'User-Agent': ua})
+                            if head_response.status_code == 200:
+                                break
+                        except:
+                            continue
+                    
+                    if not head_response:
+                        iframe_blocked = False
+                    else:
+                        x_frame = head_response.headers.get('X-Frame-Options', '').upper()
+                        csp = head_response.headers.get('Content-Security-Policy', '')
+                        iframe_blocked = ('DENY' in x_frame or 'SAMEORIGIN' in x_frame or 'frame-ancestors' in csp.lower())
+                except:
+                    iframe_blocked = False
+                
+                if not iframe_blocked:
+                    try:
+                        preview_html, height, _ = render_mini_device_preview(pub_url, is_url=True, device=device_all, display_url=pub_url)
+                        preview_html = inject_unique_id(preview_html, 'pub_iframe', pub_url, device_all, current_flow)
+                        display_height = height
+                        st.components.v1.html(preview_html, height=display_height, scrolling=False)
+                        if st.session_state.flow_layout != 'horizontal':
+                            st.caption("📺 Iframe")
+                    except:
+                        iframe_blocked = True
+                
+                if iframe_blocked:
+                    try:
+                        headers = {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                            'Accept-Language': 'en-US,en;q=0.9',
+                            'Accept-Encoding': 'gzip, deflate, br',
+                            'DNT': '1',
+                            'Connection': 'keep-alive',
+                            'Upgrade-Insecure-Requests': '1',
+                            'Sec-Fetch-Dest': 'document',
+                            'Sec-Fetch-Mode': 'navigate',
+                            'Sec-Fetch-Site': 'none',
+                            'Cache-Control': 'max-age=0'
+                        }
+                        
+                        session = requests.Session()
+                        response = None
+                        for ua in user_agents:
+                            headers['User-Agent'] = ua
+                            try:
+                                response = session.get(pub_url, timeout=15, headers=headers, allow_redirects=True)
+                                if response.status_code == 200:
+                                    break
+                            except:
+                                continue
+                        
+                        if not response:
+                            response = session.get(pub_url, timeout=15, headers=headers, allow_redirects=True)
+                        
+                        if response.status_code == 403:
+                            if playwright_available:
+                                try:
+                                    with st.spinner("🔄 Trying browser automation..."):
+                                        page_html = capture_with_playwright(pub_url, device=device_all)
+                                        if page_html:
+                                            # Check if it's a screenshot fallback
+                                            if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
+                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                                preview_html = inject_unique_id(preview_html, 'pub_screenshot_fallback', pub_url, device_all, current_flow)
+                                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                st.caption("📸 Screenshot (ScreenshotOne API)")
+                                            else:
+                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                                preview_html = inject_unique_id(preview_html, 'pub_playwright', pub_url, device_all, current_flow)
+                                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                st.caption("🤖 Rendered via browser automation")
+                                        else:
+                                            raise Exception("Playwright returned empty HTML")
+                                except Exception:
+                                    st.warning("🚫 Could not load page")
+                                    st.info("💡 Set SCREENSHOT_API_KEY in secrets for screenshot fallback")
+                            else:
+                                st.warning("🚫 Could not load page")
+                        elif response.status_code == 200:
+                            try:
+                                page_html = response.text
+                                if '<head>' in page_html:
+                                    page_html = page_html.replace('<head>', '<head><meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">', 1)
+                                else:
+                                    page_html = '<head><meta charset="utf-8"></head>' + page_html
+                                page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
+                                                  lambda m: f'src="{urljoin(pub_url, m.group(1))}"', page_html)
+                                page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
+                                                  lambda m: f'href="{urljoin(pub_url, m.group(1))}"', page_html)
+                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                preview_html = inject_unique_id(preview_html, 'pub_html', pub_url, device_all, current_flow)
+                                display_height = height
+                                st.components.v1.html(preview_html, height=display_height, scrolling=False)
+                                st.caption("📄 HTML")
+                            except Exception as html_error:
+                                st.error(f"❌ HTML rendering failed: {str(html_error)[:100]}")
+                        else:
+                            if playwright_available:
+                                try:
+                                    with st.spinner("🔄 Trying browser automation..."):
+                                        page_html = capture_with_playwright(pub_url, device=device_all)
+                                        if page_html:
+                                            if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
+                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                                preview_html = inject_unique_id(preview_html, 'pub_screenshot_fallback', pub_url, device_all, current_flow)
+                                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                st.caption("📸 Screenshot (ScreenshotOne API)")
+                                            else:
+                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                                preview_html = inject_unique_id(preview_html, 'pub_playwright', pub_url, device_all, current_flow)
+                                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                st.caption("🤖 Rendered via browser automation")
+                                        else:
+                                            raise Exception("Playwright returned empty HTML")
+                                except Exception:
+                                    st.error(f"❌ HTTP {response.status_code}")
+                            else:
+                                st.error(f"❌ HTTP {response.status_code}")
+                    except Exception as e:
+                        st.error(f"❌ {str(e)[:100]}")
+        else:
+            with preview_container:
+                st.warning("⚠️ No valid publisher URL in data")
+        
+        if st.session_state.flow_layout == 'vertical' and card_col_right:
+            with card_col_right:
+                # No extra spacing - tight layout
+                st.markdown("""
+                <div style="margin-bottom: 4px;">
+                    <span style="font-weight: 900; color: #0f172a; font-size: 20px;">
+                        <strong>📰 Publisher URL Details</strong>
+                        <span title="Similarity scores measure how well different parts of your ad flow match: Keyword → Ad (ad matches keyword), Ad → Page (landing page matches ad), Keyword → Page (overall flow consistency)" style="cursor: help; color: #3b82f6; font-size: 13px; margin-left: 4px;"><strong>ℹ️</strong></span>
+                    </span>
+                </div>
+                """, unsafe_allow_html=True)
+                st.markdown(f"""
+                <div style="margin-bottom: 6px; font-size: 14px;">
+                    <div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Domain</strong></div>
+                    <div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 14px;">{html.escape(str(current_dom))}</div>
+                    {f'<div style="margin-top: 6px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{current_url}" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
+                </div>
+                """, unsafe_allow_html=True)
+        
+        # Close wrapper div for horizontal layout
+        if st.session_state.flow_layout == 'horizontal':
+            # Show info BELOW card preview in horizontal layout - ALWAYS show
+            st.markdown(f"""
+            <div style='margin-top: 8px; font-size: 14px;'>
+                <div style='font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;'><strong>Domain</strong></div>
+                <div style='margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 14px;'>{html.escape(str(current_dom))}</div>
+                {f'<div style="margin-top: 6px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{current_url}" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
             </div>
             """, unsafe_allow_html=True)
+    
+    # Arrow divs removed - no longer needed
+    
+    # Stage 2: Creative
+    if st.session_state.flow_layout == 'vertical':
+        st.markdown("<br>", unsafe_allow_html=True)
+        stage_2_container = st.container()
+        creative_card_left = None
+        creative_card_right = None
+    else:
+        stage_2_container = stage_cols[1]
+        creative_card_left = None
+        creative_card_right = None
+    
+    with stage_2_container:
+        if st.session_state.flow_layout == 'vertical':
+            creative_card_left, creative_card_right = st.columns([0.6, 0.4])
+            with creative_card_left:
+                st.markdown('<h3 style="font-size: 40px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>🎨 Creative</strong></h3>', unsafe_allow_html=True)
+        else:
+            st.markdown('<h3 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;"><strong>🎨 Creative</strong></h3>', unsafe_allow_html=True)
+        
+        creative_id = current_flow.get('creative_id', 'N/A')
+        creative_name = current_flow.get('creative_template_name', 'N/A')
+        creative_size = current_flow.get('Creative_Size_Final', 'N/A')  # From File A
+        keyword = current_flow.get('keyword_term', 'N/A')
+        
+        # Keyword will be shown BELOW card preview
+        
+        if st.session_state.flow_layout != 'vertical':
+            if st.session_state.view_mode == 'advanced':
+                with st.expander("⚙️", expanded=False):
+                    st.caption(f"**ID:** {creative_id}")
+                    st.caption(f"**Name:** {creative_name}")
+                    st.caption(f"**Size:** {creative_size}")
+        
+        creative_preview_container = creative_card_left if st.session_state.flow_layout == 'vertical' and creative_card_left else stage_2_container
+        
+        with creative_preview_container:
+            # Only use Weaver API for creative rendering (File C required)
+            creative_rendered = False
             
-            # Render table using module
-            render_flow_combinations_table(campaign_df)
-            
-            # Render "What is Flow" section using module
-            render_what_is_flow_section()
-            
-            # Find default flow if not set
-            if st.session_state.default_flow is None:
-                with st.spinner("Finding best performing flow..."):
-                    st.session_state.default_flow = find_default_flow(campaign_df)
-                    st.session_state.current_flow = st.session_state.default_flow.copy() if st.session_state.default_flow else None
-            
-            if st.session_state.current_flow:
-                current_flow = st.session_state.current_flow
-                
-                # Advanced mode: Show keyword and domain filters
-                if st.session_state.view_mode == 'advanced':
-                    pass
-                
-                # Render filters and get filter state
-                filters_changed, selected_keyword_filter, selected_domain_filter = render_advanced_filters(campaign_df, current_flow)
-                
-                # Apply filtering logic using module
-                current_flow, final_filtered = apply_flow_filtering(
-                    campaign_df, current_flow, filters_changed, selected_keyword_filter, selected_domain_filter
-                )
-                
-                # Update session state
-                st.session_state.current_flow = current_flow
-                
-                # Show selected flow details using module
-                if len(final_filtered) > 0:
-                    # Select view_id with max timestamp
-                    if 'timestamp' in final_filtered.columns:
-                        single_view = final_filtered.loc[final_filtered['timestamp'].idxmax()]
-                    else:
-                        single_view = final_filtered.iloc[0]
+            if st.session_state.get('data_c') is not None:
+                try:
+                    # Get cipher key from secrets or use default
+                    cipher_key = None
+                    try:
+                        cipher_key = st.secrets.get("WEAVER_CIPHER_KEY", None)
+                    except Exception:
+                        cipher_key = None
                     
-                    flow_imps = safe_int(single_view.get('impressions', 0))
-                    flow_clicks = safe_int(single_view.get('clicks', 0))
-                    flow_convs = safe_int(single_view.get('conversions', 0))
-                    flow_ctr = (flow_clicks / flow_imps * 100) if flow_imps > 0 else 0
-                    flow_cvr = (flow_convs / flow_clicks * 100) if flow_clicks > 0 else 0
-                else:
-                    single_view = None
+                    # Parse keyword array from flow
+                    keyword_array = parse_keyword_array_from_flow(current_flow)
+                    
+                    # Render via Weaver API
+                    rendered_html, error_msg = render_creative_via_weaver(
+                        creative_id=creative_id,
+                        creative_size=creative_size,
+                        keyword_array=keyword_array,
+                        creative_requests_df=st.session_state.data_c,
+                        cipher_key=cipher_key
+                    )
+                    
+                    if rendered_html:
+                        # Render the creative at its exact size with scrolling enabled
+                        if st.session_state.flow_layout == 'vertical':
+                            st.components.v1.html(rendered_html, height=650, scrolling=True)
+                        else:
+                            st.components.v1.html(rendered_html, height=500, scrolling=True)
+                        creative_rendered = True
+                    elif error_msg:
+                        st.warning(f"⚠️ {error_msg}")
+                except Exception as e:
+                    st.error(f"⚠️ Creative error: {str(e)[:100]}")
+            
+            # Fallback: Try response column from File A if Weaver failed
+            if not creative_rendered:
+                response_value = current_flow.get('response', None)
+                if response_value and pd.notna(response_value) and str(response_value).strip():
+                    try:
+                        # Parse and render response from File A
+                        if isinstance(response_value, str) and response_value.strip():
+                            # Extract width and height from creative_size
+                            try:
+                                width_str, height_str = creative_size.split('x')
+                                width, height = int(width_str), int(height_str)
+                            except:
+                                width, height = 300, 250
+                            
+                            # Wrap in HTML container
+                            rendered_html = f"""
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                                <meta charset="UTF-8">
+                                <style>
+                                    * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+                                    body {{ width: {width}px; height: {height}px; overflow: hidden; }}
+                                </style>
+                            </head>
+                            <body>
+                                {response_value}
+                            </body>
+                            </html>
+                            """
+                            if st.session_state.flow_layout == 'vertical':
+                                st.components.v1.html(rendered_html, height=650, scrolling=True)
+                            else:
+                                st.components.v1.html(rendered_html, height=500, scrolling=True)
+                            creative_rendered = True
+                    except Exception as e:
+                        pass
+            
+            # Show placeholder if all rendering failed
+            if not creative_rendered:
+                min_height = 650 if st.session_state.flow_layout == 'vertical' else 500
+                st.markdown(f"""
+                <div style="min-height: {min_height}px; display: flex; align-items: center; justify-content: center; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px;">
+                    <div style="text-align: center; color: #64748b;">
+                        <div style="font-size: 48px; margin-bottom: 8px;">⚠️</div>
+                        <div style="font-weight: 600; font-size: 14px;">No creative data</div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        if st.session_state.flow_layout == 'vertical' and creative_card_right:
+            with creative_card_right:
+                # Show creative details to the RIGHT - tight spacing
+                keyword = current_flow.get('keyword_term', 'N/A')
+                creative_size = current_flow.get('Creative_Size_Final', 'N/A')
+                creative_name = current_flow.get('creative_template_name', 'N/A')
                 
-                # Remove any spacing containers
-                pass
-                
-                # Add Flow Journey title with explanation - NOT BOLD
-                st.markdown("""
-                <h2 style="font-size: 56px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui;">
-                    <strong>🔄 Flow Journey</strong>
-                </h2>
-                <p style="font-size: 14px; color: #64748b; font-weight: 400; margin: 0; line-height: 1.6; font-family: system-ui;">
-                    A flow is the complete user journey: Publisher → Creative → SERP → Landing Page. Each stage can be customized using the filters above. We automatically select the best-performing combination based on conversions, clicks, and impressions.
-                </p>
+                st.markdown("<h4 style='font-size: 20px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0;'><strong>🎨 Creative Details</strong></h4>", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div style="margin-bottom: 6px; font-size: 14px;">
+                    <div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Keyword</strong></div>
+                    <div style="margin-left: 0; margin-top: 0; word-break: break-word; color: #64748b; font-size: 14px;">{html.escape(str(keyword))}</div>
+                    
+                    <div style="margin-top: 8px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Creative ID</strong></div>
+                    <div style="margin-left: 0; margin-top: 0; word-break: break-word; color: #64748b; font-size: 14px;">{html.escape(str(creative_id))}</div>
+                    
+                    <div style="margin-top: 8px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Creative Size</strong></div>
+                    <div style="margin-left: 0; margin-top: 0; word-break: break-word; color: #64748b; font-size: 14px;">{html.escape(str(creative_size))}</div>
+                </div>
                 """, unsafe_allow_html=True)
                 
-                # Show flow stats directly (no success messages)
-                if len(final_filtered) > 0:
-                    # AGGREGATE stats across ALL filtered rows using weighted averages
-                    # Convert to numeric first
-                    final_filtered['impressions'] = final_filtered['impressions'].apply(safe_float)
-                    final_filtered['clicks'] = final_filtered['clicks'].apply(safe_float)
-                    final_filtered['conversions'] = final_filtered['conversions'].apply(safe_float)
-                    
-                    flow_imps = int(final_filtered['impressions'].sum())
-                    flow_clicks = int(final_filtered['clicks'].sum())
-                    flow_convs = int(final_filtered['conversions'].sum())
-                    
-                    # Weighted averages: CTR weighted by impressions, CVR weighted by clicks
-                    flow_ctr = (flow_clicks / flow_imps * 100) if flow_imps > 0 else 0
-                    flow_cvr = (flow_convs / flow_clicks * 100) if flow_clicks > 0 else 0
-                    
-                    # Get single view for other details (use max timestamp if available)
-                    if 'ts' in final_filtered.columns and final_filtered['ts'].notna().any():
-                        try:
-                            single_view = final_filtered.loc[final_filtered['ts'].idxmax()]
-                        except:
-                            single_view = final_filtered.iloc[0]
+                if 'similarities' not in st.session_state or st.session_state.similarities is None:
+                    if api_key:
+                        st.session_state.similarities = calculate_similarities(current_flow)
                     else:
-                        single_view = final_filtered.iloc[0]
-                    
-                    render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs, flow_ctr, flow_cvr)
+                        st.session_state.similarities = {}
                 
-                # Render Flow Journey using module (heading now shown above)
-                render_flow_journey(
-                    campaign_df=campaign_df,
-                    current_flow=current_flow,
-                    api_key=API_KEY,
-                    playwright_available=PLAYWRIGHT_AVAILABLE,
-                    thumio_configured=THUMIO_CONFIGURED,
-                    thumio_referer_domain=THUMIO_REFERER_DOMAIN
-                )
-            
+                if 'similarities' in st.session_state and st.session_state.similarities:
+                    # Show Keyword → Ad similarity
+                    render_similarity_score('kwd_to_ad', st.session_state.similarities,
+                                           custom_title="Keyword → Ad Copy Similarity",
+                                           tooltip_text="Measures how well the ad creative matches the search keyword. Higher scores indicate better keyword-ad alignment.")
+        
+        # Close wrapper div for horizontal layout
+        if st.session_state.flow_layout == 'horizontal':
+            # Show keyword BELOW card preview in horizontal layout - ALWAYS show
+            keyword = current_flow.get('keyword_term', 'N/A')
+            st.markdown(f"""
+            <div style='margin-top: 8px; font-size: 14px;'>
+                <div style='font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;'><strong>Keyword</strong></div>
+                <div style='margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 14px;'>{html.escape(str(keyword))}</div>
+            </div>
+            """, unsafe_allow_html=True)
+    
+    # Arrow divs removed - no longer needed
+    
+    # Stage 3: SERP
+    serp_template_key = current_flow.get('serp_template_key', '')
+    if serp_template_key and pd.notna(serp_template_key) and str(serp_template_key).strip():
+        serp_url = SERP_BASE_URL + str(serp_template_key)
+    else:
+        serp_url = None
+    
+    if st.session_state.flow_layout == 'vertical':
+        st.markdown("<br>", unsafe_allow_html=True)
+        stage_3_container = st.container()
+        serp_card_left = None
+        serp_card_right = None
+    else:
+        if stage_cols:
+            stage_3_container = stage_cols[2]
+        else:
+            stage_3_container = st.container()
+        serp_card_left = None
+        serp_card_right = None
+    
+    with stage_3_container:
+        if st.session_state.flow_layout == 'vertical':
+            serp_card_left, serp_card_right = st.columns([0.6, 0.4])
+            with serp_card_left:
+                st.markdown('<h3 style="font-size: 40px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>📄 SERP</strong></h3>', unsafe_allow_html=True)
+        else:
+            st.markdown('<h3 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;"><strong>📄 SERP</strong></h3>', unsafe_allow_html=True)
+        
+        serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
+        serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
+        serp_key = current_flow.get('serp_template_key', 'N/A')
+        
+        # SERP info removed from above card - will be shown on right side only, not below card
+        
+        ad_title = current_flow.get('ad_title', '')
+        ad_desc = current_flow.get('ad_description', '')
+        ad_display_url = current_flow.get('ad_display_url', '')
+        keyword = current_flow.get('keyword_term', '')
+        
+        serp_html = None
+        if 'data_b' in st.session_state and st.session_state.data_b:
+            is_dict = isinstance(st.session_state.data_b, dict)
+            is_list = isinstance(st.session_state.data_b, list)
+            if (is_dict and len(st.session_state.data_b) > 0) or (is_list and len(st.session_state.data_b) > 0):
+                serp_html = generate_serp_mockup(current_flow, st.session_state.data_b)
+        
+        serp_preview_container = serp_card_left if st.session_state.flow_layout == 'vertical' and serp_card_left else stage_3_container
+        
+        if serp_html and serp_html.strip():
+            with serp_preview_container:
+                preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
+                preview_html = inject_unique_id(preview_html, 'serp_template', serp_url or '', device_all, current_flow)
+                display_height = height
+                st.components.v1.html(preview_html, height=display_height, scrolling=False)
+                if st.session_state.flow_layout != 'horizontal':
+                    st.caption("📺 SERP (from template)")
+        
+        elif serp_url:
+            with serp_preview_container:
+                try:
+                    response = requests.get(serp_url, timeout=15, headers={
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9'
+                    })
+                    
+                    if response.status_code == 200:
+                        serp_html = response.text
+                        serp_html = serp_html.replace('min-device-width', 'min-width')
+                        serp_html = serp_html.replace('max-device-width', 'max-width')
+                        serp_html = serp_html.replace('min-device-height', 'min-height')
+                        serp_html = serp_html.replace('max-device-height', 'max-height')
+                        
+                        soup = BeautifulSoup(serp_html, 'html.parser')
+                        replacement_made = False
+                        
+                        for text_node in soup.find_all(string=True):
+                            text_str = str(text_node)
+                            if 'Sponsored results for:' in text_str or 'sponsored results for:' in text_str.lower():
+                                new_text = re.sub(
+                                    r'(Sponsored results for:|sponsored results for:)\s*["\']?([^"\'<>]*)["\']?',
+                                    f'\\1 "{keyword}"',
+                                    text_str,
+                                    flags=re.IGNORECASE
+                                )
+                                if new_text != text_str:
+                                    text_node.replace_with(new_text)
+                                    replacement_made = True
+                        
+                        if ad_title:
+                            serp_html_temp = str(soup)
+                            serp_html_temp = re.sub(
+                                r'(<div class="title">)[^<]*(</div>)',
+                                f'\\1{ad_title}\\2',
+                                serp_html_temp,
+                                count=1
+                            )
+                            soup = BeautifulSoup(serp_html_temp, 'html.parser')
+                            replacement_made = True
+                        
+                        if ad_desc:
+                            serp_html_temp = str(soup)
+                            serp_html_temp = re.sub(
+                                r'(<div class="desc">)[^<]*(</div>)',
+                                f'\\1{ad_desc}\\2',
+                                serp_html_temp,
+                                count=1
+                            )
+                            soup = BeautifulSoup(serp_html_temp, 'html.parser')
+                            replacement_made = True
+                        
+                        if ad_display_url:
+                            serp_html_temp = str(soup)
+                            serp_html_temp = re.sub(
+                                r'(<div class="url">)[^<]*(</div>)',
+                                f'\\1{ad_display_url}\\2',
+                                serp_html_temp,
+                                count=1
+                            )
+                            soup = BeautifulSoup(serp_html_temp, 'html.parser')
+                            replacement_made = True
+                        
+                        if not replacement_made:
+                            st.warning("⚠️ No matching elements found for replacement. Check SERP HTML structure.")
+                        
+                        serp_html = str(soup)
+                        serp_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
+                                          lambda m: f'src="{urljoin(serp_url, m.group(1))}"', serp_html)
+                        serp_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
+                                          lambda m: f'href="{urljoin(serp_url, m.group(1))}"', serp_html)
+                        
+                        preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
+                        preview_html = inject_unique_id(preview_html, 'serp_injected', serp_url, device_all, current_flow)
+                        display_height = height
+                        st.components.v1.html(preview_html, height=display_height, scrolling=False)
+                        if st.session_state.flow_layout != 'horizontal':
+                            st.caption("📺 SERP with injected ad content")
+                    
+                    elif response.status_code == 403:
+                        if playwright_available:
+                            with st.spinner("🔄 Using browser automation..."):
+                                page_html = capture_with_playwright(serp_url, device=device_all)
+                                if page_html and '<!-- SCREENSHOT_FALLBACK -->' not in page_html:
+                                    soup = BeautifulSoup(page_html, 'html.parser')
+                                    
+                                    for text_node in soup.find_all(string=True):
+                                        if 'Sponsored results for:' in text_node or 'sponsored results for:' in text_node.lower():
+                                            new_text = re.sub(
+                                                r'(Sponsored results for:|sponsored results for:)\s*["\']?([^"\'<>]*)["\']?',
+                                                f'\\1 "{keyword}"',
+                                                text_node,
+                                                flags=re.IGNORECASE
+                                            )
+                                            text_node.replace_with(new_text)
+                                    
+                                    title_elements = soup.find_all(class_=re.compile(r'title', re.IGNORECASE))
+                                    if title_elements and ad_title:
+                                        first_title = title_elements[0]
+                                        from bs4 import NavigableString
+                                        for child in list(first_title.children):
+                                            if isinstance(child, NavigableString):
+                                                child.extract()
+                                        first_title.append(ad_title)
+                                    
+                                    desc_elements = soup.find_all(class_=re.compile(r'desc', re.IGNORECASE))
+                                    if desc_elements and ad_desc:
+                                        first_desc = desc_elements[0]
+                                        from bs4 import NavigableString
+                                        for child in list(first_desc.children):
+                                            if isinstance(child, NavigableString):
+                                                child.extract()
+                                        first_desc.append(ad_desc)
+                                    
+                                    url_elements = soup.find_all(class_=re.compile(r'url', re.IGNORECASE))
+                                    if url_elements and ad_display_url:
+                                        url_elements[0].clear()
+                                        url_elements[0].append(ad_display_url)
+                                    
+                                    serp_html = str(soup)
+                                    serp_html = serp_html.replace('min-device-width', 'min-width')
+                                    serp_html = serp_html.replace('max-device-width', 'max-width')
+                                    serp_html = serp_html.replace('min-device-height', 'min-height')
+                                    serp_html = serp_html.replace('max-device-height', 'max-height')
+                                    serp_html = re.sub(r'min-height\s*:\s*calc\(100[sv][vh]h?[^)]*\)\s*;?', '', serp_html, flags=re.IGNORECASE)
+                                    
+                                    serp_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
+                                                      lambda m: f'src="{urljoin(serp_url, m.group(1))}"', serp_html)
+                                    serp_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
+                                                      lambda m: f'href="{urljoin(serp_url, m.group(1))}"', serp_html)
+                                    
+                                    serp_html = re.sub(
+                                        r'<head>',
+                                        '<head><style>body, p, div, span, h1, h2, h3, h4, h5, h6, a, li, td, th { writing-mode: horizontal-tb !important; text-orientation: mixed !important; }</style>',
+                                        serp_html,
+                                        flags=re.IGNORECASE,
+                                        count=1
+                                    )
+                                    
+                                    preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True)
+                                    preview_html = inject_unique_id(preview_html, 'serp_playwright', serp_url, device_all, current_flow)
+                                    display_height = height
+                                    st.components.v1.html(preview_html, height=display_height, scrolling=False)
+                                    if st.session_state.flow_layout != 'horizontal':
+                                        st.caption("📺 SERP (via Playwright)")
+                                else:
+                                    st.warning("⚠️ Could not load SERP. Set SCREENSHOT_API_KEY in secrets")
+                        else:
+                            st.error(f"HTTP {response.status_code}")
+                    else:
+                        st.error(f"HTTP {response.status_code}")
+                    
+                except Exception as e:
+                    st.error(f"Load failed: {str(e)[:100]}")
+        else:
+            with serp_preview_container:
+                st.warning("⚠️ No SERP URL found in mapping")
+        
+        if st.session_state.flow_layout == 'vertical' and serp_card_right:
+            with serp_card_right:
+                # Tight spacing - show similarity first, then SERP details with Template
+                if 'similarities' not in st.session_state or st.session_state.similarities is None:
+                    if api_key:
+                        st.session_state.similarities = calculate_similarities(current_flow)
+                    else:
+                        st.session_state.similarities = {}
+                
+                if 'similarities' in st.session_state and st.session_state.similarities:
+                    render_similarity_score('ad_to_page', st.session_state.similarities,
+                                           custom_title="Ad Copy → Landing Page Similarity",
+                                           tooltip_text="Measures how well the landing page fulfills the promises made in the ad copy. Higher scores indicate better ad-page consistency.")
+                
+                # NOW show SERP details with URL first, then Template below
+                serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
+                serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
+                
+                st.markdown("<div style='margin-top: 6px;'></div>", unsafe_allow_html=True)
+                st.markdown("<h4 style='font-size: 20px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0;'><strong>📄 SERP Details</strong></h4>", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div style="margin-bottom: 6px; font-size: 14px;">
+                    {f'<div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{serp_url}" style="color: #3b82f6; text-decoration: none;">{html.escape(str(serp_url))}</a></div>' if serp_url and serp_url != 'N/A' else ''}
+                    <div style="margin-top: 6px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Template</strong></div>
+                    <div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;">{html.escape(str(serp_name))}</div>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        # Close wrapper div for horizontal layout
+        if st.session_state.flow_layout == 'horizontal':
+            # Show SERP URL BELOW card preview in horizontal layout (no Template line)
+            serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
+            st.markdown(f"""
+            <div style='margin-top: 8px; font-size: 14px;'>
+                {f'<div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{serp_url}" style="color: #3b82f6; text-decoration: none;">{html.escape(str(serp_url))}</a></div>' if serp_url and serp_url != 'N/A' else ''}
+            </div>
+            """, unsafe_allow_html=True)
+    
+    # Arrow divs removed - no longer needed
+    
+    # Stage 4: Landing Page
+    if st.session_state.flow_layout == 'vertical':
+        st.markdown("<br>", unsafe_allow_html=True)
+        stage_4_container = st.container()
+        landing_card_left = None
+        landing_card_right = None
+    else:
+        if stage_cols:
+            stage_4_container = stage_cols[3]
+        else:
+            stage_4_container = st.container()
+        landing_card_left = None
+        landing_card_right = None
+    
+    with stage_4_container:
+        if st.session_state.flow_layout == 'vertical':
+            landing_card_left, landing_card_right = st.columns([0.6, 0.4])
+            with landing_card_left:
+                st.markdown('<h3 style="font-size: 40px; font-weight: 900; color: #0f172a; margin: 0 0 12px 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>🎯 Landing Page</strong></h3>', unsafe_allow_html=True)
+        else:
+            st.markdown('<h3 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;"><strong>🎯 Landing Page</strong></h3>', unsafe_allow_html=True)
+        
+        adv_url = current_flow.get('reporting_destination_url', '')
+        flow_clicks = current_flow.get('clicks', 0)
+        
+        # Landing URL will be shown BELOW card preview
+        
+        # Old code removed
+        if False:
+            st.markdown(f"""
+            <div style="margin-bottom: 8px; font-size: 14px;">
+                <div style="font-weight: 700; color: #0f172a; font-size: 17px; margin-bottom: 4px;"><strong>Landing URL:</strong></div>
+                <div style="margin-left: 8px; word-break: break-word;"><a href="{adv_url}" style="color: #3b82f6; text-decoration: none;">{html.escape(str(adv_url))}</a></div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        landing_preview_container = landing_card_left if st.session_state.flow_layout == 'vertical' and landing_card_left else stage_4_container
+        
+        if adv_url and pd.notna(adv_url) and str(adv_url).strip():
+            with landing_preview_container:
+                try:
+                    head_response = requests.head(adv_url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'})
+                    x_frame = head_response.headers.get('X-Frame-Options', '').upper()
+                    csp = head_response.headers.get('Content-Security-Policy', '')
+                    iframe_blocked = ('DENY' in x_frame or 'SAMEORIGIN' in x_frame or 'frame-ancestors' in csp.lower())
+                except:
+                    iframe_blocked = False
+                
+                if not iframe_blocked:
+                    try:
+                        preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all, display_url=adv_url)
+                        preview_html = inject_unique_id(preview_html, 'landing_iframe', adv_url, device_all, current_flow)
+                        display_height = height
+                        st.components.v1.html(preview_html, height=display_height, scrolling=False)
+                        st.caption("📺 Iframe")
+                    except:
+                        iframe_blocked = True
+                
+                if iframe_blocked:
+                    try:
+                        headers = {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                            'Accept-Language': 'en-US,en;q=0.9',
+                            'Accept-Encoding': 'gzip, deflate, br',
+                            'DNT': '1',
+                            'Connection': 'keep-alive',
+                            'Upgrade-Insecure-Requests': '1',
+                            'Sec-Fetch-Dest': 'document',
+                            'Sec-Fetch-Mode': 'navigate',
+                            'Sec-Fetch-Site': 'none',
+                            'Cache-Control': 'max-age=0'
+                        }
+                        
+                        session = requests.Session()
+                        response = session.get(adv_url, timeout=15, headers=headers, allow_redirects=True)
+                        
+                        if response.status_code == 403:
+                            if playwright_available:
+                                try:
+                                    with st.spinner("🔄 Trying browser automation..."):
+                                        page_html = capture_with_playwright(adv_url, device=device_all)
+                                        if page_html:
+                                            if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
+                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                                preview_html = inject_unique_id(preview_html, 'landing_screenshot_fallback', adv_url, device_all, current_flow)
+                                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                st.caption("📸 Screenshot (ScreenshotOne API)")
+                                            else:
+                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                                preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
+                                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                st.caption("🤖 Rendered via browser automation (bypassed 403)")
+                                        else:
+                                            raise Exception("Playwright returned empty HTML")
+                                except Exception:
+                                    st.warning("🚫 Could not load page")
+                                    st.info("💡 Set SCREENSHOT_API_KEY in secrets for screenshot fallback")
+                            else:
+                                st.warning("🚫 Could not load page")
+                                st.markdown(f"[🔗 Open landing page]({adv_url})")
+                        elif response.status_code == 200:
+                            try:
+                                page_html = response.text
+                                if '<head>' in page_html:
+                                    page_html = page_html.replace('<head>', '<head><meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">', 1)
+                                else:
+                                    page_html = '<head><meta charset="utf-8"></head>' + page_html
+                                page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
+                                                  lambda m: f'src="{urljoin(adv_url, m.group(1))}"', page_html)
+                                page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
+                                                  lambda m: f'href="{urljoin(adv_url, m.group(1))}"', page_html)
+                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                preview_html = inject_unique_id(preview_html, 'landing_html', adv_url, device_all, current_flow)
+                                display_height = height
+                                st.components.v1.html(preview_html, height=display_height, scrolling=False)
+                                st.caption("📄 HTML")
+                            except Exception as html_error:
+                                st.error(f"❌ HTML rendering failed: {str(html_error)[:100]}")
+                        else:
+                            if playwright_available:
+                                try:
+                                    with st.spinner("🔄 Trying browser automation..."):
+                                        page_html = capture_with_playwright(adv_url, device=device_all)
+                                        if page_html:
+                                            if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
+                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                                preview_html = inject_unique_id(preview_html, 'landing_screenshot_fallback', adv_url, device_all, current_flow)
+                                                display_height = height
+                                                st.components.v1.html(preview_html, height=display_height, scrolling=False)
+                                                if st.session_state.flow_layout != 'horizontal':
+                                                    st.caption("📸 Screenshot (ScreenshotOne API)")
+                                            else:
+                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                                preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
+                                                display_height = height
+                                                st.components.v1.html(preview_html, height=display_height, scrolling=False)
+                                                if st.session_state.flow_layout != 'horizontal':
+                                                    st.caption("🤖 Rendered via browser automation")
+                                        else:
+                                            raise Exception("Playwright returned empty HTML")
+                                except Exception:
+                                    st.error(f"❌ HTTP {response.status_code}")
+                            else:
+                                st.error(f"❌ HTTP {response.status_code}")
+                    except Exception as e:
+                        st.error(f"❌ {str(e)[:100]}")
+        else:
+            with landing_preview_container:
+                st.warning("No landing page URL")
+        
+        if st.session_state.flow_layout == 'vertical' and landing_card_right:
+            with landing_card_right:
+                adv_url = current_flow.get('reporting_destination_url', '')
+                
+                st.markdown("<h4 style='font-size: 20px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0;'><strong>🎯 Landing Page Details</strong></h4>", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div style="margin-bottom: 6px; font-size: 14px;">
+                    {f'<div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Landing URL</strong></div><div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{adv_url}" style="color: #3b82f6; text-decoration: none;">{html.escape(str(adv_url))}</a></div>' if adv_url and pd.notna(adv_url) else ''}
+                </div>
+                """, unsafe_allow_html=True)
+                
+                if 'similarities' not in st.session_state or st.session_state.similarities is None:
+                    if api_key:
+                        st.session_state.similarities = calculate_similarities(current_flow)
+                    else:
+                        st.session_state.similarities = {}
+                
+                if 'similarities' in st.session_state and st.session_state.similarities:
+                    st.markdown("<h4 style='font-size: 18px; font-weight: 900; color: #0f172a; margin: 12px 0 8px 0;'><strong>🔗 Keyword → Landing Page Similarity</strong></h4>", unsafe_allow_html=True)
+                    render_similarity_score('kwd_to_page', st.session_state.similarities,
+                                           custom_title="Keyword → Landing Page Similarity",
+                                           tooltip_text="Measures overall flow consistency from keyword to landing page. Higher scores indicate better end-to-end alignment.")
+    
+    # Similarity Scores Section for Horizontal Layout
+    if st.session_state.flow_layout == 'horizontal':
+        # Big bold heading for similarity scores
+        st.markdown("""
+            <div style="font-size: 32px; font-weight: 900; color: #0f172a; margin: 12px 0 12px 0; padding: 0; line-height: 1.2; display: block;">
+                <strong>🧠 Similarity Scores</strong>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Calculate similarities if not already calculated
+        if 'similarities' not in st.session_state or st.session_state.similarities is None:
+            if api_key:
+                with st.spinner("Calculating similarity scores..."):
+                    st.session_state.similarities = calculate_similarities(current_flow)
             else:
-                st.warning("No data available for this campaign")
-else:
-    st.error("❌ Could not load data - Check FILE_A_ID and file sharing settings")
+                st.session_state.similarities = {}
+        
+        # Show all 3 similarity scores in one row for horizontal mode
+        if 'similarities' in st.session_state and st.session_state.similarities:
+            sim_col1, sim_col2, sim_col3 = st.columns(3)
+            
+            with sim_col1:
+                render_similarity_score('kwd_to_ad', st.session_state.similarities,
+                                       custom_title="Keyword → Ad Copy Similarity",
+                                       tooltip_text="Measures how well the ad creative matches the search keyword. Higher scores indicate better keyword-ad alignment.")
+            
+            with sim_col2:
+                render_similarity_score('ad_to_page', st.session_state.similarities,
+                                       custom_title="Ad Copy → Landing Page Similarity",
+                                       tooltip_text="Measures how well the landing page fulfills the promises made in the ad copy. Higher scores indicate better ad-page consistency.")
+            
+            with sim_col3:
+                render_similarity_score('kwd_to_page', st.session_state.similarities,
+                                       custom_title="Keyword → Landing Page Similarity",
+                                       tooltip_text="Measures overall flow consistency from keyword to landing page. Higher scores indicate better end-to-end alignment.")
