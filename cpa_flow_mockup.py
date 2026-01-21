@@ -161,7 +161,8 @@ st.markdown("""
         color: #0f172a !important; 
     }
     [role="option"]:hover { 
-        background-color: #f1f5f9 !important; 
+        background-color: white !important; 
+        color: #0f172a !important; 
     }
     [role="option"][aria-selected="true"] { 
         background-color: #e0f2fe !important; 
@@ -391,6 +392,11 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
         
         if selected_campaign and selected_campaign != '-- Select Campaign --':
             campaign_df = df[(df[adv_col] == selected_advertiser) & (df[camp_col] == selected_campaign)].copy()
+            
+            # Convert numeric columns to proper types
+            for col in ['impressions', 'clicks', 'conversions']:
+                if col in campaign_df.columns:
+                    campaign_df[col] = campaign_df[col].apply(safe_float)
             
             # Calculate metrics
             campaign_df['impressions'] = campaign_df['impressions'].apply(safe_float)
