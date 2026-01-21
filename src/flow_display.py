@@ -540,9 +540,46 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 except Exception as e:
                     st.error(f"⚠️ Creative rendering error: {str(e)[:100]}")
             
-            # Show placeholder if File C not loaded or rendering failed
+            # Fallback: Try response column from File A if Weaver failed
             if not creative_rendered:
-                # Match dimensions of other cards in vertical (650px)
+                response_value = current_flow.get('response', None)
+                if response_value and pd.notna(response_value) and str(response_value).strip():
+                    try:
+                        # Parse and render response from File A
+                        if isinstance(response_value, str) and response_value.strip():
+                            # Extract width and height from creative_size
+                            try:
+                                width_str, height_str = creative_size.split('x')
+                                width, height = int(width_str), int(height_str)
+                            except:
+                                width, height = 300, 250
+                            
+                            # Wrap in HTML container
+                            rendered_html = f"""
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                                <meta charset="UTF-8">
+                                <style>
+                                    * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+                                    body {{ width: {width}px; height: {height}px; overflow: hidden; }}
+                                </style>
+                            </head>
+                            <body>
+                                {response_value}
+                            </body>
+                            </html>
+                            """
+                            if st.session_state.flow_layout == 'vertical':
+                                st.components.v1.html(rendered_html, height=650, scrolling=True)
+                            else:
+                                st.components.v1.html(rendered_html, height=500, scrolling=True)
+                            creative_rendered = True
+                    except Exception as e:
+                        pass
+            
+            # Show placeholder if all rendering failed
+            if not creative_rendered:
                 min_height = 650 if st.session_state.flow_layout == 'vertical' else 500
                 st.markdown(f"""
                 <div style="min-height: {min_height}px; display: flex; align-items: center; justify-content: center; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px;">
@@ -565,6 +602,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 <div style="margin-bottom: 6px; font-size: 14px;">
                     <div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Keyword</strong></div>
                     <div style="margin-left: 0; margin-top: 0; word-break: break-word; color: #64748b; font-size: 14px;">{html.escape(str(keyword))}</div>
+                    <div style="margin-top: 6px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Creative ID</strong></div>
+                    <div style="margin-left: 0; margin-top: 0; word-break: break-word; color: #64748b; font-size: 14px;">{html.escape(str(creative_id))}</div>
                     <div style="margin-top: 6px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Size</strong></div>
                     <div style="margin-left: 0; margin-top: 0; word-break: break-word; color: #64748b; font-size: 14px;">{html.escape(str(creative_size))}</div>
                 </div>
