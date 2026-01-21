@@ -25,47 +25,36 @@ DEFAULT_CIPHER_KEY = "dqkwfjkefq;"
 def load_creative_requests(file_id):
     """
     Load File C - Creative requests CSV from Google Drive
-    Expected columns: creative_id, creative_size_rensize, request
+    Expected columns: creative_id, rensize, request
     """
     from src.data_loader import load_csv_from_gdrive
     import streamlit as st
     
     if not file_id or file_id.strip() == "":
-        st.error("❌ File C ID is empty!")
         return None
     
     try:
-        # Load as CSV (File C is always CSV)
+        # Load as CSV - need to handle the JSON in request column properly
         df = load_csv_from_gdrive(file_id)
         
-        if df is None:
-            st.error("❌ load_csv_from_gdrive returned None - check if file is accessible")
-            return None
-            
-        if len(df) == 0:
-            st.error("❌ File C is empty (0 rows)")
+        if df is None or len(df) == 0:
             return None
         
-        # Show what columns we got
-        st.info(f"📋 File C columns: {list(df.columns)}")
-        st.info(f"📊 File C has {len(df)} rows")
+        # Keep only the first 3 columns (creative_id, rensize, request)
+        # The rest are artifacts from JSON splitting
+        df = df.iloc[:, :3]
+        df.columns = ['creative_id', 'rensize', 'request']
         
-        # Verify required columns exist
-        required_cols = ['creative_id', 'creative_size_rensize', 'request']
-        missing_cols = [col for col in required_cols if col not in df.columns]
-        
-        if missing_cols:
-            st.error(f"❌ File C missing columns: {', '.join(missing_cols)}")
-            st.error(f"Available columns: {', '.join(df.columns)}")
+        # Verify we have data in all columns
+        if df['creative_id'].isna().all() or df['rensize'].isna().all() or df['request'].isna().all():
+            st.error("❌ File C has empty columns")
             return None
         
-        st.success(f"✅ File C loaded successfully: {len(df)} rows")
+        st.success(f"✅ File C loaded: {len(df)} rows")
         return df
         
     except Exception as e:
-        st.error(f"❌ Exception loading File C: {str(e)}")
-        import traceback
-        st.error(f"Traceback: {traceback.format_exc()[:500]}")
+        st.error(f"❌ Failed to load File C: {str(e)[:200]}")
     
     return None
 
@@ -268,13 +257,13 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
     if not cipher_key:
         cipher_key = DEFAULT_CIPHER_KEY
     
-    # Find matching creative request using creative_size_rensize column
+    # Find matching creative request using rensize column
     creative_key = f"{creative_id}_{creative_size}"
     
-    # Try to find exact match using creative_size_rensize column
+    # Try to find exact match using rensize column
     matching_rows = creative_requests_df[
         (creative_requests_df['creative_id'].astype(str) == str(creative_id)) &
-        (creative_requests_df['creative_size_rensize'].astype(str) == str(creative_size))
+        (creative_requests_df['rensize'].astype(str) == str(creative_size))
     ]
     
     if len(matching_rows) == 0:
