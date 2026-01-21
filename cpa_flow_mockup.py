@@ -18,8 +18,9 @@ import re
 import html
 
 # Import from modules (after page config)
-from src.config import FILE_A_ID, FILE_B_ID, SERP_BASE_URL
+from src.config import FILE_A_ID, FILE_B_ID, FILE_C_ID, SERP_BASE_URL
 from src.data_loader import load_csv_from_gdrive, load_json_from_gdrive
+from src.creative_renderer import load_creative_requests, render_creative_via_weaver, parse_keyword_array_from_flow
 from src.utils import safe_float, safe_int
 from src.flow_analysis import find_default_flow
 from src.similarity import calculate_similarities
@@ -28,8 +29,7 @@ from src.renderers import (
     render_mini_device_preview,
     render_similarity_score,
     inject_unique_id,
-    create_screenshot_html,
-    parse_creative_html
+    create_screenshot_html
 )
 from src.screenshot import get_screenshot_url, capture_with_playwright
 from src.ui_components import render_flow_combinations_table, render_what_is_flow_section, render_selected_flow_display
@@ -301,7 +301,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Session state initialization
-for key in ['data_a', 'data_b', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'similarities', 'last_campaign_key']:
+for key in ['data_a', 'data_b', 'data_c', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'similarities', 'last_campaign_key']:
     if key not in st.session_state:
         if key == 'view_mode':
             st.session_state[key] = 'basic'
@@ -312,7 +312,7 @@ for key in ['data_a', 'data_b', 'loading_done', 'default_flow', 'current_flow', 
 
 # Main title - BIG and BOLD at top
 st.markdown("""
-    <div style="margin: 0 0 8px 0; padding: 12px 0 12px 0; border-bottom: 3px solid #e2e8f0;">
+    <div style="margin: 0 0 4px 0; padding: 8px 0 8px 0; border-bottom: 3px solid #e2e8f0;">
         <h1 style="font-size: 64px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui, -apple-system, sans-serif;">
             📊 CPA Flow Analysis
         </h1>
@@ -328,6 +328,10 @@ if not st.session_state.loading_done:
             
             # Load JSON second (nice to have)
             st.session_state.data_b = load_json_from_gdrive(FILE_B_ID)
+            
+            # Load File C third (creative requests) - optional
+            if FILE_C_ID:
+                st.session_state.data_c = load_creative_requests(FILE_C_ID)
             
             st.session_state.loading_done = True
         except Exception as e:
@@ -405,7 +409,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             
             # Show aggregated table with big title
             st.markdown("""
-            <div style="margin-bottom: 8px;">
+            <div style="margin-bottom: 4px; margin-top: 4px;">
                 <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; text-align: left; line-height: 1;">
                     📊 Flow Combinations Overview
                 </h2>
