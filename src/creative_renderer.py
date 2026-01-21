@@ -37,7 +37,7 @@ def load_creative_requests(file_id):
         df = load_csv_from_gdrive(file_id)
         if df is not None and len(df) > 0:
             # Verify required columns exist
-            required_cols = ['creative_id', 'Creative_Size_Final', 'request']
+            required_cols = ['creative_id', 'creative_size_rensize', 'request']
             missing_cols = [col for col in required_cols if col not in df.columns]
             
             if missing_cols:
@@ -251,13 +251,13 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
     if not cipher_key:
         cipher_key = DEFAULT_CIPHER_KEY
     
-    # Find matching creative request
+    # Find matching creative request using creative_size_rensize column
     creative_key = f"{creative_id}_{creative_size}"
     
-    # Try to find exact match using Creative_Size_Final column
+    # Try to find exact match using creative_size_rensize column
     matching_rows = creative_requests_df[
         (creative_requests_df['creative_id'].astype(str) == str(creative_id)) &
-        (creative_requests_df['Creative_Size_Final'].astype(str) == str(creative_size))
+        (creative_requests_df['creative_size_rensize'].astype(str) == str(creative_size))
     ]
     
     if len(matching_rows) == 0:
