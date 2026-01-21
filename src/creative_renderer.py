@@ -23,31 +23,32 @@ DEFAULT_CIPHER_KEY = "adjsqfq"
 
 
 def load_creative_requests(file_id):
-    """Load File C - Creative requests CSV/JSON from Google Drive"""
-    from src.data_loader import load_csv_from_gdrive, load_json_from_gdrive
+    """
+    Load File C - Creative requests CSV from Google Drive
+    Expected columns: creative_id, Creative_Size_Final, request
+    """
+    from src.data_loader import load_csv_from_gdrive
+    
+    if not file_id or file_id.strip() == "":
+        return None
     
     try:
-        # Try as CSV first
+        # Load as CSV (File C is always CSV)
         df = load_csv_from_gdrive(file_id)
         if df is not None and len(df) > 0:
+            # Verify required columns exist
+            required_cols = ['creative_id', 'Creative_Size_Final', 'request']
+            missing_cols = [col for col in required_cols if col not in df.columns]
+            
+            if missing_cols:
+                import streamlit as st
+                st.warning(f"⚠️ File C missing columns: {', '.join(missing_cols)}")
+                return None
+            
             return df
-    except:
-        pass
-    
-    try:
-        # Try as JSON
-        data = load_json_from_gdrive(file_id)
-        if data:
-            # Convert to DataFrame if it's a dict/list
-            if isinstance(data, list):
-                df = pd.DataFrame(data)
-            elif isinstance(data, dict):
-                df = pd.DataFrame([data])
-            else:
-                df = None
-            return df
-    except:
-        pass
+    except Exception as e:
+        import streamlit as st
+        st.error(f"❌ Failed to load File C: {str(e)}")
     
     return None
 
