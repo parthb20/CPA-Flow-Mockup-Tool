@@ -16,12 +16,12 @@ from src.config import SERP_BASE_URL
 from src.renderers import (
     render_mini_device_preview,
     render_similarity_score,
-    inject_unique_id,
-    parse_creative_html
+    inject_unique_id
 )
 from src.screenshot import get_screenshot_url, capture_with_playwright, capture_page_with_fallback
 from src.serp import generate_serp_mockup
 from src.similarity import calculate_similarities
+from src.creative_renderer import render_creative_via_weaver, parse_keyword_array_from_flow
 
 
 def render_flow_journey(campaign_df, current_flow, api_key, playwright_available, thumio_configured, thumio_referer_domain):
@@ -489,7 +489,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         creative_id = current_flow.get('creative_id', 'N/A')
         creative_name = current_flow.get('creative_template_name', 'N/A')
-        creative_size = current_flow.get('creative_size', 'N/A')
+        creative_size = current_flow.get('Creative_Size_Final', 'N/A')
         keyword = current_flow.get('keyword_term', 'N/A')
         
         # Keyword will be shown BELOW card preview
@@ -502,27 +502,46 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     st.caption(f"**Size:** {creative_size}")
         
         creative_preview_container = creative_card_left if st.session_state.flow_layout == 'vertical' and creative_card_left else stage_2_container
-        response_value = current_flow.get('response', None)
         
         with creative_preview_container:
-            if response_value and pd.notna(response_value) and str(response_value).strip():
+            # Only use Weaver API for creative rendering (File C required)
+            creative_rendered = False
+            
+            if st.session_state.get('data_c') is not None:
                 try:
-                    creative_html, raw_adcode = parse_creative_html(response_value)
-                    if creative_html and raw_adcode:
-                        # Match exact dimensions of other cards (708x650 in vertical)
+                    # Get cipher key from secrets or use default
+                    cipher_key = None
+                    try:
+                        cipher_key = st.secrets.get("WEAVER_CIPHER_KEY")
+                    except:
+                        pass
+                    
+                    # Parse keyword array from flow
+                    keyword_array = parse_keyword_array_from_flow(current_flow)
+                    
+                    # Render via Weaver API
+                    rendered_html, error_msg = render_creative_via_weaver(
+                        creative_id=creative_id,
+                        creative_size=creative_size,
+                        keyword_array=keyword_array,
+                        creative_requests_df=st.session_state.data_c,
+                        cipher_key=cipher_key
+                    )
+                    
+                    if rendered_html:
+                        # Render the creative at its exact size with scrolling enabled
                         if st.session_state.flow_layout == 'vertical':
-                            st.components.v1.html(creative_html, height=650, scrolling=False)
+                            st.components.v1.html(rendered_html, height=650, scrolling=True)
                         else:
-                            st.components.v1.html(creative_html, height=500, scrolling=False)
-                        
-                        if st.session_state.view_mode == 'advanced' or st.session_state.flow_layout == 'vertical':
-                            with st.expander("👁️ View Raw Ad Code"):
-                                st.code(raw_adcode[:500], language='html')
-                    else:
-                        st.warning("⚠️ Empty creative JSON")
+                            st.components.v1.html(rendered_html, height=500, scrolling=True)
+                        creative_rendered = True
+                    elif error_msg:
+                        st.warning(f"⚠️ Weaver API error: {error_msg}")
                 except Exception as e:
-                    st.error(f"⚠️ Creative error: {str(e)[:100]}")
-            else:
+                    st.error(f"⚠️ Creative rendering error: {str(e)[:100]}")
+            
+            # Show placeholder if File C not loaded or rendering failed
+            if not creative_rendered:
                 # Match dimensions of other cards in vertical (650px)
                 min_height = 650 if st.session_state.flow_layout == 'vertical' else 500
                 st.markdown(f"""
@@ -538,7 +557,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             with creative_card_right:
                 # Show creative details to the RIGHT - tight spacing
                 keyword = current_flow.get('keyword_term', 'N/A')
-                creative_size = current_flow.get('creative_size', 'N/A')
+                creative_size = current_flow.get('Creative_Size_Final', 'N/A')
                 creative_name = current_flow.get('creative_template_name', 'N/A')
                 
                 st.markdown("<h4 style='font-size: 20px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0;'><strong>🎨 Creative Details</strong></h4>", unsafe_allow_html=True)
