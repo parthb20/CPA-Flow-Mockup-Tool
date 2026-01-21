@@ -24,8 +24,11 @@ DEFAULT_CIPHER_KEY = "dqkwfjkefq;"
 
 def load_creative_requests(file_id):
     """
-    Load File C - Creative requests CSV from Google Drive
+    Load File C - Creative requests from Google Drive
+    Expected format: .csv.gz (recommended) or .csv
     Expected columns: creative_id, rensize, request
+    
+    NOTE: Use .gz format to preserve JSON in request column properly
     """
     from src.data_loader import load_csv_from_gdrive
     
@@ -33,22 +36,25 @@ def load_creative_requests(file_id):
         return None
     
     try:
-        # Load as CSV - need to handle the JSON in request column properly
+        # Load file (handles .gz automatically)
         df = load_csv_from_gdrive(file_id)
         
         if df is None or len(df) == 0:
             return None
         
-        # Keep only the first 3 columns (creative_id, rensize, request)
-        # The rest are artifacts from JSON splitting
-        df = df.iloc[:, :3]
-        df.columns = ['creative_id', 'rensize', 'request']
+        # Check if we have exactly 3 columns (good .gz or properly quoted CSV)
+        if len(df.columns) == 3:
+            df.columns = ['creative_id', 'rensize', 'request']
+            return df
         
-        # Verify we have data in all columns
-        if df['creative_id'].isna().all() or df['rensize'].isna().all() or df['request'].isna().all():
-            return None
+        # If more than 3 columns, JSON was split - take first 3 only
+        # (this is a workaround, .gz is recommended)
+        if len(df.columns) > 3:
+            df = df.iloc[:, :3]
+            df.columns = ['creative_id', 'rensize', 'request']
+            return df
         
-        return df
+        return None
         
     except Exception as e:
         return None
