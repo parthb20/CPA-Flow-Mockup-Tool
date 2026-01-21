@@ -509,6 +509,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             
             if st.session_state.get('data_c') is not None:
                 try:
+                    # Debug: Show File C status
+                    st.info(f"📦 File C loaded: {len(st.session_state.data_c)} rows")
+                    st.info(f"🔍 Looking for: creative_id={creative_id}, size={creative_size}")
+                    
                     # Get cipher key from secrets or use default
                     cipher_key = None
                     try:
@@ -518,6 +522,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     
                     # Parse keyword array from flow
                     keyword_array = parse_keyword_array_from_flow(current_flow)
+                    st.info(f"🔑 Keywords parsed: {len(keyword_array)} keywords")
                     
                     # Render via Weaver API
                     rendered_html, error_msg = render_creative_via_weaver(
@@ -529,6 +534,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     )
                     
                     if rendered_html:
+                        st.success("✅ Creative rendered successfully!")
                         # Render the creative at its exact size with scrolling enabled
                         if st.session_state.flow_layout == 'vertical':
                             st.components.v1.html(rendered_html, height=650, scrolling=True)
@@ -536,9 +542,11 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             st.components.v1.html(rendered_html, height=500, scrolling=True)
                         creative_rendered = True
                     elif error_msg:
-                        st.warning(f"⚠️ {error_msg}")
+                        st.error(f"❌ Weaver error: {error_msg}")
                 except Exception as e:
-                    st.error(f"⚠️ Creative error: {str(e)[:100]}")
+                    st.error(f"❌ Exception: {str(e)}")
+            else:
+                st.warning("⚠️ File C not loaded")
             
             # Fallback: Try response column from File A if Weaver failed
             if not creative_rendered:
@@ -599,26 +607,13 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             details_container = creative_preview_container  # Fallback
             
         with details_container:
-            keyword = current_flow.get('keyword_term', 'N/A')
             creative_size = current_flow.get('Creative_Size_Final', 'N/A')
             creative_name = current_flow.get('creative_template_name', 'N/A')
             
-            st.markdown("<h4 style='font-size: 20px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0;'><strong>🎨 Creative Details</strong></h4>", unsafe_allow_html=True)
-            st.markdown(f"""
-            <div style="margin-bottom: 6px; font-size: 14px;">
-                <div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Keyword</strong></div>
-                <div style="margin-left: 0; margin-top: 0; word-break: break-word; color: #64748b; font-size: 14px;">{html.escape(str(keyword))}</div>
-                
-                <div style="margin-top: 8px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Creative ID</strong></div>
-                <div style="margin-left: 0; margin-top: 0; word-break: break-word; color: #64748b; font-size: 14px;">{html.escape(str(creative_id))}</div>
-                
-                <div style="margin-top: 8px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Creative Size</strong></div>
-                <div style="margin-left: 0; margin-top: 0; word-break: break-word; color: #64748b; font-size: 14px;">{html.escape(str(creative_size))}</div>
-                
-                <div style="margin-top: 8px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Template</strong></div>
-                <div style="margin-left: 0; margin-top: 0; word-break: break-word; color: #64748b; font-size: 14px;">{html.escape(str(creative_name))}</div>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown("**🎨 Creative Details**", unsafe_allow_html=False)
+            st.markdown(f"**Creative ID:** {creative_id}")
+            st.markdown(f"**Size:** {creative_size}")
+            st.markdown(f"**Template:** {creative_name}")
             
             if 'similarities' not in st.session_state or st.session_state.similarities is None:
                 if api_key:
