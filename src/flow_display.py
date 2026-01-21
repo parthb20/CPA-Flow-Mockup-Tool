@@ -509,10 +509,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             
             if st.session_state.get('data_c') is not None:
                 try:
-                    # Debug: Show File C status
-                    st.info(f"📦 File C loaded: {len(st.session_state.data_c)} rows")
-                    st.info(f"🔍 Looking for: creative_id={creative_id}, size={creative_size}")
-                    
                     # Get cipher key from secrets or use default
                     cipher_key = None
                     try:
@@ -522,7 +518,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     
                     # Parse keyword array from flow
                     keyword_array = parse_keyword_array_from_flow(current_flow)
-                    st.info(f"🔑 Keywords parsed: {len(keyword_array)} keywords")
                     
                     # Render via Weaver API
                     rendered_html, error_msg = render_creative_via_weaver(
@@ -534,7 +529,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     )
                     
                     if rendered_html:
-                        st.success("✅ Creative rendered successfully!")
                         # Render the creative at its exact size with scrolling enabled
                         if st.session_state.flow_layout == 'vertical':
                             st.components.v1.html(rendered_html, height=650, scrolling=True)
@@ -542,11 +536,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             st.components.v1.html(rendered_html, height=500, scrolling=True)
                         creative_rendered = True
                     elif error_msg:
-                        st.error(f"❌ Weaver error: {error_msg}")
+                        st.warning(f"⚠️ {error_msg}")
                 except Exception as e:
-                    st.error(f"❌ Exception: {str(e)}")
-            else:
-                st.warning("⚠️ File C not loaded")
+                    st.error(f"⚠️ Creative error: {str(e)[:200]}")
             
             # Fallback: Try response column from File A if Weaver failed
             if not creative_rendered:
@@ -615,17 +607,12 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             st.markdown(f"**Size:** {creative_size}")
             st.markdown(f"**Template:** {creative_name}")
             
+            # Calculate similarities if not already done
             if 'similarities' not in st.session_state or st.session_state.similarities is None:
                 if api_key:
                     st.session_state.similarities = calculate_similarities(current_flow)
                 else:
                     st.session_state.similarities = {}
-                
-                if 'similarities' in st.session_state and st.session_state.similarities:
-                    # Show Keyword → Ad similarity
-                    render_similarity_score('kwd_to_ad', st.session_state.similarities,
-                                           custom_title="Keyword → Ad Copy Similarity",
-                                           tooltip_text="Measures how well the ad creative matches the search keyword. Higher scores indicate better keyword-ad alignment.")
         
         # Close wrapper div for horizontal layout
         if st.session_state.flow_layout == 'horizontal':
