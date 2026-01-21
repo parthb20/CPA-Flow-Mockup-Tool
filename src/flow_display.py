@@ -512,9 +512,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     # Get cipher key from secrets or use default
                     cipher_key = None
                     try:
-                        cipher_key = st.secrets.get("WEAVER_CIPHER_KEY")
-                    except:
-                        pass
+                        cipher_key = st.secrets.get("WEAVER_CIPHER_KEY", None)
+                    except Exception:
+                        cipher_key = None
                     
                     # Parse keyword array from flow
                     keyword_array = parse_keyword_array_from_flow(current_flow)
