@@ -498,9 +498,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     flow_ctr = (flow_clicks / flow_imps * 100) if flow_imps > 0 else 0
                     flow_cvr = (flow_convs / flow_clicks * 100) if flow_clicks > 0 else 0
                     
-                    # Get single view for other details (use max timestamp)
-                    if 'ts' in final_filtered.columns:
-                        single_view = final_filtered.loc[final_filtered['ts'].idxmax()]
+                    # Get single view for other details (use max timestamp if available)
+                    if 'ts' in final_filtered.columns and final_filtered['ts'].notna().any():
+                        try:
+                            single_view = final_filtered.loc[final_filtered['ts'].idxmax()]
+                        except:
+                            single_view = final_filtered.iloc[0]
                     else:
                         single_view = final_filtered.iloc[0]
                     
