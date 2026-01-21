@@ -25,7 +25,7 @@ DEFAULT_CIPHER_KEY = "dqkwfjkefq;"
 def load_creative_requests(file_id):
     """
     Load File C - Creative requests CSV from Google Drive
-    Expected columns: creative_id, Creative_Size_Final, request
+    Expected columns: creative_id, creative_size_rensize, request
     """
     from src.data_loader import load_csv_from_gdrive
     
