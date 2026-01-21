@@ -161,7 +161,7 @@ st.markdown("""
         color: #0f172a !important; 
     }
     [role="option"]:hover { 
-        background-color: white !important; 
+        background-color: #f8fafc !important; 
         color: #0f172a !important; 
     }
     [role="option"][aria-selected="true"] { 
@@ -393,15 +393,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
         if selected_campaign and selected_campaign != '-- Select Campaign --':
             campaign_df = df[(df[adv_col] == selected_advertiser) & (df[camp_col] == selected_campaign)].copy()
             
-            # Convert numeric columns to proper types
-            for col in ['impressions', 'clicks', 'conversions']:
-                if col in campaign_df.columns:
-                    campaign_df[col] = campaign_df[col].apply(safe_float)
-            
-            # Calculate metrics
+            # Convert numeric columns to proper types FIRST
             campaign_df['impressions'] = campaign_df['impressions'].apply(safe_float)
             campaign_df['clicks'] = campaign_df['clicks'].apply(safe_float)
             campaign_df['conversions'] = campaign_df['conversions'].apply(safe_float)
+            
+            # Calculate CTR and CVR per row
             campaign_df['ctr'] = campaign_df.apply(lambda x: (x['clicks'] / x['impressions'] * 100) if x['impressions'] > 0 else 0, axis=1)
             campaign_df['cvr'] = campaign_df.apply(lambda x: (x['conversions'] / x['clicks'] * 100) if x['clicks'] > 0 else 0, axis=1)
             
@@ -487,13 +484,25 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 # Show flow stats directly (no success messages)
                 if len(final_filtered) > 0:
-                    # Show selected flow stats
-                    single_view = final_filtered.iloc[0]
-                    flow_imps = safe_int(single_view.get('impressions', 0))
-                    flow_clicks = safe_int(single_view.get('clicks', 0))
-                    flow_convs = safe_int(single_view.get('conversions', 0))
+                    # AGGREGATE stats across ALL filtered rows using weighted averages
+                    # Convert to numeric first
+                    final_filtered['impressions'] = final_filtered['impressions'].apply(safe_float)
+                    final_filtered['clicks'] = final_filtered['clicks'].apply(safe_float)
+                    final_filtered['conversions'] = final_filtered['conversions'].apply(safe_float)
+                    
+                    flow_imps = int(final_filtered['impressions'].sum())
+                    flow_clicks = int(final_filtered['clicks'].sum())
+                    flow_convs = int(final_filtered['conversions'].sum())
+                    
+                    # Weighted averages: CTR weighted by impressions, CVR weighted by clicks
                     flow_ctr = (flow_clicks / flow_imps * 100) if flow_imps > 0 else 0
                     flow_cvr = (flow_convs / flow_clicks * 100) if flow_clicks > 0 else 0
+                    
+                    # Get single view for other details (use max timestamp)
+                    if 'ts' in final_filtered.columns:
+                        single_view = final_filtered.loc[final_filtered['ts'].idxmax()]
+                    else:
+                        single_view = final_filtered.iloc[0]
                     
                     render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs, flow_ctr, flow_cvr)
                 
