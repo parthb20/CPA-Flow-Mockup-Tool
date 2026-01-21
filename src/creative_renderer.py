@@ -19,7 +19,7 @@ except:
     pass
 
 
-DEFAULT_CIPHER_KEY = "adjsqfq"
+DEFAULT_CIPHER_KEY = "dqkwfjkefq;"
 
 
 def load_creative_requests(file_id):
@@ -57,25 +57,51 @@ def parse_keyword_array_from_flow(flow_data):
     """
     Extract keyword array from flow data
     Column name in File A: Creative_Keywords
-    Expected format: '[{"t":"kw1"},{"t":"kw2"}]'
+    Format: '[{\"t\":\"kw1\"},{\"t\":\"kw2\"}]' (escaped JSON in CSV)
+    Returns list maintaining order: [{"t":"kw1","idx":0},{"t":"kw2","idx":1},...]
     """
     keyword_array = flow_data.get('Creative_Keywords', None)
     
     if keyword_array and pd.notna(keyword_array):
         try:
-            # Parse if it's a string
+            # Handle string format (may be escaped)
             if isinstance(keyword_array, str):
-                return json.loads(keyword_array)
+                # Try direct parse first
+                try:
+                    parsed = json.loads(keyword_array)
+                except json.JSONDecodeError:
+                    # Try unescaping then parsing (CSV may double-escape)
+                    try:
+                        unescaped = keyword_array.replace('\\"', '"').replace('\\\\', '\\')
+                        parsed = json.loads(unescaped)
+                    except:
+                        # Last resort: try as raw string with ast
+                        import ast
+                        parsed = ast.literal_eval(keyword_array)
             # Already a list
             elif isinstance(keyword_array, list):
-                return keyword_array
-        except:
-            pass
+                parsed = keyword_array
+            else:
+                parsed = []
+            
+            # Add index to each keyword to preserve order (0-indexed from left)
+            if parsed and isinstance(parsed, list):
+                result = []
+                for idx, kw in enumerate(parsed):
+                    if isinstance(kw, dict) and 't' in kw:
+                        result.append({"t": kw['t'], "idx": idx})
+                    elif isinstance(kw, str):
+                        result.append({"t": kw, "idx": idx})
+                return result if result else parsed
+        except Exception as e:
+            # Debug: log the error
+            import streamlit as st
+            st.warning(f"Failed to parse Creative_Keywords: {str(e)[:100]}")
     
     # Fallback: create from keyword_term
     keyword_term = flow_data.get('keyword_term', '')
     if keyword_term and pd.notna(keyword_term):
-        return [{"t": str(keyword_term)}]
+        return [{"t": str(keyword_term), "idx": 0}]
     
     return []
 
@@ -122,13 +148,22 @@ def caesar_encrypt(text, key, shift=5):
 def encrypt_and_encode_keywords(keyword_array, cipher_key):
     """
     Convert keywords to JSON format, encrypt with Caesar cipher (shift 5), then URL encode
-    keyword_array: already in format [{"t":"kw1"},{"t":"kw2"}]
+    keyword_array: [{"t":"kw1","idx":0},{"t":"kw2","idx":1},...] - order preserved from Creative_Keywords
+    Returns URL-encoded encrypted string
     """
     if not keyword_array:
         return ""
 
-    # Convert to JSON string (compact, no spaces)
-    json_string = json.dumps(keyword_array, separators=(',', ':'))
+    # Convert to [{"t":"kw1"},{"t":"kw2"}] format (preserve order, remove idx if present)
+    kw_json_list = []
+    for kw in keyword_array:
+        if isinstance(kw, dict) and 't' in kw:
+            kw_json_list.append({"t": kw["t"]})
+        elif isinstance(kw, str):
+            kw_json_list.append({"t": kw})
+    
+    # Convert to JSON string (compact, no spaces) - order maintained
+    json_string = json.dumps(kw_json_list, separators=(',', ':'))
 
     # Encrypt using Caesar cipher with shift 5
     encrypted = caesar_encrypt(json_string, cipher_key, shift=5)
