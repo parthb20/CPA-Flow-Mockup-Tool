@@ -28,27 +28,44 @@ def load_creative_requests(file_id):
     Expected columns: creative_id, creative_size_rensize, request
     """
     from src.data_loader import load_csv_from_gdrive
+    import streamlit as st
     
     if not file_id or file_id.strip() == "":
+        st.error("❌ File C ID is empty!")
         return None
     
     try:
         # Load as CSV (File C is always CSV)
         df = load_csv_from_gdrive(file_id)
-        if df is not None and len(df) > 0:
-            # Verify required columns exist
-            required_cols = ['creative_id', 'creative_size_rensize', 'request']
-            missing_cols = [col for col in required_cols if col not in df.columns]
+        
+        if df is None:
+            st.error("❌ load_csv_from_gdrive returned None - check if file is accessible")
+            return None
             
-            if missing_cols:
-                import streamlit as st
-                st.warning(f"⚠️ File C missing columns: {', '.join(missing_cols)}")
-                return None
-            
-            return df
+        if len(df) == 0:
+            st.error("❌ File C is empty (0 rows)")
+            return None
+        
+        # Show what columns we got
+        st.info(f"📋 File C columns: {list(df.columns)}")
+        st.info(f"📊 File C has {len(df)} rows")
+        
+        # Verify required columns exist
+        required_cols = ['creative_id', 'creative_size_rensize', 'request']
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        
+        if missing_cols:
+            st.error(f"❌ File C missing columns: {', '.join(missing_cols)}")
+            st.error(f"Available columns: {', '.join(df.columns)}")
+            return None
+        
+        st.success(f"✅ File C loaded successfully: {len(df)} rows")
+        return df
+        
     except Exception as e:
-        import streamlit as st
-        st.error(f"❌ Failed to load File C: {str(e)}")
+        st.error(f"❌ Exception loading File C: {str(e)}")
+        import traceback
+        st.error(f"Traceback: {traceback.format_exc()[:500]}")
     
     return None
 
