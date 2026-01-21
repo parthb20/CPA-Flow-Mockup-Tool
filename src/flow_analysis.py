@@ -17,9 +17,9 @@ def find_default_flow(df):
         df['impressions'] = df['impressions'].apply(safe_float)
         df['clicks'] = df['clicks'].apply(safe_float)
         
-        # Ensure ts is datetime
+        # Ensure ts is datetime (suppress warning)
         if 'ts' in df.columns:
-            df['ts'] = pd.to_datetime(df['ts'], errors='coerce')
+            df['ts'] = pd.to_datetime(df['ts'], errors='coerce', format='mixed')
         
         # Get domain from publisher_url or Serp_URL if publisher_domain doesn't exist
         if 'publisher_domain' not in df.columns:
