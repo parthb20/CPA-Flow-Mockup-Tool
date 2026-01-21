@@ -5,6 +5,7 @@ Configuration constants and settings
 # Google Drive File IDs
 FILE_A_ID = "17_JKUhXfBYlWZZEKUStRgFQhL3Ty-YZu"  # Main CSV file
 FILE_B_ID = "1SXcLm1hhzQK23XY6Qt7E1YX5Fa-2Tlr9"  # SERP templates JSON file
+FILE_C_ID = ""  # File C - Creative requests (creative_id, Creative_Size_Final, request) - UPDATE THIS
 
 # SERP URL base - template key gets appended
 SERP_BASE_URL = "https://related.performmedia.com/search/?srprc=3&oscar=1&a=100&q=nada+vehicle+value+by+vin&mkt=perform&purl=forbes.com/home&tpid="
