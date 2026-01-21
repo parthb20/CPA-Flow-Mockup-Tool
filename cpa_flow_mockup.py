@@ -346,7 +346,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
     # Select Advertiser and Campaign - make dropdowns smaller
     col1, col2, col3 = st.columns([1, 1, 2])
     with col1:
-        advertisers = ['-- Select Advertiser --'] + sorted(df['Advertiser_Name'].dropna().unique().tolist())
+        # Find advertiser column (handle case variations)
+        adv_col = next((col for col in df.columns if col.lower() == 'advertiser_name'), 'Advertiser_Name')
+        advertisers = ['-- Select Advertiser --'] + sorted(df[adv_col].dropna().unique().tolist())
         # Preserve advertiser selection
         default_adv_idx = 0
         if 'preserved_advertiser' in st.session_state and st.session_state.preserved_advertiser in advertisers:
@@ -357,7 +359,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
     
     if selected_advertiser and selected_advertiser != '-- Select Advertiser --':
         with col2:
-            campaigns = ['-- Select Campaign --'] + sorted(df[df['Advertiser_Name'] == selected_advertiser]['Campaign_Name'].dropna().unique().tolist())
+            # Find campaign column (handle case variations)
+            camp_col = next((col for col in df.columns if col.lower() == 'campaign_name'), 'Campaign_Name')
+            campaigns = ['-- Select Campaign --'] + sorted(df[df[adv_col] == selected_advertiser][camp_col].dropna().unique().tolist())
             # Preserve campaign selection
             default_camp_idx = 0
             if 'preserved_campaign' in st.session_state and st.session_state.preserved_campaign in campaigns:
@@ -386,7 +390,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             st.rerun()
         
         if selected_campaign and selected_campaign != '-- Select Campaign --':
-            campaign_df = df[(df['Advertiser_Name'] == selected_advertiser) & (df['Campaign_Name'] == selected_campaign)].copy()
+            campaign_df = df[(df[adv_col] == selected_advertiser) & (df[camp_col] == selected_campaign)].copy()
             
             # Calculate metrics
             campaign_df['impressions'] = campaign_df['impressions'].apply(safe_float)
