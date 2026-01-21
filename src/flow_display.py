@@ -489,7 +489,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         creative_id = current_flow.get('creative_id', 'N/A')
         creative_name = current_flow.get('creative_template_name', 'N/A')
-        creative_size = current_flow.get('Creative_Size_Final', 'N/A')
+        creative_size = current_flow.get('Creative_Size_Final', 'N/A')  # From File A
         keyword = current_flow.get('keyword_term', 'N/A')
         
         # Keyword will be shown BELOW card preview
@@ -536,9 +536,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             st.components.v1.html(rendered_html, height=500, scrolling=True)
                         creative_rendered = True
                     elif error_msg:
-                        st.warning(f"⚠️ Weaver API error: {error_msg}")
+                        st.warning(f"⚠️ {error_msg}")
                 except Exception as e:
-                    st.error(f"⚠️ Creative rendering error: {str(e)[:100]}")
+                    st.error(f"⚠️ Creative error: {str(e)[:100]}")
             
             # Fallback: Try response column from File A if Weaver failed
             if not creative_rendered:
@@ -602,9 +602,11 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 <div style="margin-bottom: 6px; font-size: 14px;">
                     <div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Keyword</strong></div>
                     <div style="margin-left: 0; margin-top: 0; word-break: break-word; color: #64748b; font-size: 14px;">{html.escape(str(keyword))}</div>
-                    <div style="margin-top: 6px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Creative ID</strong></div>
+                    
+                    <div style="margin-top: 8px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Creative ID</strong></div>
                     <div style="margin-left: 0; margin-top: 0; word-break: break-word; color: #64748b; font-size: 14px;">{html.escape(str(creative_id))}</div>
-                    <div style="margin-top: 6px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Size</strong></div>
+                    
+                    <div style="margin-top: 8px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Creative Size</strong></div>
                     <div style="margin-left: 0; margin-top: 0; word-break: break-word; color: #64748b; font-size: 14px;">{html.escape(str(creative_size))}</div>
                 </div>
                 """, unsafe_allow_html=True)
