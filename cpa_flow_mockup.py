@@ -484,15 +484,17 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 # Show flow stats directly (no success messages)
                 if len(final_filtered) > 0:
-                    # AGGREGATE stats across ALL filtered rows using weighted averages
-                    # Convert to numeric first
-                    final_filtered['impressions'] = final_filtered['impressions'].apply(safe_float)
-                    final_filtered['clicks'] = final_filtered['clicks'].apply(safe_float)
-                    final_filtered['conversions'] = final_filtered['conversions'].apply(safe_float)
+                    # Make a copy to avoid modifying the original
+                    stats_df = final_filtered.copy()
                     
-                    flow_imps = int(final_filtered['impressions'].sum())
-                    flow_clicks = int(final_filtered['clicks'].sum())
-                    flow_convs = int(final_filtered['conversions'].sum())
+                    # Convert to numeric (handle any string values)
+                    stats_df['impressions'] = pd.to_numeric(stats_df['impressions'], errors='coerce').fillna(0)
+                    stats_df['clicks'] = pd.to_numeric(stats_df['clicks'], errors='coerce').fillna(0)
+                    stats_df['conversions'] = pd.to_numeric(stats_df['conversions'], errors='coerce').fillna(0)
+                    
+                    flow_imps = int(stats_df['impressions'].sum())
+                    flow_clicks = int(stats_df['clicks'].sum())
+                    flow_convs = int(stats_df['conversions'].sum())
                     
                     # Weighted averages: CTR weighted by impressions, CVR weighted by clicks
                     flow_ctr = (flow_clicks / flow_imps * 100) if flow_imps > 0 else 0
