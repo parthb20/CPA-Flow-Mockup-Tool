@@ -513,6 +513,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     cipher_key = None
                     try:
                         cipher_key = st.secrets.get("WEAVER_CIPHER_KEY", None)
+                        if cipher_key:
+                            # Clean the key (remove quotes, whitespace)
+                            cipher_key = str(cipher_key).strip().strip("'").strip('"')
                     except Exception:
                         cipher_key = None
                     
