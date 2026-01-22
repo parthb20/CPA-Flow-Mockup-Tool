@@ -539,7 +539,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             st.components.v1.html(rendered_html, height=500, scrolling=True)
                         creative_rendered = True
                     elif error_msg:
-                        st.warning(f"⚠️ {error_msg}")
+                        # Show detailed error message
+                        st.error(f"❌ {error_msg}")
                 except Exception as e:
                     st.error(f"⚠️ Creative error: {str(e)[:200]}")
             
