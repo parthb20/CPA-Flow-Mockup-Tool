@@ -103,6 +103,51 @@ def load_creative_requests(file_id):
         return None
 
 
+def load_prerendered_responses(file_id):
+    """
+    Load File D - Pre-rendered creative responses from batch_render_creatives.py
+    Expected format: CSV with columns: creative_id, size, status, error, adcode
+    
+    Returns:
+        DataFrame with pre-rendered creatives, or None if loading fails
+    """
+    from src.data_loader import load_csv_from_gdrive
+    import streamlit as st
+    
+    if not file_id or file_id.strip() == "":
+        return None
+    
+    try:
+        st.info(f"📂 Loading File D (pre-rendered responses): {file_id}")
+        
+        # Load CSV from Google Drive
+        df = load_csv_from_gdrive(file_id)
+        
+        if df is None or len(df) == 0:
+            st.warning("⚠️ File D is empty or failed to load")
+            return None
+        
+        # Verify required columns
+        required_cols = ['creative_id', 'size', 'adcode']
+        missing = [col for col in required_cols if col not in df.columns]
+        
+        if missing:
+            st.error(f"❌ File D missing required columns: {', '.join(missing)}")
+            st.info(f"Available columns: {', '.join(df.columns)}")
+            return None
+        
+        # Filter to only successful creatives with adcode
+        df = df[df['status'] == 'success'].copy()
+        df = df[df['adcode'].notna()].copy()
+        
+        st.success(f"✅ File D loaded: {len(df)} pre-rendered creatives")
+        return df
+        
+    except Exception as e:
+        st.error(f"❌ File D loading error: {str(e)}")
+        return None
+
+
 def parse_keyword_array_from_flow(flow_data):
     """
     Extract keyword array from flow data
@@ -353,7 +398,8 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
     
     # Priority 2: Fall back to Weaver API with File C
     if creative_requests_df is None or len(creative_requests_df) == 0:
-        return None, "File C not loaded and no pre-rendered responses available"
+        # If File D didn't have this creative and File C is not available
+        return None, f"Creative {creative_id} ({creative_size}) not found in File D, and File C is not available"
     
     # Use default cipher key if not provided, strip whitespace/quotes
     if not cipher_key:
