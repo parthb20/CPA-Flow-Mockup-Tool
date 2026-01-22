@@ -22,6 +22,7 @@ from src.screenshot import get_screenshot_url, capture_with_playwright, capture_
 from src.serp import generate_serp_mockup
 from src.similarity import calculate_similarities
 from src.creative_renderer import render_creative_via_weaver, parse_keyword_array_from_flow
+from src.flow_analysis import find_default_flow
 
 
 def render_flow_journey(campaign_df, current_flow, api_key, playwright_available, thumio_configured, thumio_referer_domain):
@@ -124,6 +125,17 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         selected_keyword_inline = st.selectbox("Keyword", keywords, key='keyword_inline_filter', label_visibility="collapsed")
         if selected_keyword_inline != 'All Keywords':
             campaign_df = campaign_df[campaign_df['keyword_term'] == selected_keyword_inline]
+    
+    # CRITICAL: If domain or keyword filter was applied, recalculate the best flow from filtered data
+    # This ensures the flow updates to show the best performing combination for the selected filters
+    if (selected_domain_inline != 'All Domains' or selected_keyword_inline != 'All Keywords'):
+        if len(campaign_df) > 0:
+            new_flow = find_default_flow(campaign_df)
+            if new_flow:
+                current_flow = new_flow  # Update current_flow with the recalculated best flow
+        else:
+            # If no data after filtering, show warning and keep original flow
+            st.warning(f"⚠️ No data found for the selected filters. Showing original flow.")
     
     # ZERO GAPS CSS - Remove empty containers
     st.markdown("""
@@ -537,11 +549,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     )
                     
                     if rendered_html:
-                        # Render the creative at its exact size with scrolling enabled
-                        if st.session_state.flow_layout == 'vertical':
-                            st.components.v1.html(rendered_html, height=650, scrolling=True)
-                        else:
-                            st.components.v1.html(rendered_html, height=500, scrolling=True)
+                        # Render the creative at consistent height with other stages
+                        # Use 650px for both vertical and horizontal to match other stage boxes
+                        st.components.v1.html(rendered_html, height=650, scrolling=True)
                         creative_rendered = True
                     elif error_msg:
                         # Show detailed error message
@@ -592,9 +602,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             
             # Show placeholder if all rendering failed
             if not creative_rendered:
-                min_height = 650 if st.session_state.flow_layout == 'vertical' else 500
+                # Use consistent height to match other stage boxes
                 st.markdown(f"""
-                <div style="min-height: {min_height}px; display: flex; align-items: center; justify-content: center; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px;">
+                <div style="min-height: 650px; display: flex; align-items: center; justify-content: center; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px;">
                     <div style="text-align: center; color: #64748b;">
                         <div style="font-size: 48px; margin-bottom: 8px;">⚠️</div>
                         <div style="font-weight: 600; font-size: 14px;">No creative data</div>
