@@ -44,6 +44,22 @@ def load_creative_requests(file_id):
         
         st.info(f"📂 Loading File C: {file_id}")
         
+        # Try direct download first to check file
+        import requests
+        download_url = f"https://drive.google.com/uc?export=download&id={file_id}"
+        
+        try:
+            response = requests.get(download_url, timeout=30)
+            st.info(f"📥 Download status: {response.status_code}, Size: {len(response.content)} bytes")
+            
+            # Check if we got HTML error page
+            if b'<!DOCTYPE' in response.content[:1000] or b'<html' in response.content[:1000]:
+                st.error("❌ Got HTML page instead of file - check sharing settings")
+                st.error(f"Content preview: {response.content[:200]}")
+                return None
+        except Exception as e:
+            st.warning(f"⚠️ Direct download check failed: {str(e)}")
+        
         # Load file (handles .gz automatically)
         df = load_csv_from_gdrive(file_id)
         
