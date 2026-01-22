@@ -38,22 +38,15 @@ def process_file_content(content):
                 with gzip.open(BytesIO(content), 'rb') as gz_file:
                     decompressed = gz_file.read()
                 
-                st.info(f"📦 Decompressed GZIP: {len(decompressed)} bytes")
-                
                 # Read CSV with maximum field size to prevent truncation
                 csv.field_size_limit(100000000)  # 100MB per field
                 
-                # Peek at first few lines to debug
-                first_lines = decompressed[:1000].decode('utf-8', errors='ignore')
-                st.info(f"📄 First 500 chars of CSV:\n{first_lines[:500]}")
-                
-                # Read as CSV - Try different parsing strategies
+                # Read as CSV - Try different parsing strategies silently
                 df = None
                 error_msgs = []
                 
                 # Strategy 1: QUOTE_ALL (assume all fields quoted)
                 try:
-                    st.info("🔧 Trying QUOTE_ALL parsing...")
                     df = pd.read_csv(
                         BytesIO(decompressed), 
                         dtype=str, 
@@ -63,14 +56,12 @@ def process_file_content(content):
                         escapechar='\\',
                         on_bad_lines='warn'
                     )
-                    st.success(f"✅ QUOTE_ALL worked!")
                 except Exception as e:
                     error_msgs.append(f"QUOTE_ALL: {str(e)[:100]}")
                 
                 # Strategy 2: QUOTE_MINIMAL (default quoting)
                 if df is None or len(df) == 0:
                     try:
-                        st.info("🔧 Trying QUOTE_MINIMAL parsing...")
                         df = pd.read_csv(
                             BytesIO(decompressed), 
                             dtype=str, 
@@ -79,14 +70,12 @@ def process_file_content(content):
                             quoting=csv.QUOTE_MINIMAL,
                             on_bad_lines='warn'
                         )
-                        st.success(f"✅ QUOTE_MINIMAL worked!")
                     except Exception as e:
                         error_msgs.append(f"QUOTE_MINIMAL: {str(e)[:100]}")
                 
                 # Strategy 3: No quoting (raw parsing)
                 if df is None or len(df) == 0:
                     try:
-                        st.info("🔧 Trying QUOTE_NONE parsing...")
                         df = pd.read_csv(
                             BytesIO(decompressed), 
                             dtype=str, 
@@ -95,15 +84,12 @@ def process_file_content(content):
                             quoting=csv.QUOTE_NONE,
                             on_bad_lines='warn'
                         )
-                        st.success(f"✅ QUOTE_NONE worked!")
                     except Exception as e:
                         error_msgs.append(f"QUOTE_NONE: {str(e)[:100]}")
                 
                 if df is None or len(df) == 0:
                     st.error(f"❌ All parsing strategies failed: {'; '.join(error_msgs)}")
                     return None
-                
-                st.info(f"📋 CSV parsed: {len(df)} rows, {len(df.columns)} columns")
                 
                 return df
             except Exception as e:
@@ -142,8 +128,6 @@ def process_file_content(content):
         else:
             # Try as CSV
             try:
-                st.info(f"📄 Processing as plain CSV: {len(content)} bytes")
-                
                 df = pd.read_csv(
                     StringIO(content.decode('utf-8')), 
                     dtype=str, 
@@ -151,9 +135,6 @@ def process_file_content(content):
                     encoding='utf-8',
                     engine='python'
                 )
-                
-                st.info(f"📋 CSV parsed: {len(df)} rows, {len(df.columns)} columns")
-                
                 return df
             except Exception as e:
                 st.error(f"❌ CSV parse error: {str(e)}")
