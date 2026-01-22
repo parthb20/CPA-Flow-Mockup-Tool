@@ -1127,14 +1127,27 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             with sim_col1:
                 render_similarity_score('kwd_to_ad', st.session_state.similarities,
                                        custom_title="Keyword → Ad Copy Similarity",
-                                       tooltip_text="Measures how well the ad creative matches the search keyword. Higher scores indicate better keyword-ad alignment.")
+                                       tooltip_text="Measures how well the ad creative matches the search keyword. Higher scores indicate better keyword-ad alignment.",
+                                       max_height=1040)
             
             with sim_col2:
                 render_similarity_score('ad_to_page', st.session_state.similarities,
                                        custom_title="Ad Copy → Landing Page Similarity",
-                                       tooltip_text="Measures how well the landing page fulfills the promises made in the ad copy. Higher scores indicate better ad-page consistency.")
+                                       tooltip_text="Measures how well the landing page fulfills the promises made in the ad copy. Higher scores indicate better ad-page consistency.",
+                                       max_height=320)
             
             with sim_col3:
                 render_similarity_score('kwd_to_page', st.session_state.similarities,
                                        custom_title="Keyword → Landing Page Similarity",
-                                       tooltip_text="Measures overall flow consistency from keyword to landing page. Higher scores indicate better end-to-end alignment.")
+                                       tooltip_text="Measures overall flow consistency from keyword to landing page. Higher scores indicate better end-to-end alignment.",
+                                       max_height=320)
+        
+        # Remove bottom padding after similarity scores (end of page)
+        st.markdown("""
+        <style>
+        /* Remove excess padding at page bottom */
+        .main .block-container {
+            padding-bottom: 1rem !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
