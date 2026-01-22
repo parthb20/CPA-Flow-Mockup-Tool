@@ -51,12 +51,18 @@ def load_creative_requests(file_id):
             df.columns = ['creative_id', 'rensize', 'request']
             return df
         
-        # If more than 3 columns, JSON was split - take first 3 only
-        # (this is a workaround, .gz is recommended)
+        # If more than 3 columns, JSON was split across cells - merge them
         if len(df.columns) > 3:
-            df = df.iloc[:, :3]
-            df.columns = ['creative_id', 'rensize', 'request']
-            return df
+            # Create new dataframe with merged request
+            merged_df = pd.DataFrame()
+            merged_df['creative_id'] = df.iloc[:, 0]
+            merged_df['rensize'] = df.iloc[:, 1]
+            # Merge all columns from index 2 onwards with space separator
+            merged_df['request'] = df.iloc[:, 2:].apply(
+                lambda row: ' '.join([str(x) for x in row if pd.notna(x)]), 
+                axis=1
+            )
+            return merged_df
         
         return None
         
@@ -287,48 +293,47 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
                 # Try direct parse first (for properly formatted .gz files)
                 request_data = json.loads(request_data_str)
             except json.JSONDecodeError:
-                # CSV escaping is complex: {\ext\":{\"\" becomes {"ext":{"
-                # Strategy: Fix the pattern systematically
+                # CSV escaping pattern: {\ext" needs to become {"ext"
+                # The issue is missing quote after opening brace
                 import re
                 
-                # Start with the raw string
-                cleaned = request_data_str
+                # CRITICAL FIX: {\word" → {"word"
+                # Pattern: { followed by \ followed by word followed by \"
+                cleaned = re.sub(r'\{\\(\w+)\\"', r'{"\1"', request_data_str)
                 
-                # Fix: {\word" → {"word"
-                cleaned = re.sub(r'\{\\(\w+)\\"', r'{"\1"', cleaned)
-                
-                # Fix: " \word" → " "word" (with space)
+                # Fix: space followed by \word" → space "word"
+                # Pattern: " \word" → " "word"
                 cleaned = re.sub(r'"\s+\\(\w+)\\"', r'" "\1"', cleaned)
                 
                 # Fix: :\{\" → :{"
-                cleaned = re.sub(r':\{\\\"', r':{"', cleaned)
+                cleaned = cleaned.replace(':\\{\\', ':{')
                 
-                # Fix: :\" → :"
-                cleaned = re.sub(r':\\"', r':"', cleaned)
-                
-                # Fix all remaining escaped quotes
+                # Fix remaining patterns
                 cleaned = cleaned.replace('\\"', '"')
-                
-                # Fix escaped backslashes
                 cleaned = cleaned.replace('\\\\', '\\')
                 
-                # Add missing colons between keys and values (pattern: "key" "value" → "key":"value")
-                cleaned = re.sub(r'"\s+"([^"]+)"\s*([,}])', r'":"\1"\2', cleaned)
+                # Add missing colons (space between key and value)
+                cleaned = re.sub(r'\"(\w+)\"\s+(\d+)', r'"\1":\2', cleaned)
+                cleaned = re.sub(r'\"(\w+)\"\s+\"', r'"\1":"', cleaned)
+                cleaned = re.sub(r'\"(\w+)\"\s+(true|false)', r'"\1":\2', cleaned)
+                cleaned = re.sub(r'\"(\w+)\"\s+\[', r'"\1":[', cleaned)
+                cleaned = re.sub(r'\"(\w+)\"\s+\{', r'"\1":{', cleaned)
                 
-                # Add missing commas between key-value pairs
-                cleaned = re.sub(r'}\s+"', r'}, "', cleaned)
-                cleaned = re.sub(r'(\d+)\s+"', r'\1, "', cleaned)
-                cleaned = re.sub(r'(true|false)\s+"', r'\1, "', cleaned)
+                # Add missing commas
+                cleaned = re.sub(r'(\d+)\s+\"', r'\1, "', cleaned)
+                cleaned = re.sub(r'(true|false)\s+\"', r'\1, "', cleaned)
+                cleaned = re.sub(r'\]\s+\"', r'], "', cleaned)
+                cleaned = re.sub(r'\}\s+\"', r'}, "', cleaned)
+                cleaned = re.sub(r'\"\s+\"', r'", "', cleaned)
                 
                 try:
                     request_data = json.loads(cleaned)
-                except:
-                    # If still failing, return error
-                    return None, "Cannot parse request JSON"
+                except Exception as parse_err:
+                    return None, f"Bad JSON format: {str(parse_err)[:100]}"
         else:
             request_data = request_data_str
     except Exception as e:
-        return None, "Cannot parse request JSON"
+        return None, f"JSON encoding error: {str(e)[:100]}"
     
     # Encrypt and encode keywords
     encrypted_kd = encrypt_and_encode_keywords(keyword_array, cipher_key)
@@ -352,15 +357,22 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
         )
         
         if response.status_code != 200:
-            return None, f"API returned status {response.status_code}"
+            return None, f"Weaver API error: HTTP {response.status_code}"
         
-        response_data = response.json()
+        try:
+            response_data = response.json()
+        except:
+            return None, "API response is not valid JSON"
         
         if 'adcode' not in response_data:
-            return None, "No 'adcode' in API response"
+            available_keys = ', '.join(response_data.keys()) if response_data else 'none'
+            return None, f"No 'adcode' in response (keys: {available_keys[:50]})"
         
         # Get adcode and unescape it
         adcode = response_data['adcode']
+        if not adcode or adcode.strip() == '':
+            return None, "API returned empty adcode"
+        
         adcode = unescape_adcode(adcode)
         
         # Replace kd= parameter with encrypted keywords
