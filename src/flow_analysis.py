@@ -72,6 +72,9 @@ def find_default_flow(df):
             valid_df = df[df['impressions'] > 0]
         
         if len(valid_df) == 0:
+            # Last resort: return ANY row if available (even with 0 metrics)
+            if len(df) > 0:
+                return df.iloc[0].to_dict()
             return None
         
         agg_df = valid_df.groupby(group_cols, dropna=False)[sort_metric].sum().reset_index()
