@@ -230,8 +230,12 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     return html_output, display_height + 30, is_url
 
 
-def render_similarity_score(score_type, similarities_data, show_explanation=False, custom_title=None, tooltip_text=None):
-    """Render a single similarity score card"""
+def render_similarity_score(score_type, similarities_data, show_explanation=False, custom_title=None, tooltip_text=None, max_height=None):
+    """Render a single similarity score card with optional max height
+    
+    Args:
+        max_height: Maximum height in pixels for the similarity box (enables scrolling if content exceeds)
+    """
     if not similarities_data:
         return
     
@@ -341,7 +345,12 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
                 scores_html += f'<div style="margin: 3px 0; padding: 4px 8px; background: #f8fafc; border-left: 3px solid {score_color}; font-size: 13px;"><span style="color: #0f172a; font-weight: 600;">{label}:</span> <span style="color: {score_color}; font-weight: 700;">{score_val:.0f}%</span></div>'
         
         if scores_html:
-            st.markdown(f'<div style="margin-top: 8px;">{scores_html}</div>', unsafe_allow_html=True)
+            # Wrap in a container with optional max height and scrolling
+            if max_height:
+                container_style = f'max-height: {max_height}px; overflow-y: auto; margin-top: 8px; padding-right: 4px;'
+            else:
+                container_style = 'margin-top: 8px;'
+            st.markdown(f'<div style="{container_style}">{scores_html}</div>', unsafe_allow_html=True)
 
 
 def inject_unique_id(html_content, prefix, url, device, flow_data=None):
