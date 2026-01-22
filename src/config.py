@@ -1,93 +1,50 @@
-# -*- coding: utf-8 -*-
 """
-OCR utilities for extracting text from screenshots
-Uses EasyOCR which doesn't require system dependencies
+Configuration constants and settings
 """
 
-import streamlit as st
-from PIL import Image
-import requests
-from io import BytesIO
+# Google Drive File IDs
+FILE_A_ID = "1_SEziSRFL6_UC1WyfbyZFv3FZ73zBZL-"  # Main CSV file (.csv.gz) - REQUIRED
+FILE_B_ID = "1SXcLm1hhzQK23XY6Qt7E1YX5Fa-2Tlr9"  # SERP templates JSON file - REQUIRED
+FILE_C_ID = "1MrcmOzWo-TAmKJ6VV0FtA5PxBGJNGnkJ"  # File C - Creative requests (.csv.gz): creative_id, rensize, request - OPTIONAL if FILE_D_ID is set
+FILE_D_ID = "1pyBYDZXlyT-3WvtZxCURqG5Nqc0IF9q_"  # File D - Pre-rendered creative responses (.csv): creative_id, size, status, error, adcode - RECOMMENDED (makes FILE_C optional)
 
-# Global reader instance (cached)
-_ocr_reader = None
+# SERP URL base - template key gets appended
+SERP_BASE_URL = "https://related.performmedia.com/search/?srprc=3&oscar=1&a=100&q=nada+vehicle+value+by+vin&mkt=perform&purl=forbes.com/home&tpid="
 
-def get_ocr_reader():
-    """Get or create EasyOCR reader instance (cached)"""
-    global _ocr_reader
-    if _ocr_reader is None:
-        try:
-            import easyocr
-            _ocr_reader = easyocr.Reader(['en'], gpu=False)
-        except Exception as e:
-            st.warning(f"OCR initialization failed: {e}")
-            _ocr_reader = False
-    return _ocr_reader if _ocr_reader is not False else None
+# Thum.io API configuration
+THUMIO_API_KEY = None  # Set via environment variable or Streamlit secrets
+THUMIO_REFERER_DOMAIN = None  # Set via environment variable or Streamlit secrets
 
+# API Configuration
+OPENAI_API_KEY = None  # Set via environment variable or Streamlit secrets
 
-@st.cache_data(ttl=604800, show_spinner=False)
-def extract_text_from_screenshot_url(screenshot_url):
-    """
-    Extract text from a screenshot URL using OCR
-    
-    Args:
-        screenshot_url: URL of the screenshot image
-        
-    Returns:
-        str: Extracted text, or empty string if OCR fails
-    """
-    if not screenshot_url:
-        return ""
-    
-    try:
-        # Get OCR reader
-        reader = get_ocr_reader()
-        if not reader:
-            return ""
-        
-        # Download image
-        response = requests.get(screenshot_url, timeout=10)
-        if response.status_code != 200:
-            return ""
-        
-        # Convert to PIL Image
-        image = Image.open(BytesIO(response.content))
-        
-        # Run OCR
-        results = reader.readtext(image)
-        
-        # Extract text from results
-        extracted_text = " ".join([text for (bbox, text, prob) in results if prob > 0.5])
-        
-        return extracted_text
-        
-    except Exception as e:
-        # Silent fail - OCR is optional
-        return ""
+# Device dimensions - these are PORTRAIT dimensions
+# Horizontal orientation will swap width/height automatically
+DEVICE_DIMENSIONS = {
+    'mobile': {
+        'width': 390,  # Portrait width
+        'height': 844,  # Portrait height
+        'target_width_portrait': 280,  # Target display width when in portrait
+        'target_width_landscape': 360,  # Target display width when in landscape (wider to show landscape properly)
+        'chrome_height': 68  # 22px status bar + 46px URL bar
+    },
+    'tablet': {
+        'width': 820,  # Portrait width
+        'height': 1180,  # Portrait height
+        'target_width_portrait': 280,  # Target display width when in portrait
+        'target_width_landscape': 360,  # Target display width when in landscape
+        'chrome_height': 88
+    },
+    'laptop': {
+        'width': 1920,  # Wider laptop (16:9 ratio for true widescreen)
+        'height': 1080,  # Standard height
+        'target_width_portrait': 300,  # Target display width when in portrait (tall view)
+        'target_width_landscape': 640,  # Target display width when in landscape (very wide)
+        'chrome_height': 48
+    }
+}
 
-
-def get_page_text_with_ocr_fallback(page_url, screenshot_url):
-    """
-    Get page text, using OCR on screenshot as fallback
-    
-    Args:
-        page_url: URL of the page
-        screenshot_url: URL of the screenshot (fallback)
-        
-    Returns:
-        str: Page text or OCR text from screenshot
-    """
-    # Try to fetch page content first
-    try:
-        from src.similarity import fetch_page_content
-        page_text = fetch_page_content(page_url)
-        if page_text and len(page_text) > 100:
-            return page_text
-    except:
-        pass
-    
-    # Fallback to OCR if page fetch failed
-    if screenshot_url:
-        return extract_text_from_screenshot_url(screenshot_url)
-    
-    return ""
+# Default table settings
+DEFAULT_TABLE_FILTER = 'Best'
+DEFAULT_TABLE_COUNT = 10
+DEFAULT_TABLE_SORT = 'Impressions'
