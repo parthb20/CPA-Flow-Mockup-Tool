@@ -553,6 +553,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 response_value = current_flow.get('response', None)
                 if response_value and pd.notna(response_value) and str(response_value).strip():
                     try:
+                        st.info("🔄 Weaver API unavailable - using fallback response from File A")
                         # Parse and render response from File A
                         if isinstance(response_value, str) and response_value.strip():
                             # Extract width and height from creative_size
