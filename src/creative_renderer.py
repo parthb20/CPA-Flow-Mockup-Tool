@@ -31,11 +31,15 @@ def load_creative_requests(file_id):
     NOTE: Use .gz format to preserve JSON in request column properly
     """
     from src.data_loader import load_csv_from_gdrive
+    import csv
     
     if not file_id or file_id.strip() == "":
         return None
     
     try:
+        # Increase field size limit for large JSON
+        csv.field_size_limit(100000000)
+        
         # Load file (handles .gz automatically)
         df = load_csv_from_gdrive(file_id)
         
@@ -254,9 +258,12 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
     if creative_requests_df is None or len(creative_requests_df) == 0:
         return None, "File C not loaded"
     
-    # Use default cipher key if not provided
+    # Use default cipher key if not provided, strip whitespace/quotes
     if not cipher_key:
         cipher_key = DEFAULT_CIPHER_KEY
+    else:
+        # Clean cipher key (remove quotes, whitespace)
+        cipher_key = str(cipher_key).strip().strip("'").strip('"')
     
     # Find matching creative request using rensize column
     creative_key = f"{creative_id}_{creative_size}"
@@ -274,18 +281,35 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
     request_data_str = matching_rows.iloc[0]['request']
     
     try:
-        # Parse request JSON - handle escaped JSON
+        # Parse request JSON - handle heavily escaped JSON from CSV
         if isinstance(request_data_str, str):
             try:
+                # Try direct parse first
                 request_data = json.loads(request_data_str)
             except json.JSONDecodeError:
-                # Try removing backslashes (double-escaped JSON from CSV)
-                unescaped = request_data_str.replace('\\', '')
-                request_data = json.loads(unescaped)
+                # CSV has heavy escaping - try multiple strategies
+                try:
+                    # Strategy 1: Python string unescape
+                    import codecs
+                    unescaped = codecs.decode(request_data_str, 'unicode_escape')
+                    request_data = json.loads(unescaped)
+                except:
+                    try:
+                        # Strategy 2: Manual cleanup of common CSV escapes
+                        # {\ext" becomes {"ext
+                        cleaned = request_data_str.replace('{\\ext', '{"ext')
+                        cleaned = cleaned.replace('\\"', '"')
+                        cleaned = cleaned.replace('\\\\', '\\')
+                        cleaned = cleaned.replace('\\/', '/')
+                        request_data = json.loads(cleaned)
+                    except:
+                        # Strategy 3: Try treating as single-escaped
+                        cleaned = request_data_str.replace('\\', '')
+                        request_data = json.loads(cleaned)
         else:
             request_data = request_data_str
     except Exception as e:
-        return None, "Cannot parse request JSON"
+        return None, f"JSON parse error"
     
     # Encrypt and encode keywords
     encrypted_kd = encrypt_and_encode_keywords(keyword_array, cipher_key)
