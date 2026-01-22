@@ -96,7 +96,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     
     with control_col1:
         st.markdown('<p style="font-size: 13px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;">Layout</p>', unsafe_allow_html=True)
-        layout_choice = st.selectbox("", ['Horizontal', 'Vertical'], 
+        layout_choice = st.selectbox("Layout", ['Horizontal', 'Vertical'], 
                                      index=0 if st.session_state.flow_layout == 'horizontal' else 1, 
                                      key='layout_dropdown', label_visibility="collapsed")
         if (layout_choice == 'Horizontal' and st.session_state.flow_layout != 'horizontal') or \
@@ -106,7 +106,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     
     with control_col2:
         st.markdown('<p style="font-size: 13px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;">Device</p>', unsafe_allow_html=True)
-        device_all = st.selectbox("", ['Mobile', 'Tablet', 'Laptop'], 
+        device_all = st.selectbox("Device", ['Mobile', 'Tablet', 'Laptop'], 
                                  key='device_all', index=0, label_visibility="collapsed")
         # Extract actual device name
         device_all = device_all.lower()
@@ -121,7 +121,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     with control_col4:
         st.markdown('<p style="font-size: 13px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;">Keyword</p>', unsafe_allow_html=True)
         keywords = ['All Keywords'] + sorted(campaign_df['keyword_term'].dropna().unique().tolist()) if 'keyword_term' in campaign_df.columns else ['All Keywords']
-        selected_keyword_inline = st.selectbox("", keywords, key='keyword_inline_filter', label_visibility="collapsed")
+        selected_keyword_inline = st.selectbox("Keyword", keywords, key='keyword_inline_filter', label_visibility="collapsed")
         if selected_keyword_inline != 'All Keywords':
             campaign_df = campaign_df[campaign_df['keyword_term'] == selected_keyword_inline]
     
@@ -616,10 +616,24 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             keyword = current_flow.get('keyword_term', 'N/A')
             
             st.markdown("**🎨 Creative Details**", unsafe_allow_html=False)
-            st.markdown(f"**Keyword:** {keyword}")
-            st.markdown(f"**Creative ID:** {creative_id}")
-            st.markdown(f"**Size:** {creative_size}")
-            st.markdown(f"**Template:** {creative_name}")
+            st.markdown(f"""
+            <div style='margin-top: 4px; margin-bottom: 8px;'>
+                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'>Keyword</div>
+                <div style='color: #64748b; font-size: 13px;'>{html.escape(str(keyword))}</div>
+            </div>
+            <div style='margin-bottom: 8px;'>
+                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'>Creative ID</div>
+                <div style='color: #64748b; font-size: 13px;'>{creative_id}</div>
+            </div>
+            <div style='margin-bottom: 8px;'>
+                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'>Size</div>
+                <div style='color: #64748b; font-size: 13px;'>{creative_size}</div>
+            </div>
+            <div style='margin-bottom: 0;'>
+                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'>Template</div>
+                <div style='color: #64748b; font-size: 13px;'>{creative_name}</div>
+            </div>
+            """, unsafe_allow_html=True)
             
             # Calculate similarities if not already done
             if 'similarities' not in st.session_state or st.session_state.similarities is None:
@@ -628,16 +642,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 else:
                     st.session_state.similarities = {}
         
-        # Close wrapper div for horizontal layout
-        if st.session_state.flow_layout == 'horizontal':
-            # Show keyword BELOW card preview in horizontal layout - ALWAYS show
-            keyword = current_flow.get('keyword_term', 'N/A')
-            st.markdown(f"""
-            <div style='margin-top: 8px; font-size: 14px;'>
-                <div style='font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;'><strong>Keyword</strong></div>
-                <div style='margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 14px;'>{html.escape(str(keyword))}</div>
-            </div>
-            """, unsafe_allow_html=True)
+        # Horizontal layout - no additional keyword display needed (already in Creative Details)
     
     # Arrow divs removed - no longer needed
     
