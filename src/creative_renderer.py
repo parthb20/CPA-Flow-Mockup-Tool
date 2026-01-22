@@ -391,7 +391,8 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
     # Encrypt and encode keywords
     encrypted_kd = encrypt_and_encode_keywords(keyword_array, cipher_key)
     
-    # Call Weaver API
+    # Call Weaver API (NOTE: Change this URL if you need a different endpoint)
+    # Options: weaver.22master, weaver.21master, or weaver.srv.media.net
     api_url = "http://weaver.21master.srv.media.net/v3/adcode"
     headers = {
         'Content-Type': 'application/json',
@@ -404,6 +405,13 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
         import streamlit as st
         st.info(f"🌐 Calling Weaver API: {api_url}")
         st.info(f"📤 Request keys: {list(request_data.keys())[:10]}")
+        
+        # Test connectivity first
+        try:
+            test_response = requests.get(api_url.replace('/v3/adcode', ''), timeout=5)
+            st.info(f"🔗 Server reachable: {test_response.status_code}")
+        except Exception as test_err:
+            st.warning(f"⚠️ Connectivity test failed: {str(test_err)[:100]}")
         
         response = requests.post(
             api_url,
