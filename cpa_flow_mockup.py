@@ -333,6 +333,12 @@ if not st.session_state.loading_done:
             # Load File C third (creative requests) - silent loading
             if FILE_C_ID and FILE_C_ID.strip() != "":
                 st.session_state.data_c = load_creative_requests(FILE_C_ID)
+                if st.session_state.data_c is not None:
+                    st.success(f"✅ File C loaded: {len(st.session_state.data_c)} rows")
+                else:
+                    st.error("❌ File C failed to load - check file ID and sharing settings")
+            else:
+                st.warning("⚠️ FILE_C_ID is not set in config.py")
             
             st.session_state.loading_done = True
         except Exception as e:
