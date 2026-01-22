@@ -504,14 +504,14 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         creative_preview_container = creative_card_left if st.session_state.flow_layout == 'vertical' and creative_card_left else stage_2_container
         
         with creative_preview_container:
-            # Only use Weaver API for creative rendering (File C required)
+            # Try rendering with File D (pre-rendered) or File C (Weaver API)
             creative_rendered = False
             
-            # Debug: Check if File C is loaded
-            if st.session_state.get('data_c') is None:
-                st.warning(f"⚠️ File C not loaded - cannot render creative {creative_id}")
+            # Check if we have either File D or File C
+            has_file_d = st.session_state.get('data_d') is not None
+            has_file_c = st.session_state.get('data_c') is not None
             
-            if st.session_state.get('data_c') is not None:
+            if has_file_d or has_file_c:
                 try:
                     # Get cipher key from secrets or use default
                     cipher_key = None
@@ -526,12 +526,13 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     # Parse keyword array from flow
                     keyword_array = parse_keyword_array_from_flow(current_flow)
                     
-                    # Render via Weaver API (with optional pre-rendered fallback)
+                    # Render via Weaver API with File D priority
+                    # File C is optional - if not present, only File D will be used
                     rendered_html, error_msg = render_creative_via_weaver(
                         creative_id=creative_id,
                         creative_size=creative_size,
                         keyword_array=keyword_array,
-                        creative_requests_df=st.session_state.data_c,
+                        creative_requests_df=st.session_state.get('data_c', None),
                         cipher_key=cipher_key,
                         prerendered_df=st.session_state.get('data_d', None)
                     )
@@ -548,6 +549,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         st.error(f"❌ {error_msg}")
                 except Exception as e:
                     st.error(f"⚠️ Creative error: {str(e)[:200]}")
+            else:
+                # Neither File C nor File D available
+                st.warning(f"⚠️ File C or File D needed to render creative {creative_id}")
             
             # Fallback: Try response column from File A if Weaver failed
             if not creative_rendered:
