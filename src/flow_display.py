@@ -245,20 +245,19 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             margin-bottom: 0 !important;
             padding-bottom: 0 !important;
         }
-        /* Remove spacing from horizontal block containers */
+        /* Reduce bottom spacing but keep top/side spacing */
         .stHorizontalBlock {
-            margin: 0 !important;
-            padding: 0 !important;
+            margin-bottom: 10px !important;
+            padding-bottom: 0 !important;
         }
         .stHorizontalBlock > div {
-            margin: 0 !important;
-            padding: 0 !important;
+            padding-bottom: 0 !important;
         }
         </style>
         """, unsafe_allow_html=True)
         
-        # Create columns for the actual cards - NO gap to prevent spacing
-        stage_cols = st.columns([1, 0.7, 1, 1], gap='small')
+        # Create columns for the actual cards - all equal size with large gap
+        stage_cols = st.columns([1, 1, 1, 1], gap='large')
     else:
         # Vertical layout - cards extend full width, details inline within card boundaries
         stage_cols = None
@@ -551,14 +550,13 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     st.error(f"⚠️ Creative error: {str(e)[:200]}")
             else:
                 # Neither File C nor File D available
-                st.warning(f"⚠️ File C or File D needed to render creative {creative_id}")
+                st.error(f"❌ Creative data not found for {creative_id} ({creative_size})")
             
-            # Fallback: Try response column from File A if Weaver failed
+            # Fallback: Try response column from File A if File D failed
             if not creative_rendered:
                 response_value = current_flow.get('response', None)
                 if response_value and pd.notna(response_value) and str(response_value).strip():
                     try:
-                        st.info("🔄 Weaver API unavailable - using fallback response from File A")
                         # Parse and render response from File A
                         if isinstance(response_value, str) and response_value.strip():
                             # Extract width and height from creative_size
@@ -615,8 +613,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         with details_container:
             creative_size = current_flow.get('Creative_Size_Final', 'N/A')
             creative_name = current_flow.get('creative_template_name', 'N/A')
+            keyword = current_flow.get('keyword_term', 'N/A')
             
             st.markdown("**🎨 Creative Details**", unsafe_allow_html=False)
+            st.markdown(f"**Keyword:** {keyword}")
             st.markdown(f"**Creative ID:** {creative_id}")
             st.markdown(f"**Size:** {creative_size}")
             st.markdown(f"**Template:** {creative_name}")
