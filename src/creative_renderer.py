@@ -281,35 +281,54 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
     request_data_str = matching_rows.iloc[0]['request']
     
     try:
-        # Parse request JSON - handle heavily escaped JSON from CSV
+        # Parse request JSON - handle CSV escaping
         if isinstance(request_data_str, str):
             try:
-                # Try direct parse first
+                # Try direct parse first (for properly formatted .gz files)
                 request_data = json.loads(request_data_str)
             except json.JSONDecodeError:
-                # CSV has heavy escaping - try multiple strategies
+                # CSV escaping is complex: {\ext\":{\"\" becomes {"ext":{"
+                # Strategy: Fix the pattern systematically
+                import re
+                
+                # Start with the raw string
+                cleaned = request_data_str
+                
+                # Fix: {\word" → {"word"
+                cleaned = re.sub(r'\{\\(\w+)\\"', r'{"\1"', cleaned)
+                
+                # Fix: " \word" → " "word" (with space)
+                cleaned = re.sub(r'"\s+\\(\w+)\\"', r'" "\1"', cleaned)
+                
+                # Fix: :\{\" → :{"
+                cleaned = re.sub(r':\{\\\"', r':{"', cleaned)
+                
+                # Fix: :\" → :"
+                cleaned = re.sub(r':\\"', r':"', cleaned)
+                
+                # Fix all remaining escaped quotes
+                cleaned = cleaned.replace('\\"', '"')
+                
+                # Fix escaped backslashes
+                cleaned = cleaned.replace('\\\\', '\\')
+                
+                # Add missing colons between keys and values (pattern: "key" "value" → "key":"value")
+                cleaned = re.sub(r'"\s+"([^"]+)"\s*([,}])', r'":"\1"\2', cleaned)
+                
+                # Add missing commas between key-value pairs
+                cleaned = re.sub(r'}\s+"', r'}, "', cleaned)
+                cleaned = re.sub(r'(\d+)\s+"', r'\1, "', cleaned)
+                cleaned = re.sub(r'(true|false)\s+"', r'\1, "', cleaned)
+                
                 try:
-                    # Strategy 1: Python string unescape
-                    import codecs
-                    unescaped = codecs.decode(request_data_str, 'unicode_escape')
-                    request_data = json.loads(unescaped)
+                    request_data = json.loads(cleaned)
                 except:
-                    try:
-                        # Strategy 2: Manual cleanup of common CSV escapes
-                        # {\ext" becomes {"ext
-                        cleaned = request_data_str.replace('{\\ext', '{"ext')
-                        cleaned = cleaned.replace('\\"', '"')
-                        cleaned = cleaned.replace('\\\\', '\\')
-                        cleaned = cleaned.replace('\\/', '/')
-                        request_data = json.loads(cleaned)
-                    except:
-                        # Strategy 3: Try treating as single-escaped
-                        cleaned = request_data_str.replace('\\', '')
-                        request_data = json.loads(cleaned)
+                    # If still failing, return error
+                    return None, "Cannot parse request JSON"
         else:
             request_data = request_data_str
     except Exception as e:
-        return None, f"JSON parse error"
+        return None, "Cannot parse request JSON"
     
     # Encrypt and encode keywords
     encrypted_kd = encrypt_and_encode_keywords(keyword_array, cipher_key)
