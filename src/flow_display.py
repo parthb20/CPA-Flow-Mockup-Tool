@@ -114,7 +114,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     with control_col3:
         st.markdown('<p style="font-size: 13px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;">Domain</p>', unsafe_allow_html=True)
         domains = ['All Domains'] + sorted(campaign_df['publisher_domain'].dropna().unique().tolist()) if 'publisher_domain' in campaign_df.columns else ['All Domains']
-        selected_domain_inline = st.selectbox("", domains, key='domain_inline_filter', label_visibility="collapsed")
+        selected_domain_inline = st.selectbox("Domain", domains, key='domain_inline_filter', label_visibility="collapsed")
         if selected_domain_inline != 'All Domains':
             campaign_df = campaign_df[campaign_df['publisher_domain'] == selected_domain_inline]
     
