@@ -280,22 +280,80 @@ def replace_kd_in_adcode(adcode, url_encoded_kd):
     return adcode
 
 
-def render_creative_via_weaver(creative_id, creative_size, keyword_array, creative_requests_df, cipher_key=None):
+def get_prerendered_creative(creative_id, creative_size, prerendered_df):
+    """Get pre-rendered creative from File D"""
+    if prerendered_df is None or len(prerendered_df) == 0:
+        return None
+    
+    # Match creative_id and size
+    matches = prerendered_df[
+        (prerendered_df['creative_id'].astype(str) == str(creative_id)) &
+        (prerendered_df['size'].astype(str) == str(creative_size))
+    ]
+    
+    if len(matches) == 0:
+        return None
+    
+    adcode = matches.iloc[0]['adcode']
+    if pd.notna(adcode) and str(adcode).strip():
+        return str(adcode)
+    
+    return None
+
+
+def render_creative_via_weaver(creative_id, creative_size, keyword_array, creative_requests_df, cipher_key=None, prerendered_df=None):
     """
-    Render creative using Weaver API
+    Render creative using pre-rendered responses (File D) or Weaver API (File C)
+    
+    Priority:
+    1. Use pre-rendered response from File D if available
+    2. Fall back to Weaver API with File C
     
     Args:
         creative_id: Creative ID from flow
         creative_size: Creative size from flow (e.g., "300x250")
         keyword_array: List of keywords in format [{"t":"kw1"},{"t":"kw2"}]
-        creative_requests_df: DataFrame from File C with columns: creative_id, creative_size, request
+        creative_requests_df: DataFrame from File C with columns: creative_id, rensize, request
         cipher_key: Cipher key for encryption (optional, uses default if None)
+        prerendered_df: DataFrame from File D with pre-rendered responses (optional)
     
     Returns:
         (rendered_html, error_message) tuple
     """
+    import streamlit as st
+    
+    # Priority 1: Try pre-rendered responses from File D
+    if prerendered_df is not None:
+        adcode = get_prerendered_creative(creative_id, creative_size, prerendered_df)
+        if adcode:
+            st.info("✅ Using pre-rendered creative from File D")
+            
+            # Wrap in HTML container
+            try:
+                width, height = map(int, creative_size.split('x'))
+            except:
+                width, height = 300, 250
+            
+            rendered_html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+                    body {{ width: {width}px; height: {height}px; overflow: auto; }}
+                </style>
+            </head>
+            <body>
+                {adcode}
+            </body>
+            </html>
+            """
+            return (rendered_html, None)
+    
+    # Priority 2: Fall back to Weaver API with File C
     if creative_requests_df is None or len(creative_requests_df) == 0:
-        return None, "File C not loaded"
+        return None, "File C not loaded and no pre-rendered responses available"
     
     # Use default cipher key if not provided, strip whitespace/quotes
     if not cipher_key:
