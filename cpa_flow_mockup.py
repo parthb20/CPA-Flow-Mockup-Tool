@@ -330,28 +330,17 @@ if not st.session_state.loading_done:
             # Load JSON second (nice to have)
             st.session_state.data_b = load_json_from_gdrive(FILE_B_ID)
             
-            # Load File D third (pre-rendered responses) - PRIORITY
+            # Load File D (pre-rendered responses) - silently
             if FILE_D_ID and FILE_D_ID.strip() != "":
                 st.session_state.data_d = load_prerendered_responses(FILE_D_ID)
             else:
                 st.session_state.data_d = None
             
-            # Load File C fourth (creative requests) - OPTIONAL if File D exists
+            # Load File C (creative requests) - silently, optional
             if FILE_C_ID and FILE_C_ID.strip() != "":
                 st.session_state.data_c = load_creative_requests(FILE_C_ID)
-                if st.session_state.data_c is not None:
-                    st.success(f"✅ File C loaded: {len(st.session_state.data_c)} rows (used as fallback)")
-                else:
-                    # Only show error if File D also doesn't exist
-                    if st.session_state.data_d is None:
-                        st.error("❌ File C failed to load and File D not available - creatives cannot be rendered")
-                    else:
-                        st.info("ℹ️ File C not loaded, using File D for all creatives")
             else:
                 st.session_state.data_c = None
-                # Only show warning if File D also doesn't exist
-                if st.session_state.data_d is None:
-                    st.warning("⚠️ Neither FILE_C_ID nor FILE_D_ID is set - creatives cannot be rendered")
             
             st.session_state.loading_done = True
         except Exception as e:
