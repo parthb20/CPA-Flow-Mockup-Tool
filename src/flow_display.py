@@ -526,13 +526,14 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     # Parse keyword array from flow
                     keyword_array = parse_keyword_array_from_flow(current_flow)
                     
-                    # Render via Weaver API
+                    # Render via Weaver API (with optional pre-rendered fallback)
                     rendered_html, error_msg = render_creative_via_weaver(
                         creative_id=creative_id,
                         creative_size=creative_size,
                         keyword_array=keyword_array,
                         creative_requests_df=st.session_state.data_c,
-                        cipher_key=cipher_key
+                        cipher_key=cipher_key,
+                        prerendered_df=st.session_state.get('data_d', None)
                     )
                     
                     if rendered_html:
