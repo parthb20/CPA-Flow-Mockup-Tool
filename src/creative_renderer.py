@@ -401,13 +401,20 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
     }
     
     try:
+        import streamlit as st
+        st.info(f"🌐 Calling Weaver API: {api_url}")
+        st.info(f"📤 Request keys: {list(request_data.keys())[:10]}")
+        
         response = requests.post(
             api_url,
             json=request_data,
             headers=headers,
             timeout=30,
-            verify=False
+            verify=False,
+            allow_redirects=True
         )
+        
+        st.info(f"📥 Response status: {response.status_code}")
         
         if response.status_code != 200:
             return None, f"Weaver API error: HTTP {response.status_code}"
@@ -470,8 +477,11 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
         return rendered_html, None
         
     except requests.exceptions.ConnectionError as e:
-        return None, f"Connection error: {str(e)[:100]}"
+        error_detail = str(e)[:200]
+        if 'Max retries exceeded' in error_detail:
+            return None, "🚫 Weaver API unreachable - server blocking or down. Check if 'response' column exists in File A for fallback."
+        return None, f"🌐 Connection error: {error_detail}"
     except requests.exceptions.Timeout:
-        return None, "API timeout after 30 seconds"
+        return None, "⏱️ API timeout (30s) - server too slow"
     except Exception as e:
-        return None, f"Error: {str(e)[:100]}"
+        return None, f"❌ Error: {str(e)[:150]}"
