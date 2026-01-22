@@ -12,6 +12,9 @@ from src.utils import safe_float
 def find_default_flow(df):
     """Find the best performing flow - prioritize conversions, then clicks, then impressions"""
     try:
+        # Make a copy to avoid SettingWithCopyWarning
+        df = df.copy()
+        
         # Convert numeric columns
         df['conversions'] = df['conversions'].apply(safe_float)
         df['impressions'] = df['impressions'].apply(safe_float)
