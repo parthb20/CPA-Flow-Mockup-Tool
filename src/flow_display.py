@@ -507,6 +507,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             # Only use Weaver API for creative rendering (File C required)
             creative_rendered = False
             
+            # Debug: Check if File C is loaded
+            if st.session_state.get('data_c') is None:
+                st.warning(f"⚠️ File C not loaded - cannot render creative {creative_id}")
+            
             if st.session_state.get('data_c') is not None:
                 try:
                     # Get cipher key from secrets or use default
