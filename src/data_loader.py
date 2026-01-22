@@ -38,6 +38,8 @@ def process_file_content(content):
                 with gzip.open(BytesIO(content), 'rb') as gz_file:
                     decompressed = gz_file.read()
                 
+                st.info(f"📦 Decompressed GZIP: {len(decompressed)} bytes")
+                
                 # Read CSV with maximum field size to prevent truncation
                 csv.field_size_limit(100000000)  # 100MB per field
                 
@@ -50,9 +52,13 @@ def process_file_content(content):
                     engine='python'
                 )
                 
+                st.info(f"📋 CSV parsed: {len(df)} rows, {len(df.columns)} columns")
+                
                 return df
             except Exception as e:
                 st.error(f"❌ Error decompressing GZIP: {str(e)}")
+                import traceback
+                st.error(f"Traceback: {traceback.format_exc()[:500]}")
                 return None
         
         # ZIP: 50 4b (PK)
@@ -85,6 +91,8 @@ def process_file_content(content):
         else:
             # Try as CSV
             try:
+                st.info(f"📄 Processing as plain CSV: {len(content)} bytes")
+                
                 df = pd.read_csv(
                     StringIO(content.decode('utf-8')), 
                     dtype=str, 
@@ -92,9 +100,14 @@ def process_file_content(content):
                     encoding='utf-8',
                     engine='python'
                 )
+                
+                st.info(f"📋 CSV parsed: {len(df)} rows, {len(df.columns)} columns")
+                
                 return df
             except Exception as e:
                 st.error(f"❌ CSV parse error: {str(e)}")
+                import traceback
+                st.error(f"Traceback: {traceback.format_exc()[:500]}")
                 return None
                 
     except Exception as e:
