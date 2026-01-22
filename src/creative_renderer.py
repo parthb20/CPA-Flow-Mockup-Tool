@@ -326,47 +326,67 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
                 # Try direct parse first (for properly formatted .gz files)
                 request_data = json.loads(request_data_str)
             except json.JSONDecodeError:
-                # CSV escaping pattern: {\ext" needs to become {"ext"
-                # The issue is missing quote after opening brace
+                # CSV broken format needs comprehensive fixing
                 import re
                 
-                # CRITICAL FIX: {\word" → {"word"
-                # Pattern: { followed by \ followed by word followed by \"
-                cleaned = re.sub(r'\{\\(\w+)\\"', r'{"\1"', request_data_str)
+                cleaned = request_data_str
                 
-                # Fix: space followed by \word" → space "word"
-                # Pattern: " \word" → " "word"
-                cleaned = re.sub(r'"\s+\\(\w+)\\"', r'" "\1"', cleaned)
+                # Step 1: Fix opening brace pattern {\ext" → {"ext"
+                cleaned = re.sub(r'\{\\(\w+)\\"', r'{"\1"', cleaned)
                 
-                # Fix: :\{\" → :{"
-                cleaned = cleaned.replace(':\\{\\', ':{')
-                
-                # Fix remaining patterns
+                # Step 2: Fix all \" → " (remove backslash before quotes)
                 cleaned = cleaned.replace('\\"', '"')
-                cleaned = cleaned.replace('\\\\', '\\')
                 
-                # Add missing colons (space between key and value)
-                cleaned = re.sub(r'\"(\w+)\"\s+(\d+)', r'"\1":\2', cleaned)
-                cleaned = re.sub(r'\"(\w+)\"\s+\"', r'"\1":"', cleaned)
-                cleaned = re.sub(r'\"(\w+)\"\s+(true|false)', r'"\1":\2', cleaned)
-                cleaned = re.sub(r'\"(\w+)\"\s+\[', r'"\1":[', cleaned)
-                cleaned = re.sub(r'\"(\w+)\"\s+\{', r'"\1":{', cleaned)
+                # Step 3: Add missing commas between key-value pairs
+                # Pattern: number space quote → number comma quote
+                cleaned = re.sub(r'(\d+)\s+"', r'\1,"', cleaned)
                 
-                # Add missing commas
-                cleaned = re.sub(r'(\d+)\s+\"', r'\1, "', cleaned)
-                cleaned = re.sub(r'(true|false)\s+\"', r'\1, "', cleaned)
-                cleaned = re.sub(r'\]\s+\"', r'], "', cleaned)
-                cleaned = re.sub(r'\}\s+\"', r'}, "', cleaned)
-                cleaned = re.sub(r'\"\s+\"', r'", "', cleaned)
+                # Pattern: boolean space quote → boolean comma quote
+                cleaned = re.sub(r'(true|false)\s+"', r'\1,"', cleaned)
+                
+                # Pattern: quote space quote → quote comma quote (for string values)
+                cleaned = re.sub(r'"\s+"', r'","', cleaned)
+                
+                # Pattern: } space " → }," (after nested objects)
+                cleaned = re.sub(r'\}\s+"', r'},"', cleaned)
+                
+                # Pattern: ] space " → ]," (after arrays)
+                cleaned = re.sub(r'\]\s+"', r'],"', cleaned)
+                
+                # Step 4: Fix array elements - add commas between array items
+                # Pattern: "item" "item" → "item","item"
+                cleaned = re.sub(r'("\w+[-\w]*")\s+(")', r'\1,\2', cleaned)
+                
+                # Step 5: Add missing colons between keys and values
+                # Pattern: "key" number → "key":number
+                cleaned = re.sub(r'"(\w+)"\s+(\d+)', r'"\1":\2', cleaned)
+                
+                # Pattern: "key" " → "key":" (for string values)
+                cleaned = re.sub(r'"(\w+)"\s+"', r'"\1":"', cleaned)
+                
+                # Pattern: "key" true/false → "key":true/false
+                cleaned = re.sub(r'"(\w+)"\s+(true|false)', r'"\1":\2', cleaned)
+                
+                # Pattern: "key" [ → "key":[
+                cleaned = re.sub(r'"(\w+)"\s+\[', r'"\1":[', cleaned)
+                
+                # Pattern: "key" { → "key":{
+                cleaned = re.sub(r'"(\w+)"\s+\{', r'"\1":{', cleaned)
+                
+                # Step 6: Remove trailing \" at the very end if present
+                cleaned = cleaned.rstrip('"\\')
+                if not cleaned.endswith('}'):
+                    cleaned += '}'
                 
                 try:
                     request_data = json.loads(cleaned)
                 except Exception as parse_err:
-                    return None, f"Bad JSON format: {str(parse_err)[:100]}"
+                    # Show what we tried to parse for debugging
+                    return None, f"Bad JSON: {str(parse_err)[:100]}"
         else:
             request_data = request_data_str
     except Exception as e:
-        return None, f"JSON encoding error: {str(e)[:100]}"
+        return None, f"JSON error: {str(e)[:100]}"
     
     # Encrypt and encode keywords
     encrypted_kd = encrypt_and_encode_keywords(keyword_array, cipher_key)
