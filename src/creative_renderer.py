@@ -42,23 +42,7 @@ def load_creative_requests(file_id):
         # Increase field size limit for large JSON
         csv.field_size_limit(100000000)
         
-        st.info(f"📂 Loading File C: {file_id}")
-        
-        # Try direct download first to check file
-        import requests
-        download_url = f"https://drive.google.com/uc?export=download&id={file_id}"
-        
-        try:
-            response = requests.get(download_url, timeout=30)
-            st.info(f"📥 Download status: {response.status_code}, Size: {len(response.content)} bytes")
-            
-            # Check if we got HTML error page
-            if b'<!DOCTYPE' in response.content[:1000] or b'<html' in response.content[:1000]:
-                st.error("❌ Got HTML page instead of file - check sharing settings")
-                st.error(f"Content preview: {response.content[:200]}")
-                return None
-        except Exception as e:
-            st.warning(f"⚠️ Direct download check failed: {str(e)}")
+        # Load silently unless there's an error
         
         # Load file (handles .gz automatically)
         df = load_csv_from_gdrive(file_id)
@@ -71,18 +55,13 @@ def load_creative_requests(file_id):
             st.error("❌ File C: DataFrame is empty (0 rows)")
             return None
         
-        st.info(f"📊 File C: {len(df)} rows, {len(df.columns)} columns")
-        st.info(f"📋 File C columns: {', '.join(df.columns[:10].tolist())}")
-        
         # Check if we have exactly 3 columns (good .gz or properly quoted CSV)
         if len(df.columns) == 3:
             df.columns = ['creative_id', 'rensize', 'request']
-            st.success(f"✅ File C loaded successfully")
             return df
         
         # If more than 3 columns, JSON was split across cells - merge them
         if len(df.columns) > 3:
-            st.warning(f"⚠️ File C has {len(df.columns)} columns - merging split JSON")
             # Create new dataframe with merged request
             merged_df = pd.DataFrame()
             merged_df['creative_id'] = df.iloc[:, 0]
@@ -92,7 +71,6 @@ def load_creative_requests(file_id):
                 lambda row: ' '.join([str(x) for x in row if pd.notna(x)]), 
                 axis=1
             )
-            st.success(f"✅ File C merged and loaded")
             return merged_df
         
         st.error(f"❌ File C: Only {len(df.columns)} columns found (need at least 3)")
@@ -118,13 +96,10 @@ def load_prerendered_responses(file_id):
         return None
     
     try:
-        st.info(f"📂 Loading File D (pre-rendered responses): {file_id}")
-        
-        # Load CSV from Google Drive
+        # Load CSV from Google Drive silently
         df = load_csv_from_gdrive(file_id)
         
         if df is None or len(df) == 0:
-            st.warning("⚠️ File D is empty or failed to load")
             return None
         
         # Verify required columns
@@ -133,14 +108,12 @@ def load_prerendered_responses(file_id):
         
         if missing:
             st.error(f"❌ File D missing required columns: {', '.join(missing)}")
-            st.info(f"Available columns: {', '.join(df.columns)}")
             return None
         
         # Filter to only successful creatives with adcode
         df = df[df['status'] == 'success'].copy()
         df = df[df['adcode'].notna()].copy()
         
-        st.success(f"✅ File D loaded: {len(df)} pre-rendered creatives")
         return df
         
     except Exception as e:
@@ -189,9 +162,8 @@ def parse_keyword_array_from_flow(flow_data):
                         result.append({"t": kw, "idx": idx})
                 return result if result else parsed
         except Exception as e:
-            # Debug: log the error
-            import streamlit as st
-            st.warning(f"Failed to parse Creative_Keywords: {str(e)[:100]}")
+            # Silent fail - just return empty
+            pass
     
     # Fallback: create from keyword_term
     keyword_term = flow_data.get('keyword_term', '')
@@ -348,31 +320,22 @@ def get_prerendered_creative(creative_id, creative_size, prerendered_df):
 
 def render_creative_via_weaver(creative_id, creative_size, keyword_array, creative_requests_df, cipher_key=None, prerendered_df=None):
     """
-    Render creative using pre-rendered responses (File D) or Weaver API (File C)
-    
-    Priority:
-    1. Use pre-rendered response from File D if available
-    2. Fall back to Weaver API with File C
+    Render creative using pre-rendered responses from File D
+    NO WEAVER API - Just uses File D adcode directly
     
     Args:
         creative_id: Creative ID from flow
         creative_size: Creative size from flow (e.g., "300x250")
-        keyword_array: List of keywords in format [{"t":"kw1"},{"t":"kw2"}]
-        creative_requests_df: DataFrame from File C with columns: creative_id, rensize, request
-        cipher_key: Cipher key for encryption (optional, uses default if None)
-        prerendered_df: DataFrame from File D with pre-rendered responses (optional)
+        prerendered_df: DataFrame from File D with pre-rendered responses
     
     Returns:
         (rendered_html, error_message) tuple
     """
-    import streamlit as st
     
-    # Priority 1: Try pre-rendered responses from File D
+    # Use pre-rendered response from File D
     if prerendered_df is not None:
         adcode = get_prerendered_creative(creative_id, creative_size, prerendered_df)
         if adcode:
-            st.info("✅ Using pre-rendered creative from File D")
-            
             # Wrap in HTML container
             try:
                 width, height = map(int, creative_size.split('x'))
@@ -396,204 +359,5 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
             """
             return (rendered_html, None)
     
-    # Priority 2: Fall back to Weaver API with File C
-    if creative_requests_df is None or len(creative_requests_df) == 0:
-        # If File D didn't have this creative and File C is not available
-        return None, f"Creative {creative_id} ({creative_size}) not found in File D, and File C is not available"
-    
-    # Use default cipher key if not provided, strip whitespace/quotes
-    if not cipher_key:
-        cipher_key = DEFAULT_CIPHER_KEY
-    else:
-        # Clean cipher key (remove quotes, whitespace)
-        cipher_key = str(cipher_key).strip().strip("'").strip('"')
-    
-    # Find matching creative request using rensize column
-    creative_key = f"{creative_id}_{creative_size}"
-    
-    # Try to find exact match using rensize column
-    matching_rows = creative_requests_df[
-        (creative_requests_df['creative_id'].astype(str) == str(creative_id)) &
-        (creative_requests_df['rensize'].astype(str) == str(creative_size))
-    ]
-    
-    if len(matching_rows) == 0:
-        return None, f"No request found for {creative_key}"
-    
-    # Get request data
-    request_data_str = matching_rows.iloc[0]['request']
-    
-    try:
-        # Parse request JSON - handle CSV escaping
-        if isinstance(request_data_str, str):
-            try:
-                # Try direct parse first (for properly formatted .gz files)
-                request_data = json.loads(request_data_str)
-            except json.JSONDecodeError:
-                # CSV broken format needs comprehensive fixing
-                import re
-                
-                cleaned = request_data_str
-                
-                # Step 1: Fix opening brace pattern {\ext" → {"ext"
-                cleaned = re.sub(r'\{\\(\w+)\\"', r'{"\1"', cleaned)
-                
-                # Step 2: Fix all \" → " (remove backslash before quotes)
-                cleaned = cleaned.replace('\\"', '"')
-                
-                # Step 3: Add missing commas between key-value pairs
-                # Pattern: number space quote → number comma quote
-                cleaned = re.sub(r'(\d+)\s+"', r'\1,"', cleaned)
-                
-                # Pattern: boolean space quote → boolean comma quote
-                cleaned = re.sub(r'(true|false)\s+"', r'\1,"', cleaned)
-                
-                # Pattern: quote space quote → quote comma quote (for string values)
-                cleaned = re.sub(r'"\s+"', r'","', cleaned)
-                
-                # Pattern: } space " → }," (after nested objects)
-                cleaned = re.sub(r'\}\s+"', r'},"', cleaned)
-                
-                # Pattern: ] space " → ]," (after arrays)
-                cleaned = re.sub(r'\]\s+"', r'],"', cleaned)
-                
-                # Step 4: Fix array elements - add commas between array items
-                # Pattern: "item" "item" → "item","item"
-                cleaned = re.sub(r'("\w+[-\w]*")\s+(")', r'\1,\2', cleaned)
-                
-                # Step 5: Add missing colons between keys and values
-                # Pattern: "key" number → "key":number
-                cleaned = re.sub(r'"(\w+)"\s+(\d+)', r'"\1":\2', cleaned)
-                
-                # Pattern: "key" " → "key":" (for string values)
-                cleaned = re.sub(r'"(\w+)"\s+"', r'"\1":"', cleaned)
-                
-                # Pattern: "key" true/false → "key":true/false
-                cleaned = re.sub(r'"(\w+)"\s+(true|false)', r'"\1":\2', cleaned)
-                
-                # Pattern: "key" [ → "key":[
-                cleaned = re.sub(r'"(\w+)"\s+\[', r'"\1":[', cleaned)
-                
-                # Pattern: "key" { → "key":{
-                cleaned = re.sub(r'"(\w+)"\s+\{', r'"\1":{', cleaned)
-                
-                # Step 6: Remove trailing \" at the very end if present
-                cleaned = cleaned.rstrip('"\\')
-                if not cleaned.endswith('}'):
-                    cleaned += '}'
-                
-                try:
-                    request_data = json.loads(cleaned)
-                except Exception as parse_err:
-                    # Show what we tried to parse for debugging
-                    return None, f"Bad JSON: {str(parse_err)[:100]}"
-        else:
-            request_data = request_data_str
-    except Exception as e:
-        return None, f"JSON error: {str(e)[:100]}"
-    
-    # Encrypt and encode keywords
-    encrypted_kd = encrypt_and_encode_keywords(keyword_array, cipher_key)
-    
-    # Call Weaver API (NOTE: Change this URL if you need a different endpoint)
-    # Options: weaver.22master, weaver.21master, or weaver.srv.media.net
-    api_url = "http://weaver.21master.srv.media.net/v3/adcode"
-    headers = {
-        'Content-Type': 'application/json',
-        'FMTP-MAP': 't6BpxluW_T9uP75dd18ex-9QuWHm5mx7X9n0HmHrwPo%3D',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/json'
-    }
-    
-    try:
-        import streamlit as st
-        st.info(f"🌐 Calling Weaver API: {api_url}")
-        st.info(f"📤 Request keys: {list(request_data.keys())[:10]}")
-        
-        # Test connectivity first
-        try:
-            test_response = requests.get(api_url.replace('/v3/adcode', ''), timeout=5)
-            st.info(f"🔗 Server reachable: {test_response.status_code}")
-        except Exception as test_err:
-            st.warning(f"⚠️ Connectivity test failed: {str(test_err)[:100]}")
-        
-        response = requests.post(
-            api_url,
-            json=request_data,
-            headers=headers,
-            timeout=30,
-            verify=False,
-            allow_redirects=True
-        )
-        
-        st.info(f"📥 Response status: {response.status_code}")
-        
-        if response.status_code != 200:
-            return None, f"Weaver API error: HTTP {response.status_code}"
-        
-        try:
-            response_data = response.json()
-        except:
-            return None, "API response is not valid JSON"
-        
-        if 'adcode' not in response_data:
-            available_keys = ', '.join(response_data.keys()) if response_data else 'none'
-            return None, f"No 'adcode' in response (keys: {available_keys[:50]})"
-        
-        # Get adcode and unescape it
-        adcode = response_data['adcode']
-        if not adcode or adcode.strip() == '':
-            return None, "API returned empty adcode"
-        
-        adcode = unescape_adcode(adcode)
-        
-        # Replace kd= parameter with encrypted keywords
-        adcode = replace_kd_in_adcode(adcode, encrypted_kd)
-        
-        # Extract width and height from creative_size (e.g., "300x250")
-        try:
-            width, height = map(int, creative_size.split('x'))
-        except:
-            width, height = 300, 250
-        
-        # Wrap in HTML container with scroll support
-        rendered_html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <style>
-                * {{
-                    margin: 0;
-                    padding: 0;
-                    box-sizing: border-box;
-                }}
-                body {{
-                    width: {width}px;
-                    height: {height}px;
-                    overflow: auto;
-                    /* If creative is bigger than container, allow scrolling */
-                }}
-                body > * {{
-                    max-width: {width}px;
-                    /* Don't extend beyond container width */
-                }}
-            </style>
-        </head>
-        <body>
-            {adcode}
-        </body>
-        </html>
-        """
-        
-        return rendered_html, None
-        
-    except requests.exceptions.ConnectionError as e:
-        error_detail = str(e)[:200]
-        if 'Max retries exceeded' in error_detail:
-            return None, "🚫 Weaver API unreachable - server blocking or down. Check if 'response' column exists in File A for fallback."
-        return None, f"🌐 Connection error: {error_detail}"
-    except requests.exceptions.Timeout:
-        return None, "⏱️ API timeout (30s) - server too slow"
-    except Exception as e:
-        return None, f"❌ Error: {str(e)[:150]}"
+    # Creative not found in File D
+    return None, "Creative data not found"
