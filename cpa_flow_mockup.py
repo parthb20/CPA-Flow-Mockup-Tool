@@ -393,10 +393,15 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
         if selected_campaign and selected_campaign != '-- Select Campaign --':
             campaign_df = df[(df[adv_col] == selected_advertiser) & (df[camp_col] == selected_campaign)].copy()
             
+            # Check if we have data
+            if len(campaign_df) == 0:
+                st.warning("⚠️ No rows found for this campaign. Check advertiser/campaign names match exactly.")
+                st.stop()
+            
             # Convert numeric columns to proper types FIRST
-            campaign_df['impressions'] = campaign_df['impressions'].apply(safe_float)
-            campaign_df['clicks'] = campaign_df['clicks'].apply(safe_float)
-            campaign_df['conversions'] = campaign_df['conversions'].apply(safe_float)
+            campaign_df['impressions'] = pd.to_numeric(campaign_df['impressions'], errors='coerce').fillna(0)
+            campaign_df['clicks'] = pd.to_numeric(campaign_df['clicks'], errors='coerce').fillna(0)
+            campaign_df['conversions'] = pd.to_numeric(campaign_df['conversions'], errors='coerce').fillna(0)
             
             # Calculate CTR and CVR per row
             campaign_df['ctr'] = campaign_df.apply(lambda x: (x['clicks'] / x['impressions'] * 100) if x['impressions'] > 0 else 0, axis=1)
@@ -522,6 +527,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 )
             
             else:
-                st.warning("No data available for this campaign")
+                st.warning("⚠️ No flow data found. This campaign may have impressions but no clicks or conversions yet.")
 else:
     st.error("❌ Could not load data - Check FILE_A_ID and file sharing settings")
