@@ -18,9 +18,9 @@ import re
 import html
 
 # Import from modules (after page config)
-from src.config import FILE_A_ID, FILE_B_ID, FILE_C_ID, SERP_BASE_URL
+from src.config import FILE_A_ID, FILE_B_ID, FILE_C_ID, FILE_D_ID, SERP_BASE_URL
 from src.data_loader import load_csv_from_gdrive, load_json_from_gdrive
-from src.creative_renderer import load_creative_requests, render_creative_via_weaver, parse_keyword_array_from_flow
+from src.creative_renderer import load_creative_requests, load_prerendered_responses, render_creative_via_weaver, parse_keyword_array_from_flow
 from src.utils import safe_float, safe_int
 from src.flow_analysis import find_default_flow
 from src.similarity import calculate_similarities
@@ -339,6 +339,12 @@ if not st.session_state.loading_done:
                     st.error("❌ File C failed to load - check file ID and sharing settings")
             else:
                 st.warning("⚠️ FILE_C_ID is not set in config.py")
+            
+            # Load File D fourth (pre-rendered responses) - optional
+            if FILE_D_ID and FILE_D_ID.strip() != "":
+                st.session_state.data_d = load_prerendered_responses(FILE_D_ID)
+            else:
+                st.session_state.data_d = None
             
             st.session_state.loading_done = True
         except Exception as e:
