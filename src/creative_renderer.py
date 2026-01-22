@@ -31,28 +31,42 @@ def load_creative_requests(file_id):
     NOTE: Use .gz format to preserve JSON in request column properly
     """
     from src.data_loader import load_csv_from_gdrive
+    import streamlit as st
     import csv
     
     if not file_id or file_id.strip() == "":
+        st.error("❌ File C: No file ID provided")
         return None
     
     try:
         # Increase field size limit for large JSON
         csv.field_size_limit(100000000)
         
+        st.info(f"📂 Loading File C: {file_id}")
+        
         # Load file (handles .gz automatically)
         df = load_csv_from_gdrive(file_id)
         
-        if df is None or len(df) == 0:
+        if df is None:
+            st.error("❌ File C: load_csv_from_gdrive returned None")
             return None
+            
+        if len(df) == 0:
+            st.error("❌ File C: DataFrame is empty (0 rows)")
+            return None
+        
+        st.info(f"📊 File C: {len(df)} rows, {len(df.columns)} columns")
+        st.info(f"📋 File C columns: {', '.join(df.columns[:10].tolist())}")
         
         # Check if we have exactly 3 columns (good .gz or properly quoted CSV)
         if len(df.columns) == 3:
             df.columns = ['creative_id', 'rensize', 'request']
+            st.success(f"✅ File C loaded successfully")
             return df
         
         # If more than 3 columns, JSON was split across cells - merge them
         if len(df.columns) > 3:
+            st.warning(f"⚠️ File C has {len(df.columns)} columns - merging split JSON")
             # Create new dataframe with merged request
             merged_df = pd.DataFrame()
             merged_df['creative_id'] = df.iloc[:, 0]
@@ -62,11 +76,14 @@ def load_creative_requests(file_id):
                 lambda row: ' '.join([str(x) for x in row if pd.notna(x)]), 
                 axis=1
             )
+            st.success(f"✅ File C merged and loaded")
             return merged_df
         
+        st.error(f"❌ File C: Only {len(df.columns)} columns found (need at least 3)")
         return None
         
     except Exception as e:
+        st.error(f"❌ File C loading error: {str(e)}")
         return None
 
 
