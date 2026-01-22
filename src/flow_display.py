@@ -259,10 +259,24 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         }
         /* Reduce bottom spacing but keep top/side spacing */
         .stHorizontalBlock {
-            margin-bottom: 10px !important;
+            margin-bottom: 0 !important;
             padding-bottom: 0 !important;
         }
         .stHorizontalBlock > div {
+            padding-bottom: 0 !important;
+            margin-bottom: 0 !important;
+        }
+        /* Remove bottom padding from columns */
+        .stColumn {
+            padding-bottom: 0 !important;
+            margin-bottom: 0 !important;
+        }
+        /* Remove extra spacing from markdown and containers */
+        .element-container {
+            margin-bottom: 0 !important;
+        }
+        [data-testid="stMarkdownContainer"] {
+            margin-bottom: 0 !important;
             padding-bottom: 0 !important;
         }
         </style>
@@ -592,10 +606,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             </body>
                             </html>
                             """
-                            if st.session_state.flow_layout == 'vertical':
-                                st.components.v1.html(rendered_html, height=650, scrolling=True)
-                            else:
-                                st.components.v1.html(rendered_html, height=500, scrolling=True)
+                            # Use consistent 650px height in all layouts to match other stage boxes
+                            st.components.v1.html(rendered_html, height=650, scrolling=True)
                             creative_rendered = True
                     except Exception as e:
                         pass
@@ -627,21 +639,21 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             
             st.markdown("**🎨 Creative Details**", unsafe_allow_html=False)
             st.markdown(f"""
-            <div style='margin-top: 4px; margin-bottom: 8px;'>
-                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'>Keyword</div>
+            <div style='margin-top: 4px; margin-bottom: 4px;'>
+                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 2px;'>Keyword</div>
                 <div style='color: #64748b; font-size: 13px;'>{html.escape(str(keyword))}</div>
             </div>
-            <div style='margin-bottom: 8px;'>
-                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'>Creative ID</div>
+            <div style='margin-bottom: 4px;'>
+                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 2px;'>Creative ID</div>
                 <div style='color: #64748b; font-size: 13px;'>{creative_id}</div>
             </div>
-            <div style='margin-bottom: 8px;'>
-                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'>Size</div>
+            <div style='margin-bottom: 4px;'>
+                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 2px;'>Size</div>
                 <div style='color: #64748b; font-size: 13px;'>{creative_size}</div>
             </div>
             <div style='margin-bottom: 0;'>
-                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 4px;'>Template</div>
-                <div style='color: #64748b; font-size: 13px;'>{creative_name}</div>
+                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 2px;'>Template</div>
+                <div style='color: #64748b; font-size: 13px; margin-bottom: 0;'>{creative_name}</div>
             </div>
             """, unsafe_allow_html=True)
             
@@ -651,8 +663,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     st.session_state.similarities = calculate_similarities(current_flow)
                 else:
                     st.session_state.similarities = {}
-        
-        # Horizontal layout - no additional keyword display needed (already in Creative Details)
     
     # Arrow divs removed - no longer needed
     
@@ -965,8 +975,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     try:
                         preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all, display_url=adv_url)
                         preview_html = inject_unique_id(preview_html, 'landing_iframe', adv_url, device_all, current_flow)
-                        display_height = height
-                        st.components.v1.html(preview_html, height=display_height, scrolling=False)
+                        # Cap height at 650px to match other stage boxes
+                        display_height = 650
+                        st.components.v1.html(preview_html, height=display_height, scrolling=True)
                         st.caption("📺 Iframe")
                     except:
                         iframe_blocked = True
@@ -999,12 +1010,14 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                             if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
                                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                                 preview_html = inject_unique_id(preview_html, 'landing_screenshot_fallback', adv_url, device_all, current_flow)
-                                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                # Cap height at 650px to match other stage boxes
+                                                st.components.v1.html(preview_html, height=650, scrolling=True)
                                                 st.caption("📸 Screenshot (ScreenshotOne API)")
                                             else:
                                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                                 preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
-                                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                # Cap height at 650px to match other stage boxes
+                                                st.components.v1.html(preview_html, height=650, scrolling=True)
                                                 st.caption("🤖 Rendered via browser automation (bypassed 403)")
                                         else:
                                             raise Exception("Playwright returned empty HTML")
@@ -1027,8 +1040,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                                   lambda m: f'href="{urljoin(adv_url, m.group(1))}"', page_html)
                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                 preview_html = inject_unique_id(preview_html, 'landing_html', adv_url, device_all, current_flow)
-                                display_height = height
-                                st.components.v1.html(preview_html, height=display_height, scrolling=False)
+                                # Cap height at 650px to match other stage boxes
+                                display_height = 650
+                                st.components.v1.html(preview_html, height=display_height, scrolling=True)
                                 st.caption("📄 HTML")
                             except Exception as html_error:
                                 st.error(f"❌ HTML rendering failed: {str(html_error)[:100]}")
@@ -1041,15 +1055,17 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                             if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
                                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                                 preview_html = inject_unique_id(preview_html, 'landing_screenshot_fallback', adv_url, device_all, current_flow)
-                                                display_height = height
-                                                st.components.v1.html(preview_html, height=display_height, scrolling=False)
+                                                # Cap height at 650px to match other stage boxes
+                                                display_height = 650
+                                                st.components.v1.html(preview_html, height=display_height, scrolling=True)
                                                 if st.session_state.flow_layout != 'horizontal':
                                                     st.caption("📸 Screenshot (ScreenshotOne API)")
                                             else:
                                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                                 preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
-                                                display_height = height
-                                                st.components.v1.html(preview_html, height=display_height, scrolling=False)
+                                                # Cap height at 650px to match other stage boxes
+                                                display_height = 650
+                                                st.components.v1.html(preview_html, height=display_height, scrolling=True)
                                                 if st.session_state.flow_layout != 'horizontal':
                                                     st.caption("🤖 Rendered via browser automation")
                                         else:
