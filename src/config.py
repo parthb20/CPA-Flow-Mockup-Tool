@@ -3,10 +3,10 @@ Configuration constants and settings
 """
 
 # Google Drive File IDs
-FILE_A_ID = "1_SEziSRFL6_UC1WyfbyZFv3FZ73zBZL-"  # Main CSV file (.csv.gz)
-FILE_B_ID = "1SXcLm1hhzQK23XY6Qt7E1YX5Fa-2Tlr9"  # SERP templates JSON file
-FILE_C_ID = "1MrcmOzWo-TAmKJ6VV0FtA5PxBGJNGnkJ"  # File C - Creative requests (.csv): creative_id, creative_size_rensize, request
-FILE_D_ID = "1pyBYDZXlyT-3WvtZxCURqG5Nqc0IF9q_"  # File D - Pre-rendered creative responses (optional, set after running batch_render_creatives.py)
+FILE_A_ID = "1_SEziSRFL6_UC1WyfbyZFv3FZ73zBZL-"  # Main CSV file (.csv.gz) - REQUIRED
+FILE_B_ID = "1SXcLm1hhzQK23XY6Qt7E1YX5Fa-2Tlr9"  # SERP templates JSON file - REQUIRED
+FILE_C_ID = "1MrcmOzWo-TAmKJ6VV0FtA5PxBGJNGnkJ"  # File C - Creative requests (.csv.gz): creative_id, rensize, request - OPTIONAL if FILE_D_ID is set
+FILE_D_ID = "1pyBYDZXlyT-3WvtZxCURqG5Nqc0IF9q_"  # File D - Pre-rendered creative responses (.csv): creative_id, size, status, error, adcode - RECOMMENDED (makes FILE_C optional)
 
 # SERP URL base - template key gets appended
 SERP_BASE_URL = "https://related.performmedia.com/search/?srprc=3&oscar=1&a=100&q=nada+vehicle+value+by+vin&mkt=perform&purl=forbes.com/home&tpid="
