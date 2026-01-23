@@ -117,7 +117,8 @@ def calculate_similarities(flow_data):
     ad_title = flow_data.get('ad_title', '')
     ad_desc = flow_data.get('ad_description', '')
     ad_text = f"{ad_title} {ad_desc}".strip()
-    adv_url = flow_data.get('reporting_destination_url', '')
+    # Use Destination_Url (primary) or fallback to reporting_destination_url
+    adv_url = flow_data.get('Destination_Url', '') or flow_data.get('reporting_destination_url', '')
     
     # Quick validation
     if not keyword or not ad_text:
