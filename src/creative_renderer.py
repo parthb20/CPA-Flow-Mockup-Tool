@@ -385,8 +385,19 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
     if prerendered_df is not None:
         adcode = get_prerendered_creative(creative_id, creative_size, prerendered_df)
         if adcode:
-            # Add expander to show full adcode for debugging
+            # Add visible status for debugging
             import streamlit as st
+            import re
+            
+            # Show basic info
+            script_srcs = re.findall(r'src\s*=\s*["\']?(https?://[^"\'\s>]+)', adcode, re.IGNORECASE)
+            if script_srcs:
+                st.info(f"📡 **Loading creative from:** `{script_srcs[0]}`")
+            
+            # Show size
+            st.caption(f"Creative size: {creative_size} • Adcode: {len(adcode)} chars")
+            
+            # Add expander to show full adcode for debugging
             with st.expander("🔧 Debug: View Full Adcode"):
                 st.code(adcode, language='html')
             # Wrap in HTML container
@@ -501,27 +512,29 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
         }}
     }}, 500);
     
-    // Show loading indicator after 2 seconds if still nothing
+    // Show loading indicator after 1.5 seconds if still nothing
     setTimeout(function() {{
         var loadingDiv = document.getElementById('loading');
         if (!loadingDiv.className.includes('hide-loading')) {{
+            loadingDiv.innerHTML = '⏳ Loading ad...<br><small>Waiting for network response...</small>';
             loadingDiv.className = 'show-loading';
-            console.log('No ad content after 2s, showing loading indicator');
+            console.log('No ad content after 1.5s, showing loading indicator');
         }}
-    }}, 2000);
+    }}, 1500);
     
-    // Timeout after 8 seconds
+    // Timeout after 6 seconds
     setTimeout(function() {{
         var loadingDiv = document.getElementById('loading');
         if (!loadingDiv.className.includes('hide-loading')) {{
-            loadingDiv.innerHTML = '⚠️ No ad content returned<br><small>Ad network returned no fill for this creative</small>';
+            loadingDiv.innerHTML = '⚠️ No ad content<br><small>Network returned no fill or blocked by iframe restrictions</small>';
             loadingDiv.style.color = '#ff8800';
-            loadingDiv.style.fontSize = '11px';
-            loadingDiv.style.lineHeight = '1.4';
-            console.warn('Ad network did not return content (no fill)');
+            loadingDiv.style.fontSize = '12px';
+            loadingDiv.style.lineHeight = '1.5';
+            loadingDiv.style.fontWeight = '600';
+            console.warn('Ad network did not return content (no fill or blocked)');
         }}
         clearInterval(checkInterval);
-    }}, 8000);
+    }}, 6000);
     
     // Error handling for failed script loads
     window.addEventListener('error', function(e) {{
