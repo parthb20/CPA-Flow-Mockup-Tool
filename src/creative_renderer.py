@@ -369,22 +369,26 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
             except:
                 width, height = 300, 250
             
-            rendered_html = f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width={width}, initial-scale=1">
-                <style>
-                    * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-                    html, body {{ width: {width}px; height: {height}px; overflow: auto; }}
-                </style>
-            </head>
-            <body>
-                {adcode}
-            </body>
-            </html>
-            """
+            rendered_html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width={width}, initial-scale=1">
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        html, body {{ width: {width}px; height: {height}px; overflow: auto; background: white; }}
+    </style>
+</head>
+<body>
+    {adcode}
+</body>
+</html>"""
+            
+            # Debug
+            import streamlit as st
+            st.write(f"🔧 Generated HTML length: {len(rendered_html)} chars")
+            st.write(f"🔧 HTML contains <script>: {'<script>' in rendered_html}")
+            
             return (rendered_html, None)
     
     # Creative not found in File D
