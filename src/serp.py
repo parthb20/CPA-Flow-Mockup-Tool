@@ -6,6 +6,27 @@ import re
 from src.config import SERP_BASE_URL
 
 
+def replace_text_preserve_structure(match, replacement_text):
+    """Replace only text content inside matched element, preserve HTML structure"""
+    opening_tag = match.group(1)
+    content = match.group(2)
+    closing_tag = match.group(3)
+    
+    # Replace text nodes only (text between > and <), preserve tags
+    # This keeps all nested HTML structure intact
+    def replace_text_nodes(html):
+        # Replace text that appears after > and before <
+        return re.sub(r'>([^<]+)<', lambda m: f'>{replacement_text}<' if m.group(1).strip() else m.group(0), html, count=1)
+    
+    # If content has no nested tags, just replace it
+    if '<' not in content:
+        return opening_tag + replacement_text + closing_tag
+    
+    # Otherwise, preserve structure and replace only text nodes
+    new_content = replace_text_nodes(content)
+    return opening_tag + new_content + closing_tag
+
+
 def generate_serp_mockup(flow_data, serp_templates):
     """Generate SERP HTML using actual template with CSS fixes
     
@@ -54,79 +75,77 @@ def generate_serp_mockup(flow_data, serp_templates):
                 html
             )
             
-            # Replace URL - handles nested elements inside URL container
-            # Use DOTALL mode to match across lines and nested tags
+            # Replace URL - preserve HTML structure, replace only text
             html = re.sub(
-                r'(<div[^>]*class="[^"]*url[^"]*"[^>]*>)(?:(?!<div).)*?(</div>)', 
-                f'\\1{ad_url}\\2', 
+                r'(<div[^>]*class="[^"]*url[^"]*"[^>]*>)(.*?)(</div>)', 
+                lambda m: replace_text_preserve_structure(m, ad_url),
                 html, 
                 count=1,
                 flags=re.DOTALL
             )
             html = re.sub(
-                r'(<p[^>]*class="[^"]*url[^"]*"[^>]*>)(?:(?!<p).)*?(</p>)', 
-                f'\\1{ad_url}\\2', 
-                html, 
-                count=1,
-                flags=re.DOTALL
-            )
-            # Also try inside <a> tags with url class
-            html = re.sub(
-                r'(<a[^>]*class="[^"]*url[^"]*"[^>]*>)(?:(?!<a).)*?(</a>)', 
-                f'\\1{ad_url}\\2', 
-                html, 
-                count=1,
-                flags=re.DOTALL
-            )
-            
-            # Replace title - handles nested elements inside title container
-            html = re.sub(
-                r'(<div[^>]*class="[^"]*title[^"]*"[^>]*>)(?:(?!<div).)*?(</div>)', 
-                f'\\1{ad_title}\\2', 
+                r'(<p[^>]*class="[^"]*url[^"]*"[^>]*>)(.*?)(</p>)', 
+                lambda m: replace_text_preserve_structure(m, ad_url),
                 html, 
                 count=1,
                 flags=re.DOTALL
             )
             html = re.sub(
-                r'(<p[^>]*class="[^"]*title[^"]*"[^>]*>)(?:(?!<p).)*?(</p>)', 
-                f'\\1{ad_title}\\2', 
-                html, 
-                count=1,
-                flags=re.DOTALL
-            )
-            html = re.sub(
-                r'(<a[^>]*class="[^"]*title[^"]*"[^>]*>)(?:(?!<a).)*?(</a>)', 
-                f'\\1{ad_title}\\2', 
-                html, 
-                count=1,
-                flags=re.DOTALL
-            )
-            html = re.sub(
-                r'(<h[1-6][^>]*class="[^"]*title[^"]*"[^>]*>)(?:(?!<h).)*?(</h[1-6]>)', 
-                f'\\1{ad_title}\\2', 
+                r'(<a[^>]*class="[^"]*url[^"]*"[^>]*>)(.*?)(</a>)', 
+                lambda m: replace_text_preserve_structure(m, ad_url),
                 html, 
                 count=1,
                 flags=re.DOTALL
             )
             
-            # Replace description - handles nested elements inside desc container
+            # Replace title - preserve HTML structure, replace only text
             html = re.sub(
-                r'(<div[^>]*class="[^"]*desc[^"]*"[^>]*>)(?:(?!<div).)*?(</div>)', 
-                f'\\1{ad_desc}\\2', 
+                r'(<div[^>]*class="[^"]*title[^"]*"[^>]*>)(.*?)(</div>)', 
+                lambda m: replace_text_preserve_structure(m, ad_title),
                 html, 
                 count=1,
                 flags=re.DOTALL
             )
             html = re.sub(
-                r'(<p[^>]*class="[^"]*desc[^"]*"[^>]*>)(?:(?!<p).)*?(</p>)', 
-                f'\\1{ad_desc}\\2', 
+                r'(<p[^>]*class="[^"]*title[^"]*"[^>]*>)(.*?)(</p>)', 
+                lambda m: replace_text_preserve_structure(m, ad_title),
                 html, 
                 count=1,
                 flags=re.DOTALL
             )
             html = re.sub(
-                r'(<span[^>]*class="[^"]*desc[^"]*"[^>]*>)(?:(?!<span).)*?(</span>)', 
-                f'\\1{ad_desc}\\2', 
+                r'(<a[^>]*class="[^"]*title[^"]*"[^>]*>)(.*?)(</a>)', 
+                lambda m: replace_text_preserve_structure(m, ad_title),
+                html, 
+                count=1,
+                flags=re.DOTALL
+            )
+            html = re.sub(
+                r'(<h[1-6][^>]*class="[^"]*title[^"]*"[^>]*>)(.*?)(</h[1-6]>)', 
+                lambda m: replace_text_preserve_structure(m, ad_title),
+                html, 
+                count=1,
+                flags=re.DOTALL
+            )
+            
+            # Replace description - preserve HTML structure, replace only text
+            html = re.sub(
+                r'(<div[^>]*class="[^"]*desc[^"]*"[^>]*>)(.*?)(</div>)', 
+                lambda m: replace_text_preserve_structure(m, ad_desc),
+                html, 
+                count=1,
+                flags=re.DOTALL
+            )
+            html = re.sub(
+                r'(<p[^>]*class="[^"]*desc[^"]*"[^>]*>)(.*?)(</p>)', 
+                lambda m: replace_text_preserve_structure(m, ad_desc),
+                html, 
+                count=1,
+                flags=re.DOTALL
+            )
+            html = re.sub(
+                r'(<span[^>]*class="[^"]*desc[^"]*"[^>]*>)(.*?)(</span>)', 
+                lambda m: replace_text_preserve_structure(m, ad_desc),
                 html, 
                 count=1,
                 flags=re.DOTALL
