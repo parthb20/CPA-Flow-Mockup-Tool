@@ -338,9 +338,17 @@ def get_prerendered_creative(creative_id, creative_size, prerendered_df):
     
     adcode = matches.iloc[0]['adcode']
     if pd.notna(adcode) and str(adcode).strip():
+        adcode_str = str(adcode)
+        
+        # CRITICAL FIX: Unescape HTML entities (e.g., &lt; -> <, &gt; -> >)
+        import html
+        adcode_str = html.unescape(adcode_str)
+        
         # Debug: Show success
-        st.success(f"✅ Found adcode for {creative_id} x {creative_size} ({len(str(adcode))} chars)")
-        return str(adcode)
+        st.success(f"✅ Found adcode for {creative_id} x {creative_size} ({len(adcode_str)} chars)")
+        st.write(f"🔍 Adcode contains <script>: {'<script>' in adcode_str}")
+        
+        return adcode_str
     
     return None
 
