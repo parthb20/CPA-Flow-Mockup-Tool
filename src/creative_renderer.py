@@ -353,22 +353,12 @@ def get_prerendered_creative(creative_id, creative_size, prerendered_df):
     if pd.notna(adcode) and str(adcode).strip():
         adcode_str = str(adcode)
         
-        # DEBUG: Show what we're returning
-        st.write(f"📦 **Adcode Retrieved:** {len(adcode_str)} chars")
-        st.write(f"🔹 **First 100 chars:** `{adcode_str[:100]}`")
-        st.write(f"🔹 **Last 100 chars:** `{adcode_str[-100:]}`")
-        
-        # Check for script tags
-        has_script = '<script>' in adcode_str.lower() or '<script ' in adcode_str.lower()
-        has_iframe = '<iframe' in adcode_str.lower()
-        st.write(f"🔍 **Has <script>:** {'✅ Yes' if has_script else '❌ No'}")
-        st.write(f"🔍 **Has <iframe>:** {'✅ Yes' if has_iframe else '❌ No'}")
-        
-        # Show external script domains
-        import re
-        script_srcs = re.findall(r'src\s*=\s*["\']?(https?://[^"\'\s>]+)', adcode_str, re.IGNORECASE)
-        if script_srcs:
-            st.write(f"🌐 **External scripts:** {', '.join(script_srcs)}")
+        # DEBUG: Show basic info (comment out for production)
+        # st.write(f"📦 **Adcode Retrieved:** {len(adcode_str)} chars")
+        # import re
+        # script_srcs = re.findall(r'src\s*=\s*["\']?(https?://[^"\'\s>]+)', adcode_str, re.IGNORECASE)
+        # if script_srcs:
+        #     st.write(f"🌐 **External scripts:** {', '.join(script_srcs)}")
         
         # Already cleaned during File D loading (html.unescape + utf-8 encoding)
         # Just return it as-is
@@ -497,16 +487,18 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
         }}
     }}, 2000);
     
-    // Timeout after 10 seconds
+    // Timeout after 8 seconds
     setTimeout(function() {{
         var loadingDiv = document.getElementById('loading');
         if (!loadingDiv.className.includes('hide-loading')) {{
-            loadingDiv.innerHTML = '❌ Ad failed to load<br><small>Check console for errors</small>';
-            loadingDiv.style.color = '#f44';
-            console.error('Ad failed to load after 10 seconds');
+            loadingDiv.innerHTML = '⚠️ No ad content returned<br><small>Ad network returned no fill for this creative</small>';
+            loadingDiv.style.color = '#ff8800';
+            loadingDiv.style.fontSize = '11px';
+            loadingDiv.style.lineHeight = '1.4';
+            console.warn('Ad network did not return content (no fill)');
         }}
         clearInterval(checkInterval);
-    }}, 10000);
+    }}, 8000);
     
     // Error handling for failed script loads
     window.addEventListener('error', function(e) {{
