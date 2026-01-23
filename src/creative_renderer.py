@@ -397,11 +397,6 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
 </body>
 </html>"""
             
-            # Debug
-            import streamlit as st
-            st.write(f"🔧 Generated HTML length: {len(rendered_html)} chars")
-            st.write(f"🔧 HTML contains <script>: {'<script>' in rendered_html}")
-            
             return (rendered_html, None)
     
     # Creative not found in File D
