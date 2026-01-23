@@ -54,56 +54,82 @@ def generate_serp_mockup(flow_data, serp_templates):
                 html
             )
             
-            # Replace URL (inside <div class="url">) - more flexible pattern
-            # Try multiple patterns to catch different SERP templates
+            # Replace URL - handles nested elements inside URL container
+            # Use DOTALL mode to match across lines and nested tags
             html = re.sub(
-                r'(<div class="url">)[^<]*(</div>)', 
+                r'(<div[^>]*class="[^"]*url[^"]*"[^>]*>)(?:(?!<div).)*?(</div>)', 
                 f'\\1{ad_url}\\2', 
                 html, 
-                count=1
+                count=1,
+                flags=re.DOTALL
             )
-            # Also try <p class="url">
             html = re.sub(
-                r'(<p class="url">)[^<]*(</p>)', 
+                r'(<p[^>]*class="[^"]*url[^"]*"[^>]*>)(?:(?!<p).)*?(</p>)', 
                 f'\\1{ad_url}\\2', 
                 html, 
-                count=1
+                count=1,
+                flags=re.DOTALL
+            )
+            # Also try inside <a> tags with url class
+            html = re.sub(
+                r'(<a[^>]*class="[^"]*url[^"]*"[^>]*>)(?:(?!<a).)*?(</a>)', 
+                f'\\1{ad_url}\\2', 
+                html, 
+                count=1,
+                flags=re.DOTALL
             )
             
-            # Replace title (inside <div class="title">) - more flexible pattern
+            # Replace title - handles nested elements inside title container
             html = re.sub(
-                r'(<div class="title">)[^<]*(</div>)', 
+                r'(<div[^>]*class="[^"]*title[^"]*"[^>]*>)(?:(?!<div).)*?(</div>)', 
                 f'\\1{ad_title}\\2', 
                 html, 
-                count=1
-            )
-            # Also try <p class="title"> and <a> tags
-            html = re.sub(
-                r'(<p class="title">)[^<]*(</p>)', 
-                f'\\1{ad_title}\\2', 
-                html, 
-                count=1
+                count=1,
+                flags=re.DOTALL
             )
             html = re.sub(
-                r'(<a[^>]*class="title"[^>]*>)[^<]*(</a>)', 
+                r'(<p[^>]*class="[^"]*title[^"]*"[^>]*>)(?:(?!<p).)*?(</p>)', 
                 f'\\1{ad_title}\\2', 
                 html, 
-                count=1
+                count=1,
+                flags=re.DOTALL
+            )
+            html = re.sub(
+                r'(<a[^>]*class="[^"]*title[^"]*"[^>]*>)(?:(?!<a).)*?(</a>)', 
+                f'\\1{ad_title}\\2', 
+                html, 
+                count=1,
+                flags=re.DOTALL
+            )
+            html = re.sub(
+                r'(<h[1-6][^>]*class="[^"]*title[^"]*"[^>]*>)(?:(?!<h).)*?(</h[1-6]>)', 
+                f'\\1{ad_title}\\2', 
+                html, 
+                count=1,
+                flags=re.DOTALL
             )
             
-            # Replace description (inside <div class="desc">) - more flexible pattern
+            # Replace description - handles nested elements inside desc container
             html = re.sub(
-                r'(<div class="desc">)[^<]*(</div>)', 
+                r'(<div[^>]*class="[^"]*desc[^"]*"[^>]*>)(?:(?!<div).)*?(</div>)', 
                 f'\\1{ad_desc}\\2', 
                 html, 
-                count=1
+                count=1,
+                flags=re.DOTALL
             )
-            # Also try <p class="desc">
             html = re.sub(
-                r'(<p class="desc">)[^<]*(</p>)', 
+                r'(<p[^>]*class="[^"]*desc[^"]*"[^>]*>)(?:(?!<p).)*?(</p>)', 
                 f'\\1{ad_desc}\\2', 
                 html, 
-                count=1
+                count=1,
+                flags=re.DOTALL
+            )
+            html = re.sub(
+                r'(<span[^>]*class="[^"]*desc[^"]*"[^>]*>)(?:(?!<span).)*?(</span>)', 
+                f'\\1{ad_desc}\\2', 
+                html, 
+                count=1,
+                flags=re.DOTALL
             )
             
             return html
