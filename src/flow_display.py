@@ -1132,10 +1132,12 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     response = session.get(adv_url, timeout=15, headers=headers, allow_redirects=True)
                     
                     if response.status_code == 200:
-                        # Try multiple rendering methods in order until one works
+                        # Detect redirect/tracking URLs (these won't work in iframe)
+                        is_redirect_url = any(keyword in str(adv_url).lower() 
+                                            for keyword in ['htrk', 'track', 'redirect', 'aff_c', 'aff_', 'click', 'goto', '/c?', '/aff?', '{clickid}', '{click'])
                         
-                        # Method 1: Try iframe (fastest, works for most sites)
-                        if not rendered_successfully:
+                        # Method 1: Try iframe (fastest, works for most sites) - SKIP for redirect URLs
+                        if not rendered_successfully and not is_redirect_url:
                             try:
                                 preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all, display_url=adv_url)
                                 preview_html = inject_unique_id(preview_html, 'landing_iframe', adv_url, device_all, current_flow)
