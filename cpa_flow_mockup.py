@@ -529,7 +529,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 # Render "What is Flow" section using module
                 render_what_is_flow_section()
-            
             else:
                 st.warning("⚠️ No flow data found. This campaign may have impressions but no clicks or conversions yet.")
 else:
