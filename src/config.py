@@ -3,7 +3,7 @@ Configuration constants and settings
 """
 
 # Google Drive File IDs
-FILE_A_ID = "17_JKUhXfBYlWZZEKUStRgFQhL3Ty-YZu"  # Main CSV file (.csv.gz) - REQUIRED
+FILE_A_ID = "1DXR77Tges9kkH3x7pYin2yo9De7cxqpc"  # Main CSV file (.csv.gz) - REQUIRED
 FILE_B_ID = "1SXcLm1hhzQK23XY6Qt7E1YX5Fa-2Tlr9"  # SERP templates JSON file - REQUIRED
 FILE_C_ID = "1MrcmOzWo-TAmKJ6VV0FtA5PxBGJNGnkJ"  # File C - Creative requests (.csv.gz): creative_id, rensize, request - OPTIONAL if FILE_D_ID is set
 FILE_D_ID = "1Uz29aIA1YtrnqmJaROgiiG4q1CvJ6arK"  # File D - Pre-rendered creative responses (.csv): creative_id, size, status, error, adcode - RECOMMENDED (makes FILE_C optional)
