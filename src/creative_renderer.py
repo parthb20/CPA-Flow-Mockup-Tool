@@ -413,13 +413,17 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         html, body {{ 
-            width: {width}px; 
-            height: {height}px; 
+            width: 100%; 
+            height: 100%; 
             overflow: auto; 
-            background: white;
+            background: #f8fafc;
             font-family: Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }}
         #ad-container {{
+            width: {width}px;
             min-height: {height}px;
             position: relative;
         }}
