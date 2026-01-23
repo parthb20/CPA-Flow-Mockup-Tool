@@ -385,21 +385,10 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
     if prerendered_df is not None:
         adcode = get_prerendered_creative(creative_id, creative_size, prerendered_df)
         if adcode:
-            # Add visible status for debugging
-            import streamlit as st
-            import re
-            
-            # Show basic info
-            script_srcs = re.findall(r'src\s*=\s*["\']?(https?://[^"\'\s>]+)', adcode, re.IGNORECASE)
-            if script_srcs:
-                st.info(f"📡 **Loading creative from:** `{script_srcs[0]}`")
-            
-            # Show size
-            st.caption(f"Creative size: {creative_size} • Adcode: {len(adcode)} chars")
-            
-            # Add expander to show full adcode for debugging
-            with st.expander("🔧 Debug: View Full Adcode"):
-                st.code(adcode, language='html')
+            # Add expander to show full adcode for debugging (optional)
+            # import streamlit as st
+            # with st.expander("🔧 Debug: View Full Adcode"):
+            #     st.code(adcode, language='html')
             # Wrap in HTML container
             try:
                 width, height = map(int, creative_size.split('x'))
