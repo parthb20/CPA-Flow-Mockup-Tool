@@ -436,156 +436,42 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         if pub_url and pub_url != 'NOT_FOUND' and pd.notna(pub_url) and str(pub_url).strip():
             with preview_container:
+                rendered = False
+                
+                # ALWAYS try iframe first (fastest, browser handles encoding)
                 try:
-                    user_agents = [
-                        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0'
-                    ]
-                    head_response = None
-                    for ua in user_agents:
-                        try:
-                            head_response = requests.head(pub_url, timeout=5, headers={'User-Agent': ua})
-                            if head_response.status_code == 200:
-                                break
-                        except:
-                            continue
-                    
-                    if not head_response:
-                        iframe_blocked = False
-                    else:
-                        x_frame = head_response.headers.get('X-Frame-Options', '').upper()
-                        csp = head_response.headers.get('Content-Security-Policy', '')
-                        iframe_blocked = ('DENY' in x_frame or 'SAMEORIGIN' in x_frame or 'frame-ancestors' in csp.lower())
+                    preview_html, height, _ = render_mini_device_preview(pub_url, is_url=True, device=device_all, display_url=pub_url)
+                    preview_html = inject_unique_id(preview_html, 'pub_iframe', pub_url, device_all, current_flow)
+                    display_height = height
+                    st.components.v1.html(preview_html, height=display_height, scrolling=False)
+                    if st.session_state.flow_layout != 'horizontal':
+                        st.caption("📺 Iframe")
+                    rendered = True
                 except:
-                    iframe_blocked = False
+                    pass
                 
-                if not iframe_blocked:
+                # Only if iframe failed, try Playwright
+                if not rendered and playwright_available:
                     try:
-                        preview_html, height, _ = render_mini_device_preview(pub_url, is_url=True, device=device_all, display_url=pub_url)
-                        preview_html = inject_unique_id(preview_html, 'pub_iframe', pub_url, device_all, current_flow)
-                        display_height = height
-                        st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                        if st.session_state.flow_layout != 'horizontal':
-                            st.caption("📺 Iframe")
-                    except:
-                        iframe_blocked = True
-                
-                if iframe_blocked:
-                    try:
-                        headers = {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                            'Accept-Language': 'en-US,en;q=0.9',
-                            'Accept-Encoding': 'gzip, deflate, br',
-                            'DNT': '1',
-                            'Connection': 'keep-alive',
-                            'Upgrade-Insecure-Requests': '1',
-                            'Sec-Fetch-Dest': 'document',
-                            'Sec-Fetch-Mode': 'navigate',
-                            'Sec-Fetch-Site': 'none',
-                            'Cache-Control': 'max-age=0'
-                        }
-                        
-                        session = requests.Session()
-                        response = None
-                        for ua in user_agents:
-                            headers['User-Agent'] = ua
-                            try:
-                                response = session.get(pub_url, timeout=15, headers=headers, allow_redirects=True)
-                                if response.status_code == 200:
-                                    break
-                            except:
-                                continue
-                        
-                        if not response:
-                            response = session.get(pub_url, timeout=15, headers=headers, allow_redirects=True)
-                        
-                        if response.status_code == 403:
-                            if playwright_available:
-                                try:
-                                    with st.spinner("🔄 Trying browser automation..."):
-                                        page_html = capture_with_playwright(pub_url, device=device_all)
-                                        if page_html:
-                                            # Check if it's a screenshot fallback
-                                            if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
-                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                                preview_html = inject_unique_id(preview_html, 'pub_screenshot_fallback', pub_url, device_all, current_flow)
-                                                st.components.v1.html(preview_html, height=height, scrolling=False)
-                                                st.caption("📸 Screenshot (ScreenshotOne API)")
-                                            else:
-                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                                preview_html = inject_unique_id(preview_html, 'pub_playwright', pub_url, device_all, current_flow)
-                                                st.components.v1.html(preview_html, height=height, scrolling=False)
-                                                st.caption("🤖 Rendered via browser automation")
-                                        else:
-                                            raise Exception("Playwright returned empty HTML")
-                                except Exception:
-                                    st.warning("🚫 Could not load page")
-                                    st.info("💡 Set SCREENSHOT_API_KEY in secrets for screenshot fallback")
-                            else:
-                                st.warning("🚫 Could not load page")
-                        elif response.status_code == 200:
-                            try:
-                                # Use comprehensive encoding detection
-                                page_html = decode_with_multiple_encodings(response)
-                                page_html = clean_and_prepare_html(page_html, pub_url)
-                                preview_html, display_height = render_html_with_proper_encoding(
-                                    page_html, device_all, 'pub_html', pub_url, current_flow, scrolling=False
-                                )
-                                st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                                st.caption("📄 HTML")
-                            except Exception:
-                                # Try iframe fallback
-                                try:
-                                    preview_html, height, _ = render_mini_device_preview(pub_url, is_url=True, device=device_all, display_url=pub_url)
-                                    preview_html = inject_unique_id(preview_html, 'pub_iframe', pub_url, device_all, current_flow)
+                        with st.spinner("🔄 Loading with browser..."):
+                            page_html = capture_with_playwright(pub_url, device=device_all)
+                            if page_html:
+                                if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
+                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                    preview_html = inject_unique_id(preview_html, 'pub_screenshot', pub_url, device_all, current_flow)
                                     st.components.v1.html(preview_html, height=height, scrolling=False)
-                                    st.caption("📺 Iframe")
-                                except:
-                                    # Last resort: Playwright
-                                    if playwright_available:
-                                        try:
-                                            page_html = capture_with_playwright(pub_url, device=device_all)
-                                            if page_html:
-                                                if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
-                                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                                    preview_html = inject_unique_id(preview_html, 'pub_screenshot', pub_url, device_all, current_flow)
-                                                    st.components.v1.html(preview_html, height=height, scrolling=False)
-                                                    st.caption("📸 Screenshot")
-                                                else:
-                                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                                    preview_html = inject_unique_id(preview_html, 'pub_playwright', pub_url, device_all, current_flow)
-                                                    st.components.v1.html(preview_html, height=height, scrolling=False)
-                                                    st.caption("🤖 Browser")
-                                        except:
-                                            st.error("❌ Could not load page")
-                                    else:
-                                        st.error("❌ Could not load page")
-                        else:
-                            if playwright_available:
-                                try:
-                                    with st.spinner("🔄 Trying browser automation..."):
-                                        page_html = capture_with_playwright(pub_url, device=device_all)
-                                        if page_html:
-                                            if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
-                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                                preview_html = inject_unique_id(preview_html, 'pub_screenshot_fallback', pub_url, device_all, current_flow)
-                                                st.components.v1.html(preview_html, height=height, scrolling=False)
-                                                st.caption("📸 Screenshot (ScreenshotOne API)")
-                                            else:
-                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                                preview_html = inject_unique_id(preview_html, 'pub_playwright', pub_url, device_all, current_flow)
-                                                st.components.v1.html(preview_html, height=height, scrolling=False)
-                                                st.caption("🤖 Rendered via browser automation")
-                                        else:
-                                            raise Exception("Playwright returned empty HTML")
-                                except Exception:
-                                    st.error(f"❌ HTTP {response.status_code}")
-                            else:
-                                st.error(f"❌ HTTP {response.status_code}")
-                    except Exception as e:
-                        st.error(f"❌ {str(e)[:100]}")
+                                    st.caption("📸 Screenshot")
+                                else:
+                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                    preview_html = inject_unique_id(preview_html, 'pub_playwright', pub_url, device_all, current_flow)
+                                    st.components.v1.html(preview_html, height=height, scrolling=False)
+                                    st.caption("🤖 Browser")
+                                rendered = True
+                    except:
+                        pass
+                
+                if not rendered:
+                    st.error("❌ Could not load page")
         else:
             with preview_container:
                 st.warning("⚠️ No valid publisher URL in data")
