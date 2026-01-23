@@ -1143,19 +1143,12 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     response = session.get(adv_url, timeout=15, headers=headers, allow_redirects=True)
                     
                     if response.status_code == 200:
-                        # Try iframe first (fastest)
-                        if not rendered_successfully:
-                            try:
-                                preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all, display_url=adv_url)
-                                preview_html = inject_unique_id(preview_html, 'landing_iframe', adv_url, device_all, current_flow)
-                                st.components.v1.html(preview_html, height=650, scrolling=True)
-                                st.caption("📺 Iframe")
-                                rendered_successfully = True
-                            except:
-                                pass
+                        # Check if this is a redirect/tracking URL
+                        is_redirect_url = any(keyword in str(adv_url).lower() 
+                                            for keyword in ['htrk', 'track', 'redirect', 'aff_c', 'aff_', 'click', 'goto', '/c?', '/aff?'])
                         
-                        # If iframe failed, try HTML rendering with BASE64
-                        if not rendered_successfully:
+                        # For redirect URLs, skip iframe and go straight to HTML rendering with BASE64
+                        if is_redirect_url:
                             try:
                                 # Use comprehensive encoding detection with BASE64
                                 page_html = decode_with_multiple_encodings(response)
@@ -1164,10 +1157,54 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                     page_html, device_all, 'landing_html', adv_url, current_flow
                                 )
                                 st.components.v1.html(preview_html, height=display_height, scrolling=True)
-                                st.caption("📄 HTML")
+                                st.caption("📄 HTML (redirect page)")
                                 rendered_successfully = True
-                            except:
-                                pass  # Will try Playwright below
+                            except Exception as e:
+                                # For redirect URLs that fail HTML rendering, try Playwright
+                                if not rendered_successfully and playwright_available:
+                                    try:
+                                        with st.spinner("🔄 Loading redirect page..."):
+                                            page_html = capture_with_playwright(adv_url, device=device_all)
+                                            if page_html:
+                                                if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
+                                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                                    preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
+                                                    st.components.v1.html(preview_html, height=650, scrolling=True)
+                                                    st.caption("📸 Screenshot")
+                                                else:
+                                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                                    preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
+                                                    st.components.v1.html(preview_html, height=650, scrolling=True)
+                                                    st.caption("🤖 Browser")
+                                                rendered_successfully = True
+                                    except:
+                                        pass
+                        else:
+                            # For normal URLs, try iframe first (fastest)
+                            if not rendered_successfully:
+                                try:
+                                    preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all, display_url=adv_url)
+                                    preview_html = inject_unique_id(preview_html, 'landing_iframe', adv_url, device_all, current_flow)
+                                    st.components.v1.html(preview_html, height=650, scrolling=True)
+                                    st.caption("📺 Iframe")
+                                    rendered_successfully = True
+                                except:
+                                    pass
+                            
+                            # If iframe failed, try HTML rendering with BASE64
+                            if not rendered_successfully:
+                                try:
+                                    # Use comprehensive encoding detection with BASE64
+                                    page_html = decode_with_multiple_encodings(response)
+                                    page_html = clean_and_prepare_html(page_html, adv_url)
+                                    preview_html, display_height = render_html_with_base64(
+                                        page_html, device_all, 'landing_html', adv_url, current_flow
+                                    )
+                                    st.components.v1.html(preview_html, height=display_height, scrolling=True)
+                                    st.caption("📄 HTML")
+                                    rendered_successfully = True
+                                except:
+                                    pass  # Will try Playwright below
                     
                     elif response.status_code == 403:
                             if playwright_available:
