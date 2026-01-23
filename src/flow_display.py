@@ -1091,18 +1091,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             except:
                                 pass
                         
-                        # Method 2: If Playwright unavailable/failed, try iframe (but not for redirect URLs)
-                        if not rendered_successfully and not is_redirect_url:
-                            try:
-                                preview_html, height, _ = render_mini_device_preview(render_url, is_url=True, device=device_all, display_url=render_url)
-                                preview_html = inject_unique_id(preview_html, 'landing_iframe', render_url, device_all, current_flow)
-                                st.components.v1.html(preview_html, height=650, scrolling=True)
-                                st.caption("📺 Iframe")
-                                rendered_successfully = True
-                            except:
-                                pass
-                        
-                        # Method 3: Try HTML rendering with cleaned URL (last technical attempt)
+                        # Method 2: If Playwright unavailable/failed, try HTML rendering first (more reliable than iframe)
                         if not rendered_successfully and not is_redirect_url:
                             try:
                                 page_html = decode_with_multiple_encodings(response)
@@ -1112,6 +1101,17 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                 )
                                 st.components.v1.html(preview_html, height=display_height, scrolling=True)
                                 st.caption("📄 HTML")
+                                rendered_successfully = True
+                            except:
+                                pass
+                        
+                        # Method 3: Try iframe as fallback (may be blocked by X-Frame-Options)
+                        if not rendered_successfully and not is_redirect_url:
+                            try:
+                                preview_html, height, _ = render_mini_device_preview(render_url, is_url=True, device=device_all, display_url=render_url)
+                                preview_html = inject_unique_id(preview_html, 'landing_iframe', render_url, device_all, current_flow)
+                                st.components.v1.html(preview_html, height=650, scrolling=True)
+                                st.caption("📺 Iframe (may be blocked by site)")
                                 rendered_successfully = True
                             except:
                                 pass
