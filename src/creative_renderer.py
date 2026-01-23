@@ -353,6 +353,23 @@ def get_prerendered_creative(creative_id, creative_size, prerendered_df):
     if pd.notna(adcode) and str(adcode).strip():
         adcode_str = str(adcode)
         
+        # DEBUG: Show what we're returning
+        st.write(f"📦 **Adcode Retrieved:** {len(adcode_str)} chars")
+        st.write(f"🔹 **First 100 chars:** `{adcode_str[:100]}`")
+        st.write(f"🔹 **Last 100 chars:** `{adcode_str[-100:]}`")
+        
+        # Check for script tags
+        has_script = '<script>' in adcode_str.lower() or '<script ' in adcode_str.lower()
+        has_iframe = '<iframe' in adcode_str.lower()
+        st.write(f"🔍 **Has <script>:** {'✅ Yes' if has_script else '❌ No'}")
+        st.write(f"🔍 **Has <iframe>:** {'✅ Yes' if has_iframe else '❌ No'}")
+        
+        # Show external script domains
+        import re
+        script_srcs = re.findall(r'src\s*=\s*["\']?(https?://[^"\'\s>]+)', adcode_str, re.IGNORECASE)
+        if script_srcs:
+            st.write(f"🌐 **External scripts:** {', '.join(script_srcs)}")
+        
         # Already cleaned during File D loading (html.unescape + utf-8 encoding)
         # Just return it as-is
         return adcode_str
@@ -378,6 +395,10 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
     if prerendered_df is not None:
         adcode = get_prerendered_creative(creative_id, creative_size, prerendered_df)
         if adcode:
+            # Add expander to show full adcode for debugging
+            import streamlit as st
+            with st.expander("🔧 Debug: View Full Adcode"):
+                st.code(adcode, language='html')
             # Wrap in HTML container
             try:
                 width, height = map(int, creative_size.split('x'))
@@ -386,11 +407,18 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
             
             # Ensure scripts can execute by NOT escaping the adcode
             # Add error handling and loading indicator for external scripts
+            # Add cache-busting timestamp
+            import time
+            cache_bust = int(time.time() * 1000)
+            
             rendered_html = f"""<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width={width}, initial-scale=1">
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
@@ -412,36 +440,82 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
             transform: translate(-50%, -50%);
             color: #999;
             font-size: 12px;
-            display: none;
+            text-align: center;
+            padding: 10px;
         }}
         .show-loading {{
             display: block !important;
+        }}
+        .hide-loading {{
+            display: none !important;
         }}
     </style>
 </head>
 <body>
 <div id="ad-container">
-<div id="loading">Loading ad...</div>
+<div id="loading">⏳ Loading ad...<br><small>(Cache: {cache_bust})</small></div>
 {adcode}
 </div>
 <script>
-    // Show loading indicator after 2 seconds if ad hasn't rendered
-    setTimeout(function() {{
+    console.log('Creative container loaded at: {cache_bust}');
+    console.log('Creative size: {width}x{height}');
+    
+    // Hide loading once ad content is detected
+    var checkInterval = setInterval(function() {{
         var adContainer = document.getElementById('ad-container');
-        var hasContent = adContainer.children.length > 1 || 
-                        (adContainer.children.length === 1 && adContainer.children[0].id !== 'loading');
-        if (!hasContent) {{
-            document.getElementById('loading').className = 'show-loading';
+        var loadingDiv = document.getElementById('loading');
+        
+        // Check if there's content besides the loading div
+        var hasAdContent = false;
+        for (var i = 0; i < adContainer.children.length; i++) {{
+            if (adContainer.children[i].id !== 'loading') {{
+                hasAdContent = true;
+                break;
+            }}
+        }}
+        
+        // Also check for dynamically inserted content
+        if (adContainer.querySelector('iframe') || 
+            adContainer.querySelector('ins') ||
+            document.body.children.length > 1) {{
+            hasAdContent = true;
+        }}
+        
+        if (hasAdContent) {{
+            loadingDiv.className = 'hide-loading';
+            clearInterval(checkInterval);
+            console.log('Ad content detected, hiding loading indicator');
+        }}
+    }}, 500);
+    
+    // Show loading indicator after 2 seconds if still nothing
+    setTimeout(function() {{
+        var loadingDiv = document.getElementById('loading');
+        if (!loadingDiv.className.includes('hide-loading')) {{
+            loadingDiv.className = 'show-loading';
+            console.log('No ad content after 2s, showing loading indicator');
         }}
     }}, 2000);
+    
+    // Timeout after 10 seconds
+    setTimeout(function() {{
+        var loadingDiv = document.getElementById('loading');
+        if (!loadingDiv.className.includes('hide-loading')) {{
+            loadingDiv.innerHTML = '❌ Ad failed to load<br><small>Check console for errors</small>';
+            loadingDiv.style.color = '#f44';
+            console.error('Ad failed to load after 10 seconds');
+        }}
+        clearInterval(checkInterval);
+    }}, 10000);
     
     // Error handling for failed script loads
     window.addEventListener('error', function(e) {{
         if (e.target.tagName === 'SCRIPT') {{
             console.error('Script failed to load:', e.target.src);
-            document.getElementById('loading').textContent = 'Ad failed to load';
-            document.getElementById('loading').style.color = '#f44';
-            document.getElementById('loading').className = 'show-loading';
+            var loadingDiv = document.getElementById('loading');
+            loadingDiv.innerHTML = '❌ Script failed to load<br><small>' + e.target.src + '</small>';
+            loadingDiv.style.color = '#f44';
+            loadingDiv.className = 'show-loading';
         }}
     }}, true);
 </script>
