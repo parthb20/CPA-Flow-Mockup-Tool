@@ -562,10 +562,18 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         prerendered_df=st.session_state.get('data_d', None)
                     )
                     
+                    # DEBUG
+                    st.write(f"🔍 rendered_html type: {type(rendered_html)}")
+                    if rendered_html:
+                        st.write(f"📏 rendered_html length: {len(rendered_html)} chars")
+                        st.write(f"📝 First 200 chars: {rendered_html[:200]}")
+                    
                     if rendered_html:
                         # Render the creative at consistent height with other stages
                         # Use 650px for both vertical and horizontal to match other stage boxes
+                        st.write(f"🎨 About to render with st.components.v1.html...")
                         st.components.v1.html(rendered_html, height=650, scrolling=True)
+                        st.write(f"✅ st.components.v1.html called")
                         creative_rendered = True
                     elif error_msg:
                         # Show detailed error message
