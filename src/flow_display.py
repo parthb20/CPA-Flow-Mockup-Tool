@@ -1050,24 +1050,39 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     response = session.get(adv_url, timeout=15, headers=headers, allow_redirects=True)
                     
                     if response.status_code == 200:
-                        # Try HTML rendering first for all pages
+                        # Try iframe first (fastest)
                         if not rendered_successfully:
                             try:
-                                # Detect proper encoding
+                                preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all, display_url=adv_url)
+                                preview_html = inject_unique_id(preview_html, 'landing_iframe', adv_url, device_all, current_flow)
+                                st.components.v1.html(preview_html, height=650, scrolling=True)
+                                st.caption("📺 Iframe")
+                                rendered_successfully = True
+                            except:
+                                pass
+                        
+                        # If iframe failed, try HTML rendering
+                        if not rendered_successfully:
+                            try:
+                                # Detect encoding with fallbacks
                                 if response.apparent_encoding:
                                     response.encoding = response.apparent_encoding
                                 else:
                                     response.encoding = 'utf-8'
                                 
-                                # Get decoded content
+                                # Get content with error handling
                                 try:
                                     page_html = response.text
-                                except (UnicodeDecodeError, LookupError):
-                                    page_html = response.content.decode('utf-8', errors='replace')
-                                
-                                # Add DOCTYPE if missing
-                                if '<!DOCTYPE' not in page_html.upper()[:100]:
-                                    page_html = '<!DOCTYPE html>\n' + page_html
+                                except:
+                                    # Try multiple encodings
+                                    for enc in ['utf-8', 'latin-1', 'iso-8859-1', 'windows-1252']:
+                                        try:
+                                            page_html = response.content.decode(enc)
+                                            break
+                                        except:
+                                            continue
+                                    else:
+                                        page_html = response.content.decode('utf-8', errors='ignore')
                                 
                                 # Add charset
                                 if '<head>' in page_html.lower():
@@ -1088,11 +1103,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                 # Render HTML
                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all, use_srcdoc=True)
                                 preview_html = inject_unique_id(preview_html, 'landing_html', adv_url, device_all, current_flow)
-                                display_height = 650
-                                st.components.v1.html(preview_html, height=display_height, scrolling=True)
+                                st.components.v1.html(preview_html, height=650, scrolling=True)
                                 st.caption("📄 HTML")
                                 rendered_successfully = True
-                            except Exception as html_error:
+                            except:
                                 pass  # Will try Playwright below
                     
                     elif response.status_code == 403:
