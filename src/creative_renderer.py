@@ -100,14 +100,10 @@ def load_prerendered_responses(file_id):
         df = load_csv_from_gdrive(file_id)
         
         if df is None or len(df) == 0:
-            st.error("❌ File D is empty")
             return None
         
         # Clean column names (strip whitespace, lowercase for comparison)
         df.columns = df.columns.str.strip()
-        
-        # Debug: Show what columns were loaded
-        st.info(f"📋 File D loaded: {len(df)} rows, columns: {', '.join(df.columns.tolist())}")
         
         # Create case-insensitive column mapping
         col_mapping = {col.lower(): col for col in df.columns}
