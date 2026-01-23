@@ -567,10 +567,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         # Use 650px for both vertical and horizontal to match other stage boxes
                         # scrolling=True allows vertical scrolling if creative is taller than 650px
                         st.components.v1.html(rendered_html, height=650, scrolling=True)
-                        
-                        # Add explicit note below iframe
-                        st.warning("⚠️ **White box visible?** This means:\n- ✅ Creative adcode loaded successfully\n- ✅ External script loaded from ad network\n- ❌ Ad network returned no fill (no ads available) OR blocked by iframe security\n\n**This is normal** - not all creatives have active ads at all times.")
-                        
                         creative_rendered = True
                     elif error_msg:
                         # Show detailed error message
@@ -1087,7 +1083,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         if st.session_state.flow_layout == 'vertical' and landing_card_right:
             with landing_card_right:
-                adv_url = current_flow.get('reporting_destination_url', '')
+                adv_url = current_flow.get('Destination_Url', '')
                 
                 st.markdown("<h4 style='font-size: 20px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0;'><strong>🎯 Landing Page Details</strong></h4>", unsafe_allow_html=True)
                 st.markdown(f"""
