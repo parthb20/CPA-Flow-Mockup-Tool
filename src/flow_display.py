@@ -1170,8 +1170,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             except:
                                 pass
                         
-                        # Method 3: Try HTML rendering with encoding fix (for pages with encoding issues)
-                        if not rendered_successfully:
+                        # Method 3: Try HTML rendering ONLY for normal URLs (not redirects)
+                        if not rendered_successfully and not is_redirect_url:
                             try:
                                 page_html = decode_with_multiple_encodings(response)
                                 page_html = clean_and_prepare_html(page_html, adv_url)
@@ -1183,6 +1183,13 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                 rendered_successfully = True
                             except:
                                 pass
+                        
+                        # For redirect URLs that still haven't rendered, show helpful message
+                        if not rendered_successfully and is_redirect_url:
+                            st.info("💡 This is a redirect/tracking URL that requires browser automation")
+                            st.markdown(f"**URL:** `{adv_url}`")
+                            st.markdown(f"[🔗 Click here to open the page]({adv_url})", unsafe_allow_html=True)
+                            rendered_successfully = True
                     
                     elif response.status_code == 403:
                             if playwright_available:
