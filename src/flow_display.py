@@ -115,33 +115,22 @@ def clean_and_prepare_html(page_html, base_url):
     return page_html
 
 
-def render_html_with_base64(page_html, device, unique_id_prefix, url, flow):
-    """Render HTML using base64 encoding (most reliable for encoding issues)"""
-    # Ensure UTF-8 encoding
-    content_bytes = page_html.encode('utf-8', errors='replace')
-    b64_content = base64.b64encode(content_bytes).decode('ascii')
+def render_html_with_proper_encoding(page_html, device, unique_id_prefix, url, flow, scrolling=False):
+    """Render HTML with proper encoding using standard renderer"""
+    from src.renderers import render_mini_device_preview, inject_unique_id
     
-    # Get device dimensions
-    if device == 'mobile':
-        width, height = 375, 650
-    elif device == 'tablet':
-        width, height = 768, 900
-    else:
-        width, height = 1024, 650
+    # Use standard renderer with use_srcdoc for proper device preview
+    preview_html, height, _ = render_mini_device_preview(
+        page_html, 
+        is_url=False, 
+        device=device, 
+        use_srcdoc=True
+    )
     
-    # Create iframe with base64 data URL
-    iframe_html = f'''
-    <div style="display: flex; justify-content: center; align-items: flex-start; background: #f8fafc; padding: 12px; border-radius: 12px;">
-        <div style="width: {width}px; height: {height}px; border: 8px solid #1e293b; border-radius: 24px; overflow: hidden; background: white; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
-            <iframe src="data:text/html;charset=utf-8;base64,{b64_content}" style="width: 100%; height: 100%; border: none; display: block;" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
-        </div>
-    </div>
-    '''
+    # Inject unique ID for cache busting
+    preview_html = inject_unique_id(preview_html, unique_id_prefix, url, device, flow)
     
-    # Inject unique ID
-    iframe_html = inject_unique_id(iframe_html, unique_id_prefix, url, device, flow)
-    
-    return iframe_html, height + 40
+    return preview_html, height
 
 # ============================================================================
 
@@ -538,11 +527,11 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                 st.warning("🚫 Could not load page")
                         elif response.status_code == 200:
                             try:
-                                # Use comprehensive encoding detection with BASE64
+                                # Use comprehensive encoding detection
                                 page_html = decode_with_multiple_encodings(response)
                                 page_html = clean_and_prepare_html(page_html, pub_url)
-                                preview_html, display_height = render_html_with_base64(
-                                    page_html, device_all, 'pub_html', pub_url, current_flow
+                                preview_html, display_height = render_html_with_proper_encoding(
+                                    page_html, device_all, 'pub_html', pub_url, current_flow, scrolling=False
                                 )
                                 st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                 st.caption("📄 HTML")
@@ -1147,17 +1136,37 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         is_redirect_url = any(keyword in str(adv_url).lower() 
                                             for keyword in ['htrk', 'track', 'redirect', 'aff_c', 'aff_', 'click', 'goto', '/c?', '/aff?'])
                         
-                        # For redirect URLs, skip iframe and go straight to HTML rendering with BASE64
-                        if is_redirect_url:
+                        # For redirect URLs, use Playwright directly (most reliable for redirects)
+                        if is_redirect_url and playwright_available:
                             try:
-                                # Use comprehensive encoding detection with BASE64
+                                with st.spinner("🔄 Loading redirect page..."):
+                                    page_html = capture_with_playwright(adv_url, device=device_all)
+                                    if page_html:
+                                        if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
+                                            preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                            preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
+                                            st.components.v1.html(preview_html, height=650, scrolling=True)
+                                            st.caption("📸 Screenshot")
+                                        else:
+                                            preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                            preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
+                                            st.components.v1.html(preview_html, height=650, scrolling=True)
+                                            st.caption("🤖 Browser")
+                                        rendered_successfully = True
+                            except:
+                                pass  # Will try HTML rendering below
+                        
+                        # If Playwright not available or failed for redirect URLs, try HTML rendering
+                        if is_redirect_url and not rendered_successfully:
+                            try:
+                                # Use comprehensive encoding detection
                                 page_html = decode_with_multiple_encodings(response)
                                 page_html = clean_and_prepare_html(page_html, adv_url)
-                                preview_html, display_height = render_html_with_base64(
-                                    page_html, device_all, 'landing_html', adv_url, current_flow
+                                preview_html, display_height = render_html_with_proper_encoding(
+                                    page_html, device_all, 'landing_html', adv_url, current_flow, scrolling=True
                                 )
                                 st.components.v1.html(preview_html, height=display_height, scrolling=True)
-                                st.caption("📄 HTML (redirect page)")
+                                st.caption("📄 HTML")
                                 rendered_successfully = True
                             except Exception as e:
                                 # For redirect URLs that fail HTML rendering, try Playwright
@@ -1191,14 +1200,14 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                 except:
                                     pass
                             
-                            # If iframe failed, try HTML rendering with BASE64
+                            # If iframe failed, try HTML rendering
                             if not rendered_successfully:
                                 try:
-                                    # Use comprehensive encoding detection with BASE64
+                                    # Use comprehensive encoding detection
                                     page_html = decode_with_multiple_encodings(response)
                                     page_html = clean_and_prepare_html(page_html, adv_url)
-                                    preview_html, display_height = render_html_with_base64(
-                                        page_html, device_all, 'landing_html', adv_url, current_flow
+                                    preview_html, display_height = render_html_with_proper_encoding(
+                                        page_html, device_all, 'landing_html', adv_url, current_flow, scrolling=True
                                     )
                                     st.components.v1.html(preview_html, height=display_height, scrolling=True)
                                     st.caption("📄 HTML")
