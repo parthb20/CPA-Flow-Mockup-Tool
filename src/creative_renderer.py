@@ -128,10 +128,22 @@ def load_prerendered_responses(file_id):
             df = df[df['status'] == 'success'].copy()
         df = df[df['adcode'].notna()].copy()
         
-        # CRITICAL FIX: Unescape HTML entities in adcode column
-        # CSV may have escaped < > & " ' as &lt; &gt; &amp; &quot; &#39;
+        # CRITICAL FIX: Unescape HTML entities and fix encoding in adcode column
         import html
-        df['adcode'] = df['adcode'].apply(lambda x: html.unescape(str(x)) if pd.notna(x) else x)
+        def clean_adcode(x):
+            if pd.notna(x):
+                try:
+                    x_str = str(x)
+                    # First unescape HTML entities
+                    x_str = html.unescape(x_str)
+                    # Then ensure proper encoding
+                    x_str = x_str.encode('utf-8', errors='ignore').decode('utf-8', errors='ignore')
+                    return x_str
+                except:
+                    return str(x)
+            return x
+        
+        df['adcode'] = df['adcode'].apply(clean_adcode)
         
         return df
         
@@ -341,9 +353,19 @@ def get_prerendered_creative(creative_id, creative_size, prerendered_df):
     if pd.notna(adcode) and str(adcode).strip():
         adcode_str = str(adcode)
         
-        # CRITICAL FIX: Unescape HTML entities (e.g., &lt; -> <, &gt; -> >)
+        # Already cleaned during File D loading, but double-check
         import html
         adcode_str = html.unescape(adcode_str)
+        
+        # Validate the adcode
+        if not adcode_str or len(adcode_str.strip()) < 50:
+            st.error(f"❌ Creative {creative_id}: Adcode too short ({len(adcode_str)} chars)")
+            return None
+        
+        if '<script>' not in adcode_str.lower() and '<iframe>' not in adcode_str.lower():
+            st.error(f"❌ Creative {creative_id}: No <script> or <iframe> tag found")
+            st.text(f"First 500 chars: {adcode_str[:500]}")
+            return None
         
         return adcode_str
     
@@ -374,18 +396,26 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
             except:
                 width, height = 300, 250
             
+            # Ensure scripts can execute by NOT escaping the adcode
             rendered_html = f"""<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width={width}, initial-scale=1">
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        html, body {{ width: {width}px; height: {height}px; overflow: auto; background: white; }}
+        html, body {{ 
+            width: {width}px; 
+            height: {height}px; 
+            overflow: auto; 
+            background: white;
+            font-family: Arial, sans-serif;
+        }}
     </style>
 </head>
 <body>
-    {adcode}
+{adcode}
 </body>
 </html>"""
             
