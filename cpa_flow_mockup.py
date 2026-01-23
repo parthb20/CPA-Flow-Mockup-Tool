@@ -482,30 +482,20 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 # Show flow stats directly (no success messages)
                 if len(final_filtered) > 0:
-                    # Make a copy to avoid modifying the original
-                    stats_df = final_filtered.copy()
+                    # Get stats from the SPECIFIC flow record (not aggregated)
+                    # A flow is: Advertiser -> Campaign -> Publisher URL -> Keyword -> SERP URL -> Landing Page URL
+                    # Stats should be for THIS specific combination, not summed across multiple records
                     
-                    # Convert to numeric (handle any string values)
-                    stats_df['impressions'] = pd.to_numeric(stats_df['impressions'], errors='coerce').fillna(0)
-                    stats_df['clicks'] = pd.to_numeric(stats_df['clicks'], errors='coerce').fillna(0)
-                    stats_df['conversions'] = pd.to_numeric(stats_df['conversions'], errors='coerce').fillna(0)
+                    flow_imps = safe_int(current_flow.get('impressions', 0))
+                    flow_clicks = safe_int(current_flow.get('clicks', 0))
+                    flow_convs = safe_int(current_flow.get('conversions', 0))
                     
-                    flow_imps = int(stats_df['impressions'].sum())
-                    flow_clicks = int(stats_df['clicks'].sum())
-                    flow_convs = int(stats_df['conversions'].sum())
-                    
-                    # Weighted averages: CTR weighted by impressions, CVR weighted by clicks
+                    # Calculate rates for this specific flow
                     flow_ctr = (flow_clicks / flow_imps * 100) if flow_imps > 0 else 0
                     flow_cvr = (flow_convs / flow_clicks * 100) if flow_clicks > 0 else 0
                     
-                    # Get single view for other details (use max timestamp if available)
-                    if 'ts' in final_filtered.columns and final_filtered['ts'].notna().any():
-                        try:
-                            single_view = final_filtered.loc[final_filtered['ts'].idxmax()]
-                        except:
-                            single_view = final_filtered.iloc[0]
-                    else:
-                        single_view = final_filtered.iloc[0]
+                    # Use current_flow as single_view (it's already the selected flow record)
+                    single_view = current_flow
                     
                     render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs, flow_ctr, flow_cvr)
                 
