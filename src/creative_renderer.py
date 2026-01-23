@@ -385,6 +385,7 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
                 width, height = 300, 250
             
             # Ensure scripts can execute by NOT escaping the adcode
+            # Add error handling and loading indicator for external scripts
             rendered_html = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -400,10 +401,50 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
             background: white;
             font-family: Arial, sans-serif;
         }}
+        #ad-container {{
+            min-height: {height}px;
+            position: relative;
+        }}
+        #loading {{
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #999;
+            font-size: 12px;
+            display: none;
+        }}
+        .show-loading {{
+            display: block !important;
+        }}
     </style>
 </head>
 <body>
+<div id="ad-container">
+<div id="loading">Loading ad...</div>
 {adcode}
+</div>
+<script>
+    // Show loading indicator after 2 seconds if ad hasn't rendered
+    setTimeout(function() {{
+        var adContainer = document.getElementById('ad-container');
+        var hasContent = adContainer.children.length > 1 || 
+                        (adContainer.children.length === 1 && adContainer.children[0].id !== 'loading');
+        if (!hasContent) {{
+            document.getElementById('loading').className = 'show-loading';
+        }}
+    }}, 2000);
+    
+    // Error handling for failed script loads
+    window.addEventListener('error', function(e) {{
+        if (e.target.tagName === 'SCRIPT') {{
+            console.error('Script failed to load:', e.target.src);
+            document.getElementById('loading').textContent = 'Ad failed to load';
+            document.getElementById('loading').style.color = '#f44';
+            document.getElementById('loading').className = 'show-loading';
+        }}
+    }}, true);
+</script>
 </body>
 </html>"""
             
