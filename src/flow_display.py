@@ -982,24 +982,17 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         if adv_url and pd.notna(adv_url) and str(adv_url).strip():
             with landing_preview_container:
+                # ALWAYS try iframe FIRST - don't pre-check headers
+                iframe_blocked = False
                 try:
-                    head_response = requests.head(adv_url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'})
-                    x_frame = head_response.headers.get('X-Frame-Options', '').upper()
-                    csp = head_response.headers.get('Content-Security-Policy', '')
-                    iframe_blocked = ('DENY' in x_frame or 'SAMEORIGIN' in x_frame or 'frame-ancestors' in csp.lower())
-                except:
-                    iframe_blocked = False
-                
-                if not iframe_blocked:
-                    try:
-                        preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all, display_url=adv_url)
-                        preview_html = inject_unique_id(preview_html, 'landing_iframe', adv_url, device_all, current_flow)
-                        # Cap height at 650px to match other stage boxes
-                        display_height = 650
-                        st.components.v1.html(preview_html, height=display_height, scrolling=True)
-                        st.caption("📺 Iframe")
-                    except:
-                        iframe_blocked = True
+                    preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all, display_url=adv_url)
+                    preview_html = inject_unique_id(preview_html, 'landing_iframe', adv_url, device_all, current_flow)
+                    # Cap height at 650px to match other stage boxes
+                    display_height = 650
+                    st.components.v1.html(preview_html, height=display_height, scrolling=True)
+                    st.caption("📺 Iframe")
+                except Exception as e:
+                    iframe_blocked = True
                 
                 if iframe_blocked:
                     try:
@@ -1106,7 +1099,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 st.markdown("<h4 style='font-size: 20px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0;'><strong>🎯 Landing Page Details</strong></h4>", unsafe_allow_html=True)
                 st.markdown(f"""
                 <div style="margin-bottom: 6px; font-size: 14px;">
-                    {f'<div><strong style="color: #0f172a; font-size: 16px;">Landing Page URL:</strong> <a href="{adv_url}" style="color: #3b82f6; text-decoration: none; font-size: 13px;">{html.escape(str(adv_url))}</a></div>' if adv_url and pd.notna(adv_url) else ''}
+                    {f'<div><strong style="color: #0f172a; font-size: 16px;">Landing Page URL:</strong> <a href="{adv_url}" style="color: #3b82f6; text-decoration: none; font-size: 14px;">{html.escape(str(adv_url))}</a></div>' if adv_url and pd.notna(adv_url) else ''}
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -1127,7 +1120,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             adv_url = current_flow.get('Destination_Url', '') or current_flow.get('reporting_destination_url', '')
             st.markdown(f"""
             <div style='margin-top: 8px; font-size: 14px;'>
-                {f'<div><strong style="color: #0f172a; font-size: 16px;">Landing Page URL:</strong> <a href="{adv_url}" style="color: #3b82f6; text-decoration: none; font-size: 13px;">{html.escape(str(adv_url))}</a></div>' if adv_url and pd.notna(adv_url) else ''}
+                {f'<div><strong style="color: #0f172a; font-size: 16px;">Landing Page URL:</strong> <a href="{adv_url}" style="color: #3b82f6; text-decoration: none; font-size: 14px;">{html.escape(str(adv_url))}</a></div>' if adv_url and pd.notna(adv_url) else ''}
             </div>
             """, unsafe_allow_html=True)
     
@@ -1175,11 +1168,17 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         <style>
         /* Remove excess padding at page bottom */
         .main .block-container {
-            padding-bottom: 0.5rem !important;
+            padding-bottom: 0 !important;
             margin-bottom: 0 !important;
+            min-height: calc(100vh - 6rem) !important;
+            max-height: calc(100vh - 3rem) !important;
         }
         .element-container:last-child {
             margin-bottom: 0 !important;
+            padding-bottom: 0 !important;
+        }
+        section[data-testid="stSidebar"] + div {
+            padding-bottom: 0 !important;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -1189,13 +1188,27 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     <style>
     /* Global fix: Remove excess bottom padding everywhere */
     .main .block-container {
-        padding-bottom: 0.5rem !important;
+        padding-bottom: 0 !important;
+        padding-top: 2rem !important;
+        min-height: calc(100vh - 6rem) !important;
+        max-height: 100vh !important;
     }
     .stMarkdown:last-child, .element-container:last-child {
         margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
     }
     div[data-testid="stVerticalBlock"] > div:last-child {
         margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    /* Reduce table bottom margin */
+    div[data-testid="stDataFrame"], div[data-testid="stTable"] {
+        margin-bottom: 0.5rem !important;
+    }
+    /* Force page to fit viewport */
+    .main {
+        overflow-y: auto !important;
+        height: 100vh !important;
     }
     </style>
     """, unsafe_allow_html=True)
