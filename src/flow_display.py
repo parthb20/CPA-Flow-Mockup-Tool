@@ -1195,93 +1195,111 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             except:
                                 pass
                         
-                        # For redirect URLs that still haven't rendered, show message in device preview
+                        # For redirect URLs that still haven't rendered, try fetching with cleaned URL
                         if not rendered_successfully and is_redirect_url:
-                            # Create HTML content with message inside device frame
-                            message_html = f"""
-                            <!DOCTYPE html>
-                            <html>
-                            <head>
-                                <meta charset="UTF-8">
-                                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                                <style>
-                                    body {{
-                                        margin: 0;
-                                        padding: 20px;
-                                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-                                        background: #f8fafc;
-                                        display: flex;
-                                        align-items: center;
-                                        justify-content: center;
-                                        min-height: 100vh;
-                                    }}
-                                    .container {{
-                                        text-align: center;
-                                        padding: 32px;
-                                        background: white;
-                                        border-radius: 16px;
-                                        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-                                        max-width: 340px;
-                                    }}
-                                    .icon {{
-                                        font-size: 64px;
-                                        margin-bottom: 16px;
-                                    }}
-                                    h2 {{
-                                        color: #0f172a;
-                                        font-size: 20px;
-                                        margin: 0 0 12px 0;
-                                        font-weight: 700;
-                                    }}
-                                    p {{
-                                        color: #64748b;
-                                        font-size: 14px;
-                                        line-height: 1.6;
-                                        margin: 0 0 20px 0;
-                                    }}
-                                    .url {{
-                                        background: #f1f5f9;
-                                        padding: 8px 12px;
-                                        border-radius: 6px;
-                                        font-size: 11px;
-                                        color: #475569;
-                                        word-break: break-all;
-                                        margin-bottom: 20px;
-                                    }}
-                                    .button {{
-                                        display: inline-block;
-                                        background: #3b82f6;
-                                        color: white;
-                                        padding: 12px 24px;
-                                        border-radius: 8px;
-                                        text-decoration: none;
-                                        font-weight: 600;
-                                        font-size: 14px;
-                                        transition: background 0.2s;
-                                    }}
-                                    .button:hover {{
-                                        background: #2563eb;
-                                    }}
-                                </style>
-                            </head>
-                            <body>
-                                <div class="container">
-                                    <div class="icon">🔄</div>
-                                    <h2>Redirect URL</h2>
-                                    <p>This is a tracking/redirect URL that requires browser automation to display properly.</p>
-                                    <div class="url">{html.escape(str(adv_url)[:80])}...</div>
-                                    <a href="{adv_url}" target="_blank" class="button">🔗 Open Page</a>
-                                </div>
-                            </body>
-                            </html>
-                            """
+                            try:
+                                # Try fetching the cleaned URL directly
+                                headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+                                clean_response = requests.get(render_url, timeout=15, headers=headers, allow_redirects=True)
+                                
+                                if clean_response.status_code == 200:
+                                    # Successfully got HTML, try rendering it
+                                    page_html = decode_with_multiple_encodings(clean_response)
+                                    page_html = clean_and_prepare_html(page_html, render_url)
+                                    preview_html, display_height = render_html_with_proper_encoding(
+                                        page_html, device_all, 'landing_html_cleaned', render_url, current_flow, scrolling=True
+                                    )
+                                    st.components.v1.html(preview_html, height=display_height, scrolling=True)
+                                    st.caption("📄 HTML (cleaned URL)")
+                                    rendered_successfully = True
+                            except:
+                                pass
                             
-                            # Render in device preview
-                            preview_html, height, _ = render_mini_device_preview(message_html, is_url=False, device=device_all)
-                            preview_html = inject_unique_id(preview_html, 'landing_message', adv_url, device_all, current_flow)
-                            st.components.v1.html(preview_html, height=650, scrolling=False)
-                            st.caption("💡 Redirect URL - Browser automation required")
-                            rendered_successfully = True
+                            # If still not rendered, show message in device preview
+                            if not rendered_successfully:
+                                message_html = f"""
+                                <!DOCTYPE html>
+                                <html>
+                                <head>
+                                    <meta charset="UTF-8">
+                                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                    <style>
+                                        body {{
+                                            margin: 0;
+                                            padding: 20px;
+                                            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+                                            background: #f8fafc;
+                                            display: flex;
+                                            align-items: center;
+                                            justify-content: center;
+                                            min-height: 100vh;
+                                        }}
+                                        .container {{
+                                            text-align: center;
+                                            padding: 32px;
+                                            background: white;
+                                            border-radius: 16px;
+                                            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                                            max-width: 340px;
+                                        }}
+                                        .icon {{
+                                            font-size: 64px;
+                                            margin-bottom: 16px;
+                                        }}
+                                        h2 {{
+                                            color: #0f172a;
+                                            font-size: 20px;
+                                            margin: 0 0 12px 0;
+                                            font-weight: 700;
+                                        }}
+                                        p {{
+                                            color: #64748b;
+                                            font-size: 14px;
+                                            line-height: 1.6;
+                                            margin: 0 0 20px 0;
+                                        }}
+                                        .url {{
+                                            background: #f1f5f9;
+                                            padding: 8px 12px;
+                                            border-radius: 6px;
+                                            font-size: 11px;
+                                            color: #475569;
+                                            word-break: break-all;
+                                            margin-bottom: 20px;
+                                        }}
+                                        .button {{
+                                            display: inline-block;
+                                            background: #3b82f6;
+                                            color: white;
+                                            padding: 12px 24px;
+                                            border-radius: 8px;
+                                            text-decoration: none;
+                                            font-weight: 600;
+                                            font-size: 14px;
+                                            transition: background 0.2s;
+                                        }}
+                                        .button:hover {{
+                                            background: #2563eb;
+                                        }}
+                                    </style>
+                                </head>
+                                <body>
+                                    <div class="container">
+                                        <div class="icon">🔄</div>
+                                        <h2>Redirect URL</h2>
+                                        <p>This tracking URL requires browser automation to display properly.</p>
+                                        <div class="url">{html.escape(str(adv_url)[:80])}...</div>
+                                        <a href="{adv_url}" target="_blank" class="button">🔗 Open Page</a>
+                                    </div>
+                                </body>
+                                </html>
+                                """
+                                
+                                preview_html, height, _ = render_mini_device_preview(message_html, is_url=False, device=device_all)
+                                preview_html = inject_unique_id(preview_html, 'landing_message', adv_url, device_all, current_flow)
+                                st.components.v1.html(preview_html, height=650, scrolling=False)
+                                st.caption("💡 Redirect URL - Browser automation required")
+                                rendered_successfully = True
                     
                     elif response.status_code == 403:
                             if playwright_available:
