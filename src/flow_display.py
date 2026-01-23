@@ -441,22 +441,26 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 # Method 1: Try Playwright FIRST (most reliable, handles all cases)
                 if playwright_available:
                     try:
-                        with st.spinner("🔄 Loading..."):
+                        with st.spinner("🔄 Loading with browser..."):
                             page_html = capture_with_playwright(pub_url, device=device_all)
                             if page_html:
                                 if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
                                     preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                     preview_html = inject_unique_id(preview_html, 'pub_screenshot', pub_url, device_all, current_flow)
                                     st.components.v1.html(preview_html, height=height, scrolling=False)
-                                    st.caption("📸 Screenshot")
+                                    st.caption("📸 Screenshot (API)")
                                 else:
                                     preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                     preview_html = inject_unique_id(preview_html, 'pub_playwright', pub_url, device_all, current_flow)
                                     st.components.v1.html(preview_html, height=height, scrolling=False)
-                                    st.caption("🤖 Browser")
+                                    st.caption("🤖 Browser (Playwright)")
                                 rendered = True
-                    except:
-                        pass
+                            else:
+                                # Playwright returned None - show why
+                                st.info("💡 Playwright returned empty content, trying iframe...")
+                    except Exception as e:
+                        # Show error for debugging
+                        st.warning(f"⚠️ Playwright failed: {str(e)[:100]}")
                 
                 # Method 2: If Playwright unavailable/failed, try iframe
                 if not rendered:
