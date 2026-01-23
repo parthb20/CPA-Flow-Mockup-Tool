@@ -1005,23 +1005,39 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     if response.status_code == 200:
                         # SUCCESS: Render HTML directly
                         try:
-                            page_html = response.text
-                            if '<head>' in page_html:
-                                page_html = page_html.replace('<head>', '<head><meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">', 1)
+                            # Get content with proper encoding
+                            if response.encoding:
+                                page_html = response.text
                             else:
-                                page_html = '<head><meta charset="utf-8"></head>' + page_html
+                                response.encoding = 'utf-8'
+                                page_html = response.text
+                            
+                            # Ensure proper charset declaration
+                            if '<head>' in page_html.lower():
+                                page_html = re.sub(
+                                    r'<head[^>]*>',
+                                    lambda m: m.group(0) + '<meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">',
+                                    page_html,
+                                    count=1,
+                                    flags=re.IGNORECASE
+                                )
+                            else:
+                                page_html = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></head><body>' + page_html + '</body></html>'
+                            
+                            # Fix relative URLs
                             page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
                                               lambda m: f'src="{urljoin(adv_url, m.group(1))}"', page_html)
                             page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
                                               lambda m: f'href="{urljoin(adv_url, m.group(1))}"', page_html)
-                            preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                            
+                            preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all, use_srcdoc=True)
                             preview_html = inject_unique_id(preview_html, 'landing_html', adv_url, device_all, current_flow)
                             display_height = 650
                             st.components.v1.html(preview_html, height=display_height, scrolling=True)
                             st.caption("📄 HTML")
                             rendered_successfully = True
                         except Exception as html_error:
-                            pass  # Will try iframe below
+                            pass  # Will try Playwright below
                     
                     elif response.status_code == 403:
                             if playwright_available:
