@@ -313,8 +313,14 @@ def replace_kd_in_adcode(adcode, url_encoded_kd):
 
 def get_prerendered_creative(creative_id, creative_size, prerendered_df):
     """Get pre-rendered creative from File D"""
+    import streamlit as st
+    
     if prerendered_df is None or len(prerendered_df) == 0:
         return None
+    
+    # Debug: Show what we're looking for
+    # st.write(f"🔍 Looking for: creative_id={creative_id}, size={creative_size}")
+    # st.write(f"📊 File D has {len(prerendered_df)} rows")
     
     # Match creative_id and size
     matches = prerendered_df[
@@ -323,10 +329,17 @@ def get_prerendered_creative(creative_id, creative_size, prerendered_df):
     ]
     
     if len(matches) == 0:
+        # Debug: Show why no match
+        # st.warning(f"❌ No match in File D for {creative_id} x {creative_size}")
+        # matching_ids = prerendered_df[prerendered_df['creative_id'].astype(str) == str(creative_id)]
+        # if len(matching_ids) > 0:
+        #     st.write(f"Found creative_id {creative_id} but with sizes: {matching_ids['size'].unique().tolist()}")
         return None
     
     adcode = matches.iloc[0]['adcode']
     if pd.notna(adcode) and str(adcode).strip():
+        # Debug: Show success
+        # st.success(f"✅ Found adcode for {creative_id} x {creative_size} ({len(str(adcode))} chars)")
         return str(adcode)
     
     return None
@@ -361,9 +374,10 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
             <html>
             <head>
                 <meta charset="UTF-8">
+                <meta name="viewport" content="width={width}, initial-scale=1">
                 <style>
                     * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-                    body {{ width: {width}px; height: {height}px; overflow: auto; }}
+                    html, body {{ width: {width}px; height: {height}px; overflow: auto; }}
                 </style>
             </head>
             <body>
