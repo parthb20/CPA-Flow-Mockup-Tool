@@ -946,7 +946,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         else:
             st.markdown('<h3 style="font-size: 28px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0; font-family: system-ui;"><strong>🎯 Landing Page</strong></h3>', unsafe_allow_html=True)
         
-        adv_url = current_flow.get('reporting_destination_url', '')
+        # Use Destination_Url as the landing page URL
+        adv_url = current_flow.get('Destination_Url', '') or current_flow.get('reporting_destination_url', '')
         flow_clicks = current_flow.get('clicks', 0)
         
         # Landing URL will be shown BELOW card preview
