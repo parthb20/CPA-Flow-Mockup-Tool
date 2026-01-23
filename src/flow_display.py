@@ -474,9 +474,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 """, unsafe_allow_html=True)
                 st.markdown(f"""
                 <div style="margin-bottom: 6px; font-size: 14px;">
-                    <div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Domain</strong></div>
-                    <div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 14px;">{html.escape(str(current_dom))}</div>
-                    {f'<div style="margin-top: 6px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{current_url}" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
+                    <div style="font-weight: 900; color: #0f172a; font-size: 16px; margin-bottom: 2px;"><strong>Domain:</strong></div>
+                    <div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;">{html.escape(str(current_dom))}</div>
+                    {f'<div style="margin-top: 6px; font-weight: 900; color: #0f172a; font-size: 16px; margin-bottom: 2px;"><strong>URL:</strong></div><div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{current_url}" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
                 </div>
                 """, unsafe_allow_html=True)
         
@@ -485,9 +485,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             # Show info BELOW card preview in horizontal layout - ALWAYS show
             st.markdown(f"""
             <div style='margin-top: 8px; font-size: 14px;'>
-                <div style='font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;'><strong>Domain</strong></div>
-                <div style='margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 14px;'>{html.escape(str(current_dom))}</div>
-                {f'<div style="margin-top: 6px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{current_url}" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
+                <div style='font-weight: 900; color: #0f172a; font-size: 16px; margin-bottom: 2px;'><strong>Domain:</strong></div>
+                <div style='margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;'>{html.escape(str(current_dom))}</div>
+                {f'<div style="margin-top: 6px; font-weight: 900; color: #0f172a; font-size: 16px; margin-bottom: 2px;"><strong>URL:</strong></div><div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{current_url}" style="color: #3b82f6; text-decoration: none;">{html.escape(str(current_url))}</a></div>' if current_url and pd.notna(current_url) else ''}
             </div>
             """, unsafe_allow_html=True)
     
@@ -649,20 +649,20 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             
             st.markdown(f"""
             <div style='margin-top: 8px; margin-bottom: 6px;'>
-                <strong style='color: #0f172a; font-size: 14px;'>Keyword:</strong> 
-                <span style='color: #64748b; font-size: 14px;'>{html.escape(str(keyword))}</span>
+                <strong style='color: #0f172a; font-size: 16px;'>Keyword:</strong> 
+                <span style='color: #64748b; font-size: 13px;'>{html.escape(str(keyword))}</span>
             </div>
             <div style='margin-bottom: 6px;'>
-                <strong style='color: #0f172a; font-size: 14px;'>Creative ID:</strong> 
-                <span style='color: #64748b; font-size: 14px;'>{creative_id}</span>
+                <strong style='color: #0f172a; font-size: 16px;'>Creative ID:</strong> 
+                <span style='color: #64748b; font-size: 13px;'>{creative_id}</span>
             </div>
             <div style='margin-bottom: 6px;'>
-                <strong style='color: #0f172a; font-size: 14px;'>Size:</strong> 
-                <span style='color: #64748b; font-size: 14px;'>{creative_size}</span>
+                <strong style='color: #0f172a; font-size: 16px;'>Size:</strong> 
+                <span style='color: #64748b; font-size: 13px;'>{creative_size}</span>
             </div>
             <div style='margin-bottom: 0;'>
-                <strong style='color: #0f172a; font-size: 14px;'>Template:</strong> 
-                <span style='color: #64748b; font-size: 14px;'>{creative_name}</span>
+                <strong style='color: #0f172a; font-size: 16px;'>Template:</strong> 
+                <span style='color: #64748b; font-size: 13px;'>{creative_name}</span>
             </div>
             """, unsafe_allow_html=True)
             
@@ -672,6 +672,15 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     st.session_state.similarities = calculate_similarities(current_flow)
                 else:
                     st.session_state.similarities = {}
+            
+            # Add Keyword → Ad similarity for VERTICAL layout
+            if st.session_state.flow_layout == 'vertical':
+                if 'similarities' in st.session_state and st.session_state.similarities:
+                    st.markdown("<div style='margin-top: 12px;'></div>", unsafe_allow_html=True)
+                    render_similarity_score('kwd_to_ad', st.session_state.similarities,
+                                           custom_title="Keyword → Ad Copy Similarity",
+                                           tooltip_text="Measures how well the ad creative matches the search keyword. Higher scores indicate better keyword-ad alignment.",
+                                           max_height=1040)
     
     # Arrow divs removed - no longer needed
     
@@ -913,7 +922,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 st.markdown("<h4 style='font-size: 20px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0;'><strong>📄 SERP Details</strong></h4>", unsafe_allow_html=True)
                 st.markdown(f"""
                 <div style="margin-bottom: 6px; font-size: 14px;">
-                    <div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Template Key</strong></div>
+                    <div style="font-weight: 900; color: #0f172a; font-size: 16px; margin-bottom: 2px;"><strong>Template Key:</strong></div>
                     <div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;">{html.escape(str(serp_template_key))}</div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -924,7 +933,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             serp_template_key = current_flow.get('serp_template_key', 'N/A')
             st.markdown(f"""
             <div style='margin-top: 8px; font-size: 14px;'>
-                <div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Template Key</strong></div>
+                <div style="font-weight: 900; color: #0f172a; font-size: 16px; margin-bottom: 2px;"><strong>Template Key:</strong></div>
                 <div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;">{html.escape(str(serp_template_key))}</div>
             </div>
             """, unsafe_allow_html=True)
@@ -1096,7 +1105,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 st.markdown("<h4 style='font-size: 20px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0;'><strong>🎯 Landing Page Details</strong></h4>", unsafe_allow_html=True)
                 st.markdown(f"""
                 <div style="margin-bottom: 6px; font-size: 14px;">
-                    {f'<div><strong style="color: #0f172a; font-size: 14px;">Landing Page URL:</strong> <a href="{adv_url}" style="color: #3b82f6; text-decoration: none; font-size: 13px;">{html.escape(str(adv_url))}</a></div>' if adv_url and pd.notna(adv_url) else ''}
+                    {f'<div><strong style="color: #0f172a; font-size: 16px;">Landing Page URL:</strong> <a href="{adv_url}" style="color: #3b82f6; text-decoration: none; font-size: 13px;">{html.escape(str(adv_url))}</a></div>' if adv_url and pd.notna(adv_url) else ''}
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -1117,7 +1126,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             adv_url = current_flow.get('Destination_Url', '') or current_flow.get('reporting_destination_url', '')
             st.markdown(f"""
             <div style='margin-top: 8px; font-size: 14px;'>
-                {f'<div><strong style="color: #0f172a; font-size: 14px;">Landing Page URL:</strong> <a href="{adv_url}" style="color: #3b82f6; text-decoration: none; font-size: 13px;">{html.escape(str(adv_url))}</a></div>' if adv_url and pd.notna(adv_url) else ''}
+                {f'<div><strong style="color: #0f172a; font-size: 16px;">Landing Page URL:</strong> <a href="{adv_url}" style="color: #3b82f6; text-decoration: none; font-size: 13px;">{html.escape(str(adv_url))}</a></div>' if adv_url and pd.notna(adv_url) else ''}
             </div>
             """, unsafe_allow_html=True)
     
