@@ -438,22 +438,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             with preview_container:
                 rendered = False
                 
-                # ALWAYS try iframe first (fastest, browser handles encoding)
-                try:
-                    preview_html, height, _ = render_mini_device_preview(pub_url, is_url=True, device=device_all, display_url=pub_url)
-                    preview_html = inject_unique_id(preview_html, 'pub_iframe', pub_url, device_all, current_flow)
-                    display_height = height
-                    st.components.v1.html(preview_html, height=display_height, scrolling=False)
-                    if st.session_state.flow_layout != 'horizontal':
-                        st.caption("📺 Iframe")
-                    rendered = True
-                except:
-                    pass
-                
-                # Only if iframe failed, try Playwright
-                if not rendered and playwright_available:
+                # Method 1: Try Playwright FIRST (most reliable, handles all cases)
+                if playwright_available:
                     try:
-                        with st.spinner("🔄 Loading with browser..."):
+                        with st.spinner("🔄 Loading..."):
                             page_html = capture_with_playwright(pub_url, device=device_all)
                             if page_html:
                                 if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
@@ -470,8 +458,21 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     except:
                         pass
                 
+                # Method 2: If Playwright unavailable/failed, try iframe
                 if not rendered:
-                    st.error("❌ Could not load page")
+                    try:
+                        preview_html, height, _ = render_mini_device_preview(pub_url, is_url=True, device=device_all, display_url=pub_url)
+                        preview_html = inject_unique_id(preview_html, 'pub_iframe', pub_url, device_all, current_flow)
+                        st.components.v1.html(preview_html, height=height, scrolling=False)
+                        st.caption("📺 Iframe")
+                        rendered = True
+                    except:
+                        pass
+                
+                # Method 3: Last resort - show message with link
+                if not rendered:
+                    st.warning("⚠️ Could not load page preview")
+                    st.markdown(f"[🔗 Click here to open: {pub_url}]({pub_url})")
         else:
             with preview_container:
                 st.warning("⚠️ No valid publisher URL in data")
@@ -1033,18 +1034,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         # If URL was cleaned, use the clean version for rendering
                         render_url = clean_url if clean_url != str(adv_url) else adv_url
                         
-                        # Method 1: Try iframe ONLY for non-redirect URLs
-                        if not rendered_successfully and not is_redirect_url:
-                            try:
-                                preview_html, height, _ = render_mini_device_preview(render_url, is_url=True, device=device_all, display_url=render_url)
-                                preview_html = inject_unique_id(preview_html, 'landing_iframe', render_url, device_all, current_flow)
-                                st.components.v1.html(preview_html, height=650, scrolling=True)
-                                st.caption("📺 Iframe")
-                                rendered_successfully = True
-                            except:
-                                pass
-                        
-                        # Method 2: Try Playwright/Browser automation (for blocked sites, redirects)
+                        # Method 1: Try Playwright FIRST (most reliable)
                         if not rendered_successfully and playwright_available:
                             try:
                                 with st.spinner("🔄 Trying browser automation..."):
@@ -1067,7 +1057,18 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             except:
                                 pass
                         
-                        # Method 3: Try HTML rendering ONLY for normal URLs (not redirects)
+                        # Method 2: If Playwright unavailable/failed, try iframe (but not for redirect URLs)
+                        if not rendered_successfully and not is_redirect_url:
+                            try:
+                                preview_html, height, _ = render_mini_device_preview(render_url, is_url=True, device=device_all, display_url=render_url)
+                                preview_html = inject_unique_id(preview_html, 'landing_iframe', render_url, device_all, current_flow)
+                                st.components.v1.html(preview_html, height=650, scrolling=True)
+                                st.caption("📺 Iframe")
+                                rendered_successfully = True
+                            except:
+                                pass
+                        
+                        # Method 3: Try HTML rendering with cleaned URL (last technical attempt)
                         if not rendered_successfully and not is_redirect_url:
                             try:
                                 page_html = decode_with_multiple_encodings(response)
