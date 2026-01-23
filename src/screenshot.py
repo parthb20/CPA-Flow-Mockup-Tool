@@ -164,5 +164,7 @@ def capture_with_playwright(url, device='mobile'):
                 return f'<!-- SCREENSHOT_FALLBACK --><img src="{screenshot_url}" style="width:100%;height:auto;" />'
         # Log error for debugging (will be caught by caller)
         import traceback
-        print(f"Playwright error for {url}: {traceback.format_exc()}")
-        return None
+        error_details = traceback.format_exc()
+        print(f"Playwright error for {url}: {error_details}")
+        # Raise exception so caller can catch and display it
+        raise Exception(f"Playwright capture failed: {str(e)[:200]}")
