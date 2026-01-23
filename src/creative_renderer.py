@@ -450,6 +450,10 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
     console.log('Creative container loaded at: {cache_bust}');
     console.log('Creative size: {width}x{height}');
     
+    // Track if content was ever detected
+    var contentDetected = false;
+    var contentRemoved = false;
+    
     // Hide loading once ad content is detected
     var checkInterval = setInterval(function() {{
         var adContainer = document.getElementById('ad-container');
@@ -467,14 +471,33 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
         // Also check for dynamically inserted content
         if (adContainer.querySelector('iframe') || 
             adContainer.querySelector('ins') ||
+            adContainer.querySelector('div[id^="pfm"]') ||
+            adContainer.querySelector('div[id^="mn"]') ||
             document.body.children.length > 1) {{
             hasAdContent = true;
         }}
         
+        // Check document height/scrollHeight for content
+        if (document.body.scrollHeight > 300 || document.documentElement.scrollHeight > 300) {{
+            hasAdContent = true;
+        }}
+        
         if (hasAdContent) {{
+            if (!contentDetected) {{
+                contentDetected = true;
+                console.log('Ad content detected');
+            }}
             loadingDiv.className = 'hide-loading';
-            clearInterval(checkInterval);
-            console.log('Ad content detected, hiding loading indicator');
+        }} else if (contentDetected && !hasAdContent) {{
+            // Content was detected before but now it's gone
+            if (!contentRemoved) {{
+                contentRemoved = true;
+                console.warn('Ad content was removed (fraud detection or viewability check)');
+                loadingDiv.innerHTML = '⚠️ Ad loaded then removed<br><small>Network validation check failed</small>';
+                loadingDiv.style.color = '#ff8800';
+                loadingDiv.style.fontSize = '11px';
+                loadingDiv.className = 'show-loading';
+            }}
         }}
     }}, 500);
     
