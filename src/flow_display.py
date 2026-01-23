@@ -982,51 +982,48 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         if adv_url and pd.notna(adv_url) and str(adv_url).strip():
             with landing_preview_container:
-                # Check if iframe will be blocked by checking headers
-                iframe_blocked = True
-                try:
-                    head_response = requests.head(adv_url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'})
-                    x_frame = head_response.headers.get('X-Frame-Options', '').upper()
-                    csp = head_response.headers.get('Content-Security-Policy', '')
-                    if not ('DENY' in x_frame or 'SAMEORIGIN' in x_frame or 'frame-ancestors' in csp.lower()):
-                        iframe_blocked = False
-                except:
-                    iframe_blocked = False  # If we can't check, try iframe anyway
-                
-                # Try iframe ONLY if not blocked
+                # Try fetching and rendering HTML FIRST (most reliable)
                 rendered_successfully = False
-                if not iframe_blocked:
-                    try:
-                        preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all, display_url=adv_url)
-                        preview_html = inject_unique_id(preview_html, 'landing_iframe', adv_url, device_all, current_flow)
-                        display_height = 650
-                        st.components.v1.html(preview_html, height=display_height, scrolling=True)
-                        st.caption("📺 Iframe")
-                        rendered_successfully = True
-                    except:
-                        pass  # Will try HTML below
-                
-                # If iframe blocked or failed, fetch and render HTML directly
-                if not rendered_successfully:
-                    try:
-                        headers = {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                            'Accept-Language': 'en-US,en;q=0.9',
-                            'Accept-Encoding': 'gzip, deflate, br',
-                            'DNT': '1',
-                            'Connection': 'keep-alive',
-                            'Upgrade-Insecure-Requests': '1',
-                            'Sec-Fetch-Dest': 'document',
-                            'Sec-Fetch-Mode': 'navigate',
-                            'Sec-Fetch-Site': 'none',
-                            'Cache-Control': 'max-age=0'
-                        }
-                        
-                        session = requests.Session()
-                        response = session.get(adv_url, timeout=15, headers=headers, allow_redirects=True)
-                        
-                        if response.status_code == 403:
+                try:
+                    headers = {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Accept-Encoding': 'gzip, deflate, br',
+                        'DNT': '1',
+                        'Connection': 'keep-alive',
+                        'Upgrade-Insecure-Requests': '1',
+                        'Sec-Fetch-Dest': 'document',
+                        'Sec-Fetch-Mode': 'navigate',
+                        'Sec-Fetch-Site': 'none',
+                        'Cache-Control': 'max-age=0'
+                    }
+                    
+                    session = requests.Session()
+                    response = session.get(adv_url, timeout=15, headers=headers, allow_redirects=True)
+                    
+                    if response.status_code == 200:
+                        # SUCCESS: Render HTML directly
+                        try:
+                            page_html = response.text
+                            if '<head>' in page_html:
+                                page_html = page_html.replace('<head>', '<head><meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">', 1)
+                            else:
+                                page_html = '<head><meta charset="utf-8"></head>' + page_html
+                            page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
+                                              lambda m: f'src="{urljoin(adv_url, m.group(1))}"', page_html)
+                            page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
+                                              lambda m: f'href="{urljoin(adv_url, m.group(1))}"', page_html)
+                            preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                            preview_html = inject_unique_id(preview_html, 'landing_html', adv_url, device_all, current_flow)
+                            display_height = 650
+                            st.components.v1.html(preview_html, height=display_height, scrolling=True)
+                            st.caption("📄 HTML")
+                            rendered_successfully = True
+                        except Exception as html_error:
+                            pass  # Will try iframe below
+                    
+                    elif response.status_code == 403:
                             if playwright_available:
                                 try:
                                     with st.spinner("🔄 Trying browser automation..."):
@@ -1052,26 +1049,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             else:
                                 st.warning("🚫 Could not load page")
                                 st.markdown(f"[🔗 Open landing page]({adv_url})")
-                        elif response.status_code == 200:
-                            try:
-                                page_html = response.text
-                                if '<head>' in page_html:
-                                    page_html = page_html.replace('<head>', '<head><meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">', 1)
-                                else:
-                                    page_html = '<head><meta charset="utf-8"></head>' + page_html
-                                page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
-                                                  lambda m: f'src="{urljoin(adv_url, m.group(1))}"', page_html)
-                                page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
-                                                  lambda m: f'href="{urljoin(adv_url, m.group(1))}"', page_html)
-                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                preview_html = inject_unique_id(preview_html, 'landing_html', adv_url, device_all, current_flow)
-                                # Cap height at 650px to match other stage boxes
-                                display_height = 650
-                                st.components.v1.html(preview_html, height=display_height, scrolling=True)
-                                st.caption("📄 HTML")
-                            except Exception as html_error:
-                                st.error(f"❌ HTML rendering failed: {str(html_error)[:100]}")
-                        else:
+                    
+                    else:
+                        # Other status codes - try Playwright or iframe
+                        if not rendered_successfully:
                             if playwright_available:
                                 try:
                                     with st.spinner("🔄 Trying browser automation..."):
@@ -1080,27 +1061,38 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                             if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
                                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                                 preview_html = inject_unique_id(preview_html, 'landing_screenshot_fallback', adv_url, device_all, current_flow)
-                                                # Cap height at 650px to match other stage boxes
                                                 display_height = 650
                                                 st.components.v1.html(preview_html, height=display_height, scrolling=True)
                                                 if st.session_state.flow_layout != 'horizontal':
                                                     st.caption("📸 Screenshot (ScreenshotOne API)")
+                                                rendered_successfully = True
                                             else:
                                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                                 preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
-                                                # Cap height at 650px to match other stage boxes
                                                 display_height = 650
                                                 st.components.v1.html(preview_html, height=display_height, scrolling=True)
                                                 if st.session_state.flow_layout != 'horizontal':
                                                     st.caption("🤖 Rendered via browser automation")
+                                                rendered_successfully = True
                                         else:
                                             raise Exception("Playwright returned empty HTML")
                                 except Exception:
                                     st.error(f"❌ HTTP {response.status_code}")
                             else:
                                 st.error(f"❌ HTTP {response.status_code}")
-                    except Exception as e:
-                        st.error(f"❌ {str(e)[:100]}")
+                
+                except Exception as e:
+                    # If HTML fetch completely failed, try iframe as last resort
+                    if not rendered_successfully:
+                        try:
+                            preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all, display_url=adv_url)
+                            preview_html = inject_unique_id(preview_html, 'landing_iframe_fallback', adv_url, device_all, current_flow)
+                            display_height = 650
+                            st.components.v1.html(preview_html, height=display_height, scrolling=True)
+                            st.caption("📺 Iframe (HTML fetch failed)")
+                            rendered_successfully = True
+                        except:
+                            st.error(f"❌ Could not load page: {str(e)[:100]}")
         else:
             with landing_preview_container:
                 st.warning("No landing page URL")
