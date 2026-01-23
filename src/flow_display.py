@@ -1147,16 +1147,13 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         # If URL was cleaned, use the clean version for rendering
                         render_url = clean_url if clean_url != str(adv_url) else adv_url
                         
-                        # Method 1: Try iframe (fastest, works for most sites) - Use clean URL
-                        if not rendered_successfully:
+                        # Method 1: Try iframe ONLY for non-redirect URLs
+                        if not rendered_successfully and not is_redirect_url:
                             try:
                                 preview_html, height, _ = render_mini_device_preview(render_url, is_url=True, device=device_all, display_url=render_url)
                                 preview_html = inject_unique_id(preview_html, 'landing_iframe', render_url, device_all, current_flow)
                                 st.components.v1.html(preview_html, height=650, scrolling=True)
-                                if clean_url != str(adv_url):
-                                    st.caption("📺 Iframe (cleaned URL)")
-                                else:
-                                    st.caption("📺 Iframe")
+                                st.caption("📺 Iframe")
                                 rendered_successfully = True
                             except:
                                 pass
