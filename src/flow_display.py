@@ -77,7 +77,7 @@ def decode_with_multiple_encodings(response):
 
 
 def clean_and_prepare_html(page_html, base_url):
-    """Clean HTML and add proper encoding declarations"""
+    """Clean HTML and add proper encoding declarations + base tag for CSS/JS loading"""
     # Remove BOM markers
     page_html = page_html.lstrip('\ufeff\ufffe\u200b')
     
@@ -88,11 +88,15 @@ def clean_and_prepare_html(page_html, base_url):
     # Remove ALL existing charset declarations
     page_html = re.sub(r'<meta[^>]*charset[^>]*>', '', page_html, flags=re.IGNORECASE)
     
-    # Add UTF-8 charset as FIRST meta tag
+    # Remove existing base tags
+    page_html = re.sub(r'<base[^>]*>', '', page_html, flags=re.IGNORECASE)
+    
+    # Add UTF-8 charset + BASE TAG as FIRST meta tags
+    # The base tag tells the browser where to load CSS/JS/images from
     if '<head>' in page_html.lower():
         page_html = re.sub(
             r'(<head[^>]*>)',
-            r'\1\n<meta charset="UTF-8">\n<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">',
+            f'\\1\n<meta charset="UTF-8">\n<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">\n<base href="{base_url}">',
             page_html,
             count=1,
             flags=re.IGNORECASE
@@ -100,13 +104,13 @@ def clean_and_prepare_html(page_html, base_url):
     else:
         page_html = re.sub(
             r'(<html[^>]*>)',
-            r'\1\n<head>\n<meta charset="UTF-8">\n<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">\n</head>',
+            f'\\1\n<head>\n<meta charset="UTF-8">\n<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">\n<base href="{base_url}">\n</head>',
             page_html,
             count=1,
             flags=re.IGNORECASE
         )
     
-    # Fix relative URLs
+    # Fix relative URLs (belt and suspenders - base tag should handle this, but we do it anyway)
     page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
                       lambda m: f'src="{urljoin(base_url, m.group(1))}"', page_html)
     page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
