@@ -647,12 +647,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             creative_name = current_flow.get('creative_template_name', 'N/A')
             keyword = current_flow.get('keyword_term', 'N/A')
             
-            # Add spacing to align with heading in vertical layout
-            if st.session_state.flow_layout == 'vertical':
-                st.markdown("<div style='margin-top: 0;'></div>", unsafe_allow_html=True)
-            
+            # Details start at same position as heading (no extra margin for vertical)
             st.markdown(f"""
-            <div style='margin-top: 8px; margin-bottom: 6px;'>
+            <div style='margin-top: 0; margin-bottom: 6px;'>
                 <strong style='color: #0f172a; font-size: 16px;'>Keyword:</strong> 
                 <span style='color: #64748b; font-size: 13px;'>{html.escape(str(keyword))}</span>
             </div>
@@ -683,7 +680,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     st.markdown("<div style='margin-top: 12px;'></div>", unsafe_allow_html=True)
                     render_similarity_score('kwd_to_ad', st.session_state.similarities,
                                            custom_title="Keyword → Ad Copy Similarity",
-                                           tooltip_text="Measures how well the ad creative matches the search keyword. Higher scores indicate better keyword-ad alignment.",
+                                           tooltip_text="Measures keyword-ad alignment. 70%+ = Good Match (keywords clearly in ad copy), 40-69% = Fair Match (topic relevance present), <40% = Poor Match (weak/no connection)",
                                            max_height=1040)
     
     # Arrow divs removed - no longer needed
@@ -917,7 +914,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 if 'similarities' in st.session_state and st.session_state.similarities:
                     render_similarity_score('ad_to_page', st.session_state.similarities,
                                            custom_title="Ad Copy → Landing Page Similarity",
-                                           tooltip_text="Measures how well the landing page fulfills the promises made in the ad copy. Higher scores indicate better ad-page consistency.")
+                                           tooltip_text="Measures ad-to-page consistency. 70%+ = Good Match (page delivers on ad promises), 40-69% = Fair Match (partial fulfillment), <40% = Poor Match (misleading ad copy)")
                 
                 # Show SERP details with Template Key only (not URL)
                 serp_template_key = current_flow.get('serp_template_key', 'N/A')
