@@ -353,20 +353,8 @@ def get_prerendered_creative(creative_id, creative_size, prerendered_df):
     if pd.notna(adcode) and str(adcode).strip():
         adcode_str = str(adcode)
         
-        # Already cleaned during File D loading, but double-check
-        import html
-        adcode_str = html.unescape(adcode_str)
-        
-        # Validate the adcode
-        if not adcode_str or len(adcode_str.strip()) < 50:
-            st.error(f"❌ Creative {creative_id}: Adcode too short ({len(adcode_str)} chars)")
-            return None
-        
-        if '<script>' not in adcode_str.lower() and '<iframe>' not in adcode_str.lower():
-            st.error(f"❌ Creative {creative_id}: No <script> or <iframe> tag found")
-            st.text(f"First 500 chars: {adcode_str[:500]}")
-            return None
-        
+        # Already cleaned during File D loading (html.unescape + utf-8 encoding)
+        # Just return it as-is
         return adcode_str
     
     return None
