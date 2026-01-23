@@ -241,13 +241,26 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
     
     data = similarities_data.get(score_type, {})
     
-    # Show title first, then handle missing/error data
+    # Show title first (left-aligned), then handle missing/error data
     title_text = custom_title or f"{score_type} Similarity"
+    
+    # Determine default tooltip if not provided
+    if not tooltip_text:
+        if score_type == 'kwd_to_ad':
+            tooltip_text = "Measures keyword-ad alignment. 70%+ = Good Match (keywords appear in ad), 40-69% = Fair Match (topic relevance), <40% = Poor Match (weak connection)"
+        elif score_type == 'ad_to_page':
+            tooltip_text = "Measures ad-to-page consistency. 70%+ = Good Match (landing page delivers on ad promises), 40-69% = Fair Match (partial alignment), <40% = Poor Match (misleading ad)"
+        elif score_type == 'kwd_to_page':
+            tooltip_text = "Measures end-to-end flow quality. 70%+ = Good Match (keyword intent matches landing page), 40-69% = Fair Match (some relevance), <40% = Poor Match (poor user experience)"
+        else:
+            tooltip_text = "Similarity score measuring alignment. 70%+ = Good, 40-69% = Fair, <40% = Poor"
+    
     st.markdown(f"""
-    <div style="margin-bottom: 8px; display: flex; align-items: center; justify-content: center;">
+    <div style="margin-bottom: 8px; display: flex; align-items: center; justify-content: flex-start;">
         <span style="font-weight: 900; color: #0f172a; font-size: 18px;">
             <strong>{title_text}</strong>
         </span>
+        <span title="{tooltip_text}" style="cursor: help; color: #3b82f6; font-size: 13px; margin-left: 6px;">ℹ️</span>
     </div>
     """, unsafe_allow_html=True)
     
