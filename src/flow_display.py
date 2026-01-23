@@ -982,21 +982,32 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         if adv_url and pd.notna(adv_url) and str(adv_url).strip():
             with landing_preview_container:
-                # ALWAYS try iframe FIRST - don't pre-check headers
-                iframe_success = False
+                # Check if iframe will be blocked by checking headers
+                iframe_blocked = True
                 try:
-                    preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all, display_url=adv_url)
-                    preview_html = inject_unique_id(preview_html, 'landing_iframe', adv_url, device_all, current_flow)
-                    # Cap height at 650px to match other stage boxes
-                    display_height = 650
-                    st.components.v1.html(preview_html, height=display_height, scrolling=True)
-                    st.caption("📺 Iframe")
-                    iframe_success = True
-                except Exception as e:
-                    pass  # Will try HTML fetch below
+                    head_response = requests.head(adv_url, timeout=5, headers={'User-Agent': 'Mozilla/5.0'})
+                    x_frame = head_response.headers.get('X-Frame-Options', '').upper()
+                    csp = head_response.headers.get('Content-Security-Policy', '')
+                    if not ('DENY' in x_frame or 'SAMEORIGIN' in x_frame or 'frame-ancestors' in csp.lower()):
+                        iframe_blocked = False
+                except:
+                    iframe_blocked = False  # If we can't check, try iframe anyway
                 
-                # If iframe failed, try fetching HTML directly
-                if not iframe_success:
+                # Try iframe ONLY if not blocked
+                rendered_successfully = False
+                if not iframe_blocked:
+                    try:
+                        preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all, display_url=adv_url)
+                        preview_html = inject_unique_id(preview_html, 'landing_iframe', adv_url, device_all, current_flow)
+                        display_height = 650
+                        st.components.v1.html(preview_html, height=display_height, scrolling=True)
+                        st.caption("📺 Iframe")
+                        rendered_successfully = True
+                    except:
+                        pass  # Will try HTML below
+                
+                # If iframe blocked or failed, fetch and render HTML directly
+                if not rendered_successfully:
                     try:
                         headers = {
                             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
