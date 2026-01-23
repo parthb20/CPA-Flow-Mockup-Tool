@@ -417,22 +417,71 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                 st.warning("🚫 Could not load page")
                         elif response.status_code == 200:
                             try:
-                                page_html = response.text
-                                if '<head>' in page_html:
-                                    page_html = page_html.replace('<head>', '<head><meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">', 1)
+                                # Detect proper encoding (same logic as Landing Page)
+                                if response.apparent_encoding:
+                                    response.encoding = response.apparent_encoding
                                 else:
-                                    page_html = '<head><meta charset="utf-8"></head>' + page_html
+                                    response.encoding = 'utf-8'
+                                
+                                # Get decoded content
+                                try:
+                                    page_html = response.text
+                                except (UnicodeDecodeError, LookupError):
+                                    page_html = response.content.decode('utf-8', errors='replace')
+                                
+                                # Basic HTML check - don't be too strict
+                                if not any(tag in page_html.lower()[:2000] for tag in ['<html', '<head', '<body', '<div', '<script']):
+                                    raise Exception("Not valid HTML")
+                                
+                                # Add proper charset declaration
+                                if '<!DOCTYPE' not in page_html.upper()[:100]:
+                                    page_html = '<!DOCTYPE html>\n' + page_html
+                                
+                                if '<head>' in page_html.lower():
+                                    page_html = re.sub(
+                                        r'(<head[^>]*>)',
+                                        r'\1<meta charset="UTF-8"><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">',
+                                        page_html,
+                                        count=1,
+                                        flags=re.IGNORECASE
+                                    )
+                                else:
+                                    page_html = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>' + page_html + '</body></html>'
+                                
+                                # Fix relative URLs
                                 page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
                                                   lambda m: f'src="{urljoin(pub_url, m.group(1))}"', page_html)
                                 page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
                                                   lambda m: f'href="{urljoin(pub_url, m.group(1))}"', page_html)
-                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                
+                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all, use_srcdoc=True)
                                 preview_html = inject_unique_id(preview_html, 'pub_html', pub_url, device_all, current_flow)
                                 display_height = height
                                 st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                 st.caption("📄 HTML")
                             except Exception as html_error:
-                                st.error(f"❌ HTML rendering failed: {str(html_error)[:100]}")
+                                # Try Playwright as fallback
+                                if playwright_available:
+                                    try:
+                                        with st.spinner("🔄 Trying browser automation..."):
+                                            page_html = capture_with_playwright(pub_url, device=device_all)
+                                            if page_html:
+                                                if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
+                                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                                    preview_html = inject_unique_id(preview_html, 'pub_screenshot_fallback', pub_url, device_all, current_flow)
+                                                    st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                    st.caption("📸 Screenshot (ScreenshotOne API)")
+                                                else:
+                                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                                    preview_html = inject_unique_id(preview_html, 'pub_playwright', pub_url, device=device_all)
+                                                    st.components.v1.html(preview_html, height=height, scrolling=False)
+                                                    st.caption("🤖 Rendered via browser")
+                                            else:
+                                                raise Exception("Playwright returned empty")
+                                    except:
+                                        st.error(f"❌ HTML encoding error: {str(html_error)[:100]}")
+                                else:
+                                    st.error(f"❌ HTML encoding error: {str(html_error)[:100]}")
                         else:
                             if playwright_available:
                                 try:
@@ -1003,41 +1052,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     response = session.get(adv_url, timeout=15, headers=headers, allow_redirects=True)
                     
                     if response.status_code == 200:
-                        # Check if this is a redirect/tracking URL that needs JavaScript
-                        is_redirect_page = any(domain in str(adv_url).lower() for domain in ['htrk', 'track', 'redirect', 'aff_c', 'click', 'goto'])
-                        
-                        # For redirect pages, skip HTML rendering and go straight to Playwright
-                        if is_redirect_page and playwright_available:
-                            try:
-                                with st.spinner("🔄 Loading redirect page..."):
-                                    page_html = capture_with_playwright(adv_url, device=device_all)
-                                    if page_html:
-                                        if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
-                                            preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                            preview_html = inject_unique_id(preview_html, 'landing_screenshot_fallback', adv_url, device_all, current_flow)
-                                            st.components.v1.html(preview_html, height=650, scrolling=True)
-                                            st.caption("📸 Screenshot (ScreenshotOne API)")
-                                        else:
-                                            preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                            preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
-                                            st.components.v1.html(preview_html, height=650, scrolling=True)
-                                            st.caption("🤖 Rendered via browser")
-                                        rendered_successfully = True
-                                    else:
-                                        raise Exception("Playwright returned empty")
-                            except Exception:
-                                pass  # Will try HTML below
-                        
-                        # Try HTML rendering for normal pages (or if Playwright failed)
+                        # Try HTML rendering first for all pages
                         if not rendered_successfully:
                             try:
-                                # Check content type
-                                content_type = response.headers.get('content-type', '').lower()
-                                
-                                # Skip if not HTML
-                                if 'html' not in content_type and content_type:
-                                    raise Exception(f"Not HTML content: {content_type}")
-                                
                                 # Detect proper encoding
                                 if response.apparent_encoding:
                                     response.encoding = response.apparent_encoding
@@ -1051,17 +1068,12 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                     # Try UTF-8 with error handling
                                     page_html = response.content.decode('utf-8', errors='replace')
                                 
-                                # Check if content looks like valid HTML
+                                # Basic HTML check - don't be too strict
                                 html_indicators = ['<html', '<head', '<body', '<!doctype', '<div', '<script']
-                                has_html = any(indicator in page_html.lower()[:1000] for indicator in html_indicators)
+                                has_html = any(indicator in page_html.lower()[:2000] for indicator in html_indicators)
                                 
                                 if not has_html:
                                     raise Exception("Content doesn't look like HTML")
-                                
-                                # Check for too many replacement characters (indicating encoding issues)
-                                replacement_char_count = page_html[:2000].count('�')
-                                if replacement_char_count > 50:
-                                    raise Exception(f"Too many encoding errors ({replacement_char_count} replacement chars)")
                                 
                                 # Ensure proper HTML structure
                                 if '<!DOCTYPE' not in page_html.upper()[:100]:
