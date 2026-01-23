@@ -128,6 +128,11 @@ def load_prerendered_responses(file_id):
             df = df[df['status'] == 'success'].copy()
         df = df[df['adcode'].notna()].copy()
         
+        # CRITICAL FIX: Unescape HTML entities in adcode column
+        # CSV may have escaped < > & " ' as &lt; &gt; &amp; &quot; &#39;
+        import html
+        df['adcode'] = df['adcode'].apply(lambda x: html.unescape(str(x)) if pd.notna(x) else x)
+        
         return df
         
     except Exception as e:
