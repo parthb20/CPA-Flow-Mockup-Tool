@@ -898,27 +898,26 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                            custom_title="Ad Copy → Landing Page Similarity",
                                            tooltip_text="Measures how well the landing page fulfills the promises made in the ad copy. Higher scores indicate better ad-page consistency.")
                 
-                # NOW show SERP details with URL first, then Template below
-                serp_name = current_flow.get('serp_template_name', current_flow.get('serp_template_id', 'N/A'))
-                serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
+                # Show SERP details with Template Key only (not URL)
+                serp_template_key = current_flow.get('serp_template_key', 'N/A')
                 
                 st.markdown("<div style='margin-top: 6px;'></div>", unsafe_allow_html=True)
                 st.markdown("<h4 style='font-size: 20px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0;'><strong>📄 SERP Details</strong></h4>", unsafe_allow_html=True)
                 st.markdown(f"""
                 <div style="margin-bottom: 6px; font-size: 14px;">
-                    {f'<div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{serp_url}" style="color: #3b82f6; text-decoration: none;">{html.escape(str(serp_url))}</a></div>' if serp_url and serp_url != 'N/A' else ''}
-                    <div style="margin-top: 6px; font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Template</strong></div>
-                    <div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;">{html.escape(str(serp_name))}</div>
+                    <div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Template Key</strong></div>
+                    <div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;">{html.escape(str(serp_template_key))}</div>
                 </div>
                 """, unsafe_allow_html=True)
         
         # Close wrapper div for horizontal layout
         if st.session_state.flow_layout == 'horizontal':
-            # Show SERP URL BELOW card preview in horizontal layout (no Template line)
-            serp_url = SERP_BASE_URL + str(current_flow.get('serp_template_key', '')) if current_flow.get('serp_template_key') else 'N/A'
+            # Show SERP Template Key BELOW card preview in horizontal layout
+            serp_template_key = current_flow.get('serp_template_key', 'N/A')
             st.markdown(f"""
             <div style='margin-top: 8px; font-size: 14px;'>
-                {f'<div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>URL</strong></div><div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{serp_url}" style="color: #3b82f6; text-decoration: none;">{html.escape(str(serp_url))}</a></div>' if serp_url and serp_url != 'N/A' else ''}
+                <div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Template Key</strong></div>
+                <div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;">{html.escape(str(serp_template_key))}</div>
             </div>
             """, unsafe_allow_html=True)
     
