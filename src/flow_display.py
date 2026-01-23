@@ -1132,34 +1132,45 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     response = session.get(adv_url, timeout=15, headers=headers, allow_redirects=True)
                     
                     if response.status_code == 200:
-                        # Check if this is a redirect/tracking URL
-                        is_redirect_url = any(keyword in str(adv_url).lower() 
-                                            for keyword in ['htrk', 'track', 'redirect', 'aff_c', 'aff_', 'click', 'goto', '/c?', '/aff?'])
+                        # Try multiple rendering methods in order until one works
                         
-                        # For redirect URLs, use Playwright directly (most reliable for redirects)
-                        if is_redirect_url and playwright_available:
+                        # Method 1: Try iframe (fastest, works for most sites)
+                        if not rendered_successfully:
                             try:
-                                with st.spinner("🔄 Loading redirect page..."):
+                                preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all, display_url=adv_url)
+                                preview_html = inject_unique_id(preview_html, 'landing_iframe', adv_url, device_all, current_flow)
+                                st.components.v1.html(preview_html, height=650, scrolling=True)
+                                st.caption("📺 Iframe")
+                                rendered_successfully = True
+                            except:
+                                pass
+                        
+                        # Method 2: Try Playwright/Browser automation (for blocked sites, redirects)
+                        if not rendered_successfully and playwright_available:
+                            try:
+                                with st.spinner("🔄 Trying browser automation..."):
                                     page_html = capture_with_playwright(adv_url, device=device_all)
                                     if page_html:
                                         if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
+                                            # Screenshot API was used
                                             preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                             preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
                                             st.components.v1.html(preview_html, height=650, scrolling=True)
                                             st.caption("📸 Screenshot")
+                                            rendered_successfully = True
                                         else:
+                                            # Full HTML from Playwright
                                             preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                             preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
                                             st.components.v1.html(preview_html, height=650, scrolling=True)
                                             st.caption("🤖 Browser")
-                                        rendered_successfully = True
+                                            rendered_successfully = True
                             except:
-                                pass  # Will try HTML rendering below
+                                pass
                         
-                        # If Playwright not available or failed for redirect URLs, try HTML rendering
-                        if is_redirect_url and not rendered_successfully:
+                        # Method 3: Try HTML rendering with encoding fix (for pages with encoding issues)
+                        if not rendered_successfully:
                             try:
-                                # Use comprehensive encoding detection
                                 page_html = decode_with_multiple_encodings(response)
                                 page_html = clean_and_prepare_html(page_html, adv_url)
                                 preview_html, display_height = render_html_with_proper_encoding(
@@ -1168,52 +1179,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                 st.components.v1.html(preview_html, height=display_height, scrolling=True)
                                 st.caption("📄 HTML")
                                 rendered_successfully = True
-                            except Exception as e:
-                                # For redirect URLs that fail HTML rendering, try Playwright
-                                if not rendered_successfully and playwright_available:
-                                    try:
-                                        with st.spinner("🔄 Loading redirect page..."):
-                                            page_html = capture_with_playwright(adv_url, device=device_all)
-                                            if page_html:
-                                                if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
-                                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                                    preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
-                                                    st.components.v1.html(preview_html, height=650, scrolling=True)
-                                                    st.caption("📸 Screenshot")
-                                                else:
-                                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                                    preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
-                                                    st.components.v1.html(preview_html, height=650, scrolling=True)
-                                                    st.caption("🤖 Browser")
-                                                rendered_successfully = True
-                                    except:
-                                        pass
-                        else:
-                            # For normal URLs, try iframe first (fastest)
-                            if not rendered_successfully:
-                                try:
-                                    preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all, display_url=adv_url)
-                                    preview_html = inject_unique_id(preview_html, 'landing_iframe', adv_url, device_all, current_flow)
-                                    st.components.v1.html(preview_html, height=650, scrolling=True)
-                                    st.caption("📺 Iframe")
-                                    rendered_successfully = True
-                                except:
-                                    pass
-                            
-                            # If iframe failed, try HTML rendering
-                            if not rendered_successfully:
-                                try:
-                                    # Use comprehensive encoding detection
-                                    page_html = decode_with_multiple_encodings(response)
-                                    page_html = clean_and_prepare_html(page_html, adv_url)
-                                    preview_html, display_height = render_html_with_proper_encoding(
-                                        page_html, device_all, 'landing_html', adv_url, current_flow, scrolling=True
-                                    )
-                                    st.components.v1.html(preview_html, height=display_height, scrolling=True)
-                                    st.caption("📄 HTML")
-                                    rendered_successfully = True
-                                except:
-                                    pass  # Will try Playwright below
+                            except:
+                                pass
                     
                     elif response.status_code == 403:
                             if playwright_available:
