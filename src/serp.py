@@ -54,25 +54,53 @@ def generate_serp_mockup(flow_data, serp_templates):
                 html
             )
             
-            # Replace URL (inside <div class="url">) - match old working version exactly
+            # Replace URL (inside <div class="url">) - more flexible pattern
+            # Try multiple patterns to catch different SERP templates
             html = re.sub(
                 r'(<div class="url">)[^<]*(</div>)', 
                 f'\\1{ad_url}\\2', 
                 html, 
                 count=1
             )
+            # Also try <p class="url">
+            html = re.sub(
+                r'(<p class="url">)[^<]*(</p>)', 
+                f'\\1{ad_url}\\2', 
+                html, 
+                count=1
+            )
             
-            # Replace title (inside <div class="title">) - match old working version exactly
+            # Replace title (inside <div class="title">) - more flexible pattern
             html = re.sub(
                 r'(<div class="title">)[^<]*(</div>)', 
                 f'\\1{ad_title}\\2', 
                 html, 
                 count=1
             )
+            # Also try <p class="title"> and <a> tags
+            html = re.sub(
+                r'(<p class="title">)[^<]*(</p>)', 
+                f'\\1{ad_title}\\2', 
+                html, 
+                count=1
+            )
+            html = re.sub(
+                r'(<a[^>]*class="title"[^>]*>)[^<]*(</a>)', 
+                f'\\1{ad_title}\\2', 
+                html, 
+                count=1
+            )
             
-            # Replace description (inside <div class="desc">) - match old working version exactly
+            # Replace description (inside <div class="desc">) - more flexible pattern
             html = re.sub(
                 r'(<div class="desc">)[^<]*(</div>)', 
+                f'\\1{ad_desc}\\2', 
+                html, 
+                count=1
+            )
+            # Also try <p class="desc">
+            html = re.sub(
+                r'(<p class="desc">)[^<]*(</p>)', 
                 f'\\1{ad_desc}\\2', 
                 html, 
                 count=1
