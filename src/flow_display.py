@@ -439,6 +439,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 rendered = False
                 
                 # Method 1: Try Playwright FIRST (most reliable, handles all cases)
+                playwright_error = None
                 if playwright_available:
                     try:
                         with st.spinner("🔄 Loading with browser..."):
@@ -455,12 +456,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                     st.components.v1.html(preview_html, height=height, scrolling=False)
                                     st.caption("🤖 Browser (Playwright)")
                                 rendered = True
-                            else:
-                                # Playwright returned None - show why
-                                st.info("💡 Playwright returned empty content, trying iframe...")
                     except Exception as e:
-                        # Show error for debugging
-                        st.warning(f"⚠️ Playwright failed: {str(e)[:100]}")
+                        playwright_error = str(e)
                 
                 # Method 2: If Playwright unavailable/failed, try iframe
                 if not rendered:
@@ -470,6 +467,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         st.components.v1.html(preview_html, height=height, scrolling=False)
                         st.caption("📺 Iframe")
                         rendered = True
+                        # Show debug info if Playwright failed
+                        if playwright_error:
+                            with st.expander("🔍 Debug: Why Playwright failed", expanded=False):
+                                st.code(playwright_error, language="text")
                     except:
                         pass
                 
