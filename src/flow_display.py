@@ -1120,7 +1120,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     st.markdown("<h4 style='font-size: 18px; font-weight: 900; color: #0f172a; margin: 12px 0 8px 0;'><strong>🔗 Keyword → Landing Page Similarity</strong></h4>", unsafe_allow_html=True)
                     render_similarity_score('kwd_to_page', st.session_state.similarities,
                                            custom_title="Keyword → Landing Page Similarity",
-                                           tooltip_text="Measures overall flow consistency from keyword to landing page. Higher scores indicate better end-to-end alignment.")
+                                           tooltip_text="Measures end-to-end flow quality. 70%+ = Good Match (keyword intent matches page content), 40-69% = Fair Match (some relevance), <40% = Poor Match (poor user experience)")
         
         # Close wrapper div for horizontal layout - show Landing Page URL below preview
         if st.session_state.flow_layout == 'horizontal':
@@ -1155,19 +1155,19 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             with sim_col1:
                 render_similarity_score('kwd_to_ad', st.session_state.similarities,
                                        custom_title="Keyword → Ad Copy Similarity",
-                                       tooltip_text="Measures how well the ad creative matches the search keyword. Higher scores indicate better keyword-ad alignment.",
+                                       tooltip_text="Measures keyword-ad alignment. 70%+ = Good Match (keywords clearly in ad copy), 40-69% = Fair Match (topic relevance present), <40% = Poor Match (weak/no connection)",
                                        max_height=1040)
             
             with sim_col2:
                 render_similarity_score('ad_to_page', st.session_state.similarities,
                                        custom_title="Ad Copy → Landing Page Similarity",
-                                       tooltip_text="Measures how well the landing page fulfills the promises made in the ad copy. Higher scores indicate better ad-page consistency.",
+                                       tooltip_text="Measures ad-to-page consistency. 70%+ = Good Match (page delivers on ad promises), 40-69% = Fair Match (partial fulfillment), <40% = Poor Match (misleading ad copy)",
                                        max_height=320)
             
             with sim_col3:
                 render_similarity_score('kwd_to_page', st.session_state.similarities,
                                        custom_title="Keyword → Landing Page Similarity",
-                                       tooltip_text="Measures overall flow consistency from keyword to landing page. Higher scores indicate better end-to-end alignment.",
+                                       tooltip_text="Measures end-to-end flow quality. 70%+ = Good Match (keyword intent matches page content), 40-69% = Fair Match (some relevance), <40% = Poor Match (poor user experience)",
                                        max_height=320)
         
         # Remove bottom padding after similarity scores (end of page)
