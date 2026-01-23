@@ -36,39 +36,19 @@ from src.ui_components import render_flow_combinations_table, render_what_is_flo
 from src.filters import render_advanced_filters, apply_flow_filtering
 from src.flow_display import render_flow_journey
 
-# Try to import playwright (for 403 bypass) and ensure browsers are installed
+# Try to import playwright (for 403 bypass)
+# Note: Playwright requires browser binaries which may not be available on Streamlit Cloud
+# Fallback rendering will be used automatically if unavailable
 try:
     from playwright.sync_api import sync_playwright
-    import subprocess
-    import sys
     from pathlib import Path
     
     # Check if browser binaries are installed
     browser_path = Path.home() / ".cache" / "ms-playwright"
     browsers_exist = browser_path.exists() and list(browser_path.glob("chromium*"))
     
-    if not browsers_exist:
-        # Try to install browsers (one-time operation)
-        try:
-            st.info("🔄 Installing Playwright browsers (one-time setup, ~1 minute)...")
-            result = subprocess.run(
-                [sys.executable, "-m", "playwright", "install", "chromium", "--with-deps"],
-                capture_output=True,
-                text=True,
-                timeout=300
-            )
-            if result.returncode == 0:
-                PLAYWRIGHT_AVAILABLE = True
-                st.success("✅ Playwright browsers installed successfully")
-            else:
-                PLAYWRIGHT_AVAILABLE = False
-                st.warning("⚠️ Could not install browsers - using fallback rendering")
-        except Exception as e:
-            PLAYWRIGHT_AVAILABLE = False
-            st.warning(f"⚠️ Browser install failed - using fallback rendering")
-    else:
-        PLAYWRIGHT_AVAILABLE = True
-        
+    PLAYWRIGHT_AVAILABLE = browsers_exist
+    
 except Exception:
     PLAYWRIGHT_AVAILABLE = False
 
