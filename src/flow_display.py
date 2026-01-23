@@ -647,23 +647,22 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             creative_name = current_flow.get('creative_template_name', 'N/A')
             keyword = current_flow.get('keyword_term', 'N/A')
             
-            st.markdown("**🎨 Creative Details**", unsafe_allow_html=False)
             st.markdown(f"""
-            <div style='margin-top: 4px; margin-bottom: 6px;'>
+            <div style='margin-top: 8px; margin-bottom: 6px;'>
                 <strong style='color: #0f172a; font-size: 14px;'>Keyword:</strong> 
-                <span style='color: #64748b; font-size: 13px;'>{html.escape(str(keyword))}</span>
+                <span style='color: #64748b; font-size: 14px;'>{html.escape(str(keyword))}</span>
             </div>
             <div style='margin-bottom: 6px;'>
                 <strong style='color: #0f172a; font-size: 14px;'>Creative ID:</strong> 
-                <span style='color: #64748b; font-size: 13px;'>{creative_id}</span>
+                <span style='color: #64748b; font-size: 14px;'>{creative_id}</span>
             </div>
             <div style='margin-bottom: 6px;'>
                 <strong style='color: #0f172a; font-size: 14px;'>Size:</strong> 
-                <span style='color: #64748b; font-size: 13px;'>{creative_size}</span>
+                <span style='color: #64748b; font-size: 14px;'>{creative_size}</span>
             </div>
             <div style='margin-bottom: 0;'>
                 <strong style='color: #0f172a; font-size: 14px;'>Template:</strong> 
-                <span style='color: #64748b; font-size: 13px;'>{creative_name}</span>
+                <span style='color: #64748b; font-size: 14px;'>{creative_name}</span>
             </div>
             """, unsafe_allow_html=True)
             
