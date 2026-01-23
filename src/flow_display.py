@@ -634,7 +634,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 </div>
                 """, unsafe_allow_html=True)
         
-        # Show creative details - ALWAYS
+        # Show creative details - ALWAYS (symmetric with heading)
         if st.session_state.flow_layout == 'vertical' and creative_card_right:
             details_container = creative_card_right
         elif st.session_state.flow_layout != 'vertical':
@@ -646,6 +646,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             creative_size = current_flow.get('Creative_Size_Final', 'N/A')
             creative_name = current_flow.get('creative_template_name', 'N/A')
             keyword = current_flow.get('keyword_term', 'N/A')
+            
+            # Add spacing to align with heading in vertical layout
+            if st.session_state.flow_layout == 'vertical':
+                st.markdown("<div style='margin-top: 0;'></div>", unsafe_allow_html=True)
             
             st.markdown(f"""
             <div style='margin-top: 8px; margin-bottom: 6px;'>
