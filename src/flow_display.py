@@ -568,8 +568,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         # scrolling=True allows vertical scrolling if creative is taller than 650px
                         st.components.v1.html(rendered_html, height=650, scrolling=True)
                         
-                        # Add note below iframe for creatives that might not render
-                        st.caption("💡 **If you see a white box:** The ad script loaded but the ad network may have blocked it due to iframe restrictions or no ad inventory available.")
+                        # Add explicit note below iframe
+                        st.warning("⚠️ **White box visible?** This means:\n- ✅ Creative adcode loaded successfully\n- ✅ External script loaded from ad network\n- ❌ Ad network returned no fill (no ads available) OR blocked by iframe security\n\n**This is normal** - not all creatives have active ads at all times.")
                         
                         creative_rendered = True
                     elif error_msg:
