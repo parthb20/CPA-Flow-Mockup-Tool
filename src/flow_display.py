@@ -459,18 +459,47 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     except Exception as e:
                         playwright_error = str(e)
                 
-                # Method 2: If Playwright unavailable/failed, try iframe
+                # Method 2: If Playwright unavailable/failed, try HTML fetch with encoding fixes
+                if not rendered:
+                    try:
+                        # Try to fetch HTML directly with proper encoding
+                        response = requests.get(
+                            pub_url,
+                            timeout=15,
+                            headers={
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                                'Accept-Language': 'en-US,en;q=0.9'
+                            },
+                            allow_redirects=True
+                        )
+                        
+                        if response.status_code == 200:
+                            # Use encoding helper to decode properly
+                            page_html = decode_with_multiple_encodings(response)
+                            page_html = clean_and_prepare_html(page_html, pub_url)
+                            
+                            # Render with proper encoding
+                            preview_html, display_height = render_html_with_proper_encoding(
+                                page_html, device_all, 'pub_html', pub_url, current_flow, scrolling=False
+                            )
+                            st.components.v1.html(preview_html, height=display_height, scrolling=False)
+                            st.caption("📄 HTML")
+                            rendered = True
+                        else:
+                            # If HTML fetch fails, try iframe as last resort
+                            raise Exception(f"HTTP {response.status_code}")
+                    except:
+                        pass
+                
+                # Method 3: Iframe as last fallback
                 if not rendered:
                     try:
                         preview_html, height, _ = render_mini_device_preview(pub_url, is_url=True, device=device_all, display_url=pub_url)
                         preview_html = inject_unique_id(preview_html, 'pub_iframe', pub_url, device_all, current_flow)
                         st.components.v1.html(preview_html, height=height, scrolling=False)
-                        st.caption("📺 Iframe")
+                        st.caption("📺 Iframe (may be blocked by site)")
                         rendered = True
-                        # Show debug info if Playwright failed
-                        if playwright_error:
-                            with st.expander("🔍 Debug: Why Playwright failed", expanded=False):
-                                st.code(playwright_error, language="text")
                     except:
                         pass
                 
