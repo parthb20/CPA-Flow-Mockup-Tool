@@ -35,7 +35,6 @@ def load_creative_requests(file_id):
     import csv
     
     if not file_id or file_id.strip() == "":
-        st.error("❌ File C: No file ID provided")
         return None
     
     try:
@@ -47,12 +46,7 @@ def load_creative_requests(file_id):
         # Load file (handles .gz automatically)
         df = load_csv_from_gdrive(file_id)
         
-        if df is None:
-            st.error("❌ File C: load_csv_from_gdrive returned None")
-            return None
-            
-        if len(df) == 0:
-            st.error("❌ File C: DataFrame is empty (0 rows)")
+        if df is None or len(df) == 0:
             return None
         
         # Check if we have exactly 3 columns (good .gz or properly quoted CSV)
@@ -73,11 +67,11 @@ def load_creative_requests(file_id):
             )
             return merged_df
         
-        st.error(f"❌ File C: Only {len(df.columns)} columns found (need at least 3)")
+        # Silent fail if not enough columns
         return None
         
     except Exception as e:
-        st.error(f"❌ File C loading error: {str(e)}")
+        # Silent fail - avoid blocking app startup
         return None
 
 
@@ -116,8 +110,7 @@ def load_prerendered_responses(file_id):
                 missing.append(req_col)
         
         if missing:
-            st.error(f"❌ File D missing required columns: {', '.join(missing)}")
-            st.error(f"Available columns: {', '.join(df.columns.tolist())}")
+            # Silent fail - errors will be shown in the UI later if needed
             return None
         
         # Rename columns to standardized names if needed
@@ -138,7 +131,7 @@ def load_prerendered_responses(file_id):
         return df
         
     except Exception as e:
-        st.error(f"❌ File D loading error: {str(e)}")
+        # Silent fail - avoid blocking app startup
         return None
 
 
