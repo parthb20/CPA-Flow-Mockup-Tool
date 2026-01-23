@@ -100,18 +100,43 @@ def load_prerendered_responses(file_id):
         df = load_csv_from_gdrive(file_id)
         
         if df is None or len(df) == 0:
+            st.error("❌ File D is empty")
             return None
         
-        # Verify required columns
+        # Clean column names (strip whitespace, lowercase for comparison)
+        df.columns = df.columns.str.strip()
+        
+        # Debug: Show what columns were loaded
+        st.info(f"📋 File D loaded: {len(df)} rows, columns: {', '.join(df.columns.tolist())}")
+        
+        # Create case-insensitive column mapping
+        col_mapping = {col.lower(): col for col in df.columns}
+        
+        # Verify required columns (case-insensitive)
         required_cols = ['creative_id', 'size', 'adcode']
-        missing = [col for col in required_cols if col not in df.columns]
+        missing = []
+        for req_col in required_cols:
+            if req_col.lower() not in col_mapping:
+                missing.append(req_col)
         
         if missing:
             st.error(f"❌ File D missing required columns: {', '.join(missing)}")
+            st.error(f"Available columns: {', '.join(df.columns.tolist())}")
             return None
         
-        # Filter to only successful creatives with adcode
-        df = df[df['status'] == 'success'].copy()
+        # Rename columns to standardized names if needed
+        rename_map = {}
+        for req_col in required_cols:
+            actual_col = col_mapping.get(req_col.lower())
+            if actual_col and actual_col != req_col:
+                rename_map[actual_col] = req_col
+        
+        if rename_map:
+            df = df.rename(columns=rename_map)
+        
+        # Filter to only successful creatives with adcode (if status column exists)
+        if 'status' in df.columns:
+            df = df[df['status'] == 'success'].copy()
         df = df[df['adcode'].notna()].copy()
         
         return df
