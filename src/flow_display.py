@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import re
 import html
+import base64
 
 from src.config import SERP_BASE_URL
 from src.renderers import (
@@ -23,6 +24,126 @@ from src.serp import generate_serp_mockup
 from src.similarity import calculate_similarities
 from src.creative_renderer import render_creative_via_weaver, parse_keyword_array_from_flow
 from src.flow_analysis import find_default_flow
+
+
+# ============================================================================
+# COMPREHENSIVE ENCODING HELPERS
+# ============================================================================
+
+def decode_with_multiple_encodings(response):
+    """Robust encoding detection and decoding - Returns decoded HTML string"""
+    detected_encoding = None
+    
+    # Method 1: Check Content-Type header
+    content_type = response.headers.get('Content-Type', '')
+    charset_match = re.search(r'charset=([^;\s]+)', content_type, re.IGNORECASE)
+    if charset_match:
+        detected_encoding = charset_match.group(1).strip('"\'')
+    
+    # Method 2: Try chardet library (optional but recommended)
+    if not detected_encoding:
+        try:
+            import chardet
+            detected = chardet.detect(response.content[:10000])
+            if detected['encoding'] and detected['confidence'] > 0.7:
+                detected_encoding = detected['encoding']
+        except ImportError:
+            pass
+    
+    # Method 3: Use apparent_encoding
+    if not detected_encoding and response.apparent_encoding:
+        detected_encoding = response.apparent_encoding
+    
+    # Method 4: Default to UTF-8
+    if not detected_encoding:
+        detected_encoding = 'utf-8'
+    
+    # Try decoding with multiple encodings
+    page_html = None
+    encodings_to_try = [detected_encoding, 'utf-8', 'latin-1', 'iso-8859-1', 'windows-1252', 'cp1252', 'gb2312', 'shift-jis']
+    
+    for encoding in encodings_to_try:
+        try:
+            page_html = response.content.decode(encoding)
+            break
+        except (UnicodeDecodeError, LookupError, AttributeError):
+            continue
+    
+    # Last resort: force decode with ignore
+    if not page_html:
+        page_html = response.content.decode('utf-8', errors='ignore')
+    
+    return page_html
+
+
+def clean_and_prepare_html(page_html, base_url):
+    """Clean HTML and add proper encoding declarations"""
+    # Remove BOM markers
+    page_html = page_html.lstrip('\ufeff\ufffe\u200b')
+    
+    # Add DOCTYPE if missing
+    if '<!DOCTYPE' not in page_html.upper()[:200]:
+        page_html = '<!DOCTYPE html>\n' + page_html
+    
+    # Remove ALL existing charset declarations
+    page_html = re.sub(r'<meta[^>]*charset[^>]*>', '', page_html, flags=re.IGNORECASE)
+    
+    # Add UTF-8 charset as FIRST meta tag
+    if '<head>' in page_html.lower():
+        page_html = re.sub(
+            r'(<head[^>]*>)',
+            r'\1\n<meta charset="UTF-8">\n<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">',
+            page_html,
+            count=1,
+            flags=re.IGNORECASE
+        )
+    else:
+        page_html = re.sub(
+            r'(<html[^>]*>)',
+            r'\1\n<head>\n<meta charset="UTF-8">\n<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">\n</head>',
+            page_html,
+            count=1,
+            flags=re.IGNORECASE
+        )
+    
+    # Fix relative URLs
+    page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
+                      lambda m: f'src="{urljoin(base_url, m.group(1))}"', page_html)
+    page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
+                      lambda m: f'href="{urljoin(base_url, m.group(1))}"', page_html)
+    
+    return page_html
+
+
+def render_html_with_base64(page_html, device, unique_id_prefix, url, flow):
+    """Render HTML using base64 encoding (most reliable for encoding issues)"""
+    # Ensure UTF-8 encoding
+    content_bytes = page_html.encode('utf-8', errors='replace')
+    b64_content = base64.b64encode(content_bytes).decode('ascii')
+    
+    # Get device dimensions
+    if device == 'mobile':
+        width, height = 375, 650
+    elif device == 'tablet':
+        width, height = 768, 900
+    else:
+        width, height = 1024, 650
+    
+    # Create iframe with base64 data URL
+    iframe_html = f'''
+    <div style="display: flex; justify-content: center; align-items: flex-start; background: #f8fafc; padding: 12px; border-radius: 12px;">
+        <div style="width: {width}px; height: {height}px; border: 8px solid #1e293b; border-radius: 24px; overflow: hidden; background: white; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+            <iframe src="data:text/html;charset=utf-8;base64,{b64_content}" style="width: 100%; height: 100%; border: none; display: block;" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+        </div>
+    </div>
+    '''
+    
+    # Inject unique ID
+    iframe_html = inject_unique_id(iframe_html, unique_id_prefix, url, device, flow)
+    
+    return iframe_html, height + 40
+
+# ============================================================================
 
 
 def render_flow_journey(campaign_df, current_flow, api_key, playwright_available, thumio_configured, thumio_referer_domain):
@@ -417,44 +538,16 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                 st.warning("🚫 Could not load page")
                         elif response.status_code == 200:
                             try:
-                                # Detect proper encoding
-                                if response.apparent_encoding:
-                                    response.encoding = response.apparent_encoding
-                                else:
-                                    response.encoding = 'utf-8'
-                                
-                                # Get decoded content
-                                try:
-                                    page_html = response.text
-                                except (UnicodeDecodeError, LookupError):
-                                    page_html = response.content.decode('utf-8', errors='replace')
-                                
-                                # Add proper charset
-                                if '<!DOCTYPE' not in page_html.upper()[:100]:
-                                    page_html = '<!DOCTYPE html>\n' + page_html
-                                
-                                if '<head>' in page_html.lower():
-                                    page_html = re.sub(
-                                        r'(<head[^>]*>)',
-                                        r'\1<meta charset="UTF-8">',
-                                        page_html,
-                                        count=1,
-                                        flags=re.IGNORECASE
-                                    )
-                                
-                                # Fix relative URLs
-                                page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
-                                                  lambda m: f'src="{urljoin(pub_url, m.group(1))}"', page_html)
-                                page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
-                                                  lambda m: f'href="{urljoin(pub_url, m.group(1))}"', page_html)
-                                
-                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all, use_srcdoc=True)
-                                preview_html = inject_unique_id(preview_html, 'pub_html', pub_url, device_all, current_flow)
-                                display_height = height
+                                # Use comprehensive encoding detection with BASE64
+                                page_html = decode_with_multiple_encodings(response)
+                                page_html = clean_and_prepare_html(page_html, pub_url)
+                                preview_html, display_height = render_html_with_base64(
+                                    page_html, device_all, 'pub_html', pub_url, current_flow
+                                )
                                 st.components.v1.html(preview_html, height=display_height, scrolling=False)
                                 st.caption("📄 HTML")
                             except Exception:
-                                # Try iframe fallback (fastest and most reliable)
+                                # Try iframe fallback
                                 try:
                                     preview_html, height, _ = render_mini_device_preview(pub_url, is_url=True, device=device_all, display_url=pub_url)
                                     preview_html = inject_unique_id(preview_html, 'pub_iframe', pub_url, device_all, current_flow)
@@ -1061,49 +1154,16 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             except:
                                 pass
                         
-                        # If iframe failed, try HTML rendering
+                        # If iframe failed, try HTML rendering with BASE64
                         if not rendered_successfully:
                             try:
-                                # Detect encoding with fallbacks
-                                if response.apparent_encoding:
-                                    response.encoding = response.apparent_encoding
-                                else:
-                                    response.encoding = 'utf-8'
-                                
-                                # Get content with error handling
-                                try:
-                                    page_html = response.text
-                                except:
-                                    # Try multiple encodings
-                                    for enc in ['utf-8', 'latin-1', 'iso-8859-1', 'windows-1252']:
-                                        try:
-                                            page_html = response.content.decode(enc)
-                                            break
-                                        except:
-                                            continue
-                                    else:
-                                        page_html = response.content.decode('utf-8', errors='ignore')
-                                
-                                # Add charset
-                                if '<head>' in page_html.lower():
-                                    page_html = re.sub(
-                                        r'(<head[^>]*>)',
-                                        r'\1<meta charset="UTF-8">',
-                                        page_html,
-                                        count=1,
-                                        flags=re.IGNORECASE
-                                    )
-                                
-                                # Fix relative URLs
-                                page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
-                                                  lambda m: f'src="{urljoin(adv_url, m.group(1))}"', page_html)
-                                page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
-                                                  lambda m: f'href="{urljoin(adv_url, m.group(1))}"', page_html)
-                                
-                                # Render HTML
-                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all, use_srcdoc=True)
-                                preview_html = inject_unique_id(preview_html, 'landing_html', adv_url, device_all, current_flow)
-                                st.components.v1.html(preview_html, height=650, scrolling=True)
+                                # Use comprehensive encoding detection with BASE64
+                                page_html = decode_with_multiple_encodings(response)
+                                page_html = clean_and_prepare_html(page_html, adv_url)
+                                preview_html, display_height = render_html_with_base64(
+                                    page_html, device_all, 'landing_html', adv_url, current_flow
+                                )
+                                st.components.v1.html(preview_html, height=display_height, scrolling=True)
                                 st.caption("📄 HTML")
                                 rendered_successfully = True
                             except:
