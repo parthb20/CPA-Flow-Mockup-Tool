@@ -100,17 +100,12 @@ def capture_page_with_fallback(url, device='mobile'):
 def capture_with_playwright(url, device='mobile'):
     """
     Capture page using Playwright
-    Returns: (html_content, status_code) tuple
-    - html_content: HTML string if success, None if failed
-    - status_code: HTTP status code (403, etc) or 'error'
+    Returns HTML string if success, None if failed (or screenshot fallback HTML)
     """
     if not PLAYWRIGHT_AVAILABLE:
-        return (None, 'no_playwright')
+        return None
     
     try:
-        clean_url = url.split('?')[0] if '?' in url else url
-        clean_url = clean_url.split('#')[0] if '#' in clean_url else clean_url
-        
         viewports = {
             'mobile': {'width': 390, 'height': 844},      # iPhone-like portrait
             'tablet': {'width': 1024, 'height': 768},     # iPad landscape
@@ -127,7 +122,7 @@ def capture_with_playwright(url, device='mobile'):
         with sync_playwright() as p:
             browser = p.chromium.launch(
                 headless=True,
-                args=['--disable-blink-features=AutomationControlled', '--no-sandbox']
+                args=['--disable-blink-features=AutomationControlled', '--no-sandbox', '--disable-web-security']
             )
             
             context = browser.new_context(
@@ -137,24 +132,37 @@ def capture_with_playwright(url, device='mobile'):
             
             page = context.new_page()
             
-            # Capture response to check status code
-            response = page.goto(clean_url, wait_until='networkidle', timeout=30000)
+            # Use 'domcontentloaded' instead of 'networkidle' - much faster and more reliable
+            # networkidle often times out on sites with many background requests
+            response = page.goto(url, wait_until='domcontentloaded', timeout=45000)
             
-            # Return status code for caller to handle
+            # Wait a bit for critical content to render
+            page.wait_for_timeout(2000)
+            
+            # Check for 403 error - use screenshot API as fallback
             if response and response.status == 403:
                 browser.close()
-                return (None, 403)
+                screenshot_url = get_screenshot_url(url, device=device)
+                if screenshot_url:
+                    return f'<!-- SCREENSHOT_FALLBACK --><img src="{screenshot_url}" style="width:100%;height:auto;" />'
+                return None
             
             html_content = page.content()
             browser.close()
-            return html_content
+            
+            # Verify we got actual content
+            if html_content and len(html_content) > 100:
+                return html_content
+            return None
             
     except Exception as e:
         # ONLY use screenshot API on 403 errors - not for other errors!
-        # This prevents burning through API credits on Playwright missing, timeouts, etc
         error_str = str(e).lower()
         if '403' in error_str or 'forbidden' in error_str:
             screenshot_url = get_screenshot_url(url, device=device)
             if screenshot_url:
                 return f'<!-- SCREENSHOT_FALLBACK --><img src="{screenshot_url}" style="width:100%;height:auto;" />'
+        # Log error for debugging (will be caught by caller)
+        import traceback
+        print(f"Playwright error for {url}: {traceback.format_exc()}")
         return None
