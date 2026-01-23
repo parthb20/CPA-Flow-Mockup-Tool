@@ -427,21 +427,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             avg_ctr = (total_clicks / total_impressions * 100) if total_impressions > 0 else 0
             avg_cvr = (total_conversions / total_clicks * 100) if total_clicks > 0 else 0
             
-            # Show aggregated table with big title
-            st.markdown("""
-            <div style="margin-bottom: 4px; margin-top: 4px;">
-                <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; text-align: left; line-height: 1;">
-                    📊 Flow Combinations Overview
-                </h2>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Render table using module
-            render_flow_combinations_table(campaign_df)
-            
-            # Render "What is Flow" section using module
-            render_what_is_flow_section()
-            
             # Find default flow if not set
             if st.session_state.default_flow is None:
                 with st.spinner("Finding best performing flow..."):
@@ -533,6 +518,27 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     thumio_configured=THUMIO_CONFIGURED,
                     thumio_referer_domain=THUMIO_REFERER_DOMAIN
                 )
+                
+                # ============================================================
+                # FILTERS, TABLE, AND OVERVIEW - MOVED BELOW FLOW JOURNEY
+                # ============================================================
+                
+                st.markdown("<br><br>", unsafe_allow_html=True)
+                
+                # Show aggregated table with big title
+                st.markdown("""
+                <div style="margin-bottom: 4px; margin-top: 4px;">
+                    <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; text-align: left; line-height: 1;">
+                        📊 Flow Combinations Overview
+                    </h2>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Render table using module
+                render_flow_combinations_table(campaign_df)
+                
+                # Render "What is Flow" section using module
+                render_what_is_flow_section()
             
             else:
                 st.warning("⚠️ No flow data found. This campaign may have impressions but no clicks or conversions yet.")
