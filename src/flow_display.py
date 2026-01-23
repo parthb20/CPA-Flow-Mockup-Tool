@@ -565,7 +565,12 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     if rendered_html:
                         # Render the creative at consistent height with other stages
                         # Use 650px for both vertical and horizontal to match other stage boxes
+                        # scrolling=True allows vertical scrolling if creative is taller than 650px
                         st.components.v1.html(rendered_html, height=650, scrolling=True)
+                        
+                        # Add note below iframe for creatives that might not render
+                        st.caption("💡 **If you see a white box:** The ad script loaded but the ad network may have blocked it due to iframe restrictions or no ad inventory available.")
+                        
                         creative_rendered = True
                     elif error_msg:
                         # Show detailed error message
