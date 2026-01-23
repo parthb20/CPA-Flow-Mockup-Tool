@@ -904,7 +904,19 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         if st.session_state.flow_layout == 'vertical' and serp_card_right:
             with serp_card_right:
-                # Tight spacing - show similarity first, then SERP details with Template
+                # Show SERP details with Template Key FIRST
+                serp_template_key = current_flow.get('serp_template_key', 'N/A')
+                
+                st.markdown("<h4 style='font-size: 20px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0;'><strong>📄 SERP Details</strong></h4>", unsafe_allow_html=True)
+                st.markdown(f"""
+                <div style="margin-bottom: 6px; font-size: 14px;">
+                    <div style="font-weight: 900; color: #0f172a; font-size: 16px; margin-bottom: 2px;"><strong>Template Key:</strong></div>
+                    <div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;">{html.escape(str(serp_template_key))}</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Show Ad Copy → Landing Page similarity BELOW SERP details
+                st.markdown("<div style='margin-top: 12px;'></div>", unsafe_allow_html=True)
                 if 'similarities' not in st.session_state or st.session_state.similarities is None:
                     if api_key:
                         st.session_state.similarities = calculate_similarities(current_flow)
@@ -915,18 +927,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     render_similarity_score('ad_to_page', st.session_state.similarities,
                                            custom_title="Ad Copy → Landing Page Similarity",
                                            tooltip_text="Measures ad-to-page consistency. 70%+ = Good Match (page delivers on ad promises), 40-69% = Fair Match (partial fulfillment), <40% = Poor Match (misleading ad copy)")
-                
-                # Show SERP details with Template Key only (not URL)
-                serp_template_key = current_flow.get('serp_template_key', 'N/A')
-                
-                st.markdown("<div style='margin-top: 6px;'></div>", unsafe_allow_html=True)
-                st.markdown("<h4 style='font-size: 20px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0;'><strong>📄 SERP Details</strong></h4>", unsafe_allow_html=True)
-                st.markdown(f"""
-                <div style="margin-bottom: 6px; font-size: 14px;">
-                    <div style="font-weight: 900; color: #0f172a; font-size: 16px; margin-bottom: 2px;"><strong>Template Key:</strong></div>
-                    <div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;">{html.escape(str(serp_template_key))}</div>
-                </div>
-                """, unsafe_allow_html=True)
         
         # Close wrapper div for horizontal layout
         if st.session_state.flow_layout == 'horizontal':
@@ -983,7 +983,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         if adv_url and pd.notna(adv_url) and str(adv_url).strip():
             with landing_preview_container:
                 # ALWAYS try iframe FIRST - don't pre-check headers
-                iframe_blocked = False
+                iframe_success = False
                 try:
                     preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all, display_url=adv_url)
                     preview_html = inject_unique_id(preview_html, 'landing_iframe', adv_url, device_all, current_flow)
@@ -991,10 +991,12 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     display_height = 650
                     st.components.v1.html(preview_html, height=display_height, scrolling=True)
                     st.caption("📺 Iframe")
+                    iframe_success = True
                 except Exception as e:
-                    iframe_blocked = True
+                    pass  # Will try HTML fetch below
                 
-                if iframe_blocked:
+                # If iframe failed, try fetching HTML directly
+                if not iframe_success:
                     try:
                         headers = {
                             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -1110,7 +1112,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         st.session_state.similarities = {}
                 
                 if 'similarities' in st.session_state and st.session_state.similarities:
-                    st.markdown("<h4 style='font-size: 18px; font-weight: 900; color: #0f172a; margin: 12px 0 8px 0;'><strong>🔗 Keyword → Landing Page Similarity</strong></h4>", unsafe_allow_html=True)
+                    st.markdown("<div style='margin-top: 12px;'></div>", unsafe_allow_html=True)
                     render_similarity_score('kwd_to_page', st.session_state.similarities,
                                            custom_title="Keyword → Landing Page Similarity",
                                            tooltip_text="Measures end-to-end flow quality. 70%+ = Good Match (keyword intent matches page content), 40-69% = Fair Match (some relevance), <40% = Poor Match (poor user experience)")
