@@ -255,6 +255,15 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
         else:
             tooltip_text = "Similarity score measuring alignment. 70%+ = Good, 40-69% = Fair, <40% = Poor"
     
+    # Determine formula text based on score type
+    formula_text = ""
+    if score_type == 'kwd_to_ad':
+        formula_text = "Formula: 15% Keyword Match + 35% Topic Match + 50% Intent Match"
+    elif score_type == 'ad_to_page':
+        formula_text = "Formula: 30% Topic Match + 20% Brand Match + 50% Promise Match"
+    elif score_type == 'kwd_to_page':
+        formula_text = "Formula: 40% Topic Match + 60% Utility Match"
+    
     st.markdown(f"""
     <div style="margin-bottom: 8px; display: flex; align-items: center; justify-content: flex-start;">
         <span style="font-weight: 900; color: #0f172a; font-size: 18px;">
@@ -262,6 +271,7 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
         </span>
         <span title="{tooltip_text}" style="cursor: help; color: #3b82f6; font-size: 13px; margin-left: 6px;">ℹ️</span>
     </div>
+    {f'<div style="margin-bottom: 8px; font-size: 11px; color: #64748b; font-style: italic;">{formula_text}</div>' if formula_text else ''}
     """, unsafe_allow_html=True)
     
     # If this specific score is missing, show wait message
