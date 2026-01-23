@@ -1132,17 +1132,31 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     response = session.get(adv_url, timeout=15, headers=headers, allow_redirects=True)
                     
                     if response.status_code == 200:
+                        # Clean URL by removing placeholder parameters
+                        clean_url = str(adv_url)
+                        # Remove {clickid}, {click}, and other placeholder parameters
+                        clean_url = re.sub(r'[&?]?[\w_]+=\{[^}]+\}', '', clean_url)
+                        clean_url = re.sub(r'\{[^}]+\}', '', clean_url)
+                        # Remove trailing ? or & if params were removed
+                        clean_url = clean_url.rstrip('?&')
+                        
                         # Detect redirect/tracking URLs (these won't work in iframe)
                         is_redirect_url = any(keyword in str(adv_url).lower() 
-                                            for keyword in ['htrk', 'track', 'redirect', 'aff_c', 'aff_', 'click', 'goto', '/c?', '/aff?', '{clickid}', '{click'])
+                                            for keyword in ['htrk', 'track', 'redirect', 'aff_c', 'aff_', 'click', 'goto', '/c?', '/aff?'])
                         
-                        # Method 1: Try iframe (fastest, works for most sites) - SKIP for redirect URLs
-                        if not rendered_successfully and not is_redirect_url:
+                        # If URL was cleaned, use the clean version for rendering
+                        render_url = clean_url if clean_url != str(adv_url) else adv_url
+                        
+                        # Method 1: Try iframe (fastest, works for most sites) - Use clean URL
+                        if not rendered_successfully:
                             try:
-                                preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all, display_url=adv_url)
-                                preview_html = inject_unique_id(preview_html, 'landing_iframe', adv_url, device_all, current_flow)
+                                preview_html, height, _ = render_mini_device_preview(render_url, is_url=True, device=device_all, display_url=render_url)
+                                preview_html = inject_unique_id(preview_html, 'landing_iframe', render_url, device_all, current_flow)
                                 st.components.v1.html(preview_html, height=650, scrolling=True)
-                                st.caption("📺 Iframe")
+                                if clean_url != str(adv_url):
+                                    st.caption("📺 Iframe (cleaned URL)")
+                                else:
+                                    st.caption("📺 Iframe")
                                 rendered_successfully = True
                             except:
                                 pass
@@ -1151,7 +1165,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         if not rendered_successfully and playwright_available:
                             try:
                                 with st.spinner("🔄 Trying browser automation..."):
-                                    page_html = capture_with_playwright(adv_url, device=device_all)
+                                    page_html = capture_with_playwright(render_url, device=device_all)
                                     if page_html:
                                         if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
                                             # Screenshot API was used
@@ -1174,7 +1188,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         if not rendered_successfully and not is_redirect_url:
                             try:
                                 page_html = decode_with_multiple_encodings(response)
-                                page_html = clean_and_prepare_html(page_html, adv_url)
+                                page_html = clean_and_prepare_html(page_html, render_url)
                                 preview_html, display_height = render_html_with_proper_encoding(
                                     page_html, device_all, 'landing_html', adv_url, current_flow, scrolling=True
                                 )
