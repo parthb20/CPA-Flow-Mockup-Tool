@@ -565,8 +565,17 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     if rendered_html:
                         # Render the creative at consistent height with other stages
                         # Use 650px for both vertical and horizontal to match other stage boxes
-                        # scrolling=True allows vertical scrolling if creative is taller than 650px
-                        st.components.v1.html(rendered_html, height=650, scrolling=True)
+                        # Extract creative size to determine if scrolling needed
+                        try:
+                            width_str, height_str = creative_size.split('x')
+                            creative_height = int(height_str)
+                            creative_width = int(width_str)
+                            # Only enable scrolling if creative exceeds 650px in either dimension
+                            needs_scroll = creative_height > 650 or creative_width > 600
+                        except:
+                            needs_scroll = False
+                        
+                        st.components.v1.html(rendered_html, height=650, scrolling=needs_scroll)
                         creative_rendered = True
                     elif error_msg:
                         # Show detailed error message
@@ -640,21 +649,21 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             
             st.markdown("**🎨 Creative Details**", unsafe_allow_html=False)
             st.markdown(f"""
-            <div style='margin-top: 4px; margin-bottom: 4px;'>
-                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 2px;'>Keyword</div>
-                <div style='color: #64748b; font-size: 13px;'>{html.escape(str(keyword))}</div>
+            <div style='margin-top: 4px; margin-bottom: 6px;'>
+                <strong style='color: #0f172a; font-size: 14px;'>Keyword:</strong> 
+                <span style='color: #64748b; font-size: 13px;'>{html.escape(str(keyword))}</span>
             </div>
-            <div style='margin-bottom: 4px;'>
-                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 2px;'>Creative ID</div>
-                <div style='color: #64748b; font-size: 13px;'>{creative_id}</div>
+            <div style='margin-bottom: 6px;'>
+                <strong style='color: #0f172a; font-size: 14px;'>Creative ID:</strong> 
+                <span style='color: #64748b; font-size: 13px;'>{creative_id}</span>
             </div>
-            <div style='margin-bottom: 4px;'>
-                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 2px;'>Size</div>
-                <div style='color: #64748b; font-size: 13px;'>{creative_size}</div>
+            <div style='margin-bottom: 6px;'>
+                <strong style='color: #0f172a; font-size: 14px;'>Size:</strong> 
+                <span style='color: #64748b; font-size: 13px;'>{creative_size}</span>
             </div>
             <div style='margin-bottom: 0;'>
-                <div style='font-weight: 900; color: #0f172a; font-size: 14px; margin-bottom: 2px;'>Template</div>
-                <div style='color: #64748b; font-size: 13px; margin-bottom: 0;'>{creative_name}</div>
+                <strong style='color: #0f172a; font-size: 14px;'>Template:</strong> 
+                <span style='color: #64748b; font-size: 13px;'>{creative_name}</span>
             </div>
             """, unsafe_allow_html=True)
             
@@ -1088,7 +1097,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 st.markdown("<h4 style='font-size: 20px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0;'><strong>🎯 Landing Page Details</strong></h4>", unsafe_allow_html=True)
                 st.markdown(f"""
                 <div style="margin-bottom: 6px; font-size: 14px;">
-                    {f'<div style="font-weight: 900; color: #0f172a; font-size: 18px; margin-bottom: 2px;"><strong>Landing URL</strong></div><div style="margin-left: 0; margin-top: 0; word-break: break-all; overflow-wrap: anywhere; color: #64748b; font-size: 13px;"><a href="{adv_url}" style="color: #3b82f6; text-decoration: none;">{html.escape(str(adv_url))}</a></div>' if adv_url and pd.notna(adv_url) else ''}
+                    {f'<div><strong style="color: #0f172a; font-size: 14px;">Landing Page URL:</strong> <a href="{adv_url}" style="color: #3b82f6; text-decoration: none; font-size: 13px;">{html.escape(str(adv_url))}</a></div>' if adv_url and pd.notna(adv_url) else ''}
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -1103,6 +1112,15 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     render_similarity_score('kwd_to_page', st.session_state.similarities,
                                            custom_title="Keyword → Landing Page Similarity",
                                            tooltip_text="Measures overall flow consistency from keyword to landing page. Higher scores indicate better end-to-end alignment.")
+        
+        # Close wrapper div for horizontal layout - show Landing Page URL below preview
+        if st.session_state.flow_layout == 'horizontal':
+            adv_url = current_flow.get('Destination_Url', '') or current_flow.get('reporting_destination_url', '')
+            st.markdown(f"""
+            <div style='margin-top: 8px; font-size: 14px;'>
+                {f'<div><strong style="color: #0f172a; font-size: 14px;">Landing Page URL:</strong> <a href="{adv_url}" style="color: #3b82f6; text-decoration: none; font-size: 13px;">{html.escape(str(adv_url))}</a></div>' if adv_url and pd.notna(adv_url) else ''}
+            </div>
+            """, unsafe_allow_html=True)
     
     # Similarity Scores Section for Horizontal Layout
     if st.session_state.flow_layout == 'horizontal':
