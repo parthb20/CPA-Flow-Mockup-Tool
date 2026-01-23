@@ -1175,7 +1175,27 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         <style>
         /* Remove excess padding at page bottom */
         .main .block-container {
-            padding-bottom: 1rem !important;
+            padding-bottom: 0.5rem !important;
+            margin-bottom: 0 !important;
+        }
+        .element-container:last-child {
+            margin-bottom: 0 !important;
         }
         </style>
         """, unsafe_allow_html=True)
+    
+    # Apply bottom padding fix globally (for all layouts)
+    st.markdown("""
+    <style>
+    /* Global fix: Remove excess bottom padding everywhere */
+    .main .block-container {
+        padding-bottom: 0.5rem !important;
+    }
+    .stMarkdown:last-child, .element-container:last-child {
+        margin-bottom: 0 !important;
+    }
+    div[data-testid="stVerticalBlock"] > div:last-child {
+        margin-bottom: 0 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
