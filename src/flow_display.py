@@ -1003,26 +1003,45 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     response = session.get(adv_url, timeout=15, headers=headers, allow_redirects=True)
                     
                     if response.status_code == 200:
-                        # SUCCESS: Render HTML directly
+                        # SUCCESS: Render HTML directly with proper encoding handling
                         try:
-                            # Get content with proper encoding
-                            if response.encoding:
-                                page_html = response.text
+                            # Detect and use correct encoding
+                            if response.apparent_encoding and response.apparent_encoding.lower() not in ['ascii', 'windows-1252']:
+                                response.encoding = response.apparent_encoding
                             else:
                                 response.encoding = 'utf-8'
-                                page_html = response.text
                             
-                            # Ensure proper charset declaration
+                            # Get decoded content
+                            try:
+                                page_html = response.text
+                            except UnicodeDecodeError:
+                                # Fallback: decode bytes directly
+                                page_html = response.content.decode('utf-8', errors='replace')
+                            
+                            # Additional encoding cleanup - replace problematic characters
+                            page_html = page_html.encode('ascii', errors='ignore').decode('ascii', errors='ignore')
+                            
+                            # If content looks garbled (too many special chars), try iframe instead
+                            special_char_ratio = sum(1 for c in page_html[:1000] if ord(c) > 127) / min(1000, len(page_html))
+                            if special_char_ratio > 0.3:
+                                # Too many special characters, content might be binary/compressed
+                                raise Exception("Content appears to be binary or heavily encoded")
+                            
+                            # Ensure proper HTML structure
+                            if '<!DOCTYPE' not in page_html.upper()[:100]:
+                                page_html = '<!DOCTYPE html>\n' + page_html
+                            
+                            # Add charset at the beginning of head
                             if '<head>' in page_html.lower():
                                 page_html = re.sub(
-                                    r'<head[^>]*>',
-                                    lambda m: m.group(0) + '<meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">',
+                                    r'(<head[^>]*>)',
+                                    r'\1<meta charset="UTF-8"><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">',
                                     page_html,
                                     count=1,
                                     flags=re.IGNORECASE
                                 )
                             else:
-                                page_html = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></head><body>' + page_html + '</body></html>'
+                                page_html = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>' + page_html + '</body></html>'
                             
                             # Fix relative URLs
                             page_html = re.sub(r'src=["\'](?!http|//|data:)([^"\']+)["\']', 
@@ -1030,6 +1049,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             page_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
                                               lambda m: f'href="{urljoin(adv_url, m.group(1))}"', page_html)
                             
+                            # Render HTML
                             preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all, use_srcdoc=True)
                             preview_html = inject_unique_id(preview_html, 'landing_html', adv_url, device_all, current_flow)
                             display_height = 650
@@ -1037,7 +1057,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             st.caption("📄 HTML")
                             rendered_successfully = True
                         except Exception as html_error:
-                            pass  # Will try Playwright below
+                            pass  # Will try Playwright or iframe below
                     
                     elif response.status_code == 403:
                             if playwright_available:
