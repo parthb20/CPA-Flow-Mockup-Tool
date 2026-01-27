@@ -522,6 +522,28 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     border-color: #d1d5db !important;
                 }
                 
+                /* Fix Popover - WHITE BACKGROUND */
+                .stPopover,
+                [data-baseweb="popover"],
+                [data-baseweb="popover"] > div,
+                .stPopover > div,
+                .stPopover [data-baseweb="popover"] {
+                    background-color: white !important;
+                    color: #1f2937 !important;
+                }
+                
+                /* Popover content */
+                [data-baseweb="popover"] [data-baseweb="layer"] {
+                    background-color: white !important;
+                }
+                
+                /* Popover inner content */
+                .stPopover div[data-testid="stVerticalBlock"],
+                .stPopover div {
+                    background-color: white !important;
+                    color: #1f2937 !important;
+                }
+                
                 /* Date picker calendar - FIX BLACK ELEMENTS */
                 [data-baseweb="calendar"],
                 [data-baseweb="calendar"] *,
@@ -801,6 +823,56 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Render filters and get filter state
                 filters_changed, selected_keyword_filter, selected_domain_filter = render_advanced_filters(campaign_df, current_flow)
                 
+                # === FLOW NAVIGATION - RIGHT AFTER FILTERS - COMPACT ===
+                if len(st.session_state.get('all_flows', [])) > 1:
+                    # Extra compact navigation with smaller buttons
+                    st.markdown("""
+                        <style>
+                        /* Smaller navigation buttons */
+                        button[key="prev_flow"],
+                        button[key="next_flow"] {
+                            padding: 0.25rem 0.5rem !important;
+                            font-size: 0.875rem !important;
+                            min-height: 1.75rem !important;
+                            line-height: 1 !important;
+                        }
+                        </style>
+                    """, unsafe_allow_html=True)
+                    
+                    nav_cols = st.columns([0.5, 4, 0.5])
+                    
+                    with nav_cols[0]:
+                        prev_disabled = st.session_state.current_flow_index == 0
+                        if st.button("◀", key='prev_flow', disabled=prev_disabled, use_container_width=True, help="Previous"):
+                            st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
+                            st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
+                            st.rerun()
+                    
+                    with nav_cols[1]:
+                        # Simple flow selector
+                        selected_flow_idx = st.selectbox(
+                            "Flow",
+                            options=range(len(st.session_state.all_flows)),
+                            index=st.session_state.current_flow_index,
+                            format_func=lambda x: f"Flow {x + 1}",
+                            key='flow_selector',
+                            label_visibility="collapsed"
+                        )
+                        
+                        if selected_flow_idx != st.session_state.current_flow_index:
+                            st.session_state.current_flow_index = selected_flow_idx
+                            st.session_state.current_flow = st.session_state.all_flows[selected_flow_idx].copy()
+                            st.rerun()
+                    
+                    with nav_cols[2]:
+                        next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
+                        if st.button("▶", key='next_flow', disabled=next_disabled, use_container_width=True, help="Next"):
+                            st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
+                            st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
+                            st.rerun()
+                    
+                    st.markdown("<div style='margin-bottom: 0.75rem;'></div>", unsafe_allow_html=True)
+                
                 # Apply filtering logic using module
                 current_flow, final_filtered = apply_flow_filtering(
                     campaign_df, current_flow, filters_changed, selected_keyword_filter, selected_domain_filter
@@ -824,42 +896,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     flow_cvr = (flow_convs / flow_clicks * 100) if flow_clicks > 0 else 0
                 else:
                     single_view = None
-                
-                # === FLOW NAVIGATION - CLEAN & COMPACT ===
-                if len(st.session_state.get('all_flows', [])) > 1:
-                    nav_cols = st.columns([0.7, 3.6, 0.7])
-                    
-                    with nav_cols[0]:
-                        prev_disabled = st.session_state.current_flow_index == 0
-                        if st.button("◀", key='prev_flow', disabled=prev_disabled, use_container_width=True, help="Previous Flow"):
-                            st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
-                            st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
-                            st.rerun()
-                    
-                    with nav_cols[1]:
-                        # Simple flow selector
-                        selected_flow_idx = st.selectbox(
-                            "Select Flow",
-                            options=range(len(st.session_state.all_flows)),
-                            index=st.session_state.current_flow_index,
-                            format_func=lambda x: f"Flow {x + 1}",
-                            key='flow_selector',
-                            label_visibility="collapsed"
-                        )
-                        
-                        if selected_flow_idx != st.session_state.current_flow_index:
-                            st.session_state.current_flow_index = selected_flow_idx
-                            st.session_state.current_flow = st.session_state.all_flows[selected_flow_idx].copy()
-                            st.rerun()
-                    
-                    with nav_cols[2]:
-                        next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
-                        if st.button("▶", key='next_flow', disabled=next_disabled, use_container_width=True, help="Next Flow"):
-                            st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
-                            st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
-                            st.rerun()
-                    
-                    st.markdown("<div style='margin-bottom: 1rem;'></div>", unsafe_allow_html=True)
                 
                 # Add Flow Journey title with explanation - RESPONSIVE
                 st.markdown("""
