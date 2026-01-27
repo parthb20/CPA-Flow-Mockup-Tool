@@ -81,7 +81,7 @@ except Exception:
 
 THUMIO_CONFIGURED = False  # Disabled - Playwright only!
 
-# Custom CSS
+# Custom CSS - RESPONSIVE VERSION
 st.markdown("""
     <style>
     /* Background */
@@ -96,19 +96,22 @@ st.markdown("""
         background: white !important;
     }
     
-    /* All text elements */
+    /* RESPONSIVE TEXT - scales between min and max based on viewport */
     h1:not(.main-title), h2, h3, h4, h5, h6, p, span, div, label, .stMarkdown {
         color: #0f172a !important;
         font-weight: 500 !important;
-        font-size: 16px !important;
+        font-size: clamp(0.875rem, 0.8rem + 0.4vw, 1rem) !important; /* 14-16px */
     }
     
     /* Don't override the main title - it has its own inline styles */
-    h1:not(.main-title) { font-weight: 700 !important; font-size: 32px !important; }
+    h1:not(.main-title) { 
+        font-weight: 700 !important; 
+        font-size: clamp(1.75rem, 1.5rem + 1.25vw, 2rem) !important; /* 28-32px */
+    }
     
-    /* Ensure main title is properly sized - override everything - VERY BIG */
+    /* Ensure main title is properly sized - RESPONSIVE & BIG */
     .main-title {
-        font-size: 72px !important;
+        font-size: clamp(2.5rem, 2rem + 2.5vw, 4.5rem) !important; /* 40-72px */
         font-weight: 900 !important;
         color: #0f172a !important;
         margin: 0 !important;
@@ -119,16 +122,23 @@ st.markdown("""
         white-space: normal !important;
     }
     
-    h2 { font-weight: 700 !important; font-size: 26px !important; }
-    h3 { font-weight: 700 !important; font-size: 22px !important; }
+    h2 { 
+        font-weight: 700 !important; 
+        font-size: clamp(1.375rem, 1.2rem + 0.9vw, 1.625rem) !important; /* 22-26px */
+    }
+    h3 { 
+        font-weight: 700 !important; 
+        font-size: clamp(1.25rem, 1.1rem + 0.75vw, 1.375rem) !important; /* 20-22px */
+    }
     
-    /* Buttons */
+    /* Buttons - RESPONSIVE */
     .stButton > button {
         background-color: white !important;
         color: #0f172a !important;
         border: 2px solid #cbd5e1 !important;
         font-weight: 600 !important;
-        font-size: 16px !important;
+        font-size: clamp(0.875rem, 0.8rem + 0.4vw, 1rem) !important; /* 14-16px */
+        padding: clamp(0.5rem, 0.4rem + 0.5vw, 0.75rem) clamp(1rem, 0.8rem + 1vw, 1.5rem) !important;
     }
     .stButton > button:hover {
         background-color: #f1f5f9 !important;
@@ -147,7 +157,7 @@ st.markdown("""
         border: 2px solid #e2e8f0 !important;
     }
     
-    /* Dropdowns */
+    /* Dropdowns - RESPONSIVE */
     [data-baseweb="select"] { background-color: white !important; }
     [data-baseweb="select"] > div { 
         background-color: white !important; 
@@ -156,7 +166,7 @@ st.markdown("""
     [data-baseweb="select"] span { 
         color: #0f172a !important; 
         font-weight: 500 !important; 
-        font-size: 16px !important; 
+        font-size: clamp(0.875rem, 0.8rem + 0.4vw, 1rem) !important; /* 14-16px */
     }
     [role="listbox"] { 
         background-color: white !important; 
@@ -190,23 +200,23 @@ st.markdown("""
         border-color: #cbd5e1 !important;
     }
     
-    /* Metrics */
+    /* Metrics - RESPONSIVE */
     [data-testid="stMetric"] {
         background: white;
-        padding: 16px;
-        border-radius: 8px;
+        padding: clamp(0.75rem, 0.6rem + 0.8vw, 1rem);
+        border-radius: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem);
         border: 2px solid #e2e8f0;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
     [data-testid="stMetricValue"] {
         color: #0f172a !important;
         font-weight: 700 !important;
-        font-size: 28px !important;
+        font-size: clamp(1.5rem, 1.3rem + 1vw, 1.75rem) !important; /* 24-28px */
     }
     [data-testid="stMetricLabel"] {
         color: #64748b !important;
         font-weight: 600 !important;
-        font-size: 14px !important;
+        font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem) !important; /* 12-14px */
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
@@ -233,51 +243,51 @@ st.markdown("""
         background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
     }
     
-    /* Flow Card */
+    /* Flow Card - RESPONSIVE */
     .flow-card {
         background: white;
         border: 2px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 20px;
-        margin: 10px 0;
+        border-radius: clamp(0.5rem, 0.4rem + 0.6vw, 0.75rem);
+        padding: clamp(1rem, 0.8rem + 1vw, 1.25rem);
+        margin: clamp(0.5rem, 0.4rem + 0.5vw, 0.625rem) 0;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     
     .flow-stage {
         text-align: center;
-        padding: 16px;
+        padding: clamp(0.75rem, 0.6rem + 0.8vw, 1rem);
         background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
         border: 2px solid #3b82f6;
-        border-radius: 8px;
-        margin: 0 10px;
+        border-radius: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem);
+        margin: 0 clamp(0.5rem, 0.4rem + 0.5vw, 0.625rem);
     }
     
     .flow-arrow {
-        font-size: 32px;
+        font-size: clamp(1.5rem, 1.3rem + 1vw, 2rem); /* 24-32px */
         color: #3b82f6;
         font-weight: 700;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin: 0 5px;
+        margin: 0 clamp(0.25rem, 0.2rem + 0.25vw, 0.3125rem);
     }
     
     .similarity-card {
         background: white;
-        border-radius: 12px;
-        padding: 20px;
+        border-radius: clamp(0.5rem, 0.4rem + 0.6vw, 0.75rem);
+        padding: clamp(1rem, 0.8rem + 1vw, 1.25rem);
         border: 2px solid #e2e8f0;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     
     .score-box {
         display: inline-block;
-        padding: 16px 24px;
-        border-radius: 10px;
+        padding: clamp(0.75rem, 0.6rem + 0.8vw, 1rem) clamp(1.25rem, 1rem + 1.25vw, 1.5rem);
+        border-radius: clamp(0.5rem, 0.4rem + 0.5vw, 0.625rem);
         border: 3px solid;
-        font-size: 42px;
+        font-size: clamp(2rem, 1.75rem + 1.3vw, 2.625rem); /* 32-42px */
         font-weight: 700;
-        margin: 15px 0;
+        margin: clamp(0.75rem, 0.6rem + 0.75vw, 0.9375rem) 0;
     }
     
     .score-excellent { border-color: #22c55e; background: linear-gradient(135deg, #22c55e15, #22c55e08); color: #22c55e; }
@@ -288,13 +298,13 @@ st.markdown("""
     
     .info-box {
         background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-        padding: 18px;
-        border-radius: 8px;
+        padding: clamp(1rem, 0.8rem + 1vw, 1.125rem);
+        border-radius: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem);
         border: 1px solid #bae6fd;
-        border-left: 4px solid #3b82f6;
-        margin: 15px 0;
+        border-left: clamp(0.25rem, 0.2rem + 0.2vw, 0.25rem) solid #3b82f6;
+        margin: clamp(0.75rem, 0.6rem + 0.75vw, 0.9375rem) 0;
         line-height: 1.8;
-        font-size: 16px;
+        font-size: clamp(0.875rem, 0.8rem + 0.4vw, 1rem); /* 14-16px */
         color: #0f172a !important;
         box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         font-weight: 500;
@@ -316,10 +326,10 @@ for key in ['data_a', 'data_b', 'data_c', 'loading_done', 'default_flow', 'curre
         else:
             st.session_state[key] = None
 
-# Main title - BIG and BOLD at top
+# Main title - BIG and BOLD at top - RESPONSIVE
 st.markdown("""
-    <div style="margin: 0 0 4px 0; padding: 8px 0 8px 0; border-bottom: 3px solid #e2e8f0;">
-        <h1 style="font-size: 64px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui, -apple-system, sans-serif;">
+    <div style="margin: 0 0 clamp(0.25rem, 0.2rem + 0.2vw, 0.25rem) 0; padding: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem) 0; border-bottom: clamp(2px, 0.1rem + 0.15vw, 3px) solid #e2e8f0;">
+        <h1 style="font-size: clamp(2.5rem, 2rem + 2.5vw, 4rem); font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui, -apple-system, sans-serif;">
             📊 CPA Flow Analysis
         </h1>
     </div>
@@ -344,7 +354,7 @@ if not st.session_state.loading_done:
             # Load File C (creative requests) - silently, optional
             if FILE_C_ID and FILE_C_ID.strip() != "":
                 st.session_state.data_c = load_creative_requests(FILE_C_ID)
-            else:
+                    else:
                 st.session_state.data_c = None
             
             st.session_state.loading_done = True
@@ -457,7 +467,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.session_state.current_flow = current_flow
                 
                 # Show selected flow details using module
-                if len(final_filtered) > 0:
+                                    if len(final_filtered) > 0:
                     # Select view_id with max timestamp
                     if 'timestamp' in final_filtered.columns:
                         single_view = final_filtered.loc[final_filtered['timestamp'].idxmax()]
@@ -469,24 +479,24 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     flow_convs = safe_int(single_view.get('conversions', 0))
                     flow_ctr = (flow_clicks / flow_imps * 100) if flow_imps > 0 else 0
                     flow_cvr = (flow_convs / flow_clicks * 100) if flow_clicks > 0 else 0
-                else:
+                                            else:
                     single_view = None
                 
                 # Remove any spacing containers
                 pass
                 
-                # Add Flow Journey title with explanation - NOT BOLD
-                st.markdown("""
-                <h2 style="font-size: 56px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui;">
+                # Add Flow Journey title with explanation - RESPONSIVE
+                        st.markdown("""
+                <h2 style="font-size: clamp(2.5rem, 2rem + 2.5vw, 3.5rem); font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui;">
                     <strong>🔄 Flow Journey</strong>
                 </h2>
-                <p style="font-size: 14px; color: #64748b; font-weight: 400; margin: 0; line-height: 1.6; font-family: system-ui;">
+                <p style="font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem); color: #64748b; font-weight: 400; margin: 0; line-height: 1.6; font-family: system-ui;">
                     A flow is the complete user journey: Publisher → Creative → SERP → Landing Page. Each stage can be customized using the filters above. We automatically select the best-performing combination based on conversions, clicks, and impressions.
                 </p>
-                """, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
                 
                 # Show flow stats directly (no success messages)
-                if len(final_filtered) > 0:
+                                    if len(final_filtered) > 0:
                     # Get stats from the SPECIFIC flow record (not aggregated)
                     # A flow is: Advertiser -> Campaign -> Publisher URL -> Keyword -> SERP URL -> Landing Page URL
                     # Stats should be for THIS specific combination, not summed across multiple records
@@ -520,21 +530,21 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 st.markdown("<br><br>", unsafe_allow_html=True)
                 
-                # Show aggregated table with big title
-                st.markdown("""
-                <div style="margin-bottom: 4px; margin-top: 4px;">
-                    <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; text-align: left; line-height: 1;">
+                # Show aggregated table with big title - RESPONSIVE
+                        st.markdown("""
+                <div style="margin-bottom: clamp(0.25rem, 0.2rem + 0.2vw, 0.25rem); margin-top: clamp(0.25rem, 0.2rem + 0.2vw, 0.25rem);">
+                    <h2 style="font-size: clamp(2.25rem, 1.9rem + 1.8vw, 3rem); font-weight: 900; color: #0f172a; margin: 0; padding: 0; text-align: left; line-height: 1;">
                         📊 Flow Combinations Overview
                     </h2>
-                </div>
-                """, unsafe_allow_html=True)
+                    </div>
+                    """, unsafe_allow_html=True)
                 
                 # Render table using module
                 render_flow_combinations_table(campaign_df)
                 
                 # Render "What is Flow" section using module
                 render_what_is_flow_section()
-            else:
+                    else:
                 st.warning("⚠️ No flow data found. This campaign may have impressions but no clicks or conversions yet.")
 else:
     st.error("❌ Could not load data - Check FILE_A_ID and file sharing settings")
