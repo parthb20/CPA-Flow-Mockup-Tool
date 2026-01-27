@@ -7,6 +7,79 @@ import streamlit as st
 import pandas as pd
 from urllib.parse import urlparse
 from src.utils import safe_float
+from datetime import datetime, timedelta
+
+
+def parse_ts_to_datetime(ts_value):
+    """Convert ts format (YYYYMMDDHH) to datetime object
+    Example: 2026010504 -> datetime(2026, 1, 5, 4)
+    """
+    try:
+        ts_str = str(int(ts_value))
+        if len(ts_str) == 10:
+            year = int(ts_str[0:4])
+            month = int(ts_str[4:6])
+            day = int(ts_str[6:8])
+            hour = int(ts_str[8:10])
+            return datetime(year, month, day, hour)
+    except:
+        pass
+    return None
+
+
+def filter_by_date_range(df, start_date, start_hour, end_date, end_hour):
+    """Filter dataframe by date range using ts column
+    Args:
+        df: DataFrame with 'ts' column (format: YYYYMMDDHH)
+        start_date: datetime.date object
+        start_hour: int (0-23)
+        end_date: datetime.date object
+        end_hour: int (0-23)
+    Returns:
+        Filtered DataFrame
+    """
+    if 'ts' not in df.columns:
+        return df
+    
+    # Create start and end datetime
+    start_dt = datetime.combine(start_date, datetime.min.time()).replace(hour=start_hour)
+    end_dt = datetime.combine(end_date, datetime.min.time()).replace(hour=end_hour)
+    
+    # Parse ts column and filter
+    df = df.copy()
+    df['_temp_dt'] = df['ts'].apply(parse_ts_to_datetime)
+    filtered = df[(df['_temp_dt'] >= start_dt) & (df['_temp_dt'] <= end_dt)]
+    filtered = filtered.drop(columns=['_temp_dt'])
+    
+    return filtered
+
+
+def filter_by_threshold(df, entity_col, threshold_pct=5.0):
+    """Filter dataframe to only include entities with >= threshold% of total data
+    Args:
+        df: DataFrame
+        entity_col: Column name (e.g., 'keyword_term', 'publisher_domain')
+        threshold_pct: Minimum percentage (default 5.0%)
+    Returns:
+        Filtered DataFrame
+    """
+    if entity_col not in df.columns:
+        return df
+    
+    # Count rows per entity
+    entity_counts = df[entity_col].value_counts()
+    total_rows = len(df)
+    
+    # Calculate percentage
+    entity_pcts = (entity_counts / total_rows) * 100
+    
+    # Filter entities >= threshold
+    valid_entities = entity_pcts[entity_pcts >= threshold_pct].index.tolist()
+    
+    # Filter dataframe
+    filtered = df[df[entity_col].isin(valid_entities)]
+    
+    return filtered
 
 
 def find_default_flow(df):
@@ -147,3 +220,183 @@ def find_default_flow(df):
         # st.error will be called by the caller if needed
         print(f"Error finding default flow: {str(e)}")
         return None
+
+
+def find_top_n_best_flows(df, n=5, include_serp_filter=False):
+    """Find top N best performing flows
+    Args:
+        df: DataFrame with flow data
+        n: Number of top flows to return (default 5)
+        include_serp_filter: If True, include serp_template in grouping
+    Returns:
+        List of dictionaries, each representing a flow (sorted best to worst)
+    """
+    try:
+        df = df.copy()
+        
+        # Convert numeric columns
+        df['conversions'] = df['conversions'].apply(safe_float)
+        df['impressions'] = df['impressions'].apply(safe_float)
+        df['clicks'] = df['clicks'].apply(safe_float)
+        
+        # Calculate CVR for sorting
+        df['cvr'] = df.apply(lambda row: row['conversions'] / row['clicks'] if row['clicks'] > 0 else 0, axis=1)
+        
+        # Ensure ts is datetime
+        if 'ts' in df.columns:
+            df['ts'] = pd.to_datetime(df['ts'], errors='coerce', format='mixed')
+        
+        # Get domain if not present
+        if 'publisher_domain' not in df.columns:
+            if 'publisher_url' in df.columns:
+                df['publisher_domain'] = df['publisher_url'].apply(lambda x: urlparse(str(x)).netloc if pd.notna(x) else '')
+            elif 'Serp_URL' in df.columns:
+                df['publisher_domain'] = df['Serp_URL'].apply(lambda x: urlparse(str(x)).netloc if pd.notna(x) else '')
+        
+        # Build grouping columns
+        group_cols = ['keyword_term', 'publisher_domain']
+        if include_serp_filter:
+            if 'serp_template_name' in df.columns:
+                group_cols.append('serp_template_name')
+            elif 'serp_template_id' in df.columns:
+                group_cols.append('serp_template_id')
+        
+        # Filter to rows with conversions > 0 and clicks > 0
+        valid_df = df[(df['conversions'] > 0) & (df['clicks'] > 0)]
+        
+        if len(valid_df) == 0:
+            # Fall back to clicks > 0
+            valid_df = df[df['clicks'] > 0]
+            if len(valid_df) == 0:
+                return []
+        
+        # Group by keyword + domain (+ serp if enabled) and calculate metrics
+        agg_df = valid_df.groupby(group_cols, dropna=False).agg({
+            'conversions': 'sum',
+            'clicks': 'sum',
+            'impressions': 'sum'
+        }).reset_index()
+        
+        # Calculate CVR for each combination
+        agg_df['cvr'] = agg_df.apply(lambda row: row['conversions'] / row['clicks'] if row['clicks'] > 0 else 0, axis=1)
+        
+        # Sort by CVR desc, then conversions desc, then clicks desc
+        agg_df = agg_df.sort_values(['cvr', 'conversions', 'clicks'], ascending=[False, False, False])
+        
+        # Get top N combinations
+        top_combos = agg_df.head(n)
+        
+        # For each combo, get the most recent view with valid metrics
+        flows = []
+        for _, combo in top_combos.iterrows():
+            filtered = valid_df.copy()
+            for col in group_cols:
+                filtered = filtered[filtered[col] == combo[col]]
+            
+            if len(filtered) > 0:
+                # Sort by timestamp desc
+                if 'ts' in filtered.columns:
+                    filtered = filtered.sort_values('ts', ascending=False)
+                
+                # Get most recent
+                flow = filtered.iloc[0].to_dict()
+                flows.append(flow)
+        
+        return flows
+    except Exception as e:
+        print(f"Error finding top N flows: {str(e)}")
+        return []
+
+
+def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
+    """Find top N worst performing flows
+    Logic: Lowest CVR among keyword-domain combinations (with >5% data),
+           choose latest view with 0 conversions but good clicks
+    Args:
+        df: DataFrame with flow data
+        n: Number of worst flows to return (default 5)
+        include_serp_filter: If True, include serp_template in grouping
+    Returns:
+        List of dictionaries, each representing a flow (sorted worst to best)
+    """
+    try:
+        df = df.copy()
+        
+        # Convert numeric columns
+        df['conversions'] = df['conversions'].apply(safe_float)
+        df['impressions'] = df['impressions'].apply(safe_float)
+        df['clicks'] = df['clicks'].apply(safe_float)
+        
+        # Calculate CVR
+        df['cvr'] = df.apply(lambda row: row['conversions'] / row['clicks'] if row['clicks'] > 0 else 0, axis=1)
+        
+        # Ensure ts is datetime
+        if 'ts' in df.columns:
+            df['ts'] = pd.to_datetime(df['ts'], errors='coerce', format='mixed')
+        
+        # Get domain if not present
+        if 'publisher_domain' not in df.columns:
+            if 'publisher_url' in df.columns:
+                df['publisher_domain'] = df['publisher_url'].apply(lambda x: urlparse(str(x)).netloc if pd.notna(x) else '')
+            elif 'Serp_URL' in df.columns:
+                df['publisher_domain'] = df['Serp_URL'].apply(lambda x: urlparse(str(x)).netloc if pd.notna(x) else '')
+        
+        # Build grouping columns
+        group_cols = ['keyword_term', 'publisher_domain']
+        if include_serp_filter:
+            if 'serp_template_name' in df.columns:
+                group_cols.append('serp_template_name')
+            elif 'serp_template_id' in df.columns:
+                group_cols.append('serp_template_id')
+        
+        # Group by keyword + domain (+ serp if enabled) and calculate CVR
+        agg_df = df.groupby(group_cols, dropna=False).agg({
+            'conversions': 'sum',
+            'clicks': 'sum',
+            'impressions': 'sum'
+        }).reset_index()
+        
+        # Calculate CVR for each combination
+        agg_df['cvr'] = agg_df.apply(lambda row: row['conversions'] / row['clicks'] if row['clicks'] > 0 else 0, axis=1)
+        
+        # Filter to combinations with good clicks (at least 10 clicks)
+        agg_df = agg_df[agg_df['clicks'] >= 10]
+        
+        if len(agg_df) == 0:
+            return []
+        
+        # Sort by CVR ascending (lowest CVR first)
+        agg_df = agg_df.sort_values(['cvr', 'clicks'], ascending=[True, False])
+        
+        # Get worst N combinations
+        worst_combos = agg_df.head(n)
+        
+        # For each combo, get the latest view with 0 conversions but good clicks
+        flows = []
+        for _, combo in worst_combos.iterrows():
+            filtered = df.copy()
+            for col in group_cols:
+                filtered = filtered[filtered[col] == combo[col]]
+            
+            # Filter to rows with 0 conversions but clicks > 0
+            zero_conv = filtered[(filtered['conversions'] == 0) & (filtered['clicks'] > 0)]
+            
+            if len(zero_conv) > 0:
+                # Sort by timestamp desc (latest first)
+                if 'ts' in zero_conv.columns:
+                    zero_conv = zero_conv.sort_values('ts', ascending=False)
+                
+                # Get most recent
+                flow = zero_conv.iloc[0].to_dict()
+                flows.append(flow)
+            elif len(filtered) > 0:
+                # Fallback: get any row from this combo (sorted by ts)
+                if 'ts' in filtered.columns:
+                    filtered = filtered.sort_values('ts', ascending=False)
+                flow = filtered.iloc[0].to_dict()
+                flows.append(flow)
+        
+        return flows
+    except Exception as e:
+        print(f"Error finding worst flows: {str(e)}")
+        return []
