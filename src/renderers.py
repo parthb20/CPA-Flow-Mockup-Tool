@@ -155,9 +155,10 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     
     # Calculate responsive width using clamp() for fluid scaling
     responsive_width = f"clamp({min_width}px, {target_width_vw}, {max_width}px)"
-    # Height scales proportionally with width
+    # Height MUST scale proportionally with width to maintain aspect ratio
     aspect_ratio = base_height / base_width
-    responsive_height = f"calc({responsive_width} * {aspect_ratio})"
+    # Use calc() to compute height based on responsive width
+    responsive_height = f"calc(({responsive_width}) * {aspect_ratio})"
     
     # Prepare iframe content
     if is_url and not use_srcdoc:
@@ -231,16 +232,37 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     
     escaped = full_content.replace("'", "&apos;").replace('"', '&quot;')
     
-    # Final wrapper HTML - RESPONSIVE VERSION with viewport-based sizing
+    # Final wrapper HTML - TRULY RESPONSIVE with proper scaling
+    # Use CSS to calculate scale dynamically based on container width
     html_output = f"""
     <div style="display: flex; justify-content: center; padding: clamp(0.5rem, 0.4rem + 0.5vw, 0.625rem); background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem);">
-        <div style="width: {responsive_width}; height: {responsive_height}; {frame_style} overflow: hidden; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.2); position: relative;">
-            <iframe srcdoc='{escaped}' style="position: absolute; top: 0; left: 0; width: {base_width}px; height: {base_height}px; border: none; transform-origin: 0 0; display: block; background: white; transform: scale(calc({responsive_width} / {base_width}px));"></iframe>
+        <div style="
+            width: {responsive_width}; 
+            aspect-ratio: {base_width} / {base_height}; 
+            {frame_style} 
+            overflow: hidden; 
+            background: white; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2); 
+            position: relative;
+            container-type: size;
+        ">
+            <iframe srcdoc='{escaped}' style="
+                position: absolute; 
+                top: 0; 
+                left: 0; 
+                width: {base_width}px; 
+                height: {base_height}px; 
+                border: none; 
+                transform-origin: 0 0; 
+                display: block; 
+                background: white; 
+                transform: scale(calc(100cqw / {base_width}px));
+            "></iframe>
         </div>
     </div>
     """
     
-    # Return estimated height (will be responsive in practice)
+    # Return estimated height (will be truly responsive)
     return html_output, display_height_px + 30, is_url
 
 
