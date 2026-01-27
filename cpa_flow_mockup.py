@@ -317,12 +317,16 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Session state initialization
-for key in ['data_a', 'data_b', 'data_c', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'similarities', 'last_campaign_key']:
+for key in ['data_a', 'data_b', 'data_c', 'data_d', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'similarities', 'last_campaign_key', 'all_flows', 'current_flow_index', 'last_filter_key']:
     if key not in st.session_state:
         if key == 'view_mode':
             st.session_state[key] = 'basic'
         elif key == 'flow_layout':
             st.session_state[key] = 'horizontal'
+        elif key == 'current_flow_index':
+            st.session_state[key] = 0
+        elif key == 'all_flows':
+            st.session_state[key] = []
         else:
             st.session_state[key] = None
 
@@ -421,6 +425,118 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.warning("⚠️ No rows found for this campaign. Check advertiser/campaign names match exactly.")
                 st.stop()
             
+            # === NEW FILTERS ===
+            st.markdown("---")
+            st.markdown("### 🎯 Flow Selection Filters")
+            
+            filter_row1 = st.columns([2, 2, 1, 1])
+            filter_row2 = st.columns([1, 1, 1, 1])
+            
+            # Row 1: Date filters
+            with filter_row1[0]:
+                # Calculate last 15 days
+                from datetime import date, timedelta
+                today = date.today()
+                default_start = today - timedelta(days=14)
+                start_date = st.date_input(
+                    "📅 Start Date", 
+                    value=default_start,
+                    min_value=today - timedelta(days=90),
+                    max_value=today,
+                    key='start_date_filter'
+                )
+            
+            with filter_row1[1]:
+                end_date = st.date_input(
+                    "📅 End Date", 
+                    value=today,
+                    min_value=today - timedelta(days=90),
+                    max_value=today,
+                    key='end_date_filter'
+                )
+            
+            with filter_row1[2]:
+                start_hour = st.selectbox(
+                    "🕐 Start Hour",
+                    options=list(range(24)),
+                    index=0,
+                    format_func=lambda x: f"{x:02d}:00",
+                    key='start_hour_filter'
+                )
+            
+            with filter_row1[3]:
+                end_hour = st.selectbox(
+                    "🕐 End Hour",
+                    options=list(range(24)),
+                    index=23,
+                    format_func=lambda x: f"{x:02d}:00",
+                    key='end_hour_filter'
+                )
+            
+            # Row 2: Other toggles
+            with filter_row2[0]:
+                include_serp_in_flow = st.checkbox(
+                    "🔍 Include SERP Template",
+                    value=False,
+                    help="Group flows by SERP template name",
+                    key='include_serp_toggle'
+                )
+            
+            with filter_row2[1]:
+                flow_type = st.radio(
+                    "📊 Flow Type",
+                    options=["Best", "Worst"],
+                    index=0,
+                    horizontal=True,
+                    key='flow_type_selector',
+                    help="Best: Highest CVR | Worst: Lowest CVR with 0 conversions"
+                )
+            
+            with filter_row2[2]:
+                entity_threshold = st.number_input(
+                    "🎯 Entity Threshold %",
+                    min_value=0.0,
+                    max_value=100.0,
+                    value=5.0,
+                    step=1.0,
+                    key='entity_threshold',
+                    help="Only include keywords/domains with >= X% of total data"
+                )
+            
+            with filter_row2[3]:
+                num_flows = st.number_input(
+                    "🔢 Number of Flows",
+                    min_value=1,
+                    max_value=10,
+                    value=5,
+                    step=1,
+                    key='num_flows_selector',
+                    help="Show top N flows"
+                )
+            
+            st.markdown("---")
+            # === END NEW FILTERS ===
+            
+            # Apply date filter
+            from src.flow_analysis import filter_by_date_range, filter_by_threshold
+            campaign_df = filter_by_date_range(campaign_df, start_date, start_hour, end_date, end_hour)
+            
+            if len(campaign_df) == 0:
+                st.warning("⚠️ No data found for selected date range. Please adjust filters.")
+                st.stop()
+            
+            # Apply 5% threshold filters for keywords and domains
+            original_len = len(campaign_df)
+            campaign_df = filter_by_threshold(campaign_df, 'keyword_term', entity_threshold)
+            campaign_df = filter_by_threshold(campaign_df, 'publisher_domain', entity_threshold)
+            
+            if len(campaign_df) == 0:
+                st.warning(f"⚠️ No keywords/domains meet the {entity_threshold}% threshold. Try lowering the threshold.")
+                st.stop()
+            
+            if len(campaign_df) < original_len:
+                st.info(f"ℹ️ Filtered from {original_len} to {len(campaign_df)} rows using {entity_threshold}% threshold")
+            
             # Convert numeric columns to proper types FIRST
             campaign_df['impressions'] = pd.to_numeric(campaign_df['impressions'], errors='coerce').fillna(0)
             campaign_df['clicks'] = pd.to_numeric(campaign_df['clicks'], errors='coerce').fillna(0)
@@ -442,11 +558,78 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             avg_ctr = (total_clicks / total_impressions * 100) if total_impressions > 0 else 0
             avg_cvr = (total_conversions / total_clicks * 100) if total_clicks > 0 else 0
             
-            # Find default flow if not set
-            if st.session_state.default_flow is None:
-                with st.spinner("Finding best performing flow..."):
-                    st.session_state.default_flow = find_default_flow(campaign_df)
-                    st.session_state.current_flow = st.session_state.default_flow.copy() if st.session_state.default_flow else None
+            # Find top flows if not set or if filters changed
+            # Use a key to track if filters changed
+            filter_key = f"{start_date}_{start_hour}_{end_date}_{end_hour}_{flow_type}_{entity_threshold}_{num_flows}_{include_serp_in_flow}"
+            if 'last_filter_key' not in st.session_state:
+                st.session_state.last_filter_key = None
+            
+            if st.session_state.last_filter_key != filter_key:
+                # Filters changed, recalculate flows
+                st.session_state.last_filter_key = filter_key
+                st.session_state.all_flows = []
+                st.session_state.current_flow_index = 0
+            
+            if len(st.session_state.get('all_flows', [])) == 0:
+                with st.spinner(f"Finding top {num_flows} {flow_type.lower()} flows..."):
+                    from src.flow_analysis import find_top_n_best_flows, find_top_n_worst_flows
+                    
+                    if flow_type == "Best":
+                        flows = find_top_n_best_flows(campaign_df, n=num_flows, include_serp_filter=include_serp_in_flow)
+                    else:  # Worst
+                        flows = find_top_n_worst_flows(campaign_df, n=num_flows, include_serp_filter=include_serp_in_flow)
+                    
+                    if flows:
+                        st.session_state.all_flows = flows
+                        st.session_state.current_flow_index = 0
+                        st.session_state.default_flow = flows[0]
+                        st.session_state.current_flow = flows[0].copy()
+                    else:
+                        st.error(f"❌ No {flow_type.lower()} flows found with current filters.")
+                        st.stop()
+            
+            # Flow navigation UI
+            if len(st.session_state.get('all_flows', [])) > 0:
+                st.markdown("### 🎯 Flow Navigation")
+                nav_cols = st.columns([1, 3, 1])
+                
+                with nav_cols[0]:
+                    if st.button("⬅️ Previous", key='prev_flow', disabled=(st.session_state.current_flow_index == 0)):
+                        st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
+                        st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
+                        st.rerun()
+                
+                with nav_cols[1]:
+                    # Flow selector dropdown
+                    flow_options = []
+                    for i, flow in enumerate(st.session_state.all_flows):
+                        kw = flow.get('keyword_term', 'N/A')
+                        domain = flow.get('publisher_domain', 'N/A')
+                        cvr = flow.get('cvr', 0)
+                        flow_options.append(f"Flow {i+1}: {kw} → {domain} (CVR: {cvr:.2f}%)")
+                    
+                    selected_flow_idx = st.selectbox(
+                        f"Select Flow (Showing {len(st.session_state.all_flows)} {flow_type} Flows)",
+                        options=range(len(st.session_state.all_flows)),
+                        index=st.session_state.current_flow_index,
+                        format_func=lambda x: flow_options[x],
+                        key='flow_selector'
+                    )
+                    
+                    if selected_flow_idx != st.session_state.current_flow_index:
+                        st.session_state.current_flow_index = selected_flow_idx
+                        st.session_state.current_flow = st.session_state.all_flows[selected_flow_idx].copy()
+                        st.rerun()
+                
+                with nav_cols[2]:
+                    if st.button("Next ➡️", key='next_flow', disabled=(st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1)):
+                        st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
+                        st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
+                        st.rerun()
+                
+                # Show current flow number
+                st.markdown(f"**Currently viewing:** Flow {st.session_state.current_flow_index + 1} of {len(st.session_state.all_flows)}")
+                st.markdown("---")
             
             if st.session_state.current_flow:
                 current_flow = st.session_state.current_flow
