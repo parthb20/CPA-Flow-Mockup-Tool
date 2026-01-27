@@ -354,7 +354,7 @@ if not st.session_state.loading_done:
             # Load File C (creative requests) - silently, optional
             if FILE_C_ID and FILE_C_ID.strip() != "":
                 st.session_state.data_c = load_creative_requests(FILE_C_ID)
-                    else:
+            else:
                 st.session_state.data_c = None
             
             st.session_state.loading_done = True
