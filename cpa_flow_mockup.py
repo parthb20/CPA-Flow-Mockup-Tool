@@ -425,97 +425,164 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.warning("⚠️ No rows found for this campaign. Check advertiser/campaign names match exactly.")
                 st.stop()
             
-            # === NEW FILTERS ===
-            st.markdown("---")
-            st.markdown("### 🎯 Flow Selection Filters")
+            # === FLOW FILTERS - LIGHT & CLEAN ===
+            st.markdown("""
+                <style>
+                /* Force light theme for ALL inputs */
+                .stDateInput > div > div > input,
+                .stSelectbox > div > div,
+                .stSelectbox > div > div > div,
+                .stSelectbox input,
+                .stCheckbox,
+                .stRadio > div,
+                [data-baseweb="select"],
+                [data-baseweb="select"] > div,
+                [data-baseweb="input"],
+                [data-baseweb="base-input"] {
+                    background-color: white !important;
+                    color: #1f2937 !important;
+                    border-color: #d1d5db !important;
+                }
+                
+                /* Dropdown menus */
+                [data-baseweb="popover"],
+                [data-baseweb="menu"],
+                [role="listbox"],
+                [role="option"] {
+                    background-color: white !important;
+                    color: #1f2937 !important;
+                }
+                
+                /* Hover states */
+                [role="option"]:hover,
+                [data-baseweb="menu"] li:hover {
+                    background-color: #f3f4f6 !important;
+                    color: #1f2937 !important;
+                }
+                
+                /* Selected state */
+                [aria-selected="true"] {
+                    background-color: #e5e7eb !important;
+                    color: #1f2937 !important;
+                }
+                
+                /* Radio buttons - BIG & BOLD like other controls */
+                .stRadio > div {
+                    flex-direction: row !important;
+                    gap: 0.75rem !important;
+                    justify-content: center !important;
+                }
+                .stRadio label {
+                    font-size: clamp(1rem, 0.9rem + 0.5vw, 1.125rem) !important;
+                    font-weight: 600 !important;
+                    padding: clamp(0.625rem, 0.5rem + 0.5vw, 0.75rem) clamp(1.5rem, 1.2rem + 1.5vw, 2rem) !important;
+                    border-radius: clamp(0.5rem, 0.4rem + 0.5vw, 0.625rem) !important;
+                    background: white !important;
+                    border: 2px solid #d1d5db !important;
+                    cursor: pointer !important;
+                    transition: all 0.2s ease !important;
+                    min-width: clamp(5rem, 4rem + 5vw, 6.25rem) !important;
+                    text-align: center !important;
+                }
+                .stRadio label:hover {
+                    border-color: #9ca3af !important;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+                }
+                .stRadio label:has(input:checked) {
+                    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+                    color: white !important;
+                    border-color: #2563eb !important;
+                    box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3) !important;
+                }
+                .stRadio input[type="radio"] {
+                    display: none !important;
+                }
+                
+                /* Buttons - clean and consistent */
+                .stButton > button {
+                    background-color: white !important;
+                    color: #1f2937 !important;
+                    border: 2px solid #d1d5db !important;
+                    border-radius: 0.5rem !important;
+                    font-weight: 600 !important;
+                    transition: all 0.2s ease !important;
+                }
+                .stButton > button:hover:not(:disabled) {
+                    border-color: #9ca3af !important;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+                    background-color: #f9fafb !important;
+                }
+                .stButton > button:disabled {
+                    opacity: 0.4 !important;
+                    cursor: not-allowed !important;
+                }
+                </style>
+            """, unsafe_allow_html=True)
             
-            filter_row1 = st.columns([2, 2, 1, 1])
-            filter_row2 = st.columns([1, 1, 1, 1])
+            # Compact filter row
+            filter_cols = st.columns([2, 2, 1, 1, 1.5, 1.5])
             
-            # Row 1: Date filters
-            with filter_row1[0]:
-                # Calculate last 15 days
+            with filter_cols[0]:
                 from datetime import date, timedelta
                 today = date.today()
                 default_start = today - timedelta(days=14)
                 start_date = st.date_input(
-                    "📅 Start Date", 
+                    "📅 From",
                     value=default_start,
                     min_value=today - timedelta(days=90),
                     max_value=today,
                     key='start_date_filter'
                 )
             
-            with filter_row1[1]:
+            with filter_cols[1]:
                 end_date = st.date_input(
-                    "📅 End Date", 
+                    "📅 To",
                     value=today,
                     min_value=today - timedelta(days=90),
                     max_value=today,
                     key='end_date_filter'
                 )
             
-            with filter_row1[2]:
+            with filter_cols[2]:
                 start_hour = st.selectbox(
-                    "🕐 Start Hour",
+                    "Start",
                     options=list(range(24)),
                     index=0,
-                    format_func=lambda x: f"{x:02d}:00",
+                    format_func=lambda x: f"{x:02d}h",
                     key='start_hour_filter'
                 )
             
-            with filter_row1[3]:
+            with filter_cols[3]:
                 end_hour = st.selectbox(
-                    "🕐 End Hour",
+                    "End",
                     options=list(range(24)),
                     index=23,
-                    format_func=lambda x: f"{x:02d}:00",
+                    format_func=lambda x: f"{x:02d}h",
                     key='end_hour_filter'
                 )
             
-            # Row 2: Other toggles
-            with filter_row2[0]:
+            with filter_cols[4]:
                 include_serp_in_flow = st.checkbox(
-                    "🔍 Include SERP Template",
+                    "Include SERP",
                     value=False,
-                    help="Group flows by SERP template name",
                     key='include_serp_toggle'
                 )
             
-            with filter_row2[1]:
+            with filter_cols[5]:
                 flow_type = st.radio(
-                    "📊 Flow Type",
+                    "",
                     options=["Best", "Worst"],
                     index=0,
                     horizontal=True,
-                    key='flow_type_selector',
-                    help="Best: Highest CVR | Worst: Lowest CVR with 0 conversions"
+                    key='flow_type_selector'
                 )
             
-            with filter_row2[2]:
-                entity_threshold = st.number_input(
-                    "🎯 Entity Threshold %",
-                    min_value=0.0,
-                    max_value=100.0,
-                    value=5.0,
-                    step=1.0,
-                    key='entity_threshold',
-                    help="Only include keywords/domains with >= X% of total data"
-                )
-            
-            with filter_row2[3]:
-                num_flows = st.number_input(
-                    "🔢 Number of Flows",
-                    min_value=1,
-                    max_value=10,
-                    value=5,
-                    step=1,
-                    key='num_flows_selector',
-                    help="Show top N flows"
-                )
+            # Hidden defaults
+            entity_threshold = 5.0
+            num_flows = 5
             
             st.markdown("---")
-            # === END NEW FILTERS ===
+            # === END FILTERS ===
             
             # Apply date filter
             from src.flow_analysis import filter_by_date_range, filter_by_threshold
@@ -534,8 +601,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.warning(f"⚠️ No keywords/domains meet the {entity_threshold}% threshold. Try lowering the threshold.")
                 st.stop()
             
-            if len(campaign_df) < original_len:
-                st.info(f"ℹ️ Filtered from {original_len} to {len(campaign_df)} rows using {entity_threshold}% threshold")
+            # Silent filtering - don't show message
             
             # Convert numeric columns to proper types FIRST
             campaign_df['impressions'] = pd.to_numeric(campaign_df['impressions'], errors='coerce').fillna(0)
@@ -588,48 +654,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         st.error(f"❌ No {flow_type.lower()} flows found with current filters.")
                         st.stop()
             
-            # Flow navigation UI
-            if len(st.session_state.get('all_flows', [])) > 0:
-                st.markdown("### 🎯 Flow Navigation")
-                nav_cols = st.columns([1, 3, 1])
-                
-                with nav_cols[0]:
-                    if st.button("⬅️ Previous", key='prev_flow', disabled=(st.session_state.current_flow_index == 0)):
-                        st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
-                        st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
-                        st.rerun()
-                
-                with nav_cols[1]:
-                    # Flow selector dropdown
-                    flow_options = []
-                    for i, flow in enumerate(st.session_state.all_flows):
-                        kw = flow.get('keyword_term', 'N/A')
-                        domain = flow.get('publisher_domain', 'N/A')
-                        cvr = flow.get('cvr', 0)
-                        flow_options.append(f"Flow {i+1}: {kw} → {domain} (CVR: {cvr:.2f}%)")
-                    
-                    selected_flow_idx = st.selectbox(
-                        f"Select Flow (Showing {len(st.session_state.all_flows)} {flow_type} Flows)",
-                        options=range(len(st.session_state.all_flows)),
-                        index=st.session_state.current_flow_index,
-                        format_func=lambda x: flow_options[x],
-                        key='flow_selector'
-                    )
-                    
-                    if selected_flow_idx != st.session_state.current_flow_index:
-                        st.session_state.current_flow_index = selected_flow_idx
-                        st.session_state.current_flow = st.session_state.all_flows[selected_flow_idx].copy()
-                        st.rerun()
-                
-                with nav_cols[2]:
-                    if st.button("Next ➡️", key='next_flow', disabled=(st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1)):
-                        st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
-                        st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
-                        st.rerun()
-                
-                # Show current flow number
-                st.markdown(f"**Currently viewing:** Flow {st.session_state.current_flow_index + 1} of {len(st.session_state.all_flows)}")
-                st.markdown("---")
+            # Store navigation for later (after flow journey)
             
             if st.session_state.current_flow:
                 current_flow = st.session_state.current_flow
@@ -706,6 +731,60 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     thumio_configured=THUMIO_CONFIGURED,
                     thumio_referer_domain=THUMIO_REFERER_DOMAIN
                 )
+                
+                # === FLOW NAVIGATION - Clean & Symmetric ===
+                if len(st.session_state.get('all_flows', [])) > 1:
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    
+                    # Navigation controls
+                    nav_cols = st.columns([1, 4, 1])
+                    
+                    with nav_cols[0]:
+                        prev_disabled = st.session_state.current_flow_index == 0
+                        if st.button(
+                            "⬅️ Previous", 
+                            key='prev_flow', 
+                            disabled=prev_disabled,
+                            use_container_width=True
+                        ):
+                            st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
+                            st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
+                            st.rerun()
+                    
+                    with nav_cols[1]:
+                        # Flow selector dropdown - aesthetic
+                        flow_options = []
+                        for i, flow in enumerate(st.session_state.all_flows):
+                            kw = flow.get('keyword_term', 'N/A')[:30]
+                            domain = flow.get('publisher_domain', 'N/A')[:25]
+                            cvr = flow.get('cvr', 0) * 100 if flow.get('cvr', 0) < 1 else flow.get('cvr', 0)
+                            flow_options.append(f"{i+1}. {kw} → {domain} ({cvr:.1f}%)")
+                        
+                        selected_flow_idx = st.selectbox(
+                            f"Flow {st.session_state.current_flow_index + 1} of {len(st.session_state.all_flows)}",
+                            options=range(len(st.session_state.all_flows)),
+                            index=st.session_state.current_flow_index,
+                            format_func=lambda x: flow_options[x],
+                            key='flow_selector',
+                            label_visibility="visible"
+                        )
+                        
+                        if selected_flow_idx != st.session_state.current_flow_index:
+                            st.session_state.current_flow_index = selected_flow_idx
+                            st.session_state.current_flow = st.session_state.all_flows[selected_flow_idx].copy()
+                            st.rerun()
+                    
+                    with nav_cols[2]:
+                        next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
+                        if st.button(
+                            "Next ➡️", 
+                            key='next_flow', 
+                            disabled=next_disabled,
+                            use_container_width=True
+                        ):
+                            st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
+                            st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
+                            st.rerun()
                 
                 # ============================================================
                 # FILTERS, TABLE, AND OVERVIEW - MOVED BELOW FLOW JOURNEY
