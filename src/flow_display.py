@@ -404,7 +404,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     
     # Stage 1: Publisher URL
     if st.session_state.flow_layout == 'vertical':
-        st.markdown("<br>", unsafe_allow_html=True)
         stage_1_container = st.container()
     else:
         stage_1_container = stage_cols[0]
@@ -431,7 +430,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         if st.session_state.flow_layout == 'vertical':
             card_col_left, card_col_right = st.columns([0.6, 0.4])
             with card_col_left:
-                st.markdown('<h3 style="font-size: clamp(2rem, 1.75rem + 1.3vw, 2.5rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.5rem, 0.4rem + 0.5vw, 0.75rem) 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>📰 Publisher URL</strong></h3>', unsafe_allow_html=True)
+                st.markdown('<h3 style="font-size: clamp(2rem, 1.75rem + 1.3vw, 2.5rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem) 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>📰 Publisher URL</strong></h3>', unsafe_allow_html=True)
         else:
             st.markdown('<h3 style="font-size: clamp(1.5rem, 1.3rem + 1vw, 1.75rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem) 0; font-family: system-ui;"><strong>📰 Publisher URL</strong></h3>', unsafe_allow_html=True)
         
@@ -549,7 +548,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     
     # Stage 2: Creative
     if st.session_state.flow_layout == 'vertical':
-        st.markdown("<br>", unsafe_allow_html=True)
         stage_2_container = st.container()
         creative_card_left = None
         creative_card_right = None
@@ -562,7 +560,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         if st.session_state.flow_layout == 'vertical':
             creative_card_left, creative_card_right = st.columns([0.6, 0.4])
             with creative_card_left:
-                st.markdown('<h3 style="font-size: clamp(2rem, 1.75rem + 1.3vw, 2.5rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.5rem, 0.4rem + 0.5vw, 0.75rem) 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>🎨 Creative</strong></h3>', unsafe_allow_html=True)
+                st.markdown('<h3 style="font-size: clamp(2rem, 1.75rem + 1.3vw, 2.5rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem) 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>🎨 Creative</strong></h3>', unsafe_allow_html=True)
         else:
             st.markdown('<h3 style="font-size: clamp(1.5rem, 1.3rem + 1vw, 1.75rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem) 0; font-family: system-ui;"><strong>🎨 Creative</strong></h3>', unsafe_allow_html=True)
         
@@ -745,7 +743,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             # Add Keyword → Ad similarity for VERTICAL layout
             if st.session_state.flow_layout == 'vertical':
                 if 'similarities' in st.session_state and st.session_state.similarities:
-                    st.markdown("<div style='margin-top: 12px;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='margin-top: 4px;'></div>", unsafe_allow_html=True)
                     render_similarity_score('kwd_to_ad', st.session_state.similarities,
                                            custom_title="Keyword → Ad Copy Similarity",
                                            tooltip_text="Measures keyword-ad alignment. 70%+ = Good Match (keywords clearly in ad copy), 40-69% = Fair Match (topic relevance present), <40% = Poor Match (weak/no connection)",
@@ -761,7 +759,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         serp_url = None
     
     if st.session_state.flow_layout == 'vertical':
-        st.markdown("<br>", unsafe_allow_html=True)
         stage_3_container = st.container()
         serp_card_left = None
         serp_card_right = None
@@ -777,7 +774,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         if st.session_state.flow_layout == 'vertical':
             serp_card_left, serp_card_right = st.columns([0.6, 0.4])
             with serp_card_left:
-                st.markdown('<h3 style="font-size: clamp(2rem, 1.75rem + 1.3vw, 2.5rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.5rem, 0.4rem + 0.5vw, 0.75rem) 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>📄 SERP</strong></h3>', unsafe_allow_html=True)
+                st.markdown('<h3 style="font-size: clamp(2rem, 1.75rem + 1.3vw, 2.5rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem) 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>📄 SERP</strong></h3>', unsafe_allow_html=True)
         else:
             st.markdown('<h3 style="font-size: clamp(1.5rem, 1.3rem + 1vw, 1.75rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem) 0; font-family: system-ui;"><strong>📄 SERP</strong></h3>', unsafe_allow_html=True)
         
@@ -984,7 +981,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 """, unsafe_allow_html=True)
                 
                 # Show Ad Copy → Landing Page similarity BELOW SERP details
-                st.markdown("<div style='margin-top: 12px;'></div>", unsafe_allow_html=True)
+                st.markdown("<div style='margin-top: 4px;'></div>", unsafe_allow_html=True)
                 if 'similarities' not in st.session_state or st.session_state.similarities is None:
                     if api_key:
                         st.session_state.similarities = calculate_similarities(current_flow)
@@ -1011,7 +1008,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     
     # Stage 4: Landing Page
     if st.session_state.flow_layout == 'vertical':
-        st.markdown("<br>", unsafe_allow_html=True)
         stage_4_container = st.container()
         landing_card_left = None
         landing_card_right = None
@@ -1027,7 +1023,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         if st.session_state.flow_layout == 'vertical':
             landing_card_left, landing_card_right = st.columns([0.6, 0.4])
             with landing_card_left:
-                st.markdown('<h3 style="font-size: clamp(2rem, 1.75rem + 1.3vw, 2.5rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.5rem, 0.4rem + 0.5vw, 0.75rem) 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>🎯 Landing Page</strong></h3>', unsafe_allow_html=True)
+                st.markdown('<h3 style="font-size: clamp(2rem, 1.75rem + 1.3vw, 2.5rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem) 0; line-height: 1.2; letter-spacing: -0.5px; font-family: system-ui;"><strong>🎯 Landing Page</strong></h3>', unsafe_allow_html=True)
         else:
             st.markdown('<h3 style="font-size: clamp(1.5rem, 1.3rem + 1vw, 1.75rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem) 0; font-family: system-ui;"><strong>🎯 Landing Page</strong></h3>', unsafe_allow_html=True)
         
@@ -1336,7 +1332,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         st.session_state.similarities = {}
                 
                 if 'similarities' in st.session_state and st.session_state.similarities:
-                    st.markdown("<div style='margin-top: 12px;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='margin-top: 4px;'></div>", unsafe_allow_html=True)
                     render_similarity_score('kwd_to_page', st.session_state.similarities,
                                            custom_title="Keyword → Landing Page Similarity",
                                            tooltip_text="Measures end-to-end flow quality. 70%+ = Good Match (keyword intent matches page content), 40-69% = Fair Match (some relevance), <40% = Poor Match (poor user experience)")
@@ -1354,7 +1350,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     if st.session_state.flow_layout == 'horizontal':
         # Big bold heading for similarity scores - RESPONSIVE
         st.markdown("""
-            <div style="font-size: clamp(1.75rem, 1.5rem + 1.25vw, 2rem); font-weight: 900; color: #0f172a; margin: clamp(0.5rem, 0.4rem + 0.5vw, 0.75rem) 0; padding: 0; line-height: 1.2; display: block;">
+            <div style="font-size: clamp(1.75rem, 1.5rem + 1.25vw, 2rem); font-weight: 900; color: #0f172a; margin: clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem) 0; padding: 0; line-height: 1.2; display: block;">
                 <strong>🧠 Similarity Scores</strong>
             </div>
         """, unsafe_allow_html=True)
