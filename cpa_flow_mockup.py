@@ -430,6 +430,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 <style>
                 /* Force light theme for ALL inputs */
                 .stDateInput > div > div > input,
+                .stDateInput input,
+                .stDateInput,
                 .stSelectbox > div > div,
                 .stSelectbox > div > div > div,
                 .stSelectbox input,
@@ -438,10 +440,24 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 [data-baseweb="select"],
                 [data-baseweb="select"] > div,
                 [data-baseweb="input"],
-                [data-baseweb="base-input"] {
+                [data-baseweb="base-input"],
+                [data-baseweb="calendar"],
+                [data-baseweb="datepicker"] {
                     background-color: white !important;
                     color: #1f2937 !important;
                     border-color: #d1d5db !important;
+                }
+                
+                /* Date picker calendar */
+                [data-baseweb="calendar"],
+                [data-baseweb="calendar"] * {
+                    background-color: white !important;
+                    color: #1f2937 !important;
+                }
+                
+                /* Calendar days */
+                [data-baseweb="calendar"] button {
+                    color: #1f2937 !important;
                 }
                 
                 /* Dropdown menus */
@@ -466,11 +482,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     color: #1f2937 !important;
                 }
                 
-                /* Radio buttons - BIG & BOLD like other controls */
+                /* Radio buttons - Custom styled with colors */
                 .stRadio > div {
                     flex-direction: row !important;
-                    gap: 0.75rem !important;
-                    justify-content: center !important;
+                    gap: 1rem !important;
+                    justify-content: flex-start !important;
+                    align-items: center !important;
                 }
                 .stRadio label {
                     font-size: clamp(1rem, 0.9rem + 0.5vw, 1.125rem) !important;
@@ -483,17 +500,29 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     transition: all 0.2s ease !important;
                     min-width: clamp(5rem, 4rem + 5vw, 6.25rem) !important;
                     text-align: center !important;
+                    color: #1f2937 !important;
                 }
                 .stRadio label:hover {
                     border-color: #9ca3af !important;
                     box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
                 }
-                .stRadio label:has(input:checked) {
-                    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
-                    color: white !important;
-                    border-color: #2563eb !important;
-                    box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3) !important;
+                
+                /* Best flow - green */
+                .stRadio label:has(input[value="Best"]:checked) {
+                    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%) !important;
+                    color: #1f2937 !important;
+                    border-color: #10b981 !important;
+                    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2) !important;
                 }
+                
+                /* Worst flow - red */
+                .stRadio label:has(input[value="Worst"]:checked) {
+                    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%) !important;
+                    color: #1f2937 !important;
+                    border-color: #ef4444 !important;
+                    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2) !important;
+                }
+                
                 .stRadio input[type="radio"] {
                     display: none !important;
                 }
@@ -519,13 +548,14 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 </style>
             """, unsafe_allow_html=True)
             
-            # Compact filter row
-            filter_cols = st.columns([2, 2, 1, 1, 1.5, 1.5])
+            # Compact filter row - organized layout
+            filter_row1 = st.columns([1.5, 1.5, 0.5, 0.5, 2])
             
-            with filter_cols[0]:
-                from datetime import date, timedelta
-                today = date.today()
-                default_start = today - timedelta(days=14)
+            from datetime import date, timedelta
+            today = date.today()
+            default_start = today - timedelta(days=14)
+            
+            with filter_row1[0]:
                 start_date = st.date_input(
                     "📅 From",
                     value=default_start,
@@ -534,7 +564,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     key='start_date_filter'
                 )
             
-            with filter_cols[1]:
+            with filter_row1[1]:
                 end_date = st.date_input(
                     "📅 To",
                     value=today,
@@ -543,7 +573,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     key='end_date_filter'
                 )
             
-            with filter_cols[2]:
+            with filter_row1[2]:
                 start_hour = st.selectbox(
                     "Start",
                     options=list(range(24)),
@@ -552,7 +582,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     key='start_hour_filter'
                 )
             
-            with filter_cols[3]:
+            with filter_row1[3]:
                 end_hour = st.selectbox(
                     "End",
                     options=list(range(24)),
@@ -561,25 +591,30 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     key='end_hour_filter'
                 )
             
-            with filter_cols[4]:
-                include_serp_in_flow = st.checkbox(
-                    "Include SERP",
-                    value=False,
-                    key='include_serp_toggle'
-                )
-            
-            with filter_cols[5]:
+            with filter_row1[4]:
                 flow_type = st.radio(
-                    "",
+                    "Flow Type",
                     options=["Best", "Worst"],
                     index=0,
                     horizontal=True,
                     key='flow_type_selector'
                 )
             
+            # Second row for additional options
+            filter_row2 = st.columns([1, 5])
+            
+            with filter_row2[0]:
+                use_full_data = st.checkbox(
+                    "Use Full Data",
+                    value=False,
+                    help="Bypass 5% threshold filter for keywords and domains",
+                    key='use_full_data_toggle'
+                )
+            
             # Hidden defaults
-            entity_threshold = 5.0
+            entity_threshold = 0.0 if use_full_data else 5.0
             num_flows = 5
+            include_serp_in_flow = False  # Always false, hidden
             
             st.markdown("---")
             # === END FILTERS ===
@@ -592,16 +627,15 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.warning("⚠️ No data found for selected date range. Please adjust filters.")
                 st.stop()
             
-            # Apply 5% threshold filters for keywords and domains
-            original_len = len(campaign_df)
-            campaign_df = filter_by_threshold(campaign_df, 'keyword_term', entity_threshold)
-            campaign_df = filter_by_threshold(campaign_df, 'publisher_domain', entity_threshold)
-            
-            if len(campaign_df) == 0:
-                st.warning(f"⚠️ No keywords/domains meet the {entity_threshold}% threshold. Try lowering the threshold.")
-                st.stop()
-            
-            # Silent filtering - don't show message
+            # Apply threshold filters only if not using full data
+            if entity_threshold > 0:
+                original_len = len(campaign_df)
+                campaign_df = filter_by_threshold(campaign_df, 'keyword_term', entity_threshold)
+                campaign_df = filter_by_threshold(campaign_df, 'publisher_domain', entity_threshold)
+                
+                if len(campaign_df) == 0:
+                    st.warning(f"⚠️ No keywords/domains meet the {entity_threshold}% threshold. Try lowering the threshold.")
+                    st.stop()
             
             # Convert numeric columns to proper types FIRST
             campaign_df['impressions'] = pd.to_numeric(campaign_df['impressions'], errors='coerce').fillna(0)
@@ -626,7 +660,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             
             # Find top flows if not set or if filters changed
             # Use a key to track if filters changed
-            filter_key = f"{start_date}_{start_hour}_{end_date}_{end_hour}_{flow_type}_{entity_threshold}_{num_flows}_{include_serp_in_flow}"
+            filter_key = f"{start_date}_{start_hour}_{end_date}_{end_hour}_{flow_type}_{entity_threshold}_{num_flows}_{use_full_data}_{include_serp_in_flow}"
             if 'last_filter_key' not in st.session_state:
                 st.session_state.last_filter_key = None
             
@@ -698,9 +732,17 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 <h2 style="font-size: clamp(2.5rem, 2rem + 2.5vw, 3.5rem); font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui;">
                     <strong>🔄 Flow Journey</strong>
                 </h2>
-                <p style="font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem); color: #64748b; font-weight: 400; margin: 0; line-height: 1.6; font-family: system-ui;">
+                <p style="font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem); color: #64748b; font-weight: 400; margin: 0 0 0.5rem 0; line-height: 1.6; font-family: system-ui;">
                     A flow is the complete user journey: Publisher → Creative → SERP → Landing Page. Each stage can be customized using the filters above. We automatically select the best-performing combination based on conversions, clicks, and impressions.
                 </p>
+                    """, unsafe_allow_html=True)
+                
+                # Show flow navigation hint if multiple flows exist
+                if len(st.session_state.get('all_flows', [])) > 1:
+                    st.markdown(f"""
+                    <p style="font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem); color: #64748b; font-weight: 400; margin: 0 0 1rem 0; line-height: 1.6; font-family: system-ui;">
+                        📍 Viewing flow {st.session_state.current_flow_index + 1} of {len(st.session_state.all_flows)}. Use Previous/Next below to explore other flows.
+                    </p>
                     """, unsafe_allow_html=True)
                 
                 # Show flow stats directly (no success messages)
