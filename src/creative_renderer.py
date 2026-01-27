@@ -412,7 +412,14 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
     <meta name="viewport" content="width={width}, initial-scale=1">
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        html, body {{ 
+        
+        /* RESPONSIVE FONT SCALING - Makes text scale proportionally with container */
+        html {{
+            /* Scale base font size with viewport width */
+            font-size: clamp(10px, 2.5vw, 16px) !important;
+        }}
+        
+        body {{ 
             width: 100%; 
             height: 100%; 
             overflow: auto; 
@@ -421,19 +428,48 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 1rem !important;
         }}
+        
+        /* Scale all text elements proportionally */
         #ad-container {{
             width: {width}px;
             min-height: {height}px;
             position: relative;
         }}
+        
+        /* Make ALL text inside ad scale proportionally */
+        #ad-container * {{
+            font-size: inherit !important;
+        }}
+        
+        /* Scale headings */
+        #ad-container h1 {{ font-size: clamp(14px, 3.5vw, 28px) !important; }}
+        #ad-container h2 {{ font-size: clamp(12px, 3vw, 24px) !important; }}
+        #ad-container h3 {{ font-size: clamp(11px, 2.5vw, 20px) !important; }}
+        #ad-container h4, #ad-container h5, #ad-container h6 {{ 
+            font-size: clamp(10px, 2.2vw, 18px) !important; 
+        }}
+        
+        /* Scale paragraphs and text */
+        #ad-container p, #ad-container span, #ad-container div, 
+        #ad-container a, #ad-container li, #ad-container td, 
+        #ad-container th, #ad-container label, #ad-container button {{
+            font-size: clamp(9px, 2vw, 16px) !important;
+        }}
+        
+        /* Scale smaller text */
+        #ad-container small, #ad-container .small {{
+            font-size: clamp(8px, 1.8vw, 13px) !important;
+        }}
+        
         #loading {{
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             color: #999;
-            font-size: 12px;
+            font-size: clamp(10px, 2.2vw, 14px) !important;
             text-align: center;
             padding: 10px;
         }}
