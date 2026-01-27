@@ -20,39 +20,40 @@ OPENAI_API_KEY = None  # Set via environment variable or Streamlit secrets
 
 # Device dimensions - these are PORTRAIT dimensions
 # Horizontal orientation will swap width/height automatically
-# RESPONSIVE: Use viewport-based scaling for consistent appearance
+# TRULY RESPONSIVE: Cards scale proportionally maintaining aspect ratio
 DEVICE_DIMENSIONS = {
     'mobile': {
         'width': 390,  # Portrait width
         'height': 844,  # Portrait height
-        'target_width_portrait': '18vw',  # Responsive width (scales with viewport)
-        'target_width_landscape': '22vw',  # Responsive width for landscape
-        'min_width_portrait': 240,  # Minimum width in pixels
-        'max_width_portrait': 320,  # Maximum width in pixels
-        'min_width_landscape': 300,  # Minimum width in pixels
-        'max_width_landscape': 420,  # Maximum width in pixels
+        # Use percentage of container width for truly responsive scaling
+        'target_width_portrait': '22vw',  # 22% of viewport width
+        'target_width_landscape': '22vw',  # Same for consistency
+        'min_width_portrait': 280,  # Larger minimum for laptop screens
+        'max_width_portrait': 380,  # Larger maximum for big screens
+        'min_width_landscape': 280,
+        'max_width_landscape': 380,
         'chrome_height': 68  # 22px status bar + 46px URL bar
     },
     'tablet': {
         'width': 820,  # Portrait width
         'height': 1180,  # Portrait height
-        'target_width_portrait': '18vw',  # Responsive width
-        'target_width_landscape': '22vw',  # Responsive width for landscape
-        'min_width_portrait': 240,  # Minimum width in pixels
-        'max_width_portrait': 320,  # Maximum width in pixels
-        'min_width_landscape': 300,  # Minimum width in pixels
-        'max_width_landscape': 420,  # Maximum width in pixels
+        'target_width_portrait': '22vw',
+        'target_width_landscape': '22vw',
+        'min_width_portrait': 280,
+        'max_width_portrait': 380,
+        'min_width_landscape': 280,
+        'max_width_landscape': 380,
         'chrome_height': 88
     },
     'laptop': {
         'width': 1920,  # Wider laptop (16:9 ratio for true widescreen)
         'height': 1080,  # Standard height
-        'target_width_portrait': '20vw',  # Responsive width (slightly larger)
-        'target_width_landscape': '35vw',  # Responsive width for landscape (much wider)
-        'min_width_portrait': 260,  # Minimum width in pixels
-        'max_width_portrait': 380,  # Maximum width in pixels
-        'min_width_landscape': 500,  # Minimum width in pixels
-        'max_width_landscape': 800,  # Maximum width in pixels
+        'target_width_portrait': '22vw',  # Same for all devices
+        'target_width_landscape': '22vw',  # Same for all devices
+        'min_width_portrait': 280,  # Larger minimum
+        'max_width_portrait': 380,  # Larger maximum
+        'min_width_landscape': 280,
+        'max_width_landscape': 380,
         'chrome_height': 48
     }
 }
