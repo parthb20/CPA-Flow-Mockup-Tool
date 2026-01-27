@@ -409,83 +409,41 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta name="viewport" content="width={width}, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         
-        /* AGGRESSIVE RESPONSIVE FONT SCALING - Use vw units for ALL text */
-        html {{
-            /* Base font scales with viewport - very aggressive */
-            font-size: clamp(8px, 3vw, 18px) !important;
-        }}
-        
-        body {{ 
+        html, body {{ 
             width: 100%; 
             height: 100%; 
-            overflow: auto; 
+            overflow: hidden;
             background: #f8fafc;
-            font-family: Arial, sans-serif !important;
+            font-family: Arial, sans-serif;
+        }}
+        
+        /* RESPONSIVE WRAPPER - Enable container queries */
+        #wrapper {{
+            width: 100%;
+            height: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1rem !important;
+            container-type: size;
+            overflow: hidden;
         }}
         
+        /* AD CONTAINER - Fixed size that will be scaled */
         #ad-container {{
             width: {width}px;
-            min-height: {height}px;
+            height: {height}px;
             position: relative;
+            transform-origin: center center;
+            /* SCALE PROPORTIONALLY based on container width using cqw */
+            transform: scale(calc(100cqw / {width}px));
+            background: white;
         }}
         
-        /* FORCE all text to scale - target everything */
-        #ad-container,
-        #ad-container *,
-        #ad-container *::before,
-        #ad-container *::after,
-        #ad-container [style*="font"],
-        #ad-container div,
-        #ad-container span,
-        #ad-container p,
-        #ad-container a,
-        #ad-container button,
-        #ad-container input,
-        #ad-container label {{
-            font-size: clamp(8px, 2.8vw, 18px) !important;
-        }}
-        
-        /* Headings scale larger */
-        #ad-container h1,
-        #ad-container h1 * {{
-            font-size: clamp(16px, 4.5vw, 32px) !important;
-        }}
-        
-        #ad-container h2,
-        #ad-container h2 * {{
-            font-size: clamp(14px, 4vw, 28px) !important;
-        }}
-        
-        #ad-container h3,
-        #ad-container h3 * {{
-            font-size: clamp(12px, 3.5vw, 24px) !important;
-        }}
-        
-        #ad-container h4,
-        #ad-container h5,
-        #ad-container h6 {{
-            font-size: clamp(11px, 3vw, 20px) !important;
-        }}
-        
-        /* Small text */
-        #ad-container small,
-        #ad-container .small {{
-            font-size: clamp(7px, 2.2vw, 14px) !important;
-        }}
-        
-        /* Override any inline font-size styles */
-        #ad-container [style] {{
-            font-size: inherit !important;
-        }}
-        
+        /* Loading indicator */
         #loading {{
             position: absolute;
             top: 50%;
@@ -495,6 +453,7 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
             font-size: 12px;
             text-align: center;
             padding: 10px;
+            z-index: 1000;
         }}
         .show-loading {{
             display: block !important;
@@ -505,75 +464,18 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
     </style>
 </head>
 <body>
-<div id="ad-container">
-<div id="loading">⏳ Loading ad...<br><small>(Cache: {cache_bust})</small></div>
-{adcode}
+<div id="wrapper">
+    <div id="ad-container">
+        <div id="loading">⏳ Loading ad...<br><small>(Cache: {cache_bust})</small></div>
+        {adcode}
+    </div>
 </div>
 <script>
     console.log('Creative container loaded at: {cache_bust}');
     console.log('Creative size: {width}x{height}');
     
-    // AGGRESSIVE FONT SCALING - Inject into dynamically loaded content
-    function injectResponsiveStyles(target) {{
-        try {{
-            // Try to access iframes and inject styles
-            var iframes = target.querySelectorAll('iframe');
-            iframes.forEach(function(iframe) {{
-                try {{
-                    var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                    if (iframeDoc) {{
-                        var style = iframeDoc.createElement('style');
-                        style.textContent = `
-                            * {{ font-size: inherit !important; }}
-                            html {{ font-size: clamp(10px, 2.5vw, 16px) !important; }}
-                            body {{ font-size: 1rem !important; }}
-                            h1 {{ font-size: clamp(14px, 3.5vw, 28px) !important; }}
-                            h2 {{ font-size: clamp(12px, 3vw, 24px) !important; }}
-                            h3 {{ font-size: clamp(11px, 2.5vw, 20px) !important; }}
-                            p, div, span, a, li, td, th, button {{ font-size: clamp(9px, 2vw, 16px) !important; }}
-                            small {{ font-size: clamp(8px, 1.8vw, 13px) !important; }}
-                        `;
-                        iframeDoc.head.appendChild(style);
-                        console.log('Injected responsive styles into iframe');
-                    }}
-                }} catch (e) {{
-                    // Cross-origin iframe, can't access
-                    console.log('Cannot inject into cross-origin iframe');
-                }}
-            }});
-            
-            // Apply inline styles to all text elements
-            var textElements = target.querySelectorAll('p, div, span, a, h1, h2, h3, h4, h5, h6, li, td, th, button, label');
-            textElements.forEach(function(el) {{
-                var computedSize = window.getComputedStyle(el).fontSize;
-                var numericSize = parseFloat(computedSize);
-                if (numericSize > 0) {{
-                    // Scale font size based on viewport width
-                    var scaledSize = Math.max(9, Math.min(numericSize * (window.innerWidth / {width}), numericSize * 1.2));
-                    el.style.setProperty('font-size', scaledSize + 'px', 'important');
-                }}
-            }});
-        }} catch (e) {{
-            console.error('Error injecting styles:', e);
-        }}
-    }}
-    
-    // Watch for dynamically added content
-    var observer = new MutationObserver(function(mutations) {{
-        mutations.forEach(function(mutation) {{
-            mutation.addedNodes.forEach(function(node) {{
-                if (node.nodeType === 1) {{ // Element node
-                    injectResponsiveStyles(node);
-                }}
-            }});
-        }});
-    }});
-    
-    // Start observing
-    observer.observe(document.body, {{
-        childList: true,
-        subtree: true
-    }});
+    console.log('Scaling: Using transform scale with container queries (cqw)');
+    console.log('Scale formula: calc(100cqw / {width}px)');
     
     // Track if content was ever detected
     var contentDetected = false;
