@@ -163,9 +163,10 @@ st.markdown("""
         border: 2px solid #e2e8f0 !important;
     }
     
-    /* Popover buttons specifically */
+    /* Popover buttons specifically - WHITE BACKGROUND */
     .stPopover > button,
-    button[data-testid*="popover"] {
+    button[data-testid*="popover"],
+    [data-testid*="stPopover"] button {
         background-color: white !important;
         color: #0f172a !important;
         border: 2px solid #cbd5e1 !important;
@@ -173,12 +174,14 @@ st.markdown("""
         padding: 0.5rem 1rem !important;
     }
     
-    /* Flow navigation buttons - extra compact */
+    /* Flow navigation buttons - VERY COMPACT */
     button[key*="prev_flow"],
     button[key*="next_flow"] {
-        padding: 0.375rem 0.75rem !important;
-        font-size: 1rem !important;
-        min-height: 2.25rem !important;
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.875rem !important;
+        min-height: 1.75rem !important;
+        max-height: 2rem !important;
+        width: auto !important;
     }
     
     /* Dropdowns - RESPONSIVE */
@@ -445,6 +448,17 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             # Compact time filter with popover
             time_col = st.columns([2.5, 1.5])
             with time_col[1]:
+                # Add CSS to fix Time button
+                st.markdown("""
+                    <style>
+                    /* Fix Time popover button - white background */
+                    button[data-testid*="popover"] {
+                        background-color: white !important;
+                        color: #1f2937 !important;
+                        border: 2px solid #cbd5e1 !important;
+                    }
+                    </style>
+                """, unsafe_allow_html=True)
                 with st.popover("🕐 Time", use_container_width=True):
                     # Hour selection first
                     st.markdown("**Hour Range**")
@@ -666,7 +680,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             """, unsafe_allow_html=True)
             
             # Compact filter row - Flow Type and Options only
-            filter_cols = st.columns([2, 1.5, 2.5])
+            filter_cols = st.columns([2.5, 1.5, 2])
             
             with filter_cols[0]:
                 # Flow Type buttons - inline horizontal
@@ -679,7 +693,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 is_best = st.session_state.get('flow_type', 'Best') == 'Best'
                 is_worst = st.session_state.get('flow_type', 'Best') == 'Worst'
                 
-                flow_type_btns = st.columns([1, 1, 2])
+                # Wider columns to prevent text cutoff
+                flow_type_btns = st.columns([1.2, 1.2, 1.6])
                 
                 with flow_type_btns[0]:
                     if st.button("✓ Best" if is_best else "Best", key='best_button', use_container_width=True):
@@ -693,35 +708,38 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 flow_type = st.session_state.flow_type
                 
-                # Apply button colors dynamically via JavaScript
-                st.markdown("""
+                # Apply button colors dynamically via JavaScript - improved
+                st.markdown(f"""
                     <script>
-                    function styleFlowButtons() {
-                        const buttons = document.querySelectorAll('button');
-                        buttons.forEach(btn => {
-                            const text = btn.textContent.trim();
-                            if (text === '✓ Best') {
-                                btn.style.background = 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)';
-                                btn.style.borderColor = '#10b981';
-                                btn.style.borderWidth = '2px';
-                                btn.style.borderStyle = 'solid';
-                                btn.style.color = '#1f2937';
-                            } else if (text === '✓ Worst') {
-                                btn.style.background = 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)';
-                                btn.style.borderColor = '#ef4444';
-                                btn.style.borderWidth = '2px';
-                                btn.style.borderStyle = 'solid';
-                                btn.style.color = '#1f2937';
-                            }
-                        });
-                    }
-                    if (document.readyState === 'loading') {
-                        document.addEventListener('DOMContentLoaded', styleFlowButtons);
-                    } else {
+                    (function() {{
+                        function styleFlowButtons() {{
+                            const buttons = document.querySelectorAll('button');
+                            buttons.forEach(btn => {{
+                                const text = btn.textContent.trim();
+                                if (text === '✓ Best' || text === 'Best') {{
+                                    if (text === '✓ Best') {{
+                                        btn.style.cssText = 'background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%) !important; border: 2px solid #10b981 !important; color: #1f2937 !important;';
+                                    }}
+                                }} else if (text === '✓ Worst' || text === 'Worst') {{
+                                    if (text === '✓ Worst') {{
+                                        btn.style.cssText = 'background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%) !important; border: 2px solid #ef4444 !important; color: #1f2937 !important;';
+                                    }}
+                                }}
+                            }});
+                        }}
+                        
+                        // Run multiple times to catch Streamlit's rerendering
                         styleFlowButtons();
-                    }
-                    setTimeout(styleFlowButtons, 100);
-                    setTimeout(styleFlowButtons, 500);
+                        setTimeout(styleFlowButtons, 50);
+                        setTimeout(styleFlowButtons, 100);
+                        setTimeout(styleFlowButtons, 200);
+                        setTimeout(styleFlowButtons, 500);
+                        setTimeout(styleFlowButtons, 1000);
+                        
+                        // Watch for DOM changes
+                        const observer = new MutationObserver(styleFlowButtons);
+                        observer.observe(document.body, {{ childList: true, subtree: true }});
+                    }})();
                     </script>
                 """, unsafe_allow_html=True)
             
@@ -825,21 +843,31 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 # === FLOW NAVIGATION - RIGHT AFTER FILTERS - COMPACT ===
                 if len(st.session_state.get('all_flows', [])) > 1:
-                    # Extra compact navigation with smaller buttons
+                    # Extra compact navigation with very small buttons
                     st.markdown("""
                         <style>
-                        /* Smaller navigation buttons */
-                        button[key="prev_flow"],
-                        button[key="next_flow"] {
+                        /* Very small navigation buttons */
+                        button[data-testid="baseButton-secondary"] {
                             padding: 0.25rem 0.5rem !important;
                             font-size: 0.875rem !important;
                             min-height: 1.75rem !important;
+                            max-height: 2rem !important;
                             line-height: 1 !important;
+                        }
+                        
+                        /* Target specifically prev/next by their symbols */
+                        button:has-text("◀"),
+                        button:has-text("▶") {
+                            padding: 0.25rem 0.5rem !important;
+                            font-size: 1rem !important;
+                            min-height: 1.75rem !important;
+                            max-height: 2rem !important;
+                            width: auto !important;
                         }
                         </style>
                     """, unsafe_allow_html=True)
                     
-                    nav_cols = st.columns([0.5, 4, 0.5])
+                    nav_cols = st.columns([0.4, 4.2, 0.4])
                     
                     with nav_cols[0]:
                         prev_disabled = st.session_state.current_flow_index == 0
