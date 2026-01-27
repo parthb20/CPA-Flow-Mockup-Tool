@@ -841,42 +841,41 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Render filters and get filter state
                 filters_changed, selected_keyword_filter, selected_domain_filter = render_advanced_filters(campaign_df, current_flow)
                 
-                # === FLOW NAVIGATION - RIGHT AFTER FILTERS - COMPACT ===
+                # === FLOW NAVIGATION - RIGHT AFTER FILTERS - VERY COMPACT ===
                 if len(st.session_state.get('all_flows', [])) > 1:
-                    # Extra compact navigation with very small buttons
+                    # Inline compact navigation
+                    nav_cols = st.columns([0.5, 0.5, 3.5, 0.5])
+                    
+                    # Add aggressive CSS for tiny buttons
                     st.markdown("""
                         <style>
-                        /* Very small navigation buttons */
-                        button[data-testid="baseButton-secondary"] {
-                            padding: 0.25rem 0.5rem !important;
-                            font-size: 0.875rem !important;
-                            min-height: 1.75rem !important;
-                            max-height: 2rem !important;
+                        /* Force navigation buttons to be tiny */
+                        button[key="prev_flow"],
+                        button[key="next_flow"] {
+                            padding: 0.2rem 0.4rem !important;
+                            font-size: 0.75rem !important;
+                            min-height: 1.5rem !important;
+                            max-height: 1.5rem !important;
+                            height: 1.5rem !important;
                             line-height: 1 !important;
-                        }
-                        
-                        /* Target specifically prev/next by their symbols */
-                        button:has-text("◀"),
-                        button:has-text("▶") {
-                            padding: 0.25rem 0.5rem !important;
-                            font-size: 1rem !important;
-                            min-height: 1.75rem !important;
-                            max-height: 2rem !important;
                             width: auto !important;
+                            min-width: 2rem !important;
+                            max-width: 2.5rem !important;
                         }
                         </style>
                     """, unsafe_allow_html=True)
                     
-                    nav_cols = st.columns([0.4, 4.2, 0.4])
-                    
                     with nav_cols[0]:
+                        st.write("")  # Empty spacer
+                    
+                    with nav_cols[1]:
                         prev_disabled = st.session_state.current_flow_index == 0
-                        if st.button("◀", key='prev_flow', disabled=prev_disabled, use_container_width=True, help="Previous"):
+                        if st.button("◀", key='prev_flow', disabled=prev_disabled, help="Previous"):
                             st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
                             st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
                             st.rerun()
                     
-                    with nav_cols[1]:
+                    with nav_cols[2]:
                         # Simple flow selector
                         selected_flow_idx = st.selectbox(
                             "Flow",
@@ -892,9 +891,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             st.session_state.current_flow = st.session_state.all_flows[selected_flow_idx].copy()
                             st.rerun()
                     
-                    with nav_cols[2]:
+                    with nav_cols[3]:
                         next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
-                        if st.button("▶", key='next_flow', disabled=next_disabled, use_container_width=True, help="Next"):
+                        if st.button("▶", key='next_flow', disabled=next_disabled, help="Next"):
                             st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
                             st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
                             st.rerun()
