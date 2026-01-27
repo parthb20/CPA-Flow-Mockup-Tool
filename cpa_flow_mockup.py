@@ -467,7 +467,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.session_state.current_flow = current_flow
                 
                 # Show selected flow details using module
-                                    if len(final_filtered) > 0:
+                if len(final_filtered) > 0:
                     # Select view_id with max timestamp
                     if 'timestamp' in final_filtered.columns:
                         single_view = final_filtered.loc[final_filtered['timestamp'].idxmax()]
@@ -479,7 +479,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     flow_convs = safe_int(single_view.get('conversions', 0))
                     flow_ctr = (flow_clicks / flow_imps * 100) if flow_imps > 0 else 0
                     flow_cvr = (flow_convs / flow_clicks * 100) if flow_clicks > 0 else 0
-                                            else:
+                else:
                     single_view = None
                 
                 # Remove any spacing containers
