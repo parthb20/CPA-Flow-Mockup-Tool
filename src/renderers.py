@@ -26,7 +26,7 @@ except:
 
 
 def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdoc=False, display_url=None, orientation='vertical'):
-    """Render device preview with realistic chrome for mobile/tablet/laptop
+    """Render device preview with realistic chrome for mobile/tablet/laptop - RESPONSIVE
     
     Args:
         orientation: 'vertical' (portrait) or 'horizontal' (landscape)
@@ -44,15 +44,21 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         # Swap for landscape
         base_width = portrait_height
         base_height = portrait_width
-        target_width = DEVICE_DIMENSIONS[device]['target_width_landscape']
+        target_width_vw = DEVICE_DIMENSIONS[device]['target_width_landscape']
+        min_width = DEVICE_DIMENSIONS[device]['min_width_landscape']
+        max_width = DEVICE_DIMENSIONS[device]['max_width_landscape']
     else:
         # Keep portrait
         base_width = portrait_width
         base_height = portrait_height
-        target_width = DEVICE_DIMENSIONS[device]['target_width_portrait']
+        target_width_vw = DEVICE_DIMENSIONS[device]['target_width_portrait']
+        min_width = DEVICE_DIMENSIONS[device]['min_width_portrait']
+        max_width = DEVICE_DIMENSIONS[device]['max_width_portrait']
     
-    # Calculate scale to achieve target width
-    scale = target_width / base_width
+    # Calculate scale based on average of min/max for initial rendering
+    # The CSS will handle responsive scaling via viewport units
+    avg_target_width = (min_width + max_width) / 2
+    scale = avg_target_width / base_width
     
     # Device-specific styling
     if device == 'mobile':
@@ -141,10 +147,17 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
         """
         bottom_nav = ""
     
-    # Calculate display dimensions
-    display_width = int(base_width * scale)
-    display_height = int(base_height * scale)
+    # Calculate display dimensions - using responsive approach
+    # These are for the iframe container aspect ratio calculation
+    display_width_px = int(base_width * scale)
+    display_height_px = int(base_height * scale)
     content_area_height = base_height - chrome_height_px
+    
+    # Calculate responsive width using clamp() for fluid scaling
+    responsive_width = f"clamp({min_width}px, {target_width_vw}, {max_width}px)"
+    # Height scales proportionally with width
+    aspect_ratio = base_height / base_width
+    responsive_height = f"calc({responsive_width} * {aspect_ratio})"
     
     # Prepare iframe content
     if is_url and not use_srcdoc:
@@ -218,16 +231,17 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     
     escaped = full_content.replace("'", "&apos;").replace('"', '&quot;')
     
-    # Final wrapper HTML
+    # Final wrapper HTML - RESPONSIVE VERSION with viewport-based sizing
     html_output = f"""
-    <div style="display: flex; justify-content: center; padding: 10px; background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: 8px;">
-        <div style="width: {display_width}px; height: {display_height}px; {frame_style} overflow: hidden; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-            <iframe srcdoc='{escaped}' style="width: {base_width}px; height: {base_height}px; border: none; transform: scale({scale}); transform-origin: 0 0; display: block; background: white;"></iframe>
+    <div style="display: flex; justify-content: center; padding: clamp(0.5rem, 0.4rem + 0.5vw, 0.625rem); background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem);">
+        <div style="width: {responsive_width}; height: {responsive_height}; {frame_style} overflow: hidden; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.2); position: relative;">
+            <iframe srcdoc='{escaped}' style="position: absolute; top: 0; left: 0; width: {base_width}px; height: {base_height}px; border: none; transform-origin: 0 0; display: block; background: white; transform: scale(calc({responsive_width} / {base_width}px));"></iframe>
         </div>
     </div>
     """
     
-    return html_output, display_height + 30, is_url
+    # Return estimated height (will be responsive in practice)
+    return html_output, display_height_px + 30, is_url
 
 
 def render_similarity_score(score_type, similarities_data, show_explanation=False, custom_title=None, tooltip_text=None, max_height=None):
@@ -265,13 +279,13 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
         formula_text = "Formula: 40% Topic Match + 60% Utility Match"
     
     st.markdown(f"""
-    <div style="margin-bottom: 8px; display: flex; align-items: center; justify-content: flex-start;">
-        <span style="font-weight: 900; color: #0f172a; font-size: 18px;">
+    <div style="margin-bottom: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem); display: flex; align-items: center; justify-content: flex-start;">
+        <span style="font-weight: 900; color: #0f172a; font-size: clamp(1rem, 0.9rem + 0.5vw, 1.125rem);">
             <strong>{title_text}</strong>
         </span>
-        <span title="{tooltip_text}" style="cursor: help; color: #3b82f6; font-size: 13px; margin-left: 6px;">ℹ️</span>
+        <span title="{tooltip_text}" style="cursor: help; color: #3b82f6; font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem); margin-left: clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem);">ℹ️</span>
     </div>
-    {f'<div style="margin-bottom: 8px; font-size: 11px; color: #64748b; font-style: italic;">{formula_text}</div>' if formula_text else ''}
+    {f'<div style="margin-bottom: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem); font-size: clamp(0.625rem, 0.6rem + 0.2vw, 0.6875rem); color: #64748b; font-style: italic;">{formula_text}</div>' if formula_text else ''}
     """, unsafe_allow_html=True)
     
     # If this specific score is missing, show wait message
@@ -325,16 +339,16 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
     
     tooltip = tooltip_text or default_tooltip
     
-    # Main score card (title already shown above)
+    # Main score card (title already shown above) - RESPONSIVE
     st.markdown(f"""
-    <div style="background: linear-gradient(135deg, {color}15 0%, {color}08 100%); border: 2px solid {color}; border-radius: 12px; padding: 16px; margin: 8px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-        <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-            <div style="background: white; border-radius: 12px; padding: 12px 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
-                <div style="font-size: 44px; font-weight: 900; color: {color}; line-height: 1;">{score:.0%}</div>
+    <div style="background: linear-gradient(135deg, {color}15 0%, {color}08 100%); border: 2px solid {color}; border-radius: clamp(0.5rem, 0.4rem + 0.6vw, 0.75rem); padding: clamp(0.75rem, 0.6rem + 0.8vw, 1rem); margin: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem) 0; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+        <div style="display: flex; align-items: center; gap: clamp(0.75rem, 0.6rem + 0.8vw, 1rem); flex-wrap: wrap;">
+            <div style="background: white; border-radius: clamp(0.5rem, 0.4rem + 0.6vw, 0.75rem); padding: clamp(0.625rem, 0.5rem + 0.6vw, 0.75rem) clamp(1rem, 0.8rem + 1vw, 1.25rem); box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+                <div style="font-size: clamp(2.25rem, 2rem + 1.3vw, 2.75rem); font-weight: 900; color: {color}; line-height: 1;">{score:.0%}</div>
             </div>
-            <div style="flex: 1; min-width: 200px;">
-                <div style="font-weight: 700; color: {color}; font-size: 16px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">{label} Match</div>
-                <div style="font-size: 13px; color: #475569; line-height: 1.4;">{reason}</div>
+            <div style="flex: 1; min-width: clamp(12.5rem, 11rem + 7.5vw, 15rem);">
+                <div style="font-weight: 700; color: {color}; font-size: clamp(0.875rem, 0.8rem + 0.4vw, 1rem); margin-bottom: clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem); text-transform: uppercase; letter-spacing: 0.5px;">{label} Match</div>
+                <div style="font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem); color: #475569; line-height: 1.4;">{reason}</div>
             </div>
         </div>
     </div>
@@ -365,14 +379,14 @@ def render_similarity_score(score_type, similarities_data, show_explanation=Fals
                 score_val = val * 100
                 score_color = "#22c55e" if val >= 0.7 else "#f59e0b" if val >= 0.4 else "#ef4444"
                 label = component_labels.get(key, key.replace('_', ' ').title())
-                scores_html += f'<div style="margin: 3px 0; padding: 4px 8px; background: #f8fafc; border-left: 3px solid {score_color}; font-size: 13px;"><span style="color: #0f172a; font-weight: 600;">{label}:</span> <span style="color: {score_color}; font-weight: 700;">{score_val:.0f}%</span></div>'
+                scores_html += f'<div style="margin: clamp(0.125rem, 0.1rem + 0.15vw, 0.1875rem) 0; padding: clamp(0.25rem, 0.2rem + 0.2vw, 0.25rem) clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem); background: #f8fafc; border-left: 3px solid {score_color}; font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem);"><span style="color: #0f172a; font-weight: 600;">{label}:</span> <span style="color: {score_color}; font-weight: 700;">{score_val:.0f}%</span></div>'
         
         if scores_html:
-            # Wrap in a container with optional max height and scrolling
+            # Wrap in a container with optional max height and scrolling - RESPONSIVE
             if max_height:
-                container_style = f'max-height: {max_height}px; overflow-y: auto; margin-top: 8px; padding-right: 4px;'
+                container_style = f'max-height: {max_height}px; overflow-y: auto; margin-top: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem); padding-right: clamp(0.25rem, 0.2rem + 0.2vw, 0.25rem);'
             else:
-                container_style = 'margin-top: 8px;'
+                container_style = 'margin-top: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem);'
             st.markdown(f'<div style="{container_style}">{scores_html}</div>', unsafe_allow_html=True)
 
 
