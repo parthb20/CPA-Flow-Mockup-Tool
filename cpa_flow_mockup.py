@@ -276,7 +276,7 @@ st.markdown("""
         border: 2px solid #e2e8f0;
         border-radius: clamp(0.5rem, 0.4rem + 0.6vw, 0.75rem);
         padding: clamp(1rem, 0.8rem + 1vw, 1.25rem);
-        margin: clamp(0.5rem, 0.4rem + 0.5vw, 0.625rem) 0;
+        margin: clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem) 0;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     
@@ -314,7 +314,7 @@ st.markdown("""
         border: 3px solid;
         font-size: clamp(2rem, 1.75rem + 1.3vw, 2.625rem); /* 32-42px */
         font-weight: 700;
-        margin: clamp(0.75rem, 0.6rem + 0.75vw, 0.9375rem) 0;
+        margin: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem) 0;
     }
     
     .score-excellent { border-color: #22c55e; background: linear-gradient(135deg, #22c55e15, #22c55e08); color: #22c55e; }
@@ -329,7 +329,7 @@ st.markdown("""
         border-radius: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem);
         border: 1px solid #bae6fd;
         border-left: clamp(0.25rem, 0.2rem + 0.2vw, 0.25rem) solid #3b82f6;
-        margin: clamp(0.75rem, 0.6rem + 0.75vw, 0.9375rem) 0;
+        margin: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem) 0;
         line-height: 1.8;
         font-size: clamp(0.875rem, 0.8rem + 0.4vw, 1rem); /* 14-16px */
         color: #0f172a !important;
@@ -952,7 +952,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 <h2 style="font-size: clamp(2.5rem, 2rem + 2.5vw, 3.5rem); font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui;">
                     <strong>🔄 Flow Journey</strong>
                 </h2>
-                <p style="font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem); color: #64748b; font-weight: 400; margin: 0 0 1rem 0; line-height: 1.6; font-family: system-ui;">
+                <p style="font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem); color: #64748b; font-weight: 400; margin: 0 0 0.5rem 0; line-height: 1.6; font-family: system-ui;">
                     A flow is the complete user journey: Publisher → Creative → SERP → Landing Page. Each stage can be customized using the filters above. We automatically select the best-performing combination based on conversions, clicks, and impressions.
                 </p>
                     """, unsafe_allow_html=True)
