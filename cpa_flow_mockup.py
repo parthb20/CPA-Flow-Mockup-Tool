@@ -696,6 +696,25 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Wider columns to prevent text cutoff
                 flow_type_btns = st.columns([1.2, 1.2, 1.6])
                 
+                # Add CSS for Best/Worst button colors
+                st.markdown("""
+                    <style>
+                    /* Best button - GREEN */
+                    button[kind="secondary"]:has-text("✓ Best") {
+                        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%) !important;
+                        border: 2px solid #10b981 !important;
+                        color: #1f2937 !important;
+                    }
+                    
+                    /* Worst button - RED */
+                    button[kind="secondary"]:has-text("✓ Worst") {
+                        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%) !important;
+                        border: 2px solid #ef4444 !important;
+                        color: #1f2937 !important;
+                    }
+                    </style>
+                """, unsafe_allow_html=True)
+                
                 with flow_type_btns[0]:
                     if st.button("✓ Best" if is_best else "Best", key='best_button', use_container_width=True):
                         st.session_state.flow_type = 'Best'
@@ -708,38 +727,36 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 flow_type = st.session_state.flow_type
                 
-                # Apply button colors dynamically via JavaScript - improved
-                st.markdown(f"""
+                # JavaScript to apply colors
+                st.markdown("""
                     <script>
-                    (function() {{
-                        function styleFlowButtons() {{
+                    (function() {
+                        function applyColors() {
                             const buttons = document.querySelectorAll('button');
-                            buttons.forEach(btn => {{
+                            buttons.forEach(btn => {
                                 const text = btn.textContent.trim();
-                                if (text === '✓ Best' || text === 'Best') {{
-                                    if (text === '✓ Best') {{
-                                        btn.style.cssText = 'background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%) !important; border: 2px solid #10b981 !important; color: #1f2937 !important;';
-                                    }}
-                                }} else if (text === '✓ Worst' || text === 'Worst') {{
-                                    if (text === '✓ Worst') {{
-                                        btn.style.cssText = 'background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%) !important; border: 2px solid #ef4444 !important; color: #1f2937 !important;';
-                                    }}
-                                }}
-                            }});
-                        }}
+                                if (text === '✓ Best') {
+                                    btn.style.background = 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)';
+                                    btn.style.border = '2px solid #10b981';
+                                    btn.style.color = '#1f2937';
+                                } else if (text === '✓ Worst') {
+                                    btn.style.background = 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)';
+                                    btn.style.border = '2px solid #ef4444';
+                                    btn.style.color = '#1f2937';
+                                }
+                            });
+                        }
                         
-                        // Run multiple times to catch Streamlit's rerendering
-                        styleFlowButtons();
-                        setTimeout(styleFlowButtons, 50);
-                        setTimeout(styleFlowButtons, 100);
-                        setTimeout(styleFlowButtons, 200);
-                        setTimeout(styleFlowButtons, 500);
-                        setTimeout(styleFlowButtons, 1000);
+                        applyColors();
+                        setTimeout(applyColors, 10);
+                        setTimeout(applyColors, 50);
+                        setTimeout(applyColors, 100);
+                        setTimeout(applyColors, 300);
+                        setTimeout(applyColors, 500);
                         
-                        // Watch for DOM changes
-                        const observer = new MutationObserver(styleFlowButtons);
-                        observer.observe(document.body, {{ childList: true, subtree: true }});
-                    }})();
+                        const observer = new MutationObserver(applyColors);
+                        observer.observe(document.body, { childList: true, subtree: true });
+                    })();
                     </script>
                 """, unsafe_allow_html=True)
             
@@ -841,42 +858,48 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Render filters and get filter state
                 filters_changed, selected_keyword_filter, selected_domain_filter = render_advanced_filters(campaign_df, current_flow)
                 
-                # === FLOW NAVIGATION - RIGHT AFTER FILTERS - VERY COMPACT ===
+                # === FLOW NAVIGATION - TINY ARROWS ===
                 if len(st.session_state.get('all_flows', [])) > 1:
-                    # Inline compact navigation
-                    nav_cols = st.columns([0.5, 0.5, 3.5, 0.5])
-                    
-                    # Add aggressive CSS for tiny buttons
+                    # Make arrows look like text, not buttons
                     st.markdown("""
                         <style>
-                        /* Force navigation buttons to be tiny */
+                        /* Make navigation arrows tiny and borderless */
                         button[key="prev_flow"],
                         button[key="next_flow"] {
-                            padding: 0.2rem 0.4rem !important;
-                            font-size: 0.75rem !important;
-                            min-height: 1.5rem !important;
-                            max-height: 1.5rem !important;
-                            height: 1.5rem !important;
+                            background: transparent !important;
+                            border: none !important;
+                            padding: 0.15rem 0.3rem !important;
+                            font-size: 1.25rem !important;
+                            min-height: auto !important;
+                            height: auto !important;
                             line-height: 1 !important;
                             width: auto !important;
-                            min-width: 2rem !important;
-                            max-width: 2.5rem !important;
+                            color: #3b82f6 !important;
+                            box-shadow: none !important;
+                        }
+                        button[key="prev_flow"]:hover,
+                        button[key="next_flow"]:hover {
+                            background: transparent !important;
+                            color: #2563eb !important;
+                            border: none !important;
+                        }
+                        button[key="prev_flow"]:disabled,
+                        button[key="next_flow"]:disabled {
+                            color: #cbd5e1 !important;
                         }
                         </style>
                     """, unsafe_allow_html=True)
                     
-                    with nav_cols[0]:
-                        st.write("")  # Empty spacer
+                    nav_cols = st.columns([0.3, 4.2, 0.3])
                     
-                    with nav_cols[1]:
+                    with nav_cols[0]:
                         prev_disabled = st.session_state.current_flow_index == 0
                         if st.button("◀", key='prev_flow', disabled=prev_disabled, help="Previous"):
                             st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
                             st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
                             st.rerun()
                     
-                    with nav_cols[2]:
-                        # Simple flow selector
+                    with nav_cols[1]:
                         selected_flow_idx = st.selectbox(
                             "Flow",
                             options=range(len(st.session_state.all_flows)),
@@ -891,14 +914,14 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             st.session_state.current_flow = st.session_state.all_flows[selected_flow_idx].copy()
                             st.rerun()
                     
-                    with nav_cols[3]:
+                    with nav_cols[2]:
                         next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
                         if st.button("▶", key='next_flow', disabled=next_disabled, help="Next"):
                             st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
                             st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
                             st.rerun()
                     
-                    st.markdown("<div style='margin-bottom: 0.75rem;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='margin-bottom: 0.5rem;'></div>", unsafe_allow_html=True)
                 
                 # Apply filtering logic using module
                 current_flow, final_filtered = apply_flow_filtering(
