@@ -413,10 +413,10 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         
-        /* RESPONSIVE FONT SCALING - Makes text scale proportionally with container */
+        /* AGGRESSIVE RESPONSIVE FONT SCALING - Use vw units for ALL text */
         html {{
-            /* Scale base font size with viewport width */
-            font-size: clamp(10px, 2.5vw, 16px) !important;
+            /* Base font scales with viewport - very aggressive */
+            font-size: clamp(8px, 3vw, 18px) !important;
         }}
         
         body {{ 
@@ -424,43 +424,66 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
             height: 100%; 
             overflow: auto; 
             background: #f8fafc;
-            font-family: Arial, sans-serif;
+            font-family: Arial, sans-serif !important;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 1rem !important;
         }}
         
-        /* Scale all text elements proportionally */
         #ad-container {{
             width: {width}px;
             min-height: {height}px;
             position: relative;
         }}
         
-        /* Make ALL text inside ad scale proportionally */
-        #ad-container * {{
+        /* FORCE all text to scale - target everything */
+        #ad-container,
+        #ad-container *,
+        #ad-container *::before,
+        #ad-container *::after,
+        #ad-container [style*="font"],
+        #ad-container div,
+        #ad-container span,
+        #ad-container p,
+        #ad-container a,
+        #ad-container button,
+        #ad-container input,
+        #ad-container label {{
+            font-size: clamp(8px, 2.8vw, 18px) !important;
+        }}
+        
+        /* Headings scale larger */
+        #ad-container h1,
+        #ad-container h1 * {{
+            font-size: clamp(16px, 4.5vw, 32px) !important;
+        }}
+        
+        #ad-container h2,
+        #ad-container h2 * {{
+            font-size: clamp(14px, 4vw, 28px) !important;
+        }}
+        
+        #ad-container h3,
+        #ad-container h3 * {{
+            font-size: clamp(12px, 3.5vw, 24px) !important;
+        }}
+        
+        #ad-container h4,
+        #ad-container h5,
+        #ad-container h6 {{
+            font-size: clamp(11px, 3vw, 20px) !important;
+        }}
+        
+        /* Small text */
+        #ad-container small,
+        #ad-container .small {{
+            font-size: clamp(7px, 2.2vw, 14px) !important;
+        }}
+        
+        /* Override any inline font-size styles */
+        #ad-container [style] {{
             font-size: inherit !important;
-        }}
-        
-        /* Scale headings */
-        #ad-container h1 {{ font-size: clamp(14px, 3.5vw, 28px) !important; }}
-        #ad-container h2 {{ font-size: clamp(12px, 3vw, 24px) !important; }}
-        #ad-container h3 {{ font-size: clamp(11px, 2.5vw, 20px) !important; }}
-        #ad-container h4, #ad-container h5, #ad-container h6 {{ 
-            font-size: clamp(10px, 2.2vw, 18px) !important; 
-        }}
-        
-        /* Scale paragraphs and text */
-        #ad-container p, #ad-container span, #ad-container div, 
-        #ad-container a, #ad-container li, #ad-container td, 
-        #ad-container th, #ad-container label, #ad-container button {{
-            font-size: clamp(9px, 2vw, 16px) !important;
-        }}
-        
-        /* Scale smaller text */
-        #ad-container small, #ad-container .small {{
-            font-size: clamp(8px, 1.8vw, 13px) !important;
         }}
         
         #loading {{
@@ -469,7 +492,7 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
             left: 50%;
             transform: translate(-50%, -50%);
             color: #999;
-            font-size: clamp(10px, 2.2vw, 14px) !important;
+            font-size: 12px;
             text-align: center;
             padding: 10px;
         }}
@@ -489,6 +512,68 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
 <script>
     console.log('Creative container loaded at: {cache_bust}');
     console.log('Creative size: {width}x{height}');
+    
+    // AGGRESSIVE FONT SCALING - Inject into dynamically loaded content
+    function injectResponsiveStyles(target) {{
+        try {{
+            // Try to access iframes and inject styles
+            var iframes = target.querySelectorAll('iframe');
+            iframes.forEach(function(iframe) {{
+                try {{
+                    var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    if (iframeDoc) {{
+                        var style = iframeDoc.createElement('style');
+                        style.textContent = `
+                            * {{ font-size: inherit !important; }}
+                            html {{ font-size: clamp(10px, 2.5vw, 16px) !important; }}
+                            body {{ font-size: 1rem !important; }}
+                            h1 {{ font-size: clamp(14px, 3.5vw, 28px) !important; }}
+                            h2 {{ font-size: clamp(12px, 3vw, 24px) !important; }}
+                            h3 {{ font-size: clamp(11px, 2.5vw, 20px) !important; }}
+                            p, div, span, a, li, td, th, button {{ font-size: clamp(9px, 2vw, 16px) !important; }}
+                            small {{ font-size: clamp(8px, 1.8vw, 13px) !important; }}
+                        `;
+                        iframeDoc.head.appendChild(style);
+                        console.log('Injected responsive styles into iframe');
+                    }}
+                }} catch (e) {{
+                    // Cross-origin iframe, can't access
+                    console.log('Cannot inject into cross-origin iframe');
+                }}
+            }});
+            
+            // Apply inline styles to all text elements
+            var textElements = target.querySelectorAll('p, div, span, a, h1, h2, h3, h4, h5, h6, li, td, th, button, label');
+            textElements.forEach(function(el) {{
+                var computedSize = window.getComputedStyle(el).fontSize;
+                var numericSize = parseFloat(computedSize);
+                if (numericSize > 0) {{
+                    // Scale font size based on viewport width
+                    var scaledSize = Math.max(9, Math.min(numericSize * (window.innerWidth / {width}), numericSize * 1.2));
+                    el.style.setProperty('font-size', scaledSize + 'px', 'important');
+                }}
+            }});
+        }} catch (e) {{
+            console.error('Error injecting styles:', e);
+        }}
+    }}
+    
+    // Watch for dynamically added content
+    var observer = new MutationObserver(function(mutations) {{
+        mutations.forEach(function(mutation) {{
+            mutation.addedNodes.forEach(function(node) {{
+                if (node.nodeType === 1) {{ // Element node
+                    injectResponsiveStyles(node);
+                }}
+            }});
+        }});
+    }});
+    
+    // Start observing
+    observer.observe(document.body, {{
+        childList: true,
+        subtree: true
+    }});
     
     // Track if content was ever detected
     var contentDetected = false;
