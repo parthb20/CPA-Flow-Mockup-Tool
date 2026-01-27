@@ -617,19 +617,25 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     )
                     
                     if rendered_html:
-                        # Render the creative at consistent height with other stages
-                        # Use 650px for both vertical and horizontal to match other stage boxes
-                        # Extract creative size to determine if scrolling needed
+                        # Render the creative with responsive height
+                        # Calculate height based on creative aspect ratio and responsive width
                         try:
                             width_str, height_str = creative_size.split('x')
                             creative_height = int(height_str)
                             creative_width = int(width_str)
-                            # Only enable scrolling if creative exceeds 650px in either dimension
-                            needs_scroll = creative_height > 650 or creative_width > 600
+                            # Calculate aspect ratio
+                            aspect_ratio = creative_height / creative_width
+                            # Use a responsive base width (22vw average ~300px on laptop, ~420px on big screen)
+                            # Calculate proportional height
+                            base_responsive_height = int(330 * aspect_ratio)  # 330px is avg of min/max
+                            # Cap at reasonable limits
+                            display_height = min(max(base_responsive_height, 400), 700)
+                            needs_scroll = creative_height > display_height or creative_width > 600
                         except:
+                            display_height = 500
                             needs_scroll = False
                         
-                        st.components.v1.html(rendered_html, height=650, scrolling=needs_scroll)
+                        st.components.v1.html(rendered_html, height=display_height, scrolling=needs_scroll)
                         creative_rendered = True
                     elif error_msg:
                         # Show detailed error message
@@ -670,8 +676,16 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             </body>
                             </html>
                             """
-                            # Use consistent 650px height in all layouts to match other stage boxes
-                            st.components.v1.html(rendered_html, height=650, scrolling=True)
+                            # Use responsive height based on creative size
+                            try:
+                                width_str, height_str = creative_size.split('x')
+                                creative_height = int(height_str)
+                                creative_width = int(width_str)
+                                aspect_ratio = creative_height / creative_width
+                                display_height = min(max(int(330 * aspect_ratio), 400), 700)
+                            except:
+                                display_height = 500
+                            st.components.v1.html(rendered_html, height=display_height, scrolling=True)
                             creative_rendered = True
                     except Exception as e:
                         pass
@@ -1082,14 +1096,16 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                             # Screenshot API was used
                                             preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                             preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
-                                            st.components.v1.html(preview_html, height=650, scrolling=True)
+                                            # Use proportional height from renderer
+                                            st.components.v1.html(preview_html, height=height, scrolling=True)
                                             st.caption("📸 Screenshot")
                                             rendered_successfully = True
                                         else:
                                             # Full HTML from Playwright
                                             preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                             preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
-                                            st.components.v1.html(preview_html, height=650, scrolling=True)
+                                            # Use proportional height from renderer
+                                            st.components.v1.html(preview_html, height=height, scrolling=True)
                                             st.caption("🤖 Browser")
                                             rendered_successfully = True
                             except:
@@ -1114,7 +1130,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             try:
                                 preview_html, height, _ = render_mini_device_preview(render_url, is_url=True, device=device_all, display_url=render_url)
                                 preview_html = inject_unique_id(preview_html, 'landing_iframe', render_url, device_all, current_flow)
-                                st.components.v1.html(preview_html, height=650, scrolling=True)
+                                # Use proportional height
+                                st.components.v1.html(preview_html, height=height, scrolling=True)
                                 st.caption("📺 Iframe (may be blocked by site)")
                                 rendered_successfully = True
                             except:
@@ -1222,7 +1239,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                 
                                 preview_html, height, _ = render_mini_device_preview(message_html, is_url=False, device=device_all)
                                 preview_html = inject_unique_id(preview_html, 'landing_message', adv_url, device_all, current_flow)
-                                st.components.v1.html(preview_html, height=650, scrolling=False)
+                                # Use proportional height
+                                st.components.v1.html(preview_html, height=height, scrolling=False)
                                 st.caption("💡 Redirect URL - Browser automation required")
                                 rendered_successfully = True
                     
@@ -1235,14 +1253,14 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                             if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
                                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                                 preview_html = inject_unique_id(preview_html, 'landing_screenshot_fallback', adv_url, device_all, current_flow)
-                                                # Cap height at 650px to match other stage boxes
-                                                st.components.v1.html(preview_html, height=650, scrolling=True)
+                                                # Use proportional height
+                                                st.components.v1.html(preview_html, height=height, scrolling=True)
                                                 st.caption("📸 Screenshot (ScreenshotOne API)")
                                             else:
                                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                                 preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
-                                                # Cap height at 650px to match other stage boxes
-                                                st.components.v1.html(preview_html, height=650, scrolling=True)
+                                                # Use proportional height
+                                                st.components.v1.html(preview_html, height=height, scrolling=True)
                                                 st.caption("🤖 Rendered via browser automation (bypassed 403)")
                                         else:
                                             raise Exception("Playwright returned empty HTML")
@@ -1264,16 +1282,16 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                             if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
                                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                                 preview_html = inject_unique_id(preview_html, 'landing_screenshot_fallback', adv_url, device_all, current_flow)
-                                                display_height = 650
-                                                st.components.v1.html(preview_html, height=display_height, scrolling=True)
+                                                # Use proportional height from renderer
+                                                st.components.v1.html(preview_html, height=height, scrolling=True)
                                                 if st.session_state.flow_layout != 'horizontal':
                                                     st.caption("📸 Screenshot (ScreenshotOne API)")
                                                 rendered_successfully = True
                                             else:
                                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                                 preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
-                                                display_height = 650
-                                                st.components.v1.html(preview_html, height=display_height, scrolling=True)
+                                                # Use proportional height from renderer
+                                                st.components.v1.html(preview_html, height=height, scrolling=True)
                                                 if st.session_state.flow_layout != 'horizontal':
                                                     st.caption("🤖 Rendered via browser automation")
                                                 rendered_successfully = True
