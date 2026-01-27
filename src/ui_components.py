@@ -61,14 +61,14 @@ def render_flow_combinations_table(campaign_df):
     # Show selected count
     agg_df = agg_df.head(table_count).reset_index(drop=True)
     
-    # Create styled table HTML
+    # Create styled table HTML - RESPONSIVE
     table_html = """
     <style>
     .flow-table {
         width: 100%;
         border-collapse: collapse;
         background: white !important;
-        margin: 10px 0;
+        margin: clamp(0.5rem, 0.4rem + 0.5vw, 0.625rem) 0;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         border: 1px solid #e2e8f0;
     }
@@ -76,22 +76,22 @@ def render_flow_combinations_table(campaign_df):
         background: #f8fafc !important;
         color: #000000 !important;
         font-weight: 700;
-        padding: 12px;
+        padding: clamp(0.625rem, 0.5rem + 0.6vw, 0.75rem);
         text-align: left;
         border-bottom: 2px solid #cbd5e1;
         border-right: 1px solid #e2e8f0;
-        font-size: 14px;
+        font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
     }
     .flow-table th:last-child {
         border-right: none;
     }
     .flow-table td {
-        padding: 10px 12px;
+        padding: clamp(0.5rem, 0.4rem + 0.5vw, 0.625rem) clamp(0.625rem, 0.5rem + 0.6vw, 0.75rem);
         border-bottom: 1px solid #e2e8f0;
         border-right: 1px solid #e2e8f0;
         color: #000000 !important;
         background: white !important;
-        font-size: 13px;
+        font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem);
     }
     .flow-table td:last-child {
         border-right: none;
@@ -217,15 +217,15 @@ completion = client.chat.completions.create(
 
 
 def render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs, flow_ctr, flow_cvr):
-    """Render the Selected Flow display with performance metrics"""
+    """Render the Selected Flow display with performance metrics - RESPONSIVE"""
     st.markdown("""
-    <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: 4px solid #3b82f6; padding: 10px; border-radius: 8px; margin: 0;">
-        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;">
-            <div><strong style="color: #64748b; font-size: 15px; font-weight: 700;">Impressions</strong><div style="font-size: 22px; font-weight: 900; color: #0f172a;">{impressions:,}</div></div>
-            <div><strong style="color: #64748b; font-size: 15px; font-weight: 700;">Clicks</strong><div style="font-size: 22px; font-weight: 900; color: #0f172a;">{clicks:,}</div></div>
-            <div><strong style="color: #64748b; font-size: 15px; font-weight: 700;">Conversions</strong><div style="font-size: 22px; font-weight: 900; color: #0f172a;">{conversions:,}</div></div>
-            <div><strong style="color: #64748b; font-size: 15px; font-weight: 700;">CTR</strong><div style="font-size: 22px; font-weight: 900; color: #0f172a;">{ctr:.2f}%</div></div>
-            <div><strong style="color: #64748b; font-size: 15px; font-weight: 700;">CVR</strong><div style="font-size: 22px; font-weight: 900; color: #0f172a;">{cvr:.2f}%</div></div>
+    <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-left: clamp(0.25rem, 0.2rem + 0.2vw, 0.25rem) solid #3b82f6; padding: clamp(0.5rem, 0.4rem + 0.5vw, 0.625rem); border-radius: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem); margin: 0;">
+        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: clamp(0.625rem, 0.5rem + 0.6vw, 0.75rem);">
+            <div><strong style="color: #64748b; font-size: clamp(0.8125rem, 0.75rem + 0.3vw, 0.9375rem); font-weight: 700;">Impressions</strong><div style="font-size: clamp(1.25rem, 1.1rem + 0.75vw, 1.375rem); font-weight: 900; color: #0f172a;">{impressions:,}</div></div>
+            <div><strong style="color: #64748b; font-size: clamp(0.8125rem, 0.75rem + 0.3vw, 0.9375rem); font-weight: 700;">Clicks</strong><div style="font-size: clamp(1.25rem, 1.1rem + 0.75vw, 1.375rem); font-weight: 900; color: #0f172a;">{clicks:,}</div></div>
+            <div><strong style="color: #64748b; font-size: clamp(0.8125rem, 0.75rem + 0.3vw, 0.9375rem); font-weight: 700;">Conversions</strong><div style="font-size: clamp(1.25rem, 1.1rem + 0.75vw, 1.375rem); font-weight: 900; color: #0f172a;">{conversions:,}</div></div>
+            <div><strong style="color: #64748b; font-size: clamp(0.8125rem, 0.75rem + 0.3vw, 0.9375rem); font-weight: 700;">CTR</strong><div style="font-size: clamp(1.25rem, 1.1rem + 0.75vw, 1.375rem); font-weight: 900; color: #0f172a;">{ctr:.2f}%</div></div>
+            <div><strong style="color: #64748b; font-size: clamp(0.8125rem, 0.75rem + 0.3vw, 0.9375rem); font-weight: 700;">CVR</strong><div style="font-size: clamp(1.25rem, 1.1rem + 0.75vw, 1.375rem); font-weight: 900; color: #0f172a;">{cvr:.2f}%</div></div>
         </div>
     </div>
     """.format(
