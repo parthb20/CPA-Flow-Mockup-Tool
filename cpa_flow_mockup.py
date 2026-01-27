@@ -486,7 +486,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 pass
                 
                 # Add Flow Journey title with explanation - RESPONSIVE
-                        st.markdown("""
+                st.markdown("""
                 <h2 style="font-size: clamp(2.5rem, 2rem + 2.5vw, 3.5rem); font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui;">
                     <strong>🔄 Flow Journey</strong>
                 </h2>
@@ -496,7 +496,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     """, unsafe_allow_html=True)
                 
                 # Show flow stats directly (no success messages)
-                                    if len(final_filtered) > 0:
+                if len(final_filtered) > 0:
                     # Get stats from the SPECIFIC flow record (not aggregated)
                     # A flow is: Advertiser -> Campaign -> Publisher URL -> Keyword -> SERP URL -> Landing Page URL
                     # Stats should be for THIS specific combination, not summed across multiple records
@@ -531,7 +531,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.markdown("<br><br>", unsafe_allow_html=True)
                 
                 # Show aggregated table with big title - RESPONSIVE
-                        st.markdown("""
+                st.markdown("""
                 <div style="margin-bottom: clamp(0.25rem, 0.2rem + 0.2vw, 0.25rem); margin-top: clamp(0.25rem, 0.2rem + 0.2vw, 0.25rem);">
                     <h2 style="font-size: clamp(2.25rem, 1.9rem + 1.8vw, 3rem); font-weight: 900; color: #0f172a; margin: 0; padding: 0; text-align: left; line-height: 1;">
                         📊 Flow Combinations Overview
@@ -544,7 +544,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 # Render "What is Flow" section using module
                 render_what_is_flow_section()
-                    else:
+            else:
                 st.warning("⚠️ No flow data found. This campaign may have impressions but no clicks or conversions yet.")
 else:
     st.error("❌ Could not load data - Check FILE_A_ID and file sharing settings")
