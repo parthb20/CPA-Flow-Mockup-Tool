@@ -375,8 +375,8 @@ if not st.session_state.loading_done:
 if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
     df = st.session_state.data_a
     
-    # Select Advertiser and Campaign - make dropdowns smaller
-    col1, col2, col3 = st.columns([1, 1, 2])
+    # Select Advertiser and Campaign with time filter at top right
+    col1, col2, col3 = st.columns([1.5, 1.5, 2])
     with col1:
         # Find advertiser column (handle case variations)
         adv_col = next((col for col in df.columns if col.lower() == 'advertiser_name'), 'Advertiser_Name')
@@ -401,6 +401,63 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             selected_campaign = st.selectbox("Campaign", campaigns, key='campaign_selector', index=default_camp_idx)
             if selected_campaign != '-- Select Campaign --':
                 st.session_state.preserved_campaign = selected_campaign
+        
+        # Time Filter at top right - compact icon
+        with col3:
+            from datetime import date, timedelta
+            today = date.today()
+            default_start = today - timedelta(days=14)
+            
+            # Initialize defaults if not in session
+            if 'start_date' not in st.session_state:
+                st.session_state.start_date = default_start
+            if 'end_date' not in st.session_state:
+                st.session_state.end_date = today
+            if 'start_hour' not in st.session_state:
+                st.session_state.start_hour = 0
+            if 'end_hour' not in st.session_state:
+                st.session_state.end_hour = 23
+            
+            # Compact time filter button aligned to right
+            time_btn_col = st.columns([3, 1])
+            with time_btn_col[1]:
+                st.markdown("""
+                    <style>
+                    button[data-testid*="time_filter_toggle"] {
+                        font-size: 1.25rem !important;
+                        padding: 0.25rem 0.5rem !important;
+                        min-height: 2rem !important;
+                    }
+                    </style>
+                """, unsafe_allow_html=True)
+                if st.button("🕐", key='time_filter_toggle', help="Time Filter", use_container_width=True):
+                    st.session_state.show_time_filter = not st.session_state.get('show_time_filter', False)
+            
+            # Show compact time filter when toggled
+            if st.session_state.get('show_time_filter', False):
+                # Hour selection
+                hour_row = st.columns(2)
+                with hour_row[0]:
+                    start_hour = st.selectbox("Start", options=list(range(24)), index=st.session_state.get('start_hour', 0), format_func=lambda x: f"{x:02d}:00", key='start_hour_filter')
+                    st.session_state.start_hour = start_hour
+                with hour_row[1]:
+                    end_hour = st.selectbox("End", options=list(range(24)), index=st.session_state.get('end_hour', 23), format_func=lambda x: f"{x:02d}:00", key='end_hour_filter')
+                    st.session_state.end_hour = end_hour
+                
+                # Date selection (calendar)
+                date_row = st.columns(2)
+                with date_row[0]:
+                    start_date = st.date_input("From", value=st.session_state.get('start_date', default_start), min_value=today - timedelta(days=90), max_value=today, key='start_date_filter')
+                    st.session_state.start_date = start_date
+                with date_row[1]:
+                    end_date = st.date_input("To", value=st.session_state.get('end_date', today), min_value=today - timedelta(days=90), max_value=today, key='end_date_filter')
+                    st.session_state.end_date = end_date
+            else:
+                # Use stored values or defaults
+                start_date = st.session_state.get('start_date', default_start)
+                end_date = st.session_state.get('end_date', today)
+                start_hour = st.session_state.get('start_hour', 0)
+                end_hour = st.session_state.get('end_hour', 23)
         
         # Reset flow when campaign changes - CLEAR ALL OLD DATA IMMEDIATELY
         campaign_key = f"{selected_advertiser}_{selected_campaign}"
@@ -573,13 +630,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 </style>
             """, unsafe_allow_html=True)
             
-            # Compact filter layout
-            from datetime import date, timedelta, datetime, time
-            today = date.today()
-            default_start = today - timedelta(days=14)
-            
-            # Main filter row - compact and clean
-            filter_cols = st.columns([2.5, 1.5, 1])
+            # Compact filter row - Flow Type and Options only
+            filter_cols = st.columns([2, 1.5, 2.5])
             
             with filter_cols[0]:
                 # Flow Type buttons - inline horizontal
@@ -592,7 +644,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 is_best = st.session_state.get('flow_type', 'Best') == 'Best'
                 is_worst = st.session_state.get('flow_type', 'Best') == 'Worst'
                 
-                flow_type_btns = st.columns([1, 1, 3])
+                flow_type_btns = st.columns([1, 1, 2])
                 
                 with flow_type_btns[0]:
                     if st.button("✓ Best" if is_best else "Best", key='best_button', use_container_width=True):
@@ -609,7 +661,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Apply button colors dynamically via JavaScript
                 st.markdown("""
                     <script>
-                    // Apply styles after DOM loads
                     function styleFlowButtons() {
                         const buttons = document.querySelectorAll('button');
                         buttons.forEach(btn => {
@@ -629,15 +680,11 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             }
                         });
                     }
-                    
-                    // Run on load and periodically (for Streamlit rerenders)
                     if (document.readyState === 'loading') {
                         document.addEventListener('DOMContentLoaded', styleFlowButtons);
                     } else {
                         styleFlowButtons();
                     }
-                    
-                    // Also run after a short delay to catch dynamic content
                     setTimeout(styleFlowButtons, 100);
                     setTimeout(styleFlowButtons, 500);
                     </script>
@@ -651,62 +698,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     help="Bypass 5% threshold filter",
                     key='use_full_data_toggle'
                 )
-            
-            with filter_cols[2]:
-                # Time filter button at top right
-                st.markdown("<small style='color: #64748b; font-size: 0.75rem; font-weight: 600;'>Filters</small>", unsafe_allow_html=True)
-                if st.button("🕐 Time Filter", key='time_filter_btn', use_container_width=True):
-                    if 'show_time_filter' not in st.session_state:
-                        st.session_state.show_time_filter = False
-                    st.session_state.show_time_filter = not st.session_state.show_time_filter
-            
-            # Show time filter modal if toggled
-            if st.session_state.get('show_time_filter', False):
-                with st.expander("📅 Date & Time Selection", expanded=True):
-                    # Hour selection first (above calendar)
-                    hour_cols = st.columns(2)
-                    with hour_cols[0]:
-                        start_hour = st.selectbox(
-                            "Start Hour",
-                            options=list(range(24)),
-                            index=0,
-                            format_func=lambda x: f"{x:02d}:00",
-                            key='start_hour_filter'
-                        )
-                    with hour_cols[1]:
-                        end_hour = st.selectbox(
-                            "End Hour",
-                            options=list(range(24)),
-                            index=23,
-                            format_func=lambda x: f"{x:02d}:00",
-                            key='end_hour_filter'
-                        )
-                    
-                    # Day selection below (calendar)
-                    st.markdown("<small style='color: #64748b;'>Select Date Range:</small>", unsafe_allow_html=True)
-                    date_cols = st.columns(2)
-                    with date_cols[0]:
-                        start_date = st.date_input(
-                            "From",
-                            value=default_start,
-                            min_value=today - timedelta(days=90),
-                            max_value=today,
-                            key='start_date_filter'
-                        )
-                    with date_cols[1]:
-                        end_date = st.date_input(
-                            "To",
-                            value=today,
-                            min_value=today - timedelta(days=90),
-                            max_value=today,
-                            key='end_date_filter'
-                        )
-            else:
-                # Default values when collapsed
-                start_date = default_start
-                end_date = today
-                start_hour = 0
-                end_hour = 23
             
             # Hidden defaults
             entity_threshold = 0.0 if use_full_data else 5.0
@@ -823,14 +814,24 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 # === FLOW NAVIGATION - AFTER DEVICE FILTERS, BEFORE FLOW JOURNEY ===
                 if len(st.session_state.get('all_flows', [])) > 1:
-                    st.markdown("<br>", unsafe_allow_html=True)
+                    # Compact navigation - smaller buttons
+                    st.markdown("""
+                        <style>
+                        /* Make flow navigation buttons smaller */
+                        button[data-testid*="prev_flow"],
+                        button[data-testid*="next_flow"] {
+                            padding: 0.25rem 0.75rem !important;
+                            font-size: 0.875rem !important;
+                            min-height: 2rem !important;
+                        }
+                        </style>
+                    """, unsafe_allow_html=True)
                     
-                    # Simple navigation in one line
-                    nav_cols = st.columns([1, 3, 1])
+                    nav_cols = st.columns([0.8, 3.4, 0.8])
                     
                     with nav_cols[0]:
                         prev_disabled = st.session_state.current_flow_index == 0
-                        if st.button("⬅️ Prev", key='prev_flow', disabled=prev_disabled, use_container_width=True):
+                        if st.button("◀", key='prev_flow', disabled=prev_disabled, use_container_width=True, help="Previous Flow"):
                             st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
                             st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
                             st.rerun()
@@ -853,7 +854,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     
                     with nav_cols[2]:
                         next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
-                        if st.button("Next ➡️", key='next_flow', disabled=next_disabled, use_container_width=True):
+                        if st.button("▶", key='next_flow', disabled=next_disabled, use_container_width=True, help="Next Flow"):
                             st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
                             st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
                             st.rerun()
