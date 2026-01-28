@@ -211,10 +211,19 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     all_flows = st.session_state.get('all_flows', [])
     current_flow_index = st.session_state.get('current_flow_index', 0)
     
-    # All controls in one row - Layout, Device, Domain, Keyword, Best, Worst
-    control_col1, control_col2, control_col3, control_col4, control_col5, control_col6 = st.columns([1, 1, 1.2, 1.2, 0.7, 0.7])
+    # All controls in one row - Best/Worst FIRST, then Layout, Device, Domain, Keyword
+    control_col1, control_col2, control_col3, control_col4, control_col5 = st.columns([1, 1, 1, 1.2, 1.2])
     
     with control_col1:
+        st.markdown('<p style="font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem) 0; font-family: system-ui;">Flow Type</p>', unsafe_allow_html=True)
+        flow_type_choice = st.selectbox("Flow Type", ['Best', 'Worst'], 
+                                        index=0 if flow_type == 'Best' else 1,
+                                        key='flow_type_dropdown', label_visibility="collapsed")
+        if flow_type_choice != flow_type:
+            st.session_state.flow_type = flow_type_choice
+            st.rerun()
+    
+    with control_col2:
         st.markdown('<p style="font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem) 0; font-family: system-ui;">Layout</p>', unsafe_allow_html=True)
         layout_choice = st.selectbox("Layout", ['Horizontal', 'Vertical'], 
                                      index=0 if st.session_state.flow_layout == 'horizontal' else 1, 
@@ -252,73 +261,26 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 </script>
             ''', unsafe_allow_html=True)
     
-    with control_col2:
+    with control_col3:
         st.markdown('<p style="font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem) 0; font-family: system-ui;">Device</p>', unsafe_allow_html=True)
         device_all = st.selectbox("Device", ['Mobile', 'Tablet', 'Laptop'], 
                                  key='device_all', index=0, label_visibility="collapsed")
         # Extract actual device name
         device_all = device_all.lower()
     
-    with control_col3:
+    with control_col4:
         st.markdown('<p style="font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem) 0; font-family: system-ui;">Domain</p>', unsafe_allow_html=True)
         domains = ['All Domains'] + sorted(campaign_df['publisher_domain'].dropna().unique().tolist()) if 'publisher_domain' in campaign_df.columns else ['All Domains']
         selected_domain_inline = st.selectbox("Domain", domains, key='domain_inline_filter', label_visibility="collapsed")
         if selected_domain_inline != 'All Domains':
             campaign_df = campaign_df[campaign_df['publisher_domain'] == selected_domain_inline]
     
-    with control_col4:
+    with control_col5:
         st.markdown('<p style="font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem) 0; font-family: system-ui;">Keyword</p>', unsafe_allow_html=True)
         keywords = ['All Keywords'] + sorted(campaign_df['keyword_term'].dropna().unique().tolist()) if 'keyword_term' in campaign_df.columns else ['All Keywords']
         selected_keyword_inline = st.selectbox("Keyword", keywords, key='keyword_inline_filter', label_visibility="collapsed")
         if selected_keyword_inline != 'All Keywords':
             campaign_df = campaign_df[campaign_df['keyword_term'] == selected_keyword_inline]
-    
-    with control_col5:
-        st.markdown('<p style="font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem) 0; font-family: system-ui;">Best/Worst</p>', unsafe_allow_html=True)
-        if st.button("Best", key='best_button_inline', use_container_width=True):
-            st.session_state.flow_type = 'Best'
-            st.rerun()
-    
-    with control_col6:
-        st.markdown('<div style="height: 1.55rem;"></div>', unsafe_allow_html=True)
-        if st.button("Worst", key='worst_button_inline', use_container_width=True):
-            st.session_state.flow_type = 'Worst'
-            st.rerun()
-    
-    # CSS for Best/Worst buttons - COMPACT
-    best_styles = f"""
-    button[key="best_button_inline"],
-    button[key="best_button_inline"]:hover,
-    .stButton > button[key="best_button_inline"] {{
-        background: {'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' if flow_type == 'Best' else 'white'} !important;
-        border: {'3px solid #10b981' if flow_type == 'Best' else '2px solid #d1d5db'} !important;
-        color: #065f46 !important;
-        box-shadow: {'0 0 0 3px rgba(16, 185, 129, 0.2)' if flow_type == 'Best' else 'none'} !important;
-        padding: 0.3rem 0.5rem !important;
-        font-size: 0.7rem !important;
-        font-weight: 700 !important;
-        min-height: 36px !important;
-        height: 36px !important;
-    }}
-    """
-    
-    worst_styles = f"""
-    button[key="worst_button_inline"],
-    button[key="worst_button_inline"]:hover,
-    .stButton > button[key="worst_button_inline"] {{
-        background: {'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)' if flow_type == 'Worst' else 'white'} !important;
-        border: {'3px solid #ef4444' if flow_type == 'Worst' else '2px solid #d1d5db'} !important;
-        color: #991b1b !important;
-        box-shadow: {'0 0 0 3px rgba(239, 68, 68, 0.2)' if flow_type == 'Worst' else 'none'} !important;
-        padding: 0.3rem 0.5rem !important;
-        font-size: 0.7rem !important;
-        font-weight: 700 !important;
-        min-height: 36px !important;
-        height: 36px !important;
-    }}
-    """
-    
-    st.markdown(f"<style>{best_styles}{worst_styles}</style>", unsafe_allow_html=True)
     
     # CRITICAL: If domain or keyword filter was applied, recalculate the best flow from filtered data
     # This ensures the flow updates to show the best performing combination for the selected filters
