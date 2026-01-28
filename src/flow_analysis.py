@@ -362,8 +362,8 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
         # Sort by CVR ascending (lowest CVR first), then by clicks descending
         agg_df = agg_df.sort_values(['cvr', 'clicks'], ascending=[True, False])
         
-        # Get worst combinations (up to n*2 to ensure we get n flows after filtering)
-        worst_combos = agg_df.head(n * 2)
+        # Get worst combinations (up to n*10 to ensure we find enough 0-conversion flows)
+        worst_combos = agg_df.head(n * 10)
         
         # For each combo, GET ONLY 0 conversion rows (skip if none exist)
         flows = []
@@ -376,15 +376,18 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
                 filtered = filtered[filtered[col] == combo[col]]
             
             if len(filtered) > 0:
-                # ONLY get rows with 0 conversions
-                zero_conv = filtered[filtered['conversions'] == 0]
+                # ONLY get rows with 0 conversions - STRICT CHECK
+                zero_conv = filtered[(filtered['conversions'] == 0) | (filtered['conversions'].isna())]
                 
                 if len(zero_conv) > 0:
                     # Sort by timestamp desc (latest first)
                     if 'ts' in zero_conv.columns:
                         zero_conv = zero_conv.sort_values('ts', ascending=False)
+                    
+                    # Double check conversions is 0
                     flow = zero_conv.iloc[0].to_dict()
-                    flows.append(flow)
+                    if flow.get('conversions', 0) == 0 or pd.isna(flow.get('conversions')):
+                        flows.append(flow)
                 # If no 0 conversion rows, skip this combo entirely
         
         return flows
