@@ -365,7 +365,7 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
         # Get worst combinations (up to n*2 to ensure we get n flows after filtering)
         worst_combos = agg_df.head(n * 2)
         
-        # For each combo, get the latest view_id with highest timestamp
+        # For each combo, PRIORITIZE 0 conversions, get the latest view_id with highest timestamp
         flows = []
         for _, combo in worst_combos.iterrows():
             if len(flows) >= n:
@@ -376,19 +376,21 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
                 filtered = filtered[filtered[col] == combo[col]]
             
             if len(filtered) > 0:
-                # Sort by timestamp desc (latest first)
-                if 'ts' in filtered.columns:
-                    filtered = filtered.sort_values('ts', ascending=False)
+                # First try to get rows with 0 conversions
+                zero_conv = filtered[filtered['conversions'] == 0]
                 
-                # Get most recent view
-                flow = filtered.iloc[0].to_dict()
-                flows.append(flow)
-            elif len(filtered) > 0:
-                # Fallback: get any row from this combo (sorted by ts)
-                if 'ts' in filtered.columns:
-                    filtered = filtered.sort_values('ts', ascending=False)
-                flow = filtered.iloc[0].to_dict()
-                flows.append(flow)
+                if len(zero_conv) > 0:
+                    # Use 0 conversion rows
+                    if 'ts' in zero_conv.columns:
+                        zero_conv = zero_conv.sort_values('ts', ascending=False)
+                    flow = zero_conv.iloc[0].to_dict()
+                    flows.append(flow)
+                else:
+                    # No 0 conversion rows, use latest row from combo
+                    if 'ts' in filtered.columns:
+                        filtered = filtered.sort_values('ts', ascending=False)
+                    flow = filtered.iloc[0].to_dict()
+                    flows.append(flow)
         
         return flows
     except Exception as e:
