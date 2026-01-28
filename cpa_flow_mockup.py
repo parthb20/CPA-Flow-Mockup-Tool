@@ -363,9 +363,9 @@ st.markdown("""
         margin-bottom: 0.1rem !important;
     }
     
-    /* Reduce space between main sections */
+    /* Reduce space between main sections - RESPONSIVE */
     .main > div > div > div > div {
-        margin-bottom: 0.15rem !important;
+        margin-bottom: clamp(0.1rem, 0.2vw, 0.15rem) !important;
     }
     
     /* Reduce space after dropdown row */
@@ -547,7 +547,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             
             # Use Full Data checkbox
             with sub_col1:
-                st.markdown('<div style="height: 0.35rem;"></div>', unsafe_allow_html=True)
+                st.markdown('<div style="height: 0.15rem;"></div>', unsafe_allow_html=True)
                 use_full_data = st.checkbox(
                     "Use Full Data",
                     value=False,
