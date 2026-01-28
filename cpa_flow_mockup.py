@@ -354,18 +354,23 @@ st.markdown("""
     
     /* Remove empty space from element containers */
     .main .block-container {
-        padding-top: 1.5rem !important;
+        padding-top: 0.5rem !important;
         padding-bottom: 1rem !important;
     }
     
     /* Reduce element container spacing - MORE AGGRESSIVE */
     .element-container {
-        margin-bottom: 0.15rem !important;
+        margin-bottom: 0.1rem !important;
     }
     
     /* Reduce space between main sections */
     .main > div > div > div > div {
-        margin-bottom: 0.25rem !important;
+        margin-bottom: 0.15rem !important;
+    }
+    
+    /* Reduce space after dropdown row */
+    [data-testid="stHorizontalBlock"]:has(.stSelectbox) {
+        margin-bottom: 0.15rem !important;
     }
     
     /* Remove empty divs that create unnecessary space */
@@ -471,8 +476,8 @@ if not st.session_state.loading_done:
 if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
     df = st.session_state.data_a
     
-    # Select Advertiser, Campaign, Use Full Data, and Time filter at top
-    col1, col2, col3, col4 = st.columns([1.5, 1.5, 1, 1.5])
+    # Select Advertiser, Campaign, and combined Use Full Data + Time filter
+    col1, col2, col3 = st.columns([1.5, 1.5, 2.5])
     with col1:
         # Find advertiser column (handle case variations)
         adv_col = next((col for col in df.columns if col.lower() == 'advertiser_name'), 'Advertiser_Name')
@@ -498,90 +503,93 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             if selected_campaign != '-- Select Campaign --':
                 st.session_state.preserved_campaign = selected_campaign
         
-        # Use Full Data checkbox - aligned with dropdown VALUES (not labels)
+        # Use Full Data checkbox + Time Filter in same row
         with col3:
-            # Add spacer to match dropdown label height PLUS the dropdown's top padding
-            st.markdown('<div style="height: 1.65rem;"></div>', unsafe_allow_html=True)
-            use_full_data = st.checkbox(
-                "Use Full Data",
-                value=False,
-                help="Bypass 5% threshold filter",
-                key='use_full_data_toggle'
-            )
-        
-        # Time Filter at top right - clean and minimal
-        with col4:
-            from datetime import date, timedelta
-            today = date.today()
-            # Default to January 2026 (Jan 1 - Jan 31)
-            jan_start = date(2026, 1, 1)
-            jan_end = date(2026, 1, 31)
+            sub_col1, sub_col2 = st.columns([1, 1])
             
-            # Initialize defaults to January
-            if 'start_date' not in st.session_state:
-                st.session_state.start_date = jan_start
-            if 'end_date' not in st.session_state:
-                st.session_state.end_date = jan_end
-            if 'start_hour' not in st.session_state:
-                st.session_state.start_hour = 0
-            if 'end_hour' not in st.session_state:
-                st.session_state.end_hour = 23
-            
-            # CSS for Time button and checkbox
-            st.markdown("""
-                <style>
-                /* Compact Time popover button */
-                button[data-testid*="popover"] {
-                    background-color: white !important;
-                    color: #1f2937 !important;
-                    border: 2px solid #cbd5e1 !important;
-                    padding: 0.25rem 0.5rem !important;
-                    font-size: 0.8rem !important;
-                    min-height: 1.8rem !important;
-                    max-width: 100px !important;
-                }
-                
-                /* Remove special checkbox background */
-                [data-testid="stCheckbox"] {
-                    background: transparent !important;
-                }
-                </style>
-            """, unsafe_allow_html=True)
-            with st.popover("🕐 Time", use_container_width=False):
-                # Hour selection first
-                st.markdown("**Hour Range**")
-                hour_row = st.columns(2)
-                with hour_row[0]:
-                    start_hour = st.selectbox("Start", options=list(range(24)), index=st.session_state.get('start_hour', 0), format_func=lambda x: f"{x:02d}:00", key='start_hour_filter')
-                    st.session_state.start_hour = start_hour
-                with hour_row[1]:
-                    end_hour = st.selectbox("End", options=list(range(24)), index=st.session_state.get('end_hour', 23), format_func=lambda x: f"{x:02d}:00", key='end_hour_filter')
-                    st.session_state.end_hour = end_hour
-                
-                # Date range selection - interactive drag calendar
-                st.markdown("**Date Range**")
-                date_range = st.date_input(
-                    "Select Range",
-                    value=(st.session_state.get('start_date', jan_start), st.session_state.get('end_date', jan_end)),
-                    min_value=date(2026, 1, 1),
-                    max_value=date(2026, 12, 31),
-                    key='date_range_filter',
-                    label_visibility="collapsed"
+            # Use Full Data checkbox
+            with sub_col1:
+                st.markdown('<div style="height: 1.65rem;"></div>', unsafe_allow_html=True)
+                use_full_data = st.checkbox(
+                    "Use Full Data",
+                    value=False,
+                    help="Bypass 5% threshold filter",
+                    key='use_full_data_toggle'
                 )
-                
-                # Handle date range tuple
-                if isinstance(date_range, tuple) and len(date_range) == 2:
-                    st.session_state.start_date = date_range[0]
-                    st.session_state.end_date = date_range[1]
-                elif isinstance(date_range, date):
-                    st.session_state.start_date = date_range
-                    st.session_state.end_date = date_range
             
-            # Use current values
-            start_date = st.session_state.get('start_date', jan_start)
-            end_date = st.session_state.get('end_date', jan_end)
-            start_hour = st.session_state.get('start_hour', 0)
-            end_hour = st.session_state.get('end_hour', 23)
+            # Time Filter
+            with sub_col2:
+                from datetime import date, timedelta
+                today = date.today()
+                # Default to January 2026 (Jan 1 - Jan 31)
+                jan_start = date(2026, 1, 1)
+                jan_end = date(2026, 1, 31)
+                
+                # Initialize defaults to January
+                if 'start_date' not in st.session_state:
+                    st.session_state.start_date = jan_start
+                if 'end_date' not in st.session_state:
+                    st.session_state.end_date = jan_end
+                if 'start_hour' not in st.session_state:
+                    st.session_state.start_hour = 0
+                if 'end_hour' not in st.session_state:
+                    st.session_state.end_hour = 23
+                
+                # CSS for Time button and checkbox
+                st.markdown("""
+                    <style>
+                    /* Compact Time popover button */
+                    button[data-testid*="popover"] {
+                        background-color: white !important;
+                        color: #1f2937 !important;
+                        border: 2px solid #cbd5e1 !important;
+                        padding: 0.25rem 0.5rem !important;
+                        font-size: 0.8rem !important;
+                        min-height: 1.8rem !important;
+                        max-width: 100px !important;
+                    }
+                    
+                    /* Remove special checkbox background */
+                    [data-testid="stCheckbox"] {
+                        background: transparent !important;
+                    }
+                    </style>
+                """, unsafe_allow_html=True)
+                with st.popover("🕐 Time", use_container_width=False):
+                    # Hour selection first
+                    st.markdown("**Hour Range**")
+                    hour_row = st.columns(2)
+                    with hour_row[0]:
+                        start_hour = st.selectbox("Start", options=list(range(24)), index=st.session_state.get('start_hour', 0), format_func=lambda x: f"{x:02d}:00", key='start_hour_filter')
+                        st.session_state.start_hour = start_hour
+                    with hour_row[1]:
+                        end_hour = st.selectbox("End", options=list(range(24)), index=st.session_state.get('end_hour', 23), format_func=lambda x: f"{x:02d}:00", key='end_hour_filter')
+                        st.session_state.end_hour = end_hour
+                    
+                    # Date range selection - interactive drag calendar
+                    st.markdown("**Date Range**")
+                    date_range = st.date_input(
+                        "Select Range",
+                        value=(st.session_state.get('start_date', jan_start), st.session_state.get('end_date', jan_end)),
+                        min_value=date(2026, 1, 1),
+                        max_value=date(2026, 12, 31),
+                        key='date_range_filter',
+                        label_visibility="collapsed"
+                    )
+                    
+                    # Handle date range tuple
+                    if isinstance(date_range, tuple) and len(date_range) == 2:
+                        st.session_state.start_date = date_range[0]
+                        st.session_state.end_date = date_range[1]
+                    elif isinstance(date_range, date):
+                        st.session_state.start_date = date_range
+                        st.session_state.end_date = date_range
+                
+                # Use current values
+                start_date = st.session_state.get('start_date', jan_start)
+                end_date = st.session_state.get('end_date', jan_end)
+                start_hour = st.session_state.get('start_hour', 0)
+                end_hour = st.session_state.get('end_hour', 23)
         
         # Hidden defaults
         entity_threshold = 0.0 if use_full_data else 5.0
@@ -959,59 +967,42 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 st.query_params.clear()
                                 st.rerun()
                     
-                    # CSS for buttons - LIGHT GREEN/RED backgrounds with borders when clicked
-                    best_bg = 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' if flow_type == 'Best' else 'white'
-                    best_border = '3px solid #10b981' if flow_type == 'Best' else '2px solid #d1d5db'
-                    best_color = '#065f46'  # Always dark green text
-                    best_shadow = '0 0 0 3px rgba(16, 185, 129, 0.2)' if flow_type == 'Best' else 'none'
+                    # Simple CSS with button keys - COMPUTE COLORS FIRST
+                    best_styles = f"""
+                    button[key="best_button"],
+                    button[key="best_button"]:hover,
+                    .stButton > button[key="best_button"],
+                    [data-testid="baseButton-secondary"][key="best_button"] {{
+                        background: {'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' if flow_type == 'Best' else 'white'} !important;
+                        border: {'3px solid #10b981' if flow_type == 'Best' else '2px solid #d1d5db'} !important;
+                        color: #065f46 !important;
+                        box-shadow: {'0 0 0 3px rgba(16, 185, 129, 0.2)' if flow_type == 'Best' else 'none'} !important;
+                        padding: 0.4rem 0.8rem !important;
+                        font-size: 0.8rem !important;
+                        font-weight: 700 !important;
+                        min-height: 1.5rem !important;
+                        height: 1.5rem !important;
+                    }}
+                    """
                     
-                    worst_bg = 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)' if flow_type == 'Worst' else 'white'
-                    worst_border = '3px solid #ef4444' if flow_type == 'Worst' else '2px solid #d1d5db'
-                    worst_color = '#991b1b'  # Always dark red text
-                    worst_shadow = '0 0 0 3px rgba(239, 68, 68, 0.2)' if flow_type == 'Worst' else 'none'
+                    worst_styles = f"""
+                    button[key="worst_button"],
+                    button[key="worst_button"]:hover,
+                    .stButton > button[key="worst_button"],
+                    [data-testid="baseButton-secondary"][key="worst_button"] {{
+                        background: {'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)' if flow_type == 'Worst' else 'white'} !important;
+                        border: {'3px solid #ef4444' if flow_type == 'Worst' else '2px solid #d1d5db'} !important;
+                        color: #991b1b !important;
+                        box-shadow: {'0 0 0 3px rgba(239, 68, 68, 0.2)' if flow_type == 'Worst' else 'none'} !important;
+                        padding: 0.4rem 0.8rem !important;
+                        font-size: 0.8rem !important;
+                        font-weight: 700 !important;
+                        min-height: 1.5rem !important;
+                        height: 1.5rem !important;
+                    }}
+                    """
                     
-                    # SUPER SPECIFIC CSS to override global button styles
-                    st.markdown(f"""
-                        <style>
-                        /* Target Best button - be ULTRA specific */
-                        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child .stButton > button,
-                        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child button[kind="secondary"] {{
-                            background: {best_bg} !important;
-                            border: {best_border} !important;
-                            color: {best_color} !important;
-                            box-shadow: {best_shadow} !important;
-                            padding: 0.3rem 0.6rem !important;
-                            font-size: 0.8rem !important;
-                            font-weight: 700 !important;
-                            min-height: 1.75rem !important;
-                            height: 1.75rem !important;
-                        }}
-                        
-                        /* Target Worst button - be ULTRA specific */
-                        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) .stButton > button,
-                        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) button[kind="secondary"] {{
-                            background: {worst_bg} !important;
-                            border: {worst_border} !important;
-                            color: {worst_color} !important;
-                            box-shadow: {worst_shadow} !important;
-                            padding: 0.3rem 0.6rem !important;
-                            font-size: 0.8rem !important;
-                            font-weight: 700 !important;
-                            min-height: 1.75rem !important;
-                            height: 1.75rem !important;
-                        }}
-                        
-                        /* Override hover for these buttons */
-                        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child .stButton > button:hover {{
-                            background: {best_bg} !important;
-                            border: {best_border} !important;
-                        }}
-                        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) .stButton > button:hover {{
-                            background: {worst_bg} !important;
-                            border: {worst_border} !important;
-                        }}
-                        </style>
-                    """, unsafe_allow_html=True)
+                    st.markdown(f"<style>{best_styles}{worst_styles}</style>", unsafe_allow_html=True)
                 
                 # Show flow stats directly (no success messages)
                 if len(final_filtered) > 0:
