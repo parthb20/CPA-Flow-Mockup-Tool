@@ -354,18 +354,28 @@ st.markdown("""
     
     /* Remove empty space from element containers */
     .main .block-container {
-        padding-top: 3rem !important;
+        padding-top: 2rem !important;
         padding-bottom: 1rem !important;
     }
     
     /* Reduce element container spacing */
     .element-container {
-        margin-bottom: 0.5rem !important;
+        margin-bottom: 0.25rem !important;
     }
     
     /* Remove empty divs that create unnecessary space */
     div:empty {
         display: none !important;
+    }
+    
+    /* Reduce vertical block spacing */
+    [data-testid="stVerticalBlock"] > div {
+        gap: 0.25rem !important;
+    }
+    
+    /* Compact row spacing */
+    [data-testid="column"] {
+        padding: 0 0.5rem !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -854,21 +864,21 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 if len(st.session_state.get('all_flows', [])) > 1:
                     st.markdown("""
                         <style>
-                        /* Compact Best/Worst buttons with proper sizing */
+                        /* Smaller Best/Worst buttons */
                         button[key="best_button"],
                         button[key="worst_button"] {
-                            padding: 0.4rem 0.8rem !important;
-                            font-size: 0.875rem !important;
+                            padding: 0.3rem 0.6rem !important;
+                            font-size: 0.8rem !important;
                             font-weight: 600 !important;
-                            min-height: 2rem !important;
-                            height: 2rem !important;
+                            min-height: 1.8rem !important;
+                            height: 1.8rem !important;
                             border-radius: 0.375rem !important;
                         }
                         </style>
                     """, unsafe_allow_html=True)
                     
                     # Single row: Best/Worst buttons + LEFT ARROW + flow count + RIGHT ARROW
-                    nav_cols = st.columns([0.9, 0.9, 2.8])
+                    nav_cols = st.columns([0.75, 0.75, 3.2])
                     
                     # Best Flows button
                     with nav_cols[0]:
@@ -882,84 +892,52 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             st.session_state.flow_type = 'Worst'
                             st.rerun()
                     
-                    # Arrows + Flow count in one column
+                    # Arrows + Flow count - using streamlit columns for clean layout
                     with nav_cols[2]:
-                        prev_disabled = st.session_state.current_flow_index == 0
-                        next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
+                        arrow_cols = st.columns([0.1, 1.5, 0.1])
                         
-                        # Create clickable arrows using HTML/JavaScript
-                        left_arrow = "⬅️" if not prev_disabled else "⬅️"
-                        right_arrow = "➡️" if not next_disabled else "➡️"
-                        left_opacity = "0.3" if prev_disabled else "1.0"
-                        right_opacity = "0.3" if next_disabled else "1.0"
-                        left_cursor = "not-allowed" if prev_disabled else "pointer"
-                        right_cursor = "not-allowed" if next_disabled else "pointer"
+                        with arrow_cols[0]:
+                            prev_disabled = st.session_state.current_flow_index == 0
+                            if st.button("⬅️", key='prev_arrow', disabled=prev_disabled, help="Previous Flow"):
+                                st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
+                                st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
+                                st.rerun()
                         
-                        st.markdown(f"""
-                            <div style="display: flex; align-items: center; gap: 0.75rem; padding-top: 5px;">
-                                <span id="prev_arrow" style="font-size: 1.2rem; cursor: {left_cursor}; opacity: {left_opacity}; user-select: none;">{left_arrow}</span>
-                                <span style="font-size: 0.875rem; color: #64748b; font-weight: 600;">Flow {st.session_state.current_flow_index + 1} of {len(st.session_state.all_flows)}</span>
-                                <span id="next_arrow" style="font-size: 1.2rem; cursor: {right_cursor}; opacity: {right_opacity}; user-select: none;">{right_arrow}</span>
-                            </div>
-                            
-                            <script>
-                            (function() {{
-                                const prevArrow = document.getElementById('prev_arrow');
-                                const nextArrow = document.getElementById('next_arrow');
-                                
-                                if (prevArrow && !{str(prev_disabled).lower()}) {{
-                                    prevArrow.onclick = function() {{
-                                        // Trigger Streamlit rerun by clicking hidden button
-                                        const buttons = document.querySelectorAll('button');
-                                        buttons.forEach(btn => {{
-                                            if (btn.textContent.includes('◀') || btn.getAttribute('key') === 'prev_flow_hidden') {{
-                                                btn.click();
-                                            }}
-                                        }});
-                                    }};
-                                }}
-                                
-                                if (nextArrow && !{str(next_disabled).lower()}) {{
-                                    nextArrow.onclick = function() {{
-                                        // Trigger Streamlit rerun by clicking hidden button
-                                        const buttons = document.querySelectorAll('button');
-                                        buttons.forEach(btn => {{
-                                            if (btn.textContent.includes('▶') || btn.getAttribute('key') === 'next_flow_hidden') {{
-                                                btn.click();
-                                            }}
-                                        }});
-                                    }};
-                                }}
-                            }})();
-                            </script>
-                        """, unsafe_allow_html=True)
+                        with arrow_cols[1]:
+                            st.markdown(f"""
+                                <div style="padding-top: 5px; font-size: 0.85rem; color: #64748b; font-weight: 600; text-align: center;">
+                                    Flow {st.session_state.current_flow_index + 1} of {len(st.session_state.all_flows)}
+                                </div>
+                            """, unsafe_allow_html=True)
                         
-                        # Hidden buttons to handle clicks
-                        hidden_cols = st.columns([1, 1, 10])
-                        with hidden_cols[0]:
-                            if not prev_disabled:
-                                if st.button("◀", key='prev_flow_hidden', help="Previous Flow"):
-                                    st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
-                                    st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
-                                    st.rerun()
-                        with hidden_cols[1]:
-                            if not next_disabled:
-                                if st.button("▶", key='next_flow_hidden', help="Next Flow"):
-                                    st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
-                                    st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
-                                    st.rerun()
-                        
-                        # Hide the hidden buttons
-                        st.markdown("""
-                            <style>
-                            button[key="prev_flow_hidden"],
-                            button[key="next_flow_hidden"] {
-                                display: none !important;
-                            }
-                            </style>
-                        """, unsafe_allow_html=True)
+                        with arrow_cols[2]:
+                            next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
+                            if st.button("➡️", key='next_arrow', disabled=next_disabled, help="Next Flow"):
+                                st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
+                                st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
+                                st.rerun()
                     
-                    # JavaScript to color Best/Worst buttons when selected
+                    # CSS to make arrow buttons look like emojis
+                    st.markdown("""
+                        <style>
+                        button[key="prev_arrow"],
+                        button[key="next_arrow"] {
+                            background: transparent !important;
+                            border: none !important;
+                            padding: 0 !important;
+                            font-size: 1.2rem !important;
+                            min-height: auto !important;
+                            height: auto !important;
+                            box-shadow: none !important;
+                        }
+                        button[key="prev_arrow"]:disabled,
+                        button[key="next_arrow"]:disabled {
+                            opacity: 0.3 !important;
+                        }
+                        </style>
+                    """, unsafe_allow_html=True)
+                    
+                    # JavaScript to color Best/Worst buttons - AGGRESSIVE
                     st.markdown(f"""
                         <script>
                         (function() {{
@@ -969,39 +947,39 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                     const text = btn.textContent.trim();
                                     if (text === 'Best Flows') {{
                                         if ('{flow_type}' === 'Best') {{
-                                            btn.style.background = '#d1fae5';
-                                            btn.style.borderColor = '#10b981';
-                                            btn.style.color = '#065f46';
+                                            btn.style.cssText = 'background: #d1fae5 !important; border: 2px solid #10b981 !important; color: #065f46 !important; font-weight: 700 !important;';
                                         }} else {{
-                                            btn.style.background = '';
-                                            btn.style.borderColor = '';
-                                            btn.style.color = '';
+                                            btn.style.cssText = btn.style.cssText.replace(/background:[^;]*;/g, '').replace(/border:[^;]*;/g, '').replace(/color:[^;]*;/g, '');
                                         }}
                                     }} else if (text === 'Worst Flows') {{
                                         if ('{flow_type}' === 'Worst') {{
-                                            btn.style.background = '#fee2e2';
-                                            btn.style.borderColor = '#ef4444';
-                                            btn.style.color = '#991b1b';
+                                            btn.style.cssText = 'background: #fee2e2 !important; border: 2px solid #ef4444 !important; color: #991b1b !important; font-weight: 700 !important;';
                                         }} else {{
-                                            btn.style.background = '';
-                                            btn.style.borderColor = '';
-                                            btn.style.color = '';
+                                            btn.style.cssText = btn.style.cssText.replace(/background:[^;]*;/g, '').replace(/border:[^;]*;/g, '').replace(/color:[^;]*;/g, '');
                                         }}
                                     }}
                                 }});
                             }}
                             
+                            // Run immediately and repeatedly
                             applyColors();
+                            setTimeout(applyColors, 5);
                             setTimeout(applyColors, 10);
                             setTimeout(applyColors, 50);
                             setTimeout(applyColors, 100);
-                            setTimeout(applyColors, 300);
+                            setTimeout(applyColors, 200);
                             setTimeout(applyColors, 500);
                             setTimeout(applyColors, 1000);
                             setTimeout(applyColors, 2000);
                             
+                            // Watch for changes
                             const observer = new MutationObserver(applyColors);
                             observer.observe(document.body, {{ childList: true, subtree: true }});
+                            
+                            // Also run on any click
+                            document.addEventListener('click', function() {{
+                                setTimeout(applyColors, 10);
+                            }});
                         }})();
                         </script>
                     """, unsafe_allow_html=True)
