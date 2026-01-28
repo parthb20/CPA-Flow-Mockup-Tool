@@ -211,6 +211,34 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     all_flows = st.session_state.get('all_flows', [])
     current_flow_index = st.session_state.get('current_flow_index', 0)
     
+    # Flow navigation - STRICTLY LEFT ALIGNED, separate from filters
+    if len(all_flows) > 1:
+        prev_disabled = current_flow_index == 0
+        next_disabled = current_flow_index >= len(all_flows) - 1
+        
+        left_arrow_html = f'<span id="prev_arrow" style="cursor: {"pointer" if not prev_disabled else "default"}; opacity: {"1" if not prev_disabled else "0.3"}; font-size: 1.1rem; margin-right: 0.4rem; user-select: none;">⬅️</span>'
+        right_arrow_html = f'<span id="next_arrow" style="cursor: {"pointer" if not next_disabled else "default"}; opacity: {"1" if not next_disabled else "0.3"}; font-size: 1.1rem; margin-left: 0.4rem; user-select: none;">➡️</span>'
+        
+        st.markdown(f'''
+            <div style="display: flex; align-items: center; justify-content: flex-start; margin-bottom: 0.5rem;">
+                {left_arrow_html}
+                <span style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Flow {current_flow_index + 1} of {len(all_flows)}</span>
+                {right_arrow_html}
+            </div>
+            <script>
+            document.getElementById('prev_arrow')?.addEventListener('click', function() {{
+                if ({str(not prev_disabled).lower()}) {{
+                    window.location.href = '?nav=prev&t=' + Date.now();
+                }}
+            }});
+            document.getElementById('next_arrow')?.addEventListener('click', function() {{
+                if ({str(not next_disabled).lower()}) {{
+                    window.location.href = '?nav=next&t=' + Date.now();
+                }}
+            }});
+            </script>
+        ''', unsafe_allow_html=True)
+    
     # All controls in one row - Best/Worst FIRST, then Layout, Device, Domain, Keyword
     control_col1, control_col2, control_col3, control_col4, control_col5 = st.columns([1, 1, 1, 1.2, 1.2])
     
@@ -232,34 +260,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
            (layout_choice == 'Vertical' and st.session_state.flow_layout != 'vertical'):
             st.session_state.flow_layout = 'horizontal' if layout_choice == 'Horizontal' else 'vertical'
             st.rerun()
-        
-        # Flow navigation below Layout
-        if len(all_flows) > 1:
-            prev_disabled = current_flow_index == 0
-            next_disabled = current_flow_index >= len(all_flows) - 1
-            
-            left_arrow_html = f'<span id="prev_arrow" style="cursor: {"pointer" if not prev_disabled else "default"}; opacity: {"1" if not prev_disabled else "0.3"}; font-size: 1.1rem; margin-right: 0.4rem; user-select: none;">⬅️</span>'
-            right_arrow_html = f'<span id="next_arrow" style="cursor: {"pointer" if not next_disabled else "default"}; opacity: {"1" if not next_disabled else "0.3"}; font-size: 1.1rem; margin-left: 0.4rem; user-select: none;">➡️</span>'
-            
-            st.markdown(f'''
-                <div style="display: flex; align-items: center; justify-content: flex-start; margin-top: 0.3rem;">
-                    {left_arrow_html}
-                    <span style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Flow {current_flow_index + 1} of {len(all_flows)}</span>
-                    {right_arrow_html}
-                </div>
-                <script>
-                document.getElementById('prev_arrow')?.addEventListener('click', function() {{
-                    if ({str(not prev_disabled).lower()}) {{
-                        window.location.href = '?nav=prev&t=' + Date.now();
-                    }}
-                }});
-                document.getElementById('next_arrow')?.addEventListener('click', function() {{
-                    if ({str(not next_disabled).lower()}) {{
-                        window.location.href = '?nav=next&t=' + Date.now();
-                    }}
-                }});
-                </script>
-            ''', unsafe_allow_html=True)
     
     with control_col3:
         st.markdown('<p style="font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem) 0; font-family: system-ui;">Device</p>', unsafe_allow_html=True)
