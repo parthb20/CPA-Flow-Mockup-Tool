@@ -366,16 +366,29 @@ st.markdown("""
     /* Remove empty divs that create unnecessary space */
     div:empty {
         display: none !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
     
     /* Reduce vertical block spacing */
     [data-testid="stVerticalBlock"] > div {
-        gap: 0.25rem !important;
+        gap: 0 !important;
     }
     
     /* Compact row spacing */
     [data-testid="column"] {
         padding: 0 0.5rem !important;
+    }
+    
+    /* Remove spacing from horizontal blocks */
+    [data-testid="stHorizontalBlock"] {
+        gap: 0.5rem !important;
+    }
+    
+    /* Remove extra margins from element containers */
+    .element-container:has(> .row-widget) {
+        margin-bottom: 0 !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -466,9 +479,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             if selected_campaign != '-- Select Campaign --':
                 st.session_state.preserved_campaign = selected_campaign
         
-        # Use Full Data checkbox
+        # Use Full Data checkbox - aligned
         with col3:
-            st.markdown("<div style='margin-bottom: 5px;'><strong>Options</strong></div>", unsafe_allow_html=True)
             use_full_data = st.checkbox(
                 "Use Full Data",
                 value=False,
@@ -494,14 +506,22 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             if 'end_hour' not in st.session_state:
                 st.session_state.end_hour = 23
             
-            # Add CSS to fix Time button
+            # CSS for Time button and checkbox
             st.markdown("""
                 <style>
-                /* Fix Time popover button - white background */
+                /* Compact Time popover button */
                 button[data-testid*="popover"] {
                     background-color: white !important;
                     color: #1f2937 !important;
                     border: 2px solid #cbd5e1 !important;
+                    padding: 0.35rem 0.7rem !important;
+                    font-size: 0.85rem !important;
+                    min-height: 2rem !important;
+                }
+                
+                /* Remove special checkbox background */
+                [data-testid="stCheckbox"] {
+                    background: transparent !important;
                 }
                 </style>
             """, unsafe_allow_html=True)
@@ -540,9 +560,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             end_date = st.session_state.get('end_date', jan_end)
             start_hour = st.session_state.get('start_hour', 0)
             end_hour = st.session_state.get('end_hour', 23)
-        
-        # Horizontal separator (reduced margin)
-        st.markdown("<hr style='margin: 0.5rem 0; border: none; border-top: 1px solid #e5e7eb;' />", unsafe_allow_html=True)
         
         # Hidden defaults
         entity_threshold = 0.0 if use_full_data else 5.0
@@ -860,25 +877,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 </p>
                     """, unsafe_allow_html=True)
                 
-                # === FLOW NAVIGATION - Best/Worst + Left Arrow + Flow Count + Right Arrow ===
+                # === FLOW NAVIGATION - Compact Best/Worst + Arrows ===
                 if len(st.session_state.get('all_flows', [])) > 1:
-                    st.markdown("""
-                        <style>
-                        /* Smaller Best/Worst buttons */
-                        button[key="best_button"],
-                        button[key="worst_button"] {
-                            padding: 0.3rem 0.6rem !important;
-                            font-size: 0.8rem !important;
-                            font-weight: 600 !important;
-                            min-height: 1.8rem !important;
-                            height: 1.8rem !important;
-                            border-radius: 0.375rem !important;
-                        }
-                        </style>
-                    """, unsafe_allow_html=True)
-                    
-                    # Single row: Best/Worst buttons + LEFT ARROW + flow count + RIGHT ARROW
-                    nav_cols = st.columns([0.75, 0.75, 3.2])
+                    nav_cols = st.columns([0.7, 0.7, 2.6])
                     
                     # Best Flows button
                     with nav_cols[0]:
@@ -892,94 +893,110 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             st.session_state.flow_type = 'Worst'
                             st.rerun()
                     
-                    # Arrows + Flow count - using streamlit columns for clean layout
+                    # Arrows + Flow count - compact inline
                     with nav_cols[2]:
-                        arrow_cols = st.columns([0.1, 1.5, 0.1])
+                        prev_disabled = st.session_state.current_flow_index == 0
+                        next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
                         
-                        with arrow_cols[0]:
-                            prev_disabled = st.session_state.current_flow_index == 0
-                            if st.button("⬅️", key='prev_arrow', disabled=prev_disabled, help="Previous Flow"):
+                        left_opacity = "0.3" if prev_disabled else "1"
+                        right_opacity = "0.3" if next_disabled else "1"
+                        left_cursor = "not-allowed" if prev_disabled else "pointer"
+                        right_cursor = "not-allowed" if next_disabled else "pointer"
+                        
+                        st.markdown(f"""
+                            <div style="display: flex; align-items: center; gap: 0.5rem; padding-top: 3px;">
+                                <span onclick="document.querySelector('button[key=\\'prev_btn\\']')?.click()" 
+                                      style="font-size: 1.1rem; cursor: {left_cursor}; opacity: {left_opacity}; user-select: none;">⬅️</span>
+                                <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Flow {st.session_state.current_flow_index + 1} of {len(st.session_state.all_flows)}</span>
+                                <span onclick="document.querySelector('button[key=\\'next_btn\\']')?.click()" 
+                                      style="font-size: 1.1rem; cursor: {right_cursor}; opacity: {right_opacity}; user-select: none;">➡️</span>
+                            </div>
+                        """, unsafe_allow_html=True)
+                    
+                    # Hidden navigation buttons
+                    hidden_nav = st.columns([1, 1, 10])
+                    with hidden_nav[0]:
+                        if not prev_disabled:
+                            if st.button("◀", key='prev_btn'):
                                 st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
                                 st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
                                 st.rerun()
-                        
-                        with arrow_cols[1]:
-                            st.markdown(f"""
-                                <div style="padding-top: 5px; font-size: 0.85rem; color: #64748b; font-weight: 600; text-align: center;">
-                                    Flow {st.session_state.current_flow_index + 1} of {len(st.session_state.all_flows)}
-                                </div>
-                            """, unsafe_allow_html=True)
-                        
-                        with arrow_cols[2]:
-                            next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
-                            if st.button("➡️", key='next_arrow', disabled=next_disabled, help="Next Flow"):
+                    with hidden_nav[1]:
+                        if not next_disabled:
+                            if st.button("▶", key='next_btn'):
                                 st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
                                 st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
                                 st.rerun()
                     
-                    # CSS to make arrow buttons look like emojis
+                    # CSS for buttons
                     st.markdown("""
                         <style>
-                        button[key="prev_arrow"],
-                        button[key="next_arrow"] {
-                            background: transparent !important;
-                            border: none !important;
-                            padding: 0 !important;
-                            font-size: 1.2rem !important;
-                            min-height: auto !important;
-                            height: auto !important;
-                            box-shadow: none !important;
+                        /* Hide navigation buttons */
+                        button[key="prev_btn"],
+                        button[key="next_btn"] {
+                            display: none !important;
                         }
-                        button[key="prev_arrow"]:disabled,
-                        button[key="next_arrow"]:disabled {
-                            opacity: 0.3 !important;
+                        
+                        /* Compact Best/Worst buttons with VISIBLE highlight */
+                        button[key="best_button"],
+                        button[key="worst_button"] {
+                            padding: 0.25rem 0.5rem !important;
+                            font-size: 0.75rem !important;
+                            font-weight: 600 !important;
+                            min-height: 1.6rem !important;
+                            height: 1.6rem !important;
+                            border-radius: 0.3rem !important;
+                            border: 2px solid #e5e7eb !important;
                         }
                         </style>
                     """, unsafe_allow_html=True)
                     
-                    # JavaScript to color Best/Worst buttons - AGGRESSIVE
+                    # JavaScript for SUPER VISIBLE highlighting
                     st.markdown(f"""
                         <script>
                         (function() {{
-                            function applyColors() {{
-                                const buttons = document.querySelectorAll('button');
+                            const flowType = '{flow_type}';
+                            
+                            function highlightButton() {{
+                                const buttons = Array.from(document.querySelectorAll('button'));
                                 buttons.forEach(btn => {{
                                     const text = btn.textContent.trim();
                                     if (text === 'Best Flows') {{
-                                        if ('{flow_type}' === 'Best') {{
-                                            btn.style.cssText = 'background: #d1fae5 !important; border: 2px solid #10b981 !important; color: #065f46 !important; font-weight: 700 !important;';
+                                        if (flowType === 'Best') {{
+                                            btn.style.setProperty('background', '#10b981', 'important');
+                                            btn.style.setProperty('border', '3px solid #065f46', 'important');
+                                            btn.style.setProperty('color', '#ffffff', 'important');
+                                            btn.style.setProperty('font-weight', '700', 'important');
+                                            btn.style.setProperty('box-shadow', '0 0 0 3px rgba(16, 185, 129, 0.3)', 'important');
                                         }} else {{
-                                            btn.style.cssText = btn.style.cssText.replace(/background:[^;]*;/g, '').replace(/border:[^;]*;/g, '').replace(/color:[^;]*;/g, '');
+                                            btn.style.removeProperty('background');
+                                            btn.style.setProperty('border', '2px solid #e5e7eb', 'important');
+                                            btn.style.removeProperty('color');
+                                            btn.style.removeProperty('box-shadow');
                                         }}
                                     }} else if (text === 'Worst Flows') {{
-                                        if ('{flow_type}' === 'Worst') {{
-                                            btn.style.cssText = 'background: #fee2e2 !important; border: 2px solid #ef4444 !important; color: #991b1b !important; font-weight: 700 !important;';
+                                        if (flowType === 'Worst') {{
+                                            btn.style.setProperty('background', '#ef4444', 'important');
+                                            btn.style.setProperty('border', '3px solid #991b1b', 'important');
+                                            btn.style.setProperty('color', '#ffffff', 'important');
+                                            btn.style.setProperty('font-weight', '700', 'important');
+                                            btn.style.setProperty('box-shadow', '0 0 0 3px rgba(239, 68, 68, 0.3)', 'important');
                                         }} else {{
-                                            btn.style.cssText = btn.style.cssText.replace(/background:[^;]*;/g, '').replace(/border:[^;]*;/g, '').replace(/color:[^;]*;/g, '');
+                                            btn.style.removeProperty('background');
+                                            btn.style.setProperty('border', '2px solid #e5e7eb', 'important');
+                                            btn.style.removeProperty('color');
+                                            btn.style.removeProperty('box-shadow');
                                         }}
                                     }}
                                 }});
                             }}
                             
-                            // Run immediately and repeatedly
-                            applyColors();
-                            setTimeout(applyColors, 5);
-                            setTimeout(applyColors, 10);
-                            setTimeout(applyColors, 50);
-                            setTimeout(applyColors, 100);
-                            setTimeout(applyColors, 200);
-                            setTimeout(applyColors, 500);
-                            setTimeout(applyColors, 1000);
-                            setTimeout(applyColors, 2000);
+                            // Apply immediately and persistently
+                            highlightButton();
+                            setInterval(highlightButton, 100);
                             
-                            // Watch for changes
-                            const observer = new MutationObserver(applyColors);
-                            observer.observe(document.body, {{ childList: true, subtree: true }});
-                            
-                            // Also run on any click
-                            document.addEventListener('click', function() {{
-                                setTimeout(applyColors, 10);
-                            }});
+                            // Watch DOM
+                            new MutationObserver(highlightButton).observe(document.body, {{ childList: true, subtree: true }});
                         }})();
                         </script>
                     """, unsafe_allow_html=True)
