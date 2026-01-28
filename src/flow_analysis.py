@@ -310,8 +310,8 @@ def find_top_n_best_flows(df, n=5, include_serp_filter=False):
 
 def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
     """Find top N worst performing flows
-    Logic: Lowest CVR among keyword-domain combinations (with >5% data),
-           choose latest view with 0 conversions but good clicks
+    Logic: Lowest CVR among keyword-domain combinations,
+           choose latest view_id with highest timestamp
     Args:
         df: DataFrame with flow data
         n: Number of worst flows to return (default 5)
@@ -359,35 +359,29 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
         # Calculate CVR for each combination
         agg_df['cvr'] = agg_df.apply(lambda row: row['conversions'] / row['clicks'] if row['clicks'] > 0 else 0, axis=1)
         
-        # Filter to combinations with good clicks (at least 10 clicks)
-        agg_df = agg_df[agg_df['clicks'] >= 10]
-        
-        if len(agg_df) == 0:
-            return []
-        
-        # Sort by CVR ascending (lowest CVR first)
+        # Sort by CVR ascending (lowest CVR first), then by clicks descending
         agg_df = agg_df.sort_values(['cvr', 'clicks'], ascending=[True, False])
         
-        # Get worst N combinations
-        worst_combos = agg_df.head(n)
+        # Get worst combinations (up to n*2 to ensure we get n flows after filtering)
+        worst_combos = agg_df.head(n * 2)
         
-        # For each combo, get the latest view with 0 conversions but good clicks
+        # For each combo, get the latest view_id with highest timestamp
         flows = []
         for _, combo in worst_combos.iterrows():
+            if len(flows) >= n:
+                break
+                
             filtered = df.copy()
             for col in group_cols:
                 filtered = filtered[filtered[col] == combo[col]]
             
-            # Filter to rows with 0 conversions but clicks > 0
-            zero_conv = filtered[(filtered['conversions'] == 0) & (filtered['clicks'] > 0)]
-            
-            if len(zero_conv) > 0:
+            if len(filtered) > 0:
                 # Sort by timestamp desc (latest first)
-                if 'ts' in zero_conv.columns:
-                    zero_conv = zero_conv.sort_values('ts', ascending=False)
+                if 'ts' in filtered.columns:
+                    filtered = filtered.sort_values('ts', ascending=False)
                 
-                # Get most recent
-                flow = zero_conv.iloc[0].to_dict()
+                # Get most recent view
+                flow = filtered.iloc[0].to_dict()
                 flows.append(flow)
             elif len(filtered) > 0:
                 # Fallback: get any row from this combo (sorted by ts)
