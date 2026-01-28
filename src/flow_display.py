@@ -213,10 +213,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     
     # Flow navigation - STRICTLY LEFT ALIGNED, separate from filters - CLICKABLE
     if len(all_flows) > 1:
-        # Add CSS for navigation buttons
+        # Add CSS for navigation buttons - NO PADDING ON RIGHT
         st.markdown("""
         <style>
-        button[key="nav_prev_btn"], button[key="nav_next_btn"] {
+        button[key="nav_prev_btn"] {
             padding: 0.25rem 0.5rem !important;
             font-size: 1.1rem !important;
             min-height: 2rem !important;
@@ -225,7 +225,15 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             border: 2px solid #cbd5e1 !important;
             border-radius: 0.375rem !important;
         }
-        button[key="nav_prev_btn"]:hover, button[key="nav_next_btn"]:hover {
+        button[key="nav_next_btn"] {
+            padding: 0 !important;
+            font-size: 1.1rem !important;
+            min-height: 2rem !important;
+            height: 2rem !important;
+            background: transparent !important;
+            border: none !important;
+        }
+        button[key="nav_prev_btn"]:hover {
             background: #f1f5f9 !important;
             border-color: #94a3b8 !important;
         }
@@ -248,9 +256,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 st.markdown('<span style="opacity: 0.3; font-size: 1.1rem; cursor: not-allowed;">⬅️</span>', unsafe_allow_html=True)
         
         with nav_col2:
-            # Get current flow rank
-            current_rank = st.session_state.current_flow.get('flow_rank', current_flow_index + 1) if st.session_state.current_flow else current_flow_index + 1
-            st.markdown(f'<div style="text-align: center; padding-top: 0.3rem;"><span style="font-size: 0.85rem; color: #0f172a; font-weight: 700;">Flow {current_flow_index + 1} of {len(all_flows)} <span style="color: #3b82f6;">(Rank {current_rank})</span></span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="text-align: center; padding-top: 0.3rem;"><span style="font-size: 0.85rem; color: #0f172a; font-weight: 700;">Flow {current_flow_index + 1} of {len(all_flows)}</span></div>', unsafe_allow_html=True)
         
         with nav_col3:
             if not next_disabled:
