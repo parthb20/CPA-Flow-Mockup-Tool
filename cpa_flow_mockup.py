@@ -347,24 +347,41 @@ st.markdown("""
         border-right-color: transparent !important;
     }
     
-    /* Streamlit's native spinner styling - make it more visible */
+    /* Streamlit's native spinner styling - show circular animation */
     [data-testid="stSpinner"] {
-        color: #3b82f6 !important;
-        font-size: 1.5rem !important;
-        font-weight: 600 !important;
-        padding: 2rem 0 !important;
-        text-align: center !important;
-        background: rgba(255, 255, 255, 0.95) !important;
-        border-radius: 8px !important;
+        position: relative !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 2rem !important;
         margin: 1rem 0 !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
     }
     
     [data-testid="stSpinner"] > div {
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        gap: 0.75rem !important;
+        gap: 0.5rem !important;
+        font-size: 0.9rem !important;
+        color: #666 !important;
+    }
+    
+    /* Show the default Streamlit spinner icon */
+    [data-testid="stSpinner"]::before {
+        content: "" !important;
+        display: inline-block !important;
+        width: 24px !important;
+        height: 24px !important;
+        border: 3px solid #f3f3f3 !important;
+        border-top: 3px solid #3b82f6 !important;
+        border-radius: 50% !important;
+        animation: spin 1s linear infinite !important;
+        margin-right: 0.5rem !important;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
     }
     
     /* Remove empty space from element containers */
@@ -915,7 +932,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.session_state.current_flow_index = 0
             
             if len(st.session_state.get('all_flows', [])) == 0:
-                with st.spinner(f"🔄 Finding top {num_flows} {flow_type.lower()} flows..."):
+                with st.spinner(f"Finding top {num_flows} {flow_type.lower()} flows..."):
                     from src.flow_analysis import find_top_n_best_flows, find_top_n_worst_flows
                     
                     if flow_type == "Best":
@@ -1010,7 +1027,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs, flow_ctr, flow_cvr)
                 
                 # Render Flow Journey using module (heading now shown above)
-                with st.spinner("🔄 Loading flow cards..."):
+                with st.spinner("Loading flow cards..."):
                     render_flow_journey(
                         campaign_df=campaign_df,
                         current_flow=current_flow,
