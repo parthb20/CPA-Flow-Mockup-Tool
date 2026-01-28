@@ -288,7 +288,7 @@ def find_top_n_best_flows(df, n=5, include_serp_filter=False):
         
         # For each combo, get the most recent view with valid metrics
         flows = []
-        for _, combo in top_combos.iterrows():
+        for i, (_, combo) in enumerate(top_combos.iterrows()):
             filtered = valid_df.copy()
             for col in group_cols:
                 filtered = filtered[filtered[col] == combo[col]]
@@ -300,6 +300,8 @@ def find_top_n_best_flows(df, n=5, include_serp_filter=False):
                 
                 # Get most recent
                 flow = filtered.iloc[0].to_dict()
+                # Add ranking (1-5)
+                flow['flow_rank'] = i + 1
                 flows.append(flow)
         
         return flows
@@ -368,6 +370,8 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
         
         # For each combo, GET ONLY 0 conversion rows (skip if none exist)
         flows = []
+        flows_with_ranking = []  # Store (flow, cvr, ctr) tuples for ranking
+        
         for _, combo in worst_combos.iterrows():
             if len(flows) >= n:
                 break
@@ -377,12 +381,11 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
                 filtered = filtered[filtered[col] == combo[col]]
             
             if len(filtered) > 0:
-                # ONLY get rows with 0 conversions - ULTRA STRICT CHECK
+                # ONLY get rows with EXACTLY 0 conversions - STRICTLY 0
                 zero_conv = filtered[
                     (filtered['conversions'] == 0) | 
                     (filtered['conversions'] == 0.0) |
-                    (filtered['conversions'].isna()) |
-                    (filtered['conversions'] < 0.01)  # Handle floating point
+                    (filtered['conversions'].isna())
                 ]
                 
                 if len(zero_conv) > 0:
@@ -390,12 +393,27 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
                     if 'ts' in zero_conv.columns:
                         zero_conv = zero_conv.sort_values('ts', ascending=False)
                     
-                    # Triple check conversions is truly 0
+                    # Get the flow and verify conversions is EXACTLY 0
                     flow = zero_conv.iloc[0].to_dict()
                     conv_val = flow.get('conversions', 0)
-                    if conv_val == 0 or conv_val == 0.0 or pd.isna(conv_val) or conv_val < 0.01:
-                        flows.append(flow)
+                    
+                    # STRICT: Only accept if conversions is exactly 0 or NaN
+                    if conv_val == 0 or conv_val == 0.0 or pd.isna(conv_val):
+                        # Calculate CVR and CTR for this combo for ranking
+                        combo_cvr = combo.get('cvr', 0)
+                        combo_ctr = combo.get('ctr', 0)
+                        flows_with_ranking.append((flow, combo_cvr, combo_ctr))
                 # If no 0 conversion rows, skip this combo entirely
+        
+        # Sort flows by CVR ascending, then CTR ascending (worst first)
+        flows_with_ranking.sort(key=lambda x: (x[1], x[2]))
+        
+        # Extract just the flows, maintaining rank order
+        flows = [f[0] for f in flows_with_ranking[:n]]
+        
+        # Add ranking to each flow
+        for i, flow in enumerate(flows):
+            flow['flow_rank'] = i + 1
         
         return flows
     except Exception as e:
