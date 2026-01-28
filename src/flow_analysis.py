@@ -261,47 +261,36 @@ def find_top_n_best_flows(df, n=5, include_serp_filter=False):
             elif 'serp_template_id' in df.columns:
                 group_cols.append('serp_template_id')
         
-        # Filter to rows with conversions > 0 and clicks > 0
-        valid_df = df[(df['conversions'] > 0) & (df['clicks'] > 0)]
+        # Sort by: conversions desc (prioritize converting flows), then CVR desc, then clicks desc, then latest timestamp
+        sort_cols = ['conversions', 'cvr', 'clicks', 'ts'] if 'ts' in df.columns else ['conversions', 'cvr', 'clicks']
+        df = df.sort_values(sort_cols, ascending=False)
         
-        if len(valid_df) == 0:
-            # Fall back to clicks > 0
-            valid_df = df[df['clicks'] > 0]
-            if len(valid_df) == 0:
-                return []
+        # Build uniqueness columns - FULL flow combination (keyword, domain, pub_url, serp, dest_url)
+        unique_cols = ['keyword_term', 'publisher_domain', 'publisher_url', 'Destination_Url']
+        if include_serp_filter:
+            if 'serp_template_name' in df.columns:
+                unique_cols.append('serp_template_name')
+            elif 'serp_template_id' in df.columns:
+                unique_cols.append('serp_template_id')
+            elif 'Serp_URL' in df.columns:
+                unique_cols.append('Serp_URL')
         
-        # Group by keyword + domain (+ serp if enabled) and calculate metrics
-        agg_df = valid_df.groupby(group_cols, dropna=False).agg({
-            'conversions': 'sum',
-            'clicks': 'sum',
-            'impressions': 'sum'
-        }).reset_index()
-        
-        # Calculate CVR for each combination
-        agg_df['cvr'] = agg_df.apply(lambda row: row['conversions'] / row['clicks'] if row['clicks'] > 0 else 0, axis=1)
-        
-        # Sort by CVR desc, then conversions desc, then clicks desc
-        agg_df = agg_df.sort_values(['cvr', 'conversions', 'clicks'], ascending=[False, False, False])
-        
-        # Get top N combinations
-        top_combos = agg_df.head(n)
-        
-        # For each combo, get the most recent view with valid metrics
+        # Get N UNIQUE flows - each with different combination
         flows = []
-        for i, (_, combo) in enumerate(top_combos.iterrows()):
-            filtered = valid_df.copy()
-            for col in group_cols:
-                filtered = filtered[filtered[col] == combo[col]]
+        seen_combinations = set()
+        
+        for _, row in df.iterrows():
+            if len(flows) >= n:
+                break
             
-            if len(filtered) > 0:
-                # Sort by timestamp desc
-                if 'ts' in filtered.columns:
-                    filtered = filtered.sort_values('ts', ascending=False)
-                
-                # Get most recent
-                flow = filtered.iloc[0].to_dict()
-                # Add ranking (1-5)
-                flow['flow_rank'] = i + 1
+            # Create combination key for uniqueness check
+            combo_key = tuple(str(row.get(col, '')) for col in unique_cols)
+            
+            # Only add if this combination hasn't been seen
+            if combo_key not in seen_combinations:
+                seen_combinations.add(combo_key)
+                flow = row.to_dict()
+                flow['flow_rank'] = len(flows) + 1
                 flows.append(flow)
         
         return flows
@@ -351,69 +340,61 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
             elif 'serp_template_id' in df.columns:
                 group_cols.append('serp_template_id')
         
-        # Group by keyword + domain (+ serp if enabled) and calculate CVR and CTR
-        agg_df = df.groupby(group_cols, dropna=False).agg({
-            'conversions': 'sum',
-            'clicks': 'sum',
-            'impressions': 'sum'
-        }).reset_index()
+        # STRICTLY filter for 0 conversions ONLY (no 1, no 0.5, ONLY 0 or NaN)
+        zero_conv_df = df[
+            (df['conversions'] == 0) | 
+            (df['conversions'] == 0.0) |
+            (df['conversions'].isna())
+        ].copy()
         
-        # Calculate CVR and CTR for each combination
-        agg_df['cvr'] = agg_df.apply(lambda row: row['conversions'] / row['clicks'] if row['clicks'] > 0 else 0, axis=1)
-        agg_df['ctr'] = agg_df.apply(lambda row: row['clicks'] / row['impressions'] if row['impressions'] > 0 else 0, axis=1)
+        if len(zero_conv_df) == 0:
+            return []
         
-        # Sort by CVR ascending (lowest CVR first), then by CTR ascending (worst CTR as tiebreaker)
-        agg_df = agg_df.sort_values(['cvr', 'ctr'], ascending=[True, True])
+        # Calculate CTR for tiebreaking
+        zero_conv_df['ctr'] = zero_conv_df.apply(
+            lambda row: row['clicks'] / row['impressions'] if row['impressions'] > 0 else 0, 
+            axis=1
+        )
         
-        # Get worst combinations (up to n*10 to ensure we find enough 0-conversion flows)
-        worst_combos = agg_df.head(n * 10)
+        # Sort by: CVR asc (worst first), then CTR asc (worst first), then latest timestamp
+        sort_cols = ['cvr', 'ctr', 'ts'] if 'ts' in zero_conv_df.columns else ['cvr', 'ctr']
+        zero_conv_df = zero_conv_df.sort_values(
+            sort_cols, 
+            ascending=[True, True, False] if 'ts' in zero_conv_df.columns else [True, True]
+        )
         
-        # For each combo, GET ONLY 0 conversion rows (skip if none exist)
+        # Build uniqueness columns - FULL flow combination
+        unique_cols = ['keyword_term', 'publisher_domain', 'publisher_url', 'Destination_Url']
+        if include_serp_filter:
+            if 'serp_template_name' in df.columns:
+                unique_cols.append('serp_template_name')
+            elif 'serp_template_id' in df.columns:
+                unique_cols.append('serp_template_id')
+            elif 'Serp_URL' in df.columns:
+                unique_cols.append('Serp_URL')
+        
+        # Get N UNIQUE worst flows
         flows = []
-        flows_with_ranking = []  # Store (flow, cvr, ctr) tuples for ranking
+        seen_combinations = set()
         
-        for _, combo in worst_combos.iterrows():
+        for _, row in zero_conv_df.iterrows():
             if len(flows) >= n:
                 break
-                
-            filtered = df.copy()
-            for col in group_cols:
-                filtered = filtered[filtered[col] == combo[col]]
             
-            if len(filtered) > 0:
-                # ONLY get rows with EXACTLY 0 conversions - STRICTLY 0
-                zero_conv = filtered[
-                    (filtered['conversions'] == 0) | 
-                    (filtered['conversions'] == 0.0) |
-                    (filtered['conversions'].isna())
-                ]
-                
-                if len(zero_conv) > 0:
-                    # Sort by timestamp desc (latest first)
-                    if 'ts' in zero_conv.columns:
-                        zero_conv = zero_conv.sort_values('ts', ascending=False)
-                    
-                    # Get the flow and verify conversions is EXACTLY 0
-                    flow = zero_conv.iloc[0].to_dict()
-                    conv_val = flow.get('conversions', 0)
-                    
-                    # STRICT: Only accept if conversions is exactly 0 or NaN
-                    if conv_val == 0 or conv_val == 0.0 or pd.isna(conv_val):
-                        # Calculate CVR and CTR for this combo for ranking
-                        combo_cvr = combo.get('cvr', 0)
-                        combo_ctr = combo.get('ctr', 0)
-                        flows_with_ranking.append((flow, combo_cvr, combo_ctr))
-                # If no 0 conversion rows, skip this combo entirely
-        
-        # Sort flows by CVR ascending, then CTR ascending (worst first)
-        flows_with_ranking.sort(key=lambda x: (x[1], x[2]))
-        
-        # Extract just the flows, maintaining rank order
-        flows = [f[0] for f in flows_with_ranking[:n]]
-        
-        # Add ranking to each flow
-        for i, flow in enumerate(flows):
-            flow['flow_rank'] = i + 1
+            # DOUBLE CHECK: conversions must be exactly 0
+            conv_val = row.get('conversions', 0)
+            if not (conv_val == 0 or conv_val == 0.0 or pd.isna(conv_val)):
+                continue
+            
+            # Create combination key for uniqueness
+            combo_key = tuple(str(row.get(col, '')) for col in unique_cols)
+            
+            # Only add if this combination hasn't been seen
+            if combo_key not in seen_combinations:
+                seen_combinations.add(combo_key)
+                flow = row.to_dict()
+                flow['flow_rank'] = len(flows) + 1
+                flows.append(flow)
         
         return flows
     except Exception as e:
