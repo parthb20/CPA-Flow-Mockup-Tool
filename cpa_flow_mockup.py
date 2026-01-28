@@ -984,7 +984,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         <span style="font-weight: 700; color: #0f172a;">🔄 What is a Flow?</span> A complete user journey: Keyword → Publisher → Creative → SERP → Landing Page.<br>
                         <span style="font-weight: 700; color: #0f172a;">🎯 Why 5%+ Traffic Only?</span> Focuses on high-volume keywords/domains, filtering out long-tail traffic noise.<br>
                         <span style="font-weight: 700; color: #0f172a;">📊 Best vs Worst:</span> <span style="font-weight: 600;">Best</span> = Top converting flows (most conversions). <span style="font-weight: 600;">Worst</span> = Zero conversion flows (spent money, got nothing).<br>
-                        <span style="font-weight: 700; color: #0f172a;">📂 Use Full Data:</span> Check this to include all traffic, even low-volume long-tail keywords/domains.
+                        <span style="font-weight: 700; color: #0f172a;">📂 Use Full Data:</span> Check this to include all traffic, even low-volume long-tail keywords/domains.<br>
+                        <span style="font-weight: 700; color: #0f172a;">📅 Current Data:</span> Sample data from January 5, 2026.
                     </p>
                 </div>
                     """, unsafe_allow_html=True)
