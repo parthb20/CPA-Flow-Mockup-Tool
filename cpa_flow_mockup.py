@@ -347,41 +347,36 @@ st.markdown("""
         border-right-color: transparent !important;
     }
     
-    /* Streamlit's native spinner styling - show circular animation */
+    /* Streamlit's native spinner styling - small and subtle */
     [data-testid="stSpinner"] {
         position: relative !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        flex-direction: column !important;
-        padding: 3rem 2rem !important;
-        margin: 2rem 0 !important;
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
-        border-radius: 12px !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+        padding: 0.5rem !important;
+        margin: 0.5rem 0 !important;
     }
     
     [data-testid="stSpinner"] > div {
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        gap: 1rem !important;
-        font-size: 1.1rem !important;
-        font-weight: 500 !important;
-        color: #333 !important;
+        gap: 0.5rem !important;
+        font-size: 0.85rem !important;
+        color: #666 !important;
     }
     
-    /* Show the spinning circle */
+    /* Show small spinning circle */
     [data-testid="stSpinner"]::before {
         content: "" !important;
-        display: block !important;
-        width: 48px !important;
-        height: 48px !important;
-        border: 4px solid #e9ecef !important;
-        border-top: 4px solid #3b82f6 !important;
+        display: inline-block !important;
+        width: 16px !important;
+        height: 16px !important;
+        border: 2px solid #f3f3f3 !important;
+        border-top: 2px solid #3b82f6 !important;
         border-radius: 50% !important;
         animation: spin 0.8s linear infinite !important;
-        margin-bottom: 1rem !important;
+        margin-right: 0.5rem !important;
     }
     
     @keyframes spin {
@@ -950,9 +945,47 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         st.session_state.current_flow_index = 0
                         st.session_state.default_flow = flows[0]
                         st.session_state.current_flow = flows[0].copy()
+                        
+                        # DEBUG: Show flow stats in UI
+                        with st.expander("🔍 DEBUG: Flow Stats", expanded=False):
+                            for i, flow in enumerate(flows):
+                                conv = flow.get('conversions', 0)
+                                clicks = flow.get('clicks', 0)
+                                imps = flow.get('impressions', 0)
+                                kwd = flow.get('keyword_term', 'N/A')
+                                domain = flow.get('publisher_domain', 'N/A')
+                                st.write(f"**Flow {i+1}:** conv={conv}, clicks={clicks}, imps={imps}, kwd={kwd[:30]}, domain={domain[:30]}")
                     else:
                         st.error(f"❌ No {flow_type.lower()} flows found with current filters.")
                         st.stop()
+            
+            # DEBUG PANEL - Show all flows stats
+            if len(st.session_state.get('all_flows', [])) > 0:
+                with st.expander("🔍 DEBUG: All 5 Flows Data (EXPAND TO SEE)", expanded=True):
+                    st.markdown("**Check if all flows have DIFFERENT stats:**")
+                    
+                    # Check if all flows have same stats
+                    stats_list = [(f.get('conversions', 0), f.get('clicks', 0), f.get('impressions', 0)) for f in st.session_state.all_flows]
+                    unique_stats = set(stats_list)
+                    
+                    if len(unique_stats) == 1:
+                        st.error(f"⚠️ **ALL 5 FLOWS HAVE IDENTICAL STATS!** This is the bug!")
+                    else:
+                        st.success(f"✅ Found {len(unique_stats)} different stat combinations")
+                    
+                    for i, f in enumerate(st.session_state.all_flows):
+                        conv = f.get('conversions', 0)
+                        clicks = f.get('clicks', 0)
+                        imps = f.get('impressions', 0)
+                        kwd = str(f.get('keyword_term', 'N/A'))[:20]
+                        domain = str(f.get('publisher_domain', 'N/A'))[:20]
+                        
+                        if conv > 0 and flow_type == "Worst":
+                            st.error(f"Flow {i+1}: ⚠️ conv={conv} (SHOULD BE 0!), clicks={clicks}, imps={imps}, kwd={kwd}, domain={domain}")
+                        elif conv > 0:
+                            st.info(f"Flow {i+1}: conv={conv}, clicks={clicks}, imps={imps}, kwd={kwd}, domain={domain}")
+                        else:
+                            st.success(f"Flow {i+1}: conv={conv}, clicks={clicks}, imps={imps}, kwd={kwd}, domain={domain}")
             
             if st.session_state.current_flow:
                 current_flow = st.session_state.current_flow
