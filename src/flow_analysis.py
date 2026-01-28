@@ -349,18 +349,19 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
             elif 'serp_template_id' in df.columns:
                 group_cols.append('serp_template_id')
         
-        # Group by keyword + domain (+ serp if enabled) and calculate CVR
+        # Group by keyword + domain (+ serp if enabled) and calculate CVR and CTR
         agg_df = df.groupby(group_cols, dropna=False).agg({
             'conversions': 'sum',
             'clicks': 'sum',
             'impressions': 'sum'
         }).reset_index()
         
-        # Calculate CVR for each combination
+        # Calculate CVR and CTR for each combination
         agg_df['cvr'] = agg_df.apply(lambda row: row['conversions'] / row['clicks'] if row['clicks'] > 0 else 0, axis=1)
+        agg_df['ctr'] = agg_df.apply(lambda row: row['clicks'] / row['impressions'] if row['impressions'] > 0 else 0, axis=1)
         
-        # Sort by CVR ascending (lowest CVR first), then by clicks descending
-        agg_df = agg_df.sort_values(['cvr', 'clicks'], ascending=[True, False])
+        # Sort by CVR ascending (lowest CVR first), then by CTR ascending (worst CTR as tiebreaker)
+        agg_df = agg_df.sort_values(['cvr', 'ctr'], ascending=[True, True])
         
         # Get worst combinations (up to n*10 to ensure we find enough 0-conversion flows)
         worst_combos = agg_df.head(n * 10)
