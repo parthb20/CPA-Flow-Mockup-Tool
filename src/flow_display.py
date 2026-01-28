@@ -591,7 +591,21 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     except:
                         pass
                 
-                # Method 3: Last resort - show message with link
+                # Method 4: Try screenshot API before giving up
+                if not rendered:
+                    screenshot_url = get_screenshot_url(pub_url, device=device_all)
+                    if screenshot_url:
+                        try:
+                            screenshot_html = f'<img src="{screenshot_url}" style="width:100%;height:auto;" />'
+                            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                            preview_html = inject_unique_id(preview_html, 'pub_screenshot_api', pub_url, device_all, current_flow)
+                            st.components.v1.html(preview_html, height=height, scrolling=True)
+                            st.caption("📸 Screenshot (ScreenshotOne API)")
+                            rendered = True
+                        except:
+                            pass
+                
+                # Method 5: Last resort - show message with link
                 if not rendered:
                     st.warning("⚠️ Could not load page preview")
                     st.markdown(f"[🔗 Click here to open: {pub_url}]({pub_url})")
@@ -992,7 +1006,14 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         if playwright_available:
                             with st.spinner("🔄 Using browser automation..."):
                                 page_html = capture_with_playwright(serp_url, device=device_all)
-                                if page_html and '<!-- SCREENSHOT_FALLBACK -->' not in page_html:
+                                if page_html and '<!-- SCREENSHOT_FALLBACK -->' in page_html:
+                                    # Screenshot API was used
+                                    preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                    preview_html = inject_unique_id(preview_html, 'serp_screenshot', serp_url, device_all, current_flow)
+                                    st.components.v1.html(preview_html, height=height, scrolling=True)
+                                    if st.session_state.flow_layout != 'horizontal':
+                                        st.caption("📸 SERP (Screenshot API)")
+                                elif page_html:
                                     soup = BeautifulSoup(page_html, 'html.parser')
                                     
                                     for text_node in soup.find_all(string=True):
@@ -1055,9 +1076,29 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                     if st.session_state.flow_layout != 'horizontal':
                                         st.caption("📺 SERP (via Playwright)")
                                 else:
-                                    st.warning("⚠️ Could not load SERP. Set SCREENSHOT_API_KEY in secrets")
+                                    # Try screenshot API directly
+                                    screenshot_url = get_screenshot_url(serp_url, device=device_all)
+                                    if screenshot_url:
+                                        screenshot_html = f'<img src="{screenshot_url}" style="width:100%;height:auto;" />'
+                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                        preview_html = inject_unique_id(preview_html, 'serp_screenshot_direct', serp_url, device_all, current_flow)
+                                        st.components.v1.html(preview_html, height=height, scrolling=True)
+                                        if st.session_state.flow_layout != 'horizontal':
+                                            st.caption("📸 SERP (Screenshot API)")
+                                    else:
+                                        st.warning("⚠️ Could not load SERP. Set SCREENSHOT_API_KEY in secrets")
                         else:
-                            st.error(f"HTTP {response.status_code}")
+                            # Playwright not available - try screenshot API
+                            screenshot_url = get_screenshot_url(serp_url, device=device_all)
+                            if screenshot_url:
+                                screenshot_html = f'<img src="{screenshot_url}" style="width:100%;height:auto;" />'
+                                preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                preview_html = inject_unique_id(preview_html, 'serp_screenshot_noplaywright', serp_url, device_all, current_flow)
+                                st.components.v1.html(preview_html, height=height, scrolling=True)
+                                if st.session_state.flow_layout != 'horizontal':
+                                    st.caption("📸 SERP (Screenshot API)")
+                            else:
+                                st.error(f"HTTP {response.status_code}")
                     else:
                         st.error(f"HTTP {response.status_code}")
                     
@@ -1361,6 +1402,158 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                         else:
                                             raise Exception("Playwright returned empty HTML")
                                 except Exception:
+                                    # Try screenshot API as last resort before error
+                                    screenshot_url = get_screenshot_url(adv_url, device=device_all)
+                                    if screenshot_url:
+                                        try:
+                                            screenshot_html = f'<img src="{screenshot_url}" style="width:100%;height:auto;" />'
+                                            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                            preview_html = inject_unique_id(preview_html, 'landing_screenshot_api', adv_url, device_all, current_flow)
+                                            st.components.v1.html(preview_html, height=height, scrolling=True)
+                                            st.caption("📸 Screenshot (ScreenshotOne API)")
+                                        except:
+                                            # Show error in device preview
+                                            error_html = f"""
+                                            <!DOCTYPE html>
+                                            <html>
+                                            <head>
+                                                <meta charset="UTF-8">
+                                                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                                <style>
+                                                    body {{
+                                                        margin: 0;
+                                                        padding: clamp(1rem, 2vw, 1.5rem);
+                                                        font-family: system-ui, -apple-system, sans-serif;
+                                                        background: #f8fafc;
+                                                        display: flex;
+                                                        align-items: center;
+                                                        justify-content: center;
+                                                        min-height: 100vh;
+                                                    }}
+                                                    .container {{
+                                                        text-align: center;
+                                                        padding: clamp(1.5rem, 3vw, 2rem);
+                                                        background: white;
+                                                        border-radius: clamp(0.75rem, 1.5vw, 1rem);
+                                                        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                                                        max-width: 90%;
+                                                    }}
+                                                    .icon {{ font-size: clamp(2.5rem, 5vw, 3.5rem); margin-bottom: clamp(0.75rem, 1.5vw, 1rem); }}
+                                                    h2 {{ color: #dc2626; font-size: clamp(1rem, 2vw, 1.25rem); margin: 0 0 clamp(0.5rem, 1vw, 0.75rem) 0; font-weight: 700; }}
+                                                    .url {{ background: #f1f5f9; padding: clamp(0.5rem, 1vw, 0.75rem); border-radius: clamp(0.375rem, 0.75vw, 0.5rem); font-size: clamp(0.625rem, 1.2vw, 0.75rem); color: #475569; word-break: break-all; margin-top: clamp(0.75rem, 1.5vw, 1rem); }}
+                                                </style>
+                                            </head>
+                                            <body>
+                                                <div class="container">
+                                                    <div class="icon">🚫</div>
+                                                    <h2>Could not load page</h2>
+                                                    <div class="url">{html.escape(str(adv_url))}</div>
+                                                </div>
+                                            </body>
+                                            </html>
+                                            """
+                                            preview_html, height, _ = render_mini_device_preview(error_html, is_url=False, device=device_all)
+                                            preview_html = inject_unique_id(preview_html, 'landing_error', adv_url, device_all, current_flow)
+                                            st.components.v1.html(preview_html, height=height, scrolling=False)
+                                    else:
+                                        # No screenshot API available, show error
+                                        error_html = f"""
+                                        <!DOCTYPE html>
+                                        <html>
+                                        <head>
+                                            <meta charset="UTF-8">
+                                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                            <style>
+                                                body {{
+                                                    margin: 0;
+                                                    padding: clamp(1rem, 2vw, 1.5rem);
+                                                    font-family: system-ui, -apple-system, sans-serif;
+                                                    background: #f8fafc;
+                                                    display: flex;
+                                                    align-items: center;
+                                                    justify-content: center;
+                                                    min-height: 100vh;
+                                                }}
+                                                .container {{
+                                                    text-align: center;
+                                                    padding: clamp(1.5rem, 3vw, 2rem);
+                                                    background: white;
+                                                    border-radius: clamp(0.75rem, 1.5vw, 1rem);
+                                                    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                                                    max-width: 90%;
+                                                }}
+                                                .icon {{ font-size: clamp(2.5rem, 5vw, 3.5rem); margin-bottom: clamp(0.75rem, 1.5vw, 1rem); }}
+                                                h2 {{ color: #dc2626; font-size: clamp(1rem, 2vw, 1.25rem); margin: 0 0 clamp(0.5rem, 1vw, 0.75rem) 0; font-weight: 700; }}
+                                                .url {{ background: #f1f5f9; padding: clamp(0.5rem, 1vw, 0.75rem); border-radius: clamp(0.375rem, 0.75vw, 0.5rem); font-size: clamp(0.625rem, 1.2vw, 0.75rem); color: #475569; word-break: break-all; margin-top: clamp(0.75rem, 1.5vw, 1rem); }}
+                                            </style>
+                                        </head>
+                                        <body>
+                                            <div class="container">
+                                                <div class="icon">🚫</div>
+                                                <h2>Could not load page</h2>
+                                                <div class="url">{html.escape(str(adv_url))}</div>
+                                            </div>
+                                        </body>
+                                        </html>
+                                        """
+                                        preview_html, height, _ = render_mini_device_preview(error_html, is_url=False, device=device_all)
+                                        preview_html = inject_unique_id(preview_html, 'landing_error', adv_url, device_all, current_flow)
+                                        st.components.v1.html(preview_html, height=height, scrolling=False)
+                            else:
+                                # Playwright not available - try screenshot API
+                                screenshot_url = get_screenshot_url(adv_url, device=device_all)
+                                if screenshot_url:
+                                    try:
+                                        screenshot_html = f'<img src="{screenshot_url}" style="width:100%;height:auto;" />'
+                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                        preview_html = inject_unique_id(preview_html, 'landing_screenshot_api', adv_url, device_all, current_flow)
+                                        st.components.v1.html(preview_html, height=height, scrolling=True)
+                                        st.caption("📸 Screenshot (ScreenshotOne API)")
+                                    except:
+                                        # Show error in device preview
+                                        error_html = f"""
+                                        <!DOCTYPE html>
+                                        <html>
+                                        <head>
+                                            <meta charset="UTF-8">
+                                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                            <style>
+                                                body {{
+                                                    margin: 0;
+                                                    padding: clamp(1rem, 2vw, 1.5rem);
+                                                    font-family: system-ui, -apple-system, sans-serif;
+                                                    background: #f8fafc;
+                                                    display: flex;
+                                                    align-items: center;
+                                                    justify-content: center;
+                                                    min-height: 100vh;
+                                                }}
+                                                .container {{
+                                                    text-align: center;
+                                                    padding: clamp(1.5rem, 3vw, 2rem);
+                                                    background: white;
+                                                    border-radius: clamp(0.75rem, 1.5vw, 1rem);
+                                                    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                                                    max-width: 90%;
+                                                }}
+                                                .icon {{ font-size: clamp(2.5rem, 5vw, 3.5rem); margin-bottom: clamp(0.75rem, 1.5vw, 1rem); }}
+                                                h2 {{ color: #dc2626; font-size: clamp(1rem, 2vw, 1.25rem); margin: 0 0 clamp(0.5rem, 1vw, 0.75rem) 0; font-weight: 700; }}
+                                                .url {{ background: #f1f5f9; padding: clamp(0.5rem, 1vw, 0.75rem); border-radius: clamp(0.375rem, 0.75vw, 0.5rem); font-size: clamp(0.625rem, 1.2vw, 0.75rem); color: #475569; word-break: break-all; margin-top: clamp(0.75rem, 1.5vw, 1rem); }}
+                                            </style>
+                                        </head>
+                                        <body>
+                                            <div class="container">
+                                                <div class="icon">🚫</div>
+                                                <h2>Could not load page</h2>
+                                                <div class="url">{html.escape(str(adv_url))}</div>
+                                            </div>
+                                        </body>
+                                        </html>
+                                        """
+                                        preview_html, height, _ = render_mini_device_preview(error_html, is_url=False, device=device_all)
+                                        preview_html = inject_unique_id(preview_html, 'landing_error', adv_url, device_all, current_flow)
+                                        st.components.v1.html(preview_html, height=height, scrolling=False)
+                                else:
                                     # Show error in device preview
                                     error_html = f"""
                                     <!DOCTYPE html>
@@ -1404,50 +1597,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                     preview_html, height, _ = render_mini_device_preview(error_html, is_url=False, device=device_all)
                                     preview_html = inject_unique_id(preview_html, 'landing_error', adv_url, device_all, current_flow)
                                     st.components.v1.html(preview_html, height=height, scrolling=False)
-                            else:
-                                # Show error in device preview
-                                error_html = f"""
-                                <!DOCTYPE html>
-                                <html>
-                                <head>
-                                    <meta charset="UTF-8">
-                                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                                    <style>
-                                        body {{
-                                            margin: 0;
-                                            padding: clamp(1rem, 2vw, 1.5rem);
-                                            font-family: system-ui, -apple-system, sans-serif;
-                                            background: #f8fafc;
-                                            display: flex;
-                                            align-items: center;
-                                            justify-content: center;
-                                            min-height: 100vh;
-                                        }}
-                                        .container {{
-                                            text-align: center;
-                                            padding: clamp(1.5rem, 3vw, 2rem);
-                                            background: white;
-                                            border-radius: clamp(0.75rem, 1.5vw, 1rem);
-                                            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-                                            max-width: 90%;
-                                        }}
-                                        .icon {{ font-size: clamp(2.5rem, 5vw, 3.5rem); margin-bottom: clamp(0.75rem, 1.5vw, 1rem); }}
-                                        h2 {{ color: #dc2626; font-size: clamp(1rem, 2vw, 1.25rem); margin: 0 0 clamp(0.5rem, 1vw, 0.75rem) 0; font-weight: 700; }}
-                                        .url {{ background: #f1f5f9; padding: clamp(0.5rem, 1vw, 0.75rem); border-radius: clamp(0.375rem, 0.75vw, 0.5rem); font-size: clamp(0.625rem, 1.2vw, 0.75rem); color: #475569; word-break: break-all; margin-top: clamp(0.75rem, 1.5vw, 1rem); }}
-                                    </style>
-                                </head>
-                                <body>
-                                    <div class="container">
-                                        <div class="icon">🚫</div>
-                                        <h2>Could not load page</h2>
-                                        <div class="url">{html.escape(str(adv_url))}</div>
-                                    </div>
-                                </body>
-                                </html>
-                                """
-                                preview_html, height, _ = render_mini_device_preview(error_html, is_url=False, device=device_all)
-                                preview_html = inject_unique_id(preview_html, 'landing_error', adv_url, device_all, current_flow)
-                                st.components.v1.html(preview_html, height=height, scrolling=False)
                     
                     else:
                         # Other status codes - try Playwright or iframe
