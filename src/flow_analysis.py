@@ -254,7 +254,7 @@ def find_top_n_best_flows(df, n=5, include_serp_filter=False):
                 df['publisher_domain'] = df['Serp_URL'].apply(lambda x: urlparse(str(x)).netloc if pd.notna(x) else '')
         
         # Determine uniqueness columns based on data variety
-        # Always use: keyword, domain, publisher_url, serp for uniqueness
+        # All flow elements: keyword, domain, publisher_url, serp, creative, landing_page
         unique_cols = ['keyword_term', 'publisher_domain', 'publisher_url']
         
         # Add SERP to uniqueness
@@ -265,6 +265,14 @@ def find_top_n_best_flows(df, n=5, include_serp_filter=False):
                 unique_cols.append('serp_template_name')
             elif 'serp_template_id' in df.columns:
                 unique_cols.append('serp_template_id')
+        
+        # Add Creative (Ad_ID) to uniqueness
+        if 'Ad_ID' in df.columns:
+            unique_cols.append('Ad_ID')
+        
+        # Add Landing Page (Destination_Url) to uniqueness
+        if 'Destination_Url' in df.columns:
+            unique_cols.append('Destination_Url')
         
         # Check which columns have only 1 unique value (are filtered/constant)
         constant_cols = []
@@ -373,7 +381,7 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
                 df['publisher_domain'] = df['Serp_URL'].apply(lambda x: urlparse(str(x)).netloc if pd.notna(x) else '')
         
         # Determine uniqueness columns based on data variety
-        # Always use: keyword, domain, publisher_url, serp for uniqueness
+        # All flow elements: keyword, domain, publisher_url, serp, creative, landing_page
         unique_cols = ['keyword_term', 'publisher_domain', 'publisher_url']
         
         # Add SERP to uniqueness
@@ -385,6 +393,14 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
             elif 'serp_template_id' in df.columns:
                 unique_cols.append('serp_template_id')
         
+        # Add Creative (Ad_ID) to uniqueness
+        if 'Ad_ID' in df.columns:
+            unique_cols.append('Ad_ID')
+        
+        # Add Landing Page (Destination_Url) to uniqueness
+        if 'Destination_Url' in df.columns:
+            unique_cols.append('Destination_Url')
+        
         # Check which columns have only 1 unique value (are filtered/constant)
         constant_cols = []
         for col in unique_cols[:]:  # iterate over copy
@@ -392,86 +408,53 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
                 constant_cols.append(col)
                 unique_cols.remove(col)  # Remove from uniqueness check since it's constant
         
-        # Group by unique_cols to find worst combinations
-        if len(unique_cols) > 0:
-            agg_df = df.groupby(unique_cols, dropna=False).agg({
-                'conversions': 'sum',
-                'clicks': 'sum',
-                'impressions': 'sum'
-            }).reset_index()
-            
-            # Calculate CVR and CTR for ranking
-            agg_df['cvr'] = agg_df.apply(lambda row: row['conversions'] / row['clicks'] if row['clicks'] > 0 else 0, axis=1)
-            agg_df['ctr'] = agg_df.apply(lambda row: row['clicks'] / row['impressions'] if row['impressions'] > 0 else 0, axis=1)
-            
-            # Sort: lowest CVR first, then lowest CTR
-            agg_df = agg_df.sort_values(['cvr', 'ctr'], ascending=[True, True])
-        else:
-            # All columns are constant (unlikely but handle it)
-            agg_df = pd.DataFrame()
+        # CRITICAL: Filter for 0-conversions FIRST before any grouping
+        zero_conv_df = df[
+            (df['conversions'] == 0) | 
+            (df['conversions'] == 0.0) |
+            (df['conversions'].isna())
+        ].copy()
         
-        # Step 2: For each unique combination, pick worst view_id (0 conversions, latest timestamp)
+        if len(zero_conv_df) == 0:
+            return []
+        
+        # Calculate CVR and CTR for sorting
+        zero_conv_df['cvr'] = zero_conv_df.apply(lambda row: row['conversions'] / row['clicks'] if row['clicks'] > 0 else 0, axis=1)
+        zero_conv_df['ctr'] = zero_conv_df.apply(lambda row: row['clicks'] / row['impressions'] if row['impressions'] > 0 else 0, axis=1)
+        
+        # Sort by: CVR asc (lowest first), CTR asc (lowest first), timestamp desc (latest first)
+        sort_cols = ['cvr', 'ctr', 'ts'] if 'ts' in zero_conv_df.columns else ['cvr', 'ctr']
+        sort_order = [True, True, False] if 'ts' in zero_conv_df.columns else [True, True]
+        zero_conv_df = zero_conv_df.sort_values(sort_cols, ascending=sort_order)
+        
+        # Step 2: Pick N flows with unique combinations
         flows = []
         seen_combinations = set()
         
-        if len(agg_df) > 0:
-            for _, combo in agg_df.iterrows():
+        if len(unique_cols) > 0:
+            for _, row in zero_conv_df.iterrows():
                 if len(flows) >= n:
                     break
                 
-                # Create combination key
-                combo_key = tuple(str(combo.get(col, '')) for col in unique_cols)
+                # Create combination key from unique columns
+                combo_key = tuple(str(row.get(col, '')) for col in unique_cols)
                 
+                # Skip if we've already picked a flow with this combination
                 if combo_key in seen_combinations:
                     continue
                 
-                # Filter to this combination
-                combo_df = df.copy()
-                for col in unique_cols:
-                    combo_df = combo_df[combo_df[col] == combo[col]]
-                
-                if len(combo_df) == 0:
+                # VERIFY: conversions must be exactly 0
+                conv_val = row.get('conversions', 0)
+                if not (conv_val == 0 or conv_val == 0.0 or pd.isna(conv_val)):
                     continue
                 
-                # Within this combo, filter for NON-CONVERTING flows (0 conversions)
-                zero_conv = combo_df[
-                    (combo_df['conversions'] == 0) | 
-                    (combo_df['conversions'] == 0.0) |
-                    (combo_df['conversions'].isna())
-                ].copy()
-                
-                # If no 0-conversion flows, skip this combo
-                if len(zero_conv) == 0:
-                    continue
-                
-                # Sort by timestamp desc (latest first)
-                if 'ts' in zero_conv.columns:
-                    zero_conv = zero_conv.sort_values('ts', ascending=False)
-                
-                # Get the latest 0-conversion view_id
-                if len(zero_conv) > 0:
-                    row = zero_conv.iloc[0]
-                    conv_val = row.get('conversions', 0)
-                    if conv_val == 0 or conv_val == 0.0 or pd.isna(conv_val):
-                        seen_combinations.add(combo_key)
-                        flow = row.to_dict()
-                        flow['flow_rank'] = len(flows) + 1
-                        flows.append(flow)
+                # Add this flow
+                seen_combinations.add(combo_key)
+                flow = row.to_dict()
+                flow['flow_rank'] = len(flows) + 1
+                flows.append(flow)
         else:
-            # Fallback: Filter for 0 conversions and pick top N by timestamp
-            zero_conv_df = df[
-                (df['conversions'] == 0) | 
-                (df['conversions'] == 0.0) |
-                (df['conversions'].isna())
-            ].copy()
-            
-            if len(zero_conv_df) == 0:
-                return []
-            
-            # Sort by timestamp desc
-            if 'ts' in zero_conv_df.columns:
-                zero_conv_df = zero_conv_df.sort_values('ts', ascending=False)
-            
+            # Fallback: No varying columns, just pick top N by timestamp
             for i, row in enumerate(zero_conv_df.head(n).iterrows()):
                 conv_val = row[1].get('conversions', 0)
                 if conv_val == 0 or conv_val == 0.0 or pd.isna(conv_val):
