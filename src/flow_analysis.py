@@ -293,6 +293,13 @@ def find_top_n_best_flows(df, n=5, include_serp_filter=False):
         # DEBUG: Print what columns we're using for uniqueness
         print(f"DEBUG [Best Flows]: Using {len(final_unique_cols)} columns for uniqueness: {final_unique_cols}")
         print(f"DEBUG [Best Flows]: Total rows in df: {len(df)}")
+        print(f"DEBUG [Best Flows]: Unique combinations in data: {df[final_unique_cols].drop_duplicates().shape[0] if len(final_unique_cols) > 0 else 'N/A'}")
+        
+        # Check if all rows have identical stats
+        stats_check = df[['impressions', 'clicks', 'conversions']].drop_duplicates()
+        print(f"DEBUG [Best Flows]: Unique stat combinations: {len(stats_check)}")
+        if len(stats_check) <= 3:
+            print(f"DEBUG [Best Flows]: Sample stats: {stats_check.to_dict('records')}")
         
         # SIMPLE APPROACH: Sort all rows by priority, then pick unique combinations
         # Sort: conversions desc (converting first), clicks desc (high traffic), timestamp desc (latest)
@@ -433,6 +440,7 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
         # DEBUG: Print what columns we're using for uniqueness
         print(f"DEBUG [Worst Flows]: Using {len(final_unique_cols)} columns for uniqueness: {final_unique_cols}")
         print(f"DEBUG [Worst Flows]: Total rows in df: {len(df)}")
+        print(f"DEBUG [Worst Flows]: Unique combinations in data: {df[final_unique_cols].drop_duplicates().shape[0] if len(final_unique_cols) > 0 else 'N/A'}")
         
         # DEBUG: Check conversion values in original df
         print(f"DEBUG [Worst Flows]: Conversion values in df: {df['conversions'].unique()[:10]}")
