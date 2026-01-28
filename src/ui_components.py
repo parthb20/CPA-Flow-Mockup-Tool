@@ -156,7 +156,22 @@ def render_flow_combinations_table(campaign_df):
         </tr>
         """
     
-    table_html += """
+    # Add Overall Stats row at the bottom
+    overall_imps = agg_df['impressions'].sum()
+    overall_clicks = agg_df['clicks'].sum()
+    overall_convs = agg_df['conversions'].sum()
+    overall_ctr = (overall_clicks / overall_imps * 100) if overall_imps > 0 else 0
+    overall_cvr = (overall_convs / overall_clicks * 100) if overall_clicks > 0 else 0
+    
+    table_html += f"""
+        <tr style="background: #f1f5f9 !important; font-weight: 700; border-top: 2px solid #cbd5e1;">
+            <td colspan="2" style="background: #f1f5f9 !important; color: #000000 !important; font-weight: 700;">OVERALL</td>
+            <td style="background: #f1f5f9 !important; color: #000000 !important; font-weight: 700;">{int(overall_imps):,}</td>
+            <td style="background: #f1f5f9 !important; color: #000000 !important; font-weight: 700;">{int(overall_clicks):,}</td>
+            <td style="background: #f1f5f9 !important; color: #000000 !important; font-weight: 700;">{int(overall_convs):,}</td>
+            <td style="background: #f1f5f9 !important; color: #1e40af !important; font-weight: 700;">{overall_ctr:.2f}%</td>
+            <td style="background: #f1f5f9 !important; color: #1e40af !important; font-weight: 700;">{overall_cvr:.2f}%</td>
+        </tr>
     </tbody>
     </table>
     """
