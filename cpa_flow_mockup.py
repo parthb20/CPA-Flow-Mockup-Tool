@@ -850,7 +850,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 </p>
                     """, unsafe_allow_html=True)
                 
-                # === FLOW NAVIGATION - Best/Worst + Arrows + Flow Count in ONE LINE ===
+                # === FLOW NAVIGATION - Best/Worst + Left Arrow + Flow Count + Right Arrow ===
                 if len(st.session_state.get('all_flows', [])) > 1:
                     st.markdown("""
                         <style>
@@ -864,32 +864,11 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             height: 2rem !important;
                             border-radius: 0.375rem !important;
                         }
-                        
-                        /* Subtle arrows - NO HOVER */
-                        button[key="prev_flow"],
-                        button[key="next_flow"] {
-                            background: transparent !important;
-                            border: none !important;
-                            padding: 0 !important;
-                            font-size: 1.1rem !important;
-                            min-height: auto !important;
-                            height: auto !important;
-                            line-height: 1 !important;
-                            width: auto !important;
-                            color: #64748b !important;
-                            box-shadow: none !important;
-                            cursor: pointer !important;
-                        }
-                        button[key="prev_flow"]:disabled,
-                        button[key="next_flow"]:disabled {
-                            color: #e5e7eb !important;
-                            cursor: not-allowed !important;
-                        }
                         </style>
                     """, unsafe_allow_html=True)
                     
-                    # Single row: Best/Worst buttons + arrows + flow count (tighter spacing)
-                    nav_cols = st.columns([0.9, 0.9, 0.1, 0.1, 1, 3])
+                    # Single row: Best/Worst buttons + LEFT ARROW + flow count + RIGHT ARROW
+                    nav_cols = st.columns([0.9, 0.9, 2.8])
                     
                     # Best Flows button
                     with nav_cols[0]:
@@ -903,28 +882,81 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             st.session_state.flow_type = 'Worst'
                             st.rerun()
                     
-                    # Left arrow
+                    # Arrows + Flow count in one column
                     with nav_cols[2]:
                         prev_disabled = st.session_state.current_flow_index == 0
-                        if st.button("←", key='prev_flow', disabled=prev_disabled, help="Previous Flow"):
-                            st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
-                            st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
-                            st.rerun()
-                    
-                    # Right arrow
-                    with nav_cols[3]:
                         next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
-                        if st.button("→", key='next_flow', disabled=next_disabled, help="Next Flow"):
-                            st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
-                            st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
-                            st.rerun()
-                    
-                    # Flow count
-                    with nav_cols[4]:
+                        
+                        # Create clickable arrows using HTML/JavaScript
+                        left_arrow = "⬅️" if not prev_disabled else "⬅️"
+                        right_arrow = "➡️" if not next_disabled else "➡️"
+                        left_opacity = "0.3" if prev_disabled else "1.0"
+                        right_opacity = "0.3" if next_disabled else "1.0"
+                        left_cursor = "not-allowed" if prev_disabled else "pointer"
+                        right_cursor = "not-allowed" if next_disabled else "pointer"
+                        
                         st.markdown(f"""
-                            <div style="padding-top: 5px; font-size: 0.875rem; color: #64748b; font-weight: 600; padding-left: 0.5rem;">
-                                Flow {st.session_state.current_flow_index + 1} of {len(st.session_state.all_flows)}
+                            <div style="display: flex; align-items: center; gap: 0.75rem; padding-top: 5px;">
+                                <span id="prev_arrow" style="font-size: 1.2rem; cursor: {left_cursor}; opacity: {left_opacity}; user-select: none;">{left_arrow}</span>
+                                <span style="font-size: 0.875rem; color: #64748b; font-weight: 600;">Flow {st.session_state.current_flow_index + 1} of {len(st.session_state.all_flows)}</span>
+                                <span id="next_arrow" style="font-size: 1.2rem; cursor: {right_cursor}; opacity: {right_opacity}; user-select: none;">{right_arrow}</span>
                             </div>
+                            
+                            <script>
+                            (function() {{
+                                const prevArrow = document.getElementById('prev_arrow');
+                                const nextArrow = document.getElementById('next_arrow');
+                                
+                                if (prevArrow && !{str(prev_disabled).lower()}) {{
+                                    prevArrow.onclick = function() {{
+                                        // Trigger Streamlit rerun by clicking hidden button
+                                        const buttons = document.querySelectorAll('button');
+                                        buttons.forEach(btn => {{
+                                            if (btn.textContent.includes('◀') || btn.getAttribute('key') === 'prev_flow_hidden') {{
+                                                btn.click();
+                                            }}
+                                        }});
+                                    }};
+                                }}
+                                
+                                if (nextArrow && !{str(next_disabled).lower()}) {{
+                                    nextArrow.onclick = function() {{
+                                        // Trigger Streamlit rerun by clicking hidden button
+                                        const buttons = document.querySelectorAll('button');
+                                        buttons.forEach(btn => {{
+                                            if (btn.textContent.includes('▶') || btn.getAttribute('key') === 'next_flow_hidden') {{
+                                                btn.click();
+                                            }}
+                                        }});
+                                    }};
+                                }}
+                            }})();
+                            </script>
+                        """, unsafe_allow_html=True)
+                        
+                        # Hidden buttons to handle clicks
+                        hidden_cols = st.columns([1, 1, 10])
+                        with hidden_cols[0]:
+                            if not prev_disabled:
+                                if st.button("◀", key='prev_flow_hidden', help="Previous Flow"):
+                                    st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
+                                    st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
+                                    st.rerun()
+                        with hidden_cols[1]:
+                            if not next_disabled:
+                                if st.button("▶", key='next_flow_hidden', help="Next Flow"):
+                                    st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
+                                    st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
+                                    st.rerun()
+                        
+                        # Hide the hidden buttons
+                        st.markdown("""
+                            <style>
+                            button[key="prev_flow_hidden"],
+                            button[key="next_flow_hidden"] {
+                                display: none !important;
+                            }
+                            </style>
                         """, unsafe_allow_html=True)
                     
                     # JavaScript to color Best/Worst buttons when selected
