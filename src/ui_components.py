@@ -176,9 +176,9 @@ def render_flow_combinations_table(campaign_df):
     </table>
     """
     
-    # Calculate dynamic height - cap at 450px
-    num_rows = len(agg_df)
-    table_height = min(450, max(200, 80 + (num_rows * 45)))
+    # Calculate dynamic height - cap at 500px to show overall stats
+    num_rows = len(agg_df) + 1  # +1 for overall row
+    table_height = min(500, max(250, 80 + (num_rows * 45)))
     
     # Render table
     st.components.v1.html(table_html, height=table_height, scrolling=False)
