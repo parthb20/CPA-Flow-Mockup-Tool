@@ -243,8 +243,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         prev_disabled = current_flow_index == 0
         next_disabled = current_flow_index >= len(all_flows) - 1
         
-        # Create clickable navigation with proper Streamlit rerun
-        nav_col1, nav_col2, nav_col3 = st.columns([0.5, 2, 0.5])
+        # Create clickable navigation with proper Streamlit rerun - COMPACT
+        nav_col1, nav_col2, nav_col3 = st.columns([0.3, 1.5, 0.3])
         
         with nav_col1:
             if not prev_disabled:
@@ -785,54 +785,69 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 </div>
                 """, unsafe_allow_html=True)
         
-        # Show creative details - ALWAYS (symmetric with heading)
-        if st.session_state.flow_layout == 'vertical' and creative_card_right:
-            details_container = creative_card_right
-        elif st.session_state.flow_layout != 'vertical':
-            details_container = creative_preview_container
-        else:
-            details_container = creative_preview_container  # Fallback
-            
-        with details_container:
-            creative_size = current_flow.get('Creative_Size_Final', 'N/A')
-            creative_name = current_flow.get('creative_template_name', 'N/A')
-            keyword = current_flow.get('keyword_term', 'N/A')
-            
-            # Details start at same position as heading (no extra margin for vertical) - RESPONSIVE
+        # Show creative details - DIFFERENT LAYOUT for horizontal vs vertical
+        creative_size = current_flow.get('Creative_Size_Final', 'N/A')
+        creative_name = current_flow.get('creative_template_name', 'N/A')
+        keyword = current_flow.get('keyword_term', 'N/A')
+        
+        if st.session_state.flow_layout == 'horizontal':
+            # HORIZONTAL: Show compact info BELOW preview (like Publisher card)
             st.markdown(f"""
-            <div style='margin-top: 0; margin-bottom: clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem);'>
-                <strong style='color: #0f172a; font-size: clamp(0.875rem, 0.8rem + 0.4vw, 1rem);'>Keyword:</strong> 
-                <span style='color: #64748b; font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem);'>{html.escape(str(keyword))}</span>
-            </div>
-            <div style='margin-bottom: clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem);'>
-                <strong style='color: #0f172a; font-size: clamp(0.875rem, 0.8rem + 0.4vw, 1rem);'>Creative ID:</strong> 
-                <span style='color: #64748b; font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem);'>{creative_id}</span>
-            </div>
-            <div style='margin-bottom: clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem);'>
-                <strong style='color: #0f172a; font-size: clamp(0.875rem, 0.8rem + 0.4vw, 1rem);'>Size:</strong> 
-                <span style='color: #64748b; font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem);'>{creative_size}</span>
-            </div>
-            <div style='margin-bottom: 0;'>
-                <strong style='color: #0f172a; font-size: clamp(0.875rem, 0.8rem + 0.4vw, 1rem);'>Template:</strong> 
-                <span style='color: #64748b; font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem);'>{creative_name}</span>
+            <div style='margin-top: 8px; font-size: 14px;'>
+                <div style='font-weight: 900; color: #0f172a; font-size: 16px; margin-bottom: 2px;'><strong>Keyword:</strong></div>
+                <div style='color: #64748b; font-size: 13px; margin-bottom: 6px;'>{html.escape(str(keyword))}</div>
+                <div style='font-weight: 900; color: #0f172a; font-size: 16px; margin-bottom: 2px;'><strong>Creative ID:</strong></div>
+                <div style='color: #64748b; font-size: 13px; margin-bottom: 6px;'>{creative_id}</div>
+                <div style='font-weight: 900; color: #0f172a; font-size: 16px; margin-bottom: 2px;'><strong>Size:</strong></div>
+                <div style='color: #64748b; font-size: 13px; margin-bottom: 6px;'>{creative_size}</div>
+                <div style='font-weight: 900; color: #0f172a; font-size: 16px; margin-bottom: 2px;'><strong>Template:</strong></div>
+                <div style='color: #64748b; font-size: 13px;'>{creative_name}</div>
             </div>
             """, unsafe_allow_html=True)
-            
-            # Calculate similarities if not already done
-            if 'similarities' not in st.session_state or st.session_state.similarities is None:
-                if api_key:
-                    st.session_state.similarities = calculate_similarities(current_flow)
-                else:
-                    st.session_state.similarities = {}
-            
-            # Add Keyword → Ad similarity for VERTICAL layout
-            if st.session_state.flow_layout == 'vertical':
-                if 'similarities' in st.session_state and st.session_state.similarities:
-                    st.markdown("<div style='margin-top: clamp(0.25rem, 0.3vw, 0.375rem);'></div>", unsafe_allow_html=True)
-                    render_similarity_score('kwd_to_ad', st.session_state.similarities,
-                                           custom_title="Keyword → Ad Copy Similarity",
-                                           tooltip_text="Measures keyword-ad alignment. 70%+ = Good Match (keywords clearly in ad copy), 40-69% = Fair Match (topic relevance present), <40% = Poor Match (weak/no connection)",
-                                           max_height=1040)
+        else:
+            # VERTICAL: Show in right column
+            if creative_card_right:
+                details_container = creative_card_right
+            else:
+                details_container = stage_2_container
+                
+            with details_container:
+                st.markdown(f"""
+                <div style='margin-top: 0; margin-bottom: clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem);'>
+                    <strong style='color: #0f172a; font-size: clamp(0.875rem, 0.8rem + 0.4vw, 1rem);'>Keyword:</strong> 
+                    <span style='color: #64748b; font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem);'>{html.escape(str(keyword))}</span>
+                </div>
+                <div style='margin-bottom: clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem);'>
+                    <strong style='color: #0f172a; font-size: clamp(0.875rem, 0.8rem + 0.4vw, 1rem);'>Creative ID:</strong> 
+                    <span style='color: #64748b; font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem);'>{creative_id}</span>
+                </div>
+                <div style='margin-bottom: clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem);'>
+                    <strong style='color: #0f172a; font-size: clamp(0.875rem, 0.8rem + 0.4vw, 1rem);'>Size:</strong> 
+                    <span style='color: #64748b; font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem);'>{creative_size}</span>
+                </div>
+                <div style='margin-bottom: 0;'>
+                    <strong style='color: #0f172a; font-size: clamp(0.875rem, 0.8rem + 0.4vw, 1rem);'>Template:</strong> 
+                    <span style='color: #64748b; font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem);'>{creative_name}</span>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        # Calculate similarities if not already done
+        if 'similarities' not in st.session_state or st.session_state.similarities is None:
+            if api_key:
+                st.session_state.similarities = calculate_similarities(current_flow)
+            else:
+                st.session_state.similarities = {}
+        
+        # Add Keyword → Ad similarity for VERTICAL layout only
+        if st.session_state.flow_layout == 'vertical':
+            if creative_card_right:
+                with creative_card_right:
+                    if 'similarities' in st.session_state and st.session_state.similarities:
+                        st.markdown("<div style='margin-top: clamp(0.25rem, 0.3vw, 0.375rem);'></div>", unsafe_allow_html=True)
+                        render_similarity_score('kwd_to_ad', st.session_state.similarities,
+                                               custom_title="Keyword → Ad Copy Similarity",
+                                               tooltip_text="Measures keyword-ad alignment. 70%+ = Good Match (keywords clearly in ad copy), 40-69% = Fair Match (topic relevance present), <40% = Poor Match (weak/no connection)",
+                                               max_height=1040)
     
     # Arrow divs removed - no longer needed
     
