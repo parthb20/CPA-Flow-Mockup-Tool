@@ -909,16 +909,15 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 else:
                     single_view = None
                 
-                # Add Flow Journey title with explanation - RESPONSIVE
+                # Add compact Flow Journey info
                 st.markdown("""
-                <h2 style="font-size: clamp(2.5rem, 2rem + 2.5vw, 3.5rem); font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui;">
-                    <strong>🔄 Flow Journey</strong>
-                </h2>
-                <p style="font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem); color: #64748b; font-weight: 400; margin: 0 0 0.25rem 0; line-height: 1.6; font-family: system-ui;">
-                    <strong>What is a Flow?</strong> A complete user journey: Publisher → Creative → SERP → Landing Page.<br>
-                    <strong>Best/Worst Flows:</strong> We analyze your campaign data and show you the top 5 best (highest conversions) or worst (zero conversions) performing paths.<br>
-                    <strong>Data:</strong> Based on impressions, clicks, and conversions from your selected campaign. Use filters above to customize each stage.
-                </p>
+                <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding: 0.75rem 1rem; border-radius: 0.5rem; border-left: 4px solid #0ea5e9; margin-bottom: 0.75rem;">
+                    <p style="font-size: 0.8rem; color: #334155; font-weight: 400; margin: 0; line-height: 1.5; font-family: system-ui;">
+                        <span style="font-weight: 700; color: #0f172a;">🔄 Flow Journey:</span> Publisher → Creative → SERP → Landing Page. 
+                        Showing top 5 <span style="font-weight: 600;">Best</span> (highest conversions) or <span style="font-weight: 600;">Worst</span> (zero conversions) paths. 
+                        By default, only keywords/domains with <span style="font-weight: 600;">5%+ traffic</span> are shown—check <span style="font-weight: 600;">"Use Full Data"</span> to see all.
+                    </p>
+                </div>
                     """, unsafe_allow_html=True)
                 
                 # Handle navigation via query params (navigation UI is now in flow_display.py)
