@@ -24,6 +24,13 @@ def render_flow_combinations_table(campaign_df):
     with table_col3:
         table_sort = st.selectbox("Sort:", ['Impressions', 'Clicks', 'Conversions', 'CTR', 'CVR'], index=0, key='table_sort')
     
+    # Calculate OVERALL stats from FULL campaign data (before filtering)
+    overall_imps_full = campaign_df['impressions'].sum()
+    overall_clicks_full = campaign_df['clicks'].sum()
+    overall_convs_full = campaign_df['conversions'].sum()
+    overall_ctr_full = (overall_clicks_full / overall_imps_full * 100) if overall_imps_full > 0 else 0
+    overall_cvr_full = (overall_convs_full / overall_clicks_full * 100) if overall_clicks_full > 0 else 0
+    
     # Aggregate by domain + keyword
     agg_df = campaign_df.groupby(['publisher_domain', 'keyword_term']).agg({
         'impressions': 'sum',
@@ -34,7 +41,7 @@ def render_flow_combinations_table(campaign_df):
     agg_df['CTR'] = agg_df.apply(lambda x: (x['clicks']/x['impressions']*100) if x['impressions']>0 else 0, axis=1)
     agg_df['CVR'] = agg_df.apply(lambda x: (x['conversions']/x['clicks']*100) if x['clicks']>0 else 0, axis=1)
     
-    # Calculate weighted averages for CTR and CVR
+    # Calculate weighted averages for CTR and CVR (for coloring)
     total_imps = agg_df['impressions'].sum()
     total_clicks = agg_df['clicks'].sum()
     weighted_avg_ctr = (agg_df['clicks'].sum() / total_imps * 100) if total_imps > 0 else 0
@@ -156,21 +163,15 @@ def render_flow_combinations_table(campaign_df):
         </tr>
         """
     
-    # Add Overall Stats row at the bottom
-    overall_imps = agg_df['impressions'].sum()
-    overall_clicks = agg_df['clicks'].sum()
-    overall_convs = agg_df['conversions'].sum()
-    overall_ctr = (overall_clicks / overall_imps * 100) if overall_imps > 0 else 0
-    overall_cvr = (overall_convs / overall_clicks * 100) if overall_clicks > 0 else 0
-    
+    # Add Overall Stats row at the bottom - using FULL campaign data
     table_html += f"""
         <tr style="background: #f1f5f9 !important; font-weight: 700; border-top: 2px solid #cbd5e1;">
             <td colspan="2" style="background: #f1f5f9 !important; color: #000000 !important; font-weight: 700;">OVERALL</td>
-            <td style="background: #f1f5f9 !important; color: #000000 !important; font-weight: 700;">{int(overall_imps):,}</td>
-            <td style="background: #f1f5f9 !important; color: #000000 !important; font-weight: 700;">{int(overall_clicks):,}</td>
-            <td style="background: #f1f5f9 !important; color: #000000 !important; font-weight: 700;">{int(overall_convs):,}</td>
-            <td style="background: #f1f5f9 !important; color: #1e40af !important; font-weight: 700;">{overall_ctr:.2f}%</td>
-            <td style="background: #f1f5f9 !important; color: #1e40af !important; font-weight: 700;">{overall_cvr:.2f}%</td>
+            <td style="background: #f1f5f9 !important; color: #000000 !important; font-weight: 700;">{int(overall_imps_full):,}</td>
+            <td style="background: #f1f5f9 !important; color: #000000 !important; font-weight: 700;">{int(overall_clicks_full):,}</td>
+            <td style="background: #f1f5f9 !important; color: #000000 !important; font-weight: 700;">{int(overall_convs_full):,}</td>
+            <td style="background: #f1f5f9 !important; color: #1e40af !important; font-weight: 700;">{overall_ctr_full:.2f}%</td>
+            <td style="background: #f1f5f9 !important; color: #1e40af !important; font-weight: 700;">{overall_cvr_full:.2f}%</td>
         </tr>
     </tbody>
     </table>
@@ -180,37 +181,8 @@ def render_flow_combinations_table(campaign_df):
     num_rows = len(agg_df) + 1  # +1 for overall row
     table_height = min(500, max(250, 80 + (num_rows * 45)))
     
-    # Render table
+    # Render table (Overall stats are already in the table as a row)
     st.components.v1.html(table_html, height=table_height, scrolling=False)
-    
-    # Display overall stats below table
-    st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 1rem 1.5rem; border-radius: 0.5rem; margin-top: 0.75rem; border: 2px solid #cbd5e1;">
-            <h3 style="font-size: 1rem; font-weight: 700; color: #0f172a; margin: 0 0 0.75rem 0;">📊 Overall Campaign Stats</h3>
-            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem;">
-                <div>
-                    <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; margin-bottom: 0.25rem;">Impressions</div>
-                    <div style="font-size: 1.25rem; font-weight: 700; color: #1e40af;">{int(overall_imps):,}</div>
-                </div>
-                <div>
-                    <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; margin-bottom: 0.25rem;">Clicks</div>
-                    <div style="font-size: 1.25rem; font-weight: 700; color: #1e40af;">{int(overall_clicks):,}</div>
-                </div>
-                <div>
-                    <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; margin-bottom: 0.25rem;">Conversions</div>
-                    <div style="font-size: 1.25rem; font-weight: 700; color: #1e40af;">{int(overall_convs):,}</div>
-                </div>
-                <div>
-                    <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; margin-bottom: 0.25rem;">CTR</div>
-                    <div style="font-size: 1.25rem; font-weight: 700; color: #10b981;">{overall_ctr:.2f}%</div>
-                </div>
-                <div>
-                    <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; margin-bottom: 0.25rem;">CVR</div>
-                    <div style="font-size: 1.25rem; font-weight: 700; color: #10b981;">{overall_cvr:.2f}%</div>
-                </div>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
 
 
 def render_what_is_flow_section():
