@@ -479,8 +479,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             if selected_campaign != '-- Select Campaign --':
                 st.session_state.preserved_campaign = selected_campaign
         
-        # Use Full Data checkbox - aligned
+        # Use Full Data checkbox - aligned with dropdowns
         with col3:
+            st.markdown('<div style="height: 1.55rem;"></div>', unsafe_allow_html=True)
             use_full_data = st.checkbox(
                 "Use Full Data",
                 value=False,
@@ -872,131 +873,141 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 <h2 style="font-size: clamp(2.5rem, 2rem + 2.5vw, 3.5rem); font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui;">
                     <strong>🔄 Flow Journey</strong>
                 </h2>
-                <p style="font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem); color: #64748b; font-weight: 400; margin: 0 0 0.5rem 0; line-height: 1.6; font-family: system-ui;">
+                <p style="font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem); color: #64748b; font-weight: 400; margin: 0 0 0.25rem 0; line-height: 1.6; font-family: system-ui;">
                     A flow is the complete user journey: Publisher → Creative → SERP → Landing Page. Each stage can be customized using the filters above. We automatically select the best-performing combination based on conversions, clicks, and impressions.
                 </p>
                     """, unsafe_allow_html=True)
                 
-                # === FLOW NAVIGATION - Compact Best/Worst + Arrows ===
+                # === FLOW NAVIGATION - All on one line ===
                 if len(st.session_state.get('all_flows', [])) > 1:
-                    nav_cols = st.columns([0.7, 0.7, 2.6])
+                    prev_disabled = st.session_state.current_flow_index == 0
+                    next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
                     
-                    # Best Flows button
-                    with nav_cols[0]:
-                        if st.button("Best Flows", key='best_button', use_container_width=True):
+                    left_opacity = "0.3" if prev_disabled else "1"
+                    right_opacity = "0.3" if next_disabled else "1"
+                    left_cursor = "not-allowed" if prev_disabled else "pointer"
+                    right_cursor = "not-allowed" if next_disabled else "pointer"
+                    
+                    # Single inline row with everything
+                    st.markdown(f"""
+                        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                            <button onclick="window.location.href='?flow_type=Best'" id="best_btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; font-weight: 600; border-radius: 0.3rem; border: 2px solid #e5e7eb; background: white; cursor: pointer; min-width: 80px;">Best Flows</button>
+                            <button onclick="window.location.href='?flow_type=Worst'" id="worst_btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; font-weight: 600; border-radius: 0.3rem; border: 2px solid #e5e7eb; background: white; cursor: pointer; min-width: 80px;">Worst Flows</button>
+                            <span onclick="if({str(not prev_disabled).lower()})document.querySelector('button[key=\\'prev_btn\\']')?.click()" 
+                                  style="font-size: 1.1rem; cursor: {left_cursor}; opacity: {left_opacity}; user-select: none;">⬅️</span>
+                            <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Flow {st.session_state.current_flow_index + 1} of {len(st.session_state.all_flows)}</span>
+                            <span onclick="if({str(not next_disabled).lower()})document.querySelector('button[key=\\'next_btn\\']')?.click()" 
+                                  style="font-size: 1.1rem; cursor: {right_cursor}; opacity: {right_opacity}; user-select: none;">➡️</span>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Real Streamlit buttons for flow type
+                    btn_cols = st.columns([0.65, 0.65, 3.7])
+                    with btn_cols[0]:
+                        if st.button("Best Flows", key='best_button'):
                             st.session_state.flow_type = 'Best'
                             st.rerun()
-                    
-                    # Worst Flows button
-                    with nav_cols[1]:
-                        if st.button("Worst Flows", key='worst_button', use_container_width=True):
+                    with btn_cols[1]:
+                        if st.button("Worst Flows", key='worst_button'):
                             st.session_state.flow_type = 'Worst'
                             st.rerun()
                     
-                    # Arrows + Flow count - compact inline
-                    with nav_cols[2]:
-                        prev_disabled = st.session_state.current_flow_index == 0
-                        next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
-                        
-                        left_opacity = "0.3" if prev_disabled else "1"
-                        right_opacity = "0.3" if next_disabled else "1"
-                        left_cursor = "not-allowed" if prev_disabled else "pointer"
-                        right_cursor = "not-allowed" if next_disabled else "pointer"
-                        
-                        st.markdown(f"""
-                            <div style="display: flex; align-items: center; gap: 0.5rem; padding-top: 3px;">
-                                <span onclick="document.querySelector('button[key=\\'prev_btn\\']')?.click()" 
-                                      style="font-size: 1.1rem; cursor: {left_cursor}; opacity: {left_opacity}; user-select: none;">⬅️</span>
-                                <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Flow {st.session_state.current_flow_index + 1} of {len(st.session_state.all_flows)}</span>
-                                <span onclick="document.querySelector('button[key=\\'next_btn\\']')?.click()" 
-                                      style="font-size: 1.1rem; cursor: {right_cursor}; opacity: {right_opacity}; user-select: none;">➡️</span>
-                            </div>
-                        """, unsafe_allow_html=True)
+                    # Hidden navigation - single row
+                    if not prev_disabled:
+                        if st.button("◀", key='prev_btn'):
+                            st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
+                            st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
+                            st.rerun()
+                    if not next_disabled:
+                        if st.button("▶", key='next_btn'):
+                            st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
+                            st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
+                            st.rerun()
                     
-                    # Hidden navigation buttons
-                    hidden_nav = st.columns([1, 1, 10])
-                    with hidden_nav[0]:
-                        if not prev_disabled:
-                            if st.button("◀", key='prev_btn'):
-                                st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
-                                st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
-                                st.rerun()
-                    with hidden_nav[1]:
-                        if not next_disabled:
-                            if st.button("▶", key='next_btn'):
-                                st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
-                                st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
-                                st.rerun()
-                    
-                    # CSS for buttons
+                    # CSS to hide Streamlit buttons
                     st.markdown("""
                         <style>
-                        /* Hide navigation buttons */
+                        /* Hide ALL navigation buttons */
                         button[key="prev_btn"],
-                        button[key="next_btn"] {
+                        button[key="next_btn"],
+                        button[key="best_button"],
+                        button[key="worst_button"] {
                             display: none !important;
                         }
                         
-                        /* Compact Best/Worst buttons with VISIBLE highlight */
-                        button[key="best_button"],
-                        button[key="worst_button"] {
-                            padding: 0.25rem 0.5rem !important;
-                            font-size: 0.75rem !important;
-                            font-weight: 600 !important;
-                            min-height: 1.6rem !important;
-                            height: 1.6rem !important;
-                            border-radius: 0.3rem !important;
-                            border: 2px solid #e5e7eb !important;
+                        /* Hide the button container row */
+                        div:has(> button[key="best_button"]),
+                        div:has(> button[key="worst_button"]),
+                        div:has(> button[key="prev_btn"]),
+                        div:has(> button[key="next_btn"]) {
+                            display: none !important;
+                            height: 0 !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
                         }
                         </style>
                     """, unsafe_allow_html=True)
                     
-                    # JavaScript for SUPER VISIBLE highlighting
+                    # JavaScript for highlighting and click handling
                     st.markdown(f"""
                         <script>
                         (function() {{
                             const flowType = '{flow_type}';
                             
-                            function highlightButton() {{
-                                const buttons = Array.from(document.querySelectorAll('button'));
-                                buttons.forEach(btn => {{
-                                    const text = btn.textContent.trim();
-                                    if (text === 'Best Flows') {{
-                                        if (flowType === 'Best') {{
-                                            btn.style.setProperty('background', '#10b981', 'important');
-                                            btn.style.setProperty('border', '3px solid #065f46', 'important');
-                                            btn.style.setProperty('color', '#ffffff', 'important');
-                                            btn.style.setProperty('font-weight', '700', 'important');
-                                            btn.style.setProperty('box-shadow', '0 0 0 3px rgba(16, 185, 129, 0.3)', 'important');
-                                        }} else {{
-                                            btn.style.removeProperty('background');
-                                            btn.style.setProperty('border', '2px solid #e5e7eb', 'important');
-                                            btn.style.removeProperty('color');
-                                            btn.style.removeProperty('box-shadow');
-                                        }}
-                                    }} else if (text === 'Worst Flows') {{
-                                        if (flowType === 'Worst') {{
-                                            btn.style.setProperty('background', '#ef4444', 'important');
-                                            btn.style.setProperty('border', '3px solid #991b1b', 'important');
-                                            btn.style.setProperty('color', '#ffffff', 'important');
-                                            btn.style.setProperty('font-weight', '700', 'important');
-                                            btn.style.setProperty('box-shadow', '0 0 0 3px rgba(239, 68, 68, 0.3)', 'important');
-                                        }} else {{
-                                            btn.style.removeProperty('background');
-                                            btn.style.setProperty('border', '2px solid #e5e7eb', 'important');
-                                            btn.style.removeProperty('color');
-                                            btn.style.removeProperty('box-shadow');
-                                        }}
+                            // Highlight buttons
+                            function highlight() {{
+                                const bestBtn = document.getElementById('best_btn');
+                                const worstBtn = document.getElementById('worst_btn');
+                                
+                                if (bestBtn) {{
+                                    if (flowType === 'Best') {{
+                                        bestBtn.style.background = '#10b981';
+                                        bestBtn.style.border = '3px solid #065f46';
+                                        bestBtn.style.color = '#ffffff';
+                                        bestBtn.style.fontWeight = '700';
+                                        bestBtn.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.3)';
+                                    }} else {{
+                                        bestBtn.style.background = 'white';
+                                        bestBtn.style.border = '2px solid #e5e7eb';
+                                        bestBtn.style.color = '#1f2937';
+                                        bestBtn.style.fontWeight = '600';
+                                        bestBtn.style.boxShadow = 'none';
                                     }}
-                                }});
+                                    
+                                    // Click handler
+                                    bestBtn.onclick = function() {{
+                                        const stBtn = Array.from(document.querySelectorAll('button')).find(b => b.getAttribute('key') === 'best_button');
+                                        if (stBtn) stBtn.click();
+                                    }};
+                                }}
+                                
+                                if (worstBtn) {{
+                                    if (flowType === 'Worst') {{
+                                        worstBtn.style.background = '#ef4444';
+                                        worstBtn.style.border = '3px solid #991b1b';
+                                        worstBtn.style.color = '#ffffff';
+                                        worstBtn.style.fontWeight = '700';
+                                        worstBtn.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.3)';
+                                    }} else {{
+                                        worstBtn.style.background = 'white';
+                                        worstBtn.style.border = '2px solid #e5e7eb';
+                                        worstBtn.style.color = '#1f2937';
+                                        worstBtn.style.fontWeight = '600';
+                                        worstBtn.style.boxShadow = 'none';
+                                    }}
+                                    
+                                    // Click handler
+                                    worstBtn.onclick = function() {{
+                                        const stBtn = Array.from(document.querySelectorAll('button')).find(b => b.getAttribute('key') === 'worst_button');
+                                        if (stBtn) stBtn.click();
+                                    }};
+                                }}
                             }}
                             
                             // Apply immediately and persistently
-                            highlightButton();
-                            setInterval(highlightButton, 100);
-                            
-                            // Watch DOM
-                            new MutationObserver(highlightButton).observe(document.body, {{ childList: true, subtree: true }});
+                            highlight();
+                            setInterval(highlight, 50);
+                            new MutationObserver(highlight).observe(document.body, {{ childList: true, subtree: true }});
                         }})();
                         </script>
                     """, unsafe_allow_html=True)
