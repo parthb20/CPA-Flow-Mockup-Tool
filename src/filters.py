@@ -123,40 +123,48 @@ def apply_flow_filtering(campaign_df, current_flow, filters_changed, selected_ke
     """Apply filtering logic and return updated flow and filtered dataframe"""
     final_filtered = pd.DataFrame()
     
+    # CRITICAL FIX: Don't reset current_flow if we're using all_flows (multi-flow selection)
+    # Check if we're in the new multi-flow mode
+    has_multiple_flows = len(st.session_state.get('all_flows', [])) > 0
+    
     # Apply filtering logic
     if st.session_state.view_mode == 'basic' or (st.session_state.view_mode == 'advanced' and not filters_changed):
         # Basic view OR Advanced default: Use find_default_flow (best performing)
-        st.session_state.default_flow = find_default_flow(campaign_df)
-        if st.session_state.default_flow:
-            current_flow = st.session_state.default_flow.copy()
-            # Get the actual row with max timestamp for this flow
-            final_filtered = campaign_df[
-                (campaign_df['keyword_term'] == current_flow.get('keyword_term', '')) &
-                (campaign_df['publisher_domain'] == current_flow.get('publisher_domain', ''))
-            ]
-            if 'serp_template_name' in campaign_df.columns:
-                final_filtered = final_filtered[final_filtered['serp_template_name'] == current_flow.get('serp_template_name', '')]
-            if len(final_filtered) > 0:
-                # Prefer views with conversions > 0, then clicks > 0, then impressions > 0
-                conv_positive = final_filtered[final_filtered['conversions'].apply(safe_float) > 0]
-                if len(conv_positive) > 0:
-                    final_filtered = conv_positive
+        # BUT: Don't overwrite current_flow if we have multiple flows selected
+        if not has_multiple_flows:
+            st.session_state.default_flow = find_default_flow(campaign_df)
+            if st.session_state.default_flow:
+                current_flow = st.session_state.default_flow.copy()
+        
+        # Get filtered data for the current flow (don't modify current_flow itself)
+        final_filtered = campaign_df[
+            (campaign_df['keyword_term'] == current_flow.get('keyword_term', '')) &
+            (campaign_df['publisher_domain'] == current_flow.get('publisher_domain', ''))
+        ]
+        if 'serp_template_name' in campaign_df.columns:
+            final_filtered = final_filtered[final_filtered['serp_template_name'] == current_flow.get('serp_template_name', '')]
+        if len(final_filtered) > 0 and not has_multiple_flows:
+            # Only update current_flow if we're NOT using multi-flow mode
+            # Prefer views with conversions > 0, then clicks > 0, then impressions > 0
+            conv_positive = final_filtered[final_filtered['conversions'].apply(safe_float) > 0]
+            if len(conv_positive) > 0:
+                final_filtered = conv_positive
+            else:
+                clicks_positive = final_filtered[final_filtered['clicks'].apply(safe_float) > 0]
+                if len(clicks_positive) > 0:
+                    final_filtered = clicks_positive
                 else:
-                    clicks_positive = final_filtered[final_filtered['clicks'].apply(safe_float) > 0]
-                    if len(clicks_positive) > 0:
-                        final_filtered = clicks_positive
-                    else:
-                        imps_positive = final_filtered[final_filtered['impressions'].apply(safe_float) > 0]
-                        if len(imps_positive) > 0:
-                            final_filtered = imps_positive
-                
-                if 'timestamp' in final_filtered.columns:
-                    best_view = final_filtered.loc[final_filtered['timestamp'].idxmax()]
-                else:
-                    # Sort by conversions desc, then clicks desc, then impressions desc
-                    final_filtered = final_filtered.sort_values(['conversions', 'clicks', 'impressions'], ascending=False)
-                    best_view = final_filtered.iloc[0]
-                current_flow.update(best_view.to_dict())
+                    imps_positive = final_filtered[final_filtered['impressions'].apply(safe_float) > 0]
+                    if len(imps_positive) > 0:
+                        final_filtered = imps_positive
+            
+            if 'timestamp' in final_filtered.columns:
+                best_view = final_filtered.loc[final_filtered['timestamp'].idxmax()]
+            else:
+                # Sort by conversions desc, then clicks desc, then impressions desc
+                final_filtered = final_filtered.sort_values(['conversions', 'clicks', 'impressions'], ascending=False)
+                best_view = final_filtered.iloc[0]
+            current_flow.update(best_view.to_dict())
     
     elif st.session_state.view_mode == 'advanced' and filters_changed:
         # Advanced view WITH filter changes: Apply new logic (filter -> auto-select SERP -> max timestamp)
