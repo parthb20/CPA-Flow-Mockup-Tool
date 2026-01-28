@@ -182,6 +182,35 @@ def render_flow_combinations_table(campaign_df):
     
     # Render table
     st.components.v1.html(table_html, height=table_height, scrolling=False)
+    
+    # Display overall stats below table
+    st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 1rem 1.5rem; border-radius: 0.5rem; margin-top: 0.75rem; border: 2px solid #cbd5e1;">
+            <h3 style="font-size: 1rem; font-weight: 700; color: #0f172a; margin: 0 0 0.75rem 0;">📊 Overall Campaign Stats</h3>
+            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem;">
+                <div>
+                    <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; margin-bottom: 0.25rem;">Impressions</div>
+                    <div style="font-size: 1.25rem; font-weight: 700; color: #1e40af;">{int(overall_imps):,}</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; margin-bottom: 0.25rem;">Clicks</div>
+                    <div style="font-size: 1.25rem; font-weight: 700; color: #1e40af;">{int(overall_clicks):,}</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; margin-bottom: 0.25rem;">Conversions</div>
+                    <div style="font-size: 1.25rem; font-weight: 700; color: #1e40af;">{int(overall_convs):,}</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; margin-bottom: 0.25rem;">CTR</div>
+                    <div style="font-size: 1.25rem; font-weight: 700; color: #10b981;">{overall_ctr:.2f}%</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; margin-bottom: 0.25rem;">CVR</div>
+                    <div style="font-size: 1.25rem; font-weight: 700; color: #10b981;">{overall_cvr:.2f}%</div>
+                </div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 
 
 def render_what_is_flow_section():
