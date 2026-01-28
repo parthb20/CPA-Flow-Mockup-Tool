@@ -498,26 +498,16 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             if selected_campaign != '-- Select Campaign --':
                 st.session_state.preserved_campaign = selected_campaign
         
-        # Use Full Data checkbox - aligned EXACTLY with dropdown text
+        # Use Full Data checkbox - aligned with dropdown VALUES (not labels)
         with col3:
+            # Add spacer to match dropdown label height PLUS the dropdown's top padding
+            st.markdown('<div style="height: 1.65rem;"></div>', unsafe_allow_html=True)
             use_full_data = st.checkbox(
                 "Use Full Data",
                 value=False,
                 help="Bypass 5% threshold filter",
                 key='use_full_data_toggle'
             )
-            # Add negative margin to pull it up and align with dropdown text
-            st.markdown("""
-                <style>
-                div[data-testid="column"]:nth-child(3) [data-testid="stCheckbox"] {
-                    margin-top: -0.5rem !important;
-                }
-                div[data-testid="column"]:nth-child(3) [data-testid="stCheckbox"] label {
-                    display: flex;
-                    align-items: center;
-                }
-                </style>
-            """, unsafe_allow_html=True)
         
         # Time Filter at top right - clean and minimal
         with col4:
@@ -930,9 +920,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         prev_disabled = st.session_state.current_flow_index == 0
                         next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
                         
-                        # Display: Arrow (emoji) Flow X of Y Arrow (emoji) - all inline
-                        left_arrow_html = f'<span id="prev_arrow" style="cursor: {"pointer" if not prev_disabled else "default"}; opacity: {"1" if not prev_disabled else "0.3"}; font-size: 1.1rem; margin-right: 0.5rem;">◀</span>'
-                        right_arrow_html = f'<span id="next_arrow" style="cursor: {"pointer" if not next_disabled else "default"}; opacity: {"1" if not next_disabled else "0.3"}; font-size: 1.1rem; margin-left: 0.5rem;">▶</span>'
+                        # Display: Arrow emoji Flow X of Y Arrow emoji - all inline, NO BOXES
+                        left_arrow_html = f'<span id="prev_arrow" style="cursor: {"pointer" if not prev_disabled else "default"}; opacity: {"1" if not prev_disabled else "0.3"}; font-size: 1.2rem; margin-right: 0.5rem; user-select: none;">⬅️</span>'
+                        right_arrow_html = f'<span id="next_arrow" style="cursor: {"pointer" if not next_disabled else "default"}; opacity: {"1" if not next_disabled else "0.3"}; font-size: 1.2rem; margin-left: 0.5rem; user-select: none;">➡️</span>'
                         
                         st.markdown(f'''
                             <div style="display: flex; align-items: center; justify-content: center; padding-top: 3px;">
@@ -980,51 +970,47 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     worst_color = '#991b1b'  # Always dark red text
                     worst_shadow = '0 0 0 3px rgba(239, 68, 68, 0.2)' if flow_type == 'Worst' else 'none'
                     
-                    # Apply CSS via JavaScript to force immediate application
+                    # SUPER SPECIFIC CSS to override global button styles
                     st.markdown(f"""
-                        <style id="flow-button-styles">
-                        /* Best/Worst buttons - First column and second column */
-                        div[data-testid="column"]:first-child button,
-                        div[data-testid="column"]:nth-child(2) button {{
+                        <style>
+                        /* Target Best button - be ULTRA specific */
+                        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child .stButton > button,
+                        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child button[kind="secondary"] {{
+                            background: {best_bg} !important;
+                            border: {best_border} !important;
+                            color: {best_color} !important;
+                            box-shadow: {best_shadow} !important;
                             padding: 0.3rem 0.6rem !important;
                             font-size: 0.8rem !important;
                             font-weight: 700 !important;
                             min-height: 1.75rem !important;
                             height: 1.75rem !important;
-                            border-radius: 0.375rem !important;
                         }}
                         
-                        /* Best button styling - first column */
-                        div[data-testid="column"]:first-child button {{
-                            background: {best_bg} !important;
-                            border: {best_border} !important;
-                            color: {best_color} !important;
-                            box-shadow: {best_shadow} !important;
-                        }}
-                        
-                        /* Worst button styling - second column */
-                        div[data-testid="column"]:nth-child(2) button {{
+                        /* Target Worst button - be ULTRA specific */
+                        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) .stButton > button,
+                        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) button[kind="secondary"] {{
                             background: {worst_bg} !important;
                             border: {worst_border} !important;
                             color: {worst_color} !important;
                             box-shadow: {worst_shadow} !important;
+                            padding: 0.3rem 0.6rem !important;
+                            font-size: 0.8rem !important;
+                            font-weight: 700 !important;
+                            min-height: 1.75rem !important;
+                            height: 1.75rem !important;
+                        }}
+                        
+                        /* Override hover for these buttons */
+                        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child .stButton > button:hover {{
+                            background: {best_bg} !important;
+                            border: {best_border} !important;
+                        }}
+                        div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) .stButton > button:hover {{
+                            background: {worst_bg} !important;
+                            border: {worst_border} !important;
                         }}
                         </style>
-                        <script>
-                        // Force style application on every render
-                        (function() {{
-                            const applyStyles = () => {{
-                                const style = document.getElementById('flow-button-styles');
-                                if (style) {{
-                                    style.parentNode.removeChild(style);
-                                    document.head.appendChild(style);
-                                }}
-                            }};
-                            applyStyles();
-                            setTimeout(applyStyles, 100);
-                            setTimeout(applyStyles, 500);
-                        }})();
-                        </script>
                     """, unsafe_allow_html=True)
                 
                 # Show flow stats directly (no success messages)
