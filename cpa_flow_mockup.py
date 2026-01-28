@@ -988,34 +988,32 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             st.success(f"Flow {i+1}: conv={conv}, clicks={clicks}, imps={imps}, kwd={kwd}, domain={domain}")
             
             if st.session_state.current_flow:
-                current_flow = st.session_state.current_flow
+                current_flow = st.session_state.current_flow.copy()
                 
                 # Render filters and get filter state
                 filters_changed, selected_keyword_filter, selected_domain_filter = render_advanced_filters(campaign_df, current_flow)
                 
-                # Apply filtering logic using module
-                current_flow, final_filtered = apply_flow_filtering(
+                # Apply filtering logic using module (but don't let it overwrite our selected flow!)
+                updated_flow, final_filtered = apply_flow_filtering(
                     campaign_df, current_flow, filters_changed, selected_keyword_filter, selected_domain_filter
                 )
                 
-                # Update session state
-                st.session_state.current_flow = current_flow
+                # CRITICAL: Only update if we're not in multi-flow mode
+                has_multiple_flows = len(st.session_state.get('all_flows', [])) > 0
+                if not has_multiple_flows:
+                    current_flow = updated_flow
+                    st.session_state.current_flow = current_flow
                 
-                # Show selected flow details using module
-                if len(final_filtered) > 0:
-                    # Select view_id with max timestamp
-                    if 'timestamp' in final_filtered.columns:
-                        single_view = final_filtered.loc[final_filtered['timestamp'].idxmax()]
-                    else:
-                        single_view = final_filtered.iloc[0]
-                    
-                    flow_imps = safe_int(single_view.get('impressions', 0))
-                    flow_clicks = safe_int(single_view.get('clicks', 0))
-                    flow_convs = safe_int(single_view.get('conversions', 0))
-                    flow_ctr = (flow_clicks / flow_imps * 100) if flow_imps > 0 else 0
-                    flow_cvr = (flow_convs / flow_clicks * 100) if flow_clicks > 0 else 0
-                else:
-                    single_view = None
+                # CRITICAL FIX: Use the selected flow's stats, NOT filtered data
+                # Each flow is ONE view_id with specific stats
+                flow_imps = safe_int(current_flow.get('impressions', 0))
+                flow_clicks = safe_int(current_flow.get('clicks', 0))
+                flow_convs = safe_int(current_flow.get('conversions', 0))
+                flow_ctr = (flow_clicks / flow_imps * 100) if flow_imps > 0 else 0
+                flow_cvr = (flow_convs / flow_clicks * 100) if flow_clicks > 0 else 0
+                
+                # Use current_flow as single_view
+                single_view = current_flow
                 
                 # Add compact Flow Journey info
                 st.markdown("""
@@ -1063,6 +1061,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     single_view = current_flow
                     
                     render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs, flow_ctr, flow_cvr)
+                
+                # DEBUG: Show current flow being displayed
+                current_idx = st.session_state.get('current_flow_index', 0)
+                st.info(f"🔍 Displaying Flow #{current_idx + 1}: kwd={str(current_flow.get('keyword_term', 'N/A'))[:30]}, domain={str(current_flow.get('publisher_domain', 'N/A'))[:30]}, conv={current_flow.get('conversions')}, clicks={current_flow.get('clicks')}")
                 
                 # Render Flow Journey using module (heading now shown above)
                 with st.spinner("Loading flow cards..."):
