@@ -353,30 +353,35 @@ st.markdown("""
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        padding: 2rem !important;
-        margin: 1rem 0 !important;
+        flex-direction: column !important;
+        padding: 3rem 2rem !important;
+        margin: 2rem 0 !important;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
     }
     
     [data-testid="stSpinner"] > div {
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        gap: 0.5rem !important;
-        font-size: 0.9rem !important;
-        color: #666 !important;
+        gap: 1rem !important;
+        font-size: 1.1rem !important;
+        font-weight: 500 !important;
+        color: #333 !important;
     }
     
-    /* Show the default Streamlit spinner icon */
+    /* Show the spinning circle */
     [data-testid="stSpinner"]::before {
         content: "" !important;
-        display: inline-block !important;
-        width: 24px !important;
-        height: 24px !important;
-        border: 3px solid #f3f3f3 !important;
-        border-top: 3px solid #3b82f6 !important;
+        display: block !important;
+        width: 48px !important;
+        height: 48px !important;
+        border: 4px solid #e9ecef !important;
+        border-top: 4px solid #3b82f6 !important;
         border-radius: 50% !important;
-        animation: spin 1s linear infinite !important;
-        margin-right: 0.5rem !important;
+        animation: spin 0.8s linear infinite !important;
+        margin-bottom: 1rem !important;
     }
     
     @keyframes spin {
