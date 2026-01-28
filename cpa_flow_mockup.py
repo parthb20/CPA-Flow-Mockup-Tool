@@ -579,7 +579,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             
             # Use Full Data checkbox
             with sub_col1:
-                st.markdown('<div style="height: 0.5rem;"></div>', unsafe_allow_html=True)
+                st.markdown('<div style="height: 1.65rem;"></div>', unsafe_allow_html=True)
                 use_full_data = st.checkbox(
                     "Use Full Data",
                     value=False,
