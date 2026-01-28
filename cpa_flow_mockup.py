@@ -340,6 +340,33 @@ st.markdown("""
         color: #0f172a !important;
         background: transparent !important;
     }
+    
+    /* Custom Loading Spinner - Circular Arrow */
+    .stSpinner > div {
+        border-color: #3b82f6 !important;
+        border-right-color: transparent !important;
+    }
+    
+    /* Streamlit's native spinner styling */
+    [data-testid="stSpinner"] {
+        color: #3b82f6 !important;
+    }
+    
+    /* Remove empty space from element containers */
+    .main .block-container {
+        padding-top: 3rem !important;
+        padding-bottom: 1rem !important;
+    }
+    
+    /* Reduce element container spacing */
+    .element-container {
+        margin-bottom: 0.5rem !important;
+    }
+    
+    /* Remove empty divs that create unnecessary space */
+    div:empty {
+        display: none !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -504,8 +531,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             start_hour = st.session_state.get('start_hour', 0)
             end_hour = st.session_state.get('end_hour', 23)
         
-        # Horizontal separator
-        st.markdown("<hr style='margin: 1rem 0; border: none; border-top: 1px solid #e5e7eb;' />", unsafe_allow_html=True)
+        # Horizontal separator (reduced margin)
+        st.markdown("<hr style='margin: 0.5rem 0; border: none; border-top: 1px solid #e5e7eb;' />", unsafe_allow_html=True)
         
         # Hidden defaults
         entity_threshold = 0.0 if use_full_data else 5.0
@@ -783,14 +810,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         st.error(f"❌ No {flow_type.lower()} flows found with current filters.")
                         st.stop()
             
-            # Store navigation for later (after flow journey)
-            
             if st.session_state.current_flow:
                 current_flow = st.session_state.current_flow
-                
-                # Advanced mode: Show keyword and domain filters
-                if st.session_state.view_mode == 'advanced':
-                    pass
                 
                 # Render filters and get filter state
                 filters_changed, selected_keyword_filter, selected_domain_filter = render_advanced_filters(campaign_df, current_flow)
@@ -833,13 +854,24 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 if len(st.session_state.get('all_flows', [])) > 1:
                     st.markdown("""
                         <style>
+                        /* Compact Best/Worst buttons with proper sizing */
+                        button[key="best_button"],
+                        button[key="worst_button"] {
+                            padding: 0.4rem 0.8rem !important;
+                            font-size: 0.875rem !important;
+                            font-weight: 600 !important;
+                            min-height: 2rem !important;
+                            height: 2rem !important;
+                            border-radius: 0.375rem !important;
+                        }
+                        
                         /* Subtle arrows - NO HOVER */
                         button[key="prev_flow"],
                         button[key="next_flow"] {
                             background: transparent !important;
                             border: none !important;
                             padding: 0 !important;
-                            font-size: 1.2rem !important;
+                            font-size: 1.1rem !important;
                             min-height: auto !important;
                             height: auto !important;
                             line-height: 1 !important;
@@ -856,18 +888,18 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         </style>
                     """, unsafe_allow_html=True)
                     
-                    # Single row: Best/Worst buttons + arrows + flow count
-                    nav_cols = st.columns([0.7, 0.7, 0.15, 1.2, 0.15, 2])
+                    # Single row: Best/Worst buttons + arrows + flow count (tighter spacing)
+                    nav_cols = st.columns([0.9, 0.9, 0.1, 0.1, 1, 3])
                     
-                    # Best button
+                    # Best Flows button
                     with nav_cols[0]:
-                        if st.button("Best", key='best_button', use_container_width=True):
+                        if st.button("Best Flows", key='best_button', use_container_width=True):
                             st.session_state.flow_type = 'Best'
                             st.rerun()
                     
-                    # Worst button
+                    # Worst Flows button
                     with nav_cols[1]:
-                        if st.button("Worst", key='worst_button', use_container_width=True):
+                        if st.button("Worst Flows", key='worst_button', use_container_width=True):
                             st.session_state.flow_type = 'Worst'
                             st.rerun()
                     
@@ -879,21 +911,21 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
                             st.rerun()
                     
-                    # Flow count
-                    with nav_cols[3]:
-                        st.markdown(f"""
-                            <div style="padding-top: 8px; font-size: 0.95rem; color: #64748b; font-weight: 600;">
-                                Flow {st.session_state.current_flow_index + 1} of {len(st.session_state.all_flows)}
-                            </div>
-                        """, unsafe_allow_html=True)
-                    
                     # Right arrow
-                    with nav_cols[4]:
+                    with nav_cols[3]:
                         next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
                         if st.button("→", key='next_flow', disabled=next_disabled, help="Next Flow"):
                             st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
                             st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
                             st.rerun()
+                    
+                    # Flow count
+                    with nav_cols[4]:
+                        st.markdown(f"""
+                            <div style="padding-top: 5px; font-size: 0.875rem; color: #64748b; font-weight: 600; padding-left: 0.5rem;">
+                                Flow {st.session_state.current_flow_index + 1} of {len(st.session_state.all_flows)}
+                            </div>
+                        """, unsafe_allow_html=True)
                     
                     # JavaScript to color Best/Worst buttons when selected
                     st.markdown(f"""
@@ -903,13 +935,25 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 const buttons = document.querySelectorAll('button');
                                 buttons.forEach(btn => {{
                                     const text = btn.textContent.trim();
-                                    if (text === 'Best') {{
+                                    if (text === 'Best Flows') {{
                                         if ('{flow_type}' === 'Best') {{
-                                            btn.style.cssText = 'background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%) !important; border: 2px solid #10b981 !important; color: #1f2937 !important;';
+                                            btn.style.background = '#d1fae5';
+                                            btn.style.borderColor = '#10b981';
+                                            btn.style.color = '#065f46';
+                                        }} else {{
+                                            btn.style.background = '';
+                                            btn.style.borderColor = '';
+                                            btn.style.color = '';
                                         }}
-                                    }} else if (text === 'Worst') {{
+                                    }} else if (text === 'Worst Flows') {{
                                         if ('{flow_type}' === 'Worst') {{
-                                            btn.style.cssText = 'background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%) !important; border: 2px solid #ef4444 !important; color: #1f2937 !important;';
+                                            btn.style.background = '#fee2e2';
+                                            btn.style.borderColor = '#ef4444';
+                                            btn.style.color = '#991b1b';
+                                        }} else {{
+                                            btn.style.background = '';
+                                            btn.style.borderColor = '';
+                                            btn.style.color = '';
                                         }}
                                     }}
                                 }});
@@ -922,6 +966,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             setTimeout(applyColors, 300);
                             setTimeout(applyColors, 500);
                             setTimeout(applyColors, 1000);
+                            setTimeout(applyColors, 2000);
                             
                             const observer = new MutationObserver(applyColors);
                             observer.observe(document.body, {{ childList: true, subtree: true }});
