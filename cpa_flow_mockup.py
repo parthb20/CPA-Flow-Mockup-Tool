@@ -390,6 +390,20 @@ st.markdown("""
     .element-container:has(> .row-widget) {
         margin-bottom: 0 !important;
     }
+    
+    /* AGGRESSIVE: Hide specific empty containers that create gaps */
+    .element-container:empty,
+    div[data-testid="stVerticalBlock"]:empty,
+    div[data-testid="stHorizontalBlock"]:empty {
+        display: none !important;
+        height: 0 !important;
+        min-height: 0 !important;
+    }
+    
+    /* Remove gaps between advertiser/campaign and flow journey */
+    .main > div > div > div {
+        margin-bottom: 0 !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -878,138 +892,93 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 </p>
                     """, unsafe_allow_html=True)
                 
-                # === FLOW NAVIGATION - All on one line ===
+                # === FLOW NAVIGATION - Best/Worst in boxes, arrows + flow count inline ===
                 if len(st.session_state.get('all_flows', [])) > 1:
-                    prev_disabled = st.session_state.current_flow_index == 0
-                    next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
+                    nav_cols = st.columns([0.7, 0.7, 0.1, 1, 0.1, 2.4])
                     
-                    left_opacity = "0.3" if prev_disabled else "1"
-                    right_opacity = "0.3" if next_disabled else "1"
-                    left_cursor = "not-allowed" if prev_disabled else "pointer"
-                    right_cursor = "not-allowed" if next_disabled else "pointer"
-                    
-                    # Single inline row with everything
-                    st.markdown(f"""
-                        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
-                            <button onclick="window.location.href='?flow_type=Best'" id="best_btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; font-weight: 600; border-radius: 0.3rem; border: 2px solid #e5e7eb; background: white; cursor: pointer; min-width: 80px;">Best Flows</button>
-                            <button onclick="window.location.href='?flow_type=Worst'" id="worst_btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; font-weight: 600; border-radius: 0.3rem; border: 2px solid #e5e7eb; background: white; cursor: pointer; min-width: 80px;">Worst Flows</button>
-                            <span onclick="if({str(not prev_disabled).lower()})document.querySelector('button[key=\\'prev_btn\\']')?.click()" 
-                                  style="font-size: 1.1rem; cursor: {left_cursor}; opacity: {left_opacity}; user-select: none;">⬅️</span>
-                            <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Flow {st.session_state.current_flow_index + 1} of {len(st.session_state.all_flows)}</span>
-                            <span onclick="if({str(not next_disabled).lower()})document.querySelector('button[key=\\'next_btn\\']')?.click()" 
-                                  style="font-size: 1.1rem; cursor: {right_cursor}; opacity: {right_opacity}; user-select: none;">➡️</span>
-                        </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Real Streamlit buttons for flow type
-                    btn_cols = st.columns([0.65, 0.65, 3.7])
-                    with btn_cols[0]:
-                        if st.button("Best Flows", key='best_button'):
+                    # Best Flows button
+                    with nav_cols[0]:
+                        if st.button("Best Flows", key='best_button', use_container_width=True):
                             st.session_state.flow_type = 'Best'
                             st.rerun()
-                    with btn_cols[1]:
-                        if st.button("Worst Flows", key='worst_button'):
+                    
+                    # Worst Flows button
+                    with nav_cols[1]:
+                        if st.button("Worst Flows", key='worst_button', use_container_width=True):
                             st.session_state.flow_type = 'Worst'
                             st.rerun()
                     
-                    # Hidden navigation - single row
-                    if not prev_disabled:
-                        if st.button("◀", key='prev_btn'):
-                            st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
-                            st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
-                            st.rerun()
-                    if not next_disabled:
-                        if st.button("▶", key='next_btn'):
-                            st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
-                            st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
-                            st.rerun()
+                    # Left arrow
+                    with nav_cols[2]:
+                        prev_disabled = st.session_state.current_flow_index == 0
+                        if not prev_disabled:
+                            if st.button("⬅️", key='prev_btn'):
+                                st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
+                                st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
+                                st.rerun()
+                        else:
+                            st.markdown('<span style="opacity: 0.3; font-size: 1.1rem;">⬅️</span>', unsafe_allow_html=True)
                     
-                    # CSS to hide Streamlit buttons
-                    st.markdown("""
-                        <style>
-                        /* Hide ALL navigation buttons */
-                        button[key="prev_btn"],
-                        button[key="next_btn"],
-                        button[key="best_button"],
-                        button[key="worst_button"] {
-                            display: none !important;
-                        }
-                        
-                        /* Hide the button container row */
-                        div:has(> button[key="best_button"]),
-                        div:has(> button[key="worst_button"]),
-                        div:has(> button[key="prev_btn"]),
-                        div:has(> button[key="next_btn"]) {
-                            display: none !important;
-                            height: 0 !important;
-                            margin: 0 !important;
-                            padding: 0 !important;
-                        }
-                        </style>
-                    """, unsafe_allow_html=True)
+                    # Flow count
+                    with nav_cols[3]:
+                        st.markdown(f'<div style="padding-top: 4px; font-size: 0.85rem; color: #64748b; font-weight: 600; text-align: center;">Flow {st.session_state.current_flow_index + 1} of {len(st.session_state.all_flows)}</div>', unsafe_allow_html=True)
                     
-                    # JavaScript for highlighting and click handling
+                    # Right arrow
+                    with nav_cols[4]:
+                        next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
+                        if not next_disabled:
+                            if st.button("➡️", key='next_btn'):
+                                st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
+                                st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
+                                st.rerun()
+                        else:
+                            st.markdown('<span style="opacity: 0.3; font-size: 1.1rem;">➡️</span>', unsafe_allow_html=True)
+                    
+                    # CSS for buttons and highlighting
                     st.markdown(f"""
-                        <script>
-                        (function() {{
-                            const flowType = '{flow_type}';
-                            
-                            // Highlight buttons
-                            function highlight() {{
-                                const bestBtn = document.getElementById('best_btn');
-                                const worstBtn = document.getElementById('worst_btn');
-                                
-                                if (bestBtn) {{
-                                    if (flowType === 'Best') {{
-                                        bestBtn.style.background = '#10b981';
-                                        bestBtn.style.border = '3px solid #065f46';
-                                        bestBtn.style.color = '#ffffff';
-                                        bestBtn.style.fontWeight = '700';
-                                        bestBtn.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.3)';
-                                    }} else {{
-                                        bestBtn.style.background = 'white';
-                                        bestBtn.style.border = '2px solid #e5e7eb';
-                                        bestBtn.style.color = '#1f2937';
-                                        bestBtn.style.fontWeight = '600';
-                                        bestBtn.style.boxShadow = 'none';
-                                    }}
-                                    
-                                    // Click handler
-                                    bestBtn.onclick = function() {{
-                                        const stBtn = Array.from(document.querySelectorAll('button')).find(b => b.getAttribute('key') === 'best_button');
-                                        if (stBtn) stBtn.click();
-                                    }};
-                                }}
-                                
-                                if (worstBtn) {{
-                                    if (flowType === 'Worst') {{
-                                        worstBtn.style.background = '#ef4444';
-                                        worstBtn.style.border = '3px solid #991b1b';
-                                        worstBtn.style.color = '#ffffff';
-                                        worstBtn.style.fontWeight = '700';
-                                        worstBtn.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.3)';
-                                    }} else {{
-                                        worstBtn.style.background = 'white';
-                                        worstBtn.style.border = '2px solid #e5e7eb';
-                                        worstBtn.style.color = '#1f2937';
-                                        worstBtn.style.fontWeight = '600';
-                                        worstBtn.style.boxShadow = 'none';
-                                    }}
-                                    
-                                    // Click handler
-                                    worstBtn.onclick = function() {{
-                                        const stBtn = Array.from(document.querySelectorAll('button')).find(b => b.getAttribute('key') === 'worst_button');
-                                        if (stBtn) stBtn.click();
-                                    }};
-                                }}
-                            }}
-                            
-                            // Apply immediately and persistently
-                            highlight();
-                            setInterval(highlight, 50);
-                            new MutationObserver(highlight).observe(document.body, {{ childList: true, subtree: true }});
-                        }})();
-                        </script>
+                        <style>
+                        /* Best/Worst buttons styling */
+                        button[key="best_button"],
+                        button[key="worst_button"] {{
+                            padding: 0.25rem 0.5rem !important;
+                            font-size: 0.75rem !important;
+                            font-weight: 600 !important;
+                            min-height: 1.6rem !important;
+                            height: 1.6rem !important;
+                            border-radius: 0.3rem !important;
+                            transition: all 0.2s !important;
+                        }}
+                        
+                        /* Best button highlighting */
+                        button[key="best_button"] {{
+                            background: {'#10b981' if flow_type == 'Best' else 'white'} !important;
+                            border: {'3px solid #065f46' if flow_type == 'Best' else '2px solid #e5e7eb'} !important;
+                            color: {'#ffffff' if flow_type == 'Best' else '#1f2937'} !important;
+                            box-shadow: {'0 0 0 3px rgba(16, 185, 129, 0.3)' if flow_type == 'Best' else 'none'} !important;
+                            font-weight: {'700' if flow_type == 'Best' else '600'} !important;
+                        }}
+                        
+                        /* Worst button highlighting */
+                        button[key="worst_button"] {{
+                            background: {'#ef4444' if flow_type == 'Worst' else 'white'} !important;
+                            border: {'3px solid #991b1b' if flow_type == 'Worst' else '2px solid #e5e7eb'} !important;
+                            color: {'#ffffff' if flow_type == 'Worst' else '#1f2937'} !important;
+                            box-shadow: {'0 0 0 3px rgba(239, 68, 68, 0.3)' if flow_type == 'Worst' else 'none'} !important;
+                            font-weight: {'700' if flow_type == 'Worst' else '600'} !important;
+                        }}
+                        
+                        /* Arrow buttons */
+                        button[key="prev_btn"],
+                        button[key="next_btn"] {{
+                            background: transparent !important;
+                            border: none !important;
+                            padding: 0 !important;
+                            font-size: 1.1rem !important;
+                            min-height: auto !important;
+                            height: auto !important;
+                            box-shadow: none !important;
+                        }}
+                        </style>
                     """, unsafe_allow_html=True)
                 
                 # Show flow stats directly (no success messages)
