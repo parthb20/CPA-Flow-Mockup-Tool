@@ -495,7 +495,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
         
         # Use Full Data checkbox - aligned with dropdowns
         with col3:
-            st.markdown('<div style="height: 1.7rem;"></div>', unsafe_allow_html=True)
+            # Add label-like spacing to match dropdowns (label is ~21px + small gap)
+            st.markdown('<div style="height: 0.4rem;"></div>', unsafe_allow_html=True)
             use_full_data = st.checkbox(
                 "Use Full Data",
                 value=False,
@@ -893,9 +894,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 </p>
                     """, unsafe_allow_html=True)
                 
-                # === FLOW NAVIGATION - Best/Worst in boxes, arrows + flow count inline ===
+                # === FLOW NAVIGATION - Compact tight layout ===
                 if len(st.session_state.get('all_flows', [])) > 1:
-                    nav_cols = st.columns([0.7, 0.7, 0.15, 1.1, 0.15, 2.2])
+                    nav_cols = st.columns([0.7, 0.7, 0.08, 1, 0.08, 2.44])
                     
                     # Best Flows button
                     with nav_cols[0]:
@@ -913,79 +914,88 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     with nav_cols[2]:
                         prev_disabled = st.session_state.current_flow_index == 0
                         if not prev_disabled:
-                            if st.button("⬅️", key='prev_btn'):
+                            if st.button("◀", key='prev_btn'):
                                 st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
                                 st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
                                 st.rerun()
                         else:
-                            st.markdown('<div style="padding-top: 4px; opacity: 0.3; font-size: 1.1rem;">⬅️</div>', unsafe_allow_html=True)
+                            st.markdown('<div style="text-align: center; opacity: 0.3; font-size: 1rem; padding-top: 2px;">◀</div>', unsafe_allow_html=True)
                     
-                    # Flow count with emojis
+                    # Flow count - NO refresh emojis
                     with nav_cols[3]:
-                        st.markdown(f'<div style="padding-top: 4px; font-size: 0.85rem; color: #64748b; font-weight: 600; text-align: center;">🔄 Flow {st.session_state.current_flow_index + 1} of {len(st.session_state.all_flows)} 🔄</div>', unsafe_allow_html=True)
+                        st.markdown(f'<div style="padding-top: 3px; font-size: 0.85rem; color: #64748b; font-weight: 600; text-align: center;">Flow {st.session_state.current_flow_index + 1} of {len(st.session_state.all_flows)}</div>', unsafe_allow_html=True)
                     
                     # Right arrow
                     with nav_cols[4]:
                         next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
                         if not next_disabled:
-                            if st.button("➡️", key='next_btn'):
+                            if st.button("▶", key='next_btn'):
                                 st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
                                 st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
                                 st.rerun()
                         else:
-                            st.markdown('<div style="padding-top: 4px; opacity: 0.3; font-size: 1.1rem;">➡️</div>', unsafe_allow_html=True)
+                            st.markdown('<div style="text-align: center; opacity: 0.3; font-size: 1rem; padding-top: 2px;">▶</div>', unsafe_allow_html=True)
                     
-                    # CSS for buttons and highlighting
+                    # CSS for buttons - COMPUTE COLORS OUTSIDE F-STRING
+                    best_bg = '#10b981' if flow_type == 'Best' else 'white'
+                    best_border = '4px solid #065f46' if flow_type == 'Best' else '2px solid #d1d5db'
+                    best_color = '#ffffff' if flow_type == 'Best' else '#374151'
+                    best_shadow = '0 0 0 4px rgba(16, 185, 129, 0.5)' if flow_type == 'Best' else 'none'
+                    
+                    worst_bg = '#ef4444' if flow_type == 'Worst' else 'white'
+                    worst_border = '4px solid #991b1b' if flow_type == 'Worst' else '2px solid #d1d5db'
+                    worst_color = '#ffffff' if flow_type == 'Worst' else '#374151'
+                    worst_shadow = '0 0 0 4px rgba(239, 68, 68, 0.5)' if flow_type == 'Worst' else 'none'
+                    
                     st.markdown(f"""
                         <style>
-                        /* Best/Worst buttons styling with SUPER VISIBLE highlighting */
+                        /* Best/Worst buttons - TIGHT and HIGHLIGHTED */
                         button[key="best_button"],
                         button[key="worst_button"] {{
                             padding: 0.3rem 0.6rem !important;
                             font-size: 0.8rem !important;
-                            font-weight: 600 !important;
-                            min-height: 1.8rem !important;
-                            height: 1.8rem !important;
-                            border-radius: 0.4rem !important;
-                            transition: all 0.15s !important;
+                            font-weight: 700 !important;
+                            min-height: 1.75rem !important;
+                            height: 1.75rem !important;
+                            border-radius: 0.375rem !important;
                         }}
                         
-                        /* Best button - GREEN when selected */
+                        /* Best button - GREEN when Best */
                         button[key="best_button"] {{
-                            background: {'#10b981' if flow_type == 'Best' else 'white'} !important;
-                            border: {'4px solid #065f46' if flow_type == 'Best' else '2px solid #d1d5db'} !important;
-                            color: {'#ffffff' if flow_type == 'Best' else '#374151'} !important;
-                            box-shadow: {'0 0 0 4px rgba(16, 185, 129, 0.4)' if flow_type == 'Best' else 'none'} !important;
-                            font-weight: {'800' if flow_type == 'Best' else '600'} !important;
-                            transform: {'scale(1.02)' if flow_type == 'Best' else 'scale(1)'} !important;
+                            background: {best_bg} !important;
+                            border: {best_border} !important;
+                            color: {best_color} !important;
+                            box-shadow: {best_shadow} !important;
                         }}
                         
-                        /* Worst button - RED when selected */
+                        /* Worst button - RED when Worst */
                         button[key="worst_button"] {{
-                            background: {'#ef4444' if flow_type == 'Worst' else 'white'} !important;
-                            border: {'4px solid #991b1b' if flow_type == 'Worst' else '2px solid #d1d5db'} !important;
-                            color: {'#ffffff' if flow_type == 'Worst' else '#374151'} !important;
-                            box-shadow: {'0 0 0 4px rgba(239, 68, 68, 0.4)' if flow_type == 'Worst' else 'none'} !important;
-                            font-weight: {'800' if flow_type == 'Worst' else '600'} !important;
-                            transform: {'scale(1.02)' if flow_type == 'Worst' else 'scale(1)'} !important;
+                            background: {worst_bg} !important;
+                            border: {worst_border} !important;
+                            color: {worst_color} !important;
+                            box-shadow: {worst_shadow} !important;
                         }}
                         
-                        /* Arrow buttons - NO BOX, transparent */
+                        /* Arrow buttons - NO PADDING BOX */
                         button[key="prev_btn"],
                         button[key="next_btn"] {{
                             background: transparent !important;
                             border: none !important;
                             padding: 0 !important;
-                            font-size: 1.3rem !important;
-                            min-height: 1.3rem !important;
-                            height: 1.3rem !important;
+                            margin: 0 !important;
+                            font-size: 1.1rem !important;
+                            min-height: 1.1rem !important;
+                            height: 1.1rem !important;
+                            width: 100% !important;
                             box-shadow: none !important;
                             line-height: 1 !important;
                         }}
                         
-                        /* Hide arrow button containers */
+                        /* Remove ALL padding from arrow button innards */
                         button[key="prev_btn"] > div,
-                        button[key="next_btn"] > div {{
+                        button[key="next_btn"] > div,
+                        button[key="prev_btn"] p,
+                        button[key="next_btn"] p {{
                             padding: 0 !important;
                             margin: 0 !important;
                         }}
