@@ -211,33 +211,33 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     all_flows = st.session_state.get('all_flows', [])
     current_flow_index = st.session_state.get('current_flow_index', 0)
     
-    # Flow navigation - STRICTLY LEFT ALIGNED, separate from filters
+    # Flow navigation - STRICTLY LEFT ALIGNED, separate from filters - CLICKABLE
     if len(all_flows) > 1:
         prev_disabled = current_flow_index == 0
         next_disabled = current_flow_index >= len(all_flows) - 1
         
-        left_arrow_html = f'<span id="prev_arrow" style="cursor: {"pointer" if not prev_disabled else "default"}; opacity: {"1" if not prev_disabled else "0.3"}; font-size: 1.1rem; margin-right: 0.4rem; user-select: none;">⬅️</span>'
-        right_arrow_html = f'<span id="next_arrow" style="cursor: {"pointer" if not next_disabled else "default"}; opacity: {"1" if not next_disabled else "0.3"}; font-size: 1.1rem; margin-left: 0.4rem; user-select: none;">➡️</span>'
+        left_arrow = '⬅️' if not prev_disabled else '⬅️'
+        right_arrow = '➡️' if not next_disabled else '➡️'
         
-        st.markdown(f'''
-            <div style="display: flex; align-items: center; justify-content: flex-start; margin-bottom: 0.5rem;">
-                {left_arrow_html}
+        st.components.v1.html(f'''
+            <div style="display: flex; align-items: center; justify-content: flex-start; margin-bottom: 0.5rem; font-family: system-ui;">
+                <a href="?nav=prev&t={hash(str(current_flow_index))}" 
+                   style="cursor: {"pointer" if not prev_disabled else "not-allowed"}; 
+                          opacity: {"1" if not prev_disabled else "0.3"}; 
+                          font-size: 1.1rem; 
+                          margin-right: 0.4rem; 
+                          text-decoration: none;
+                          pointer-events: {"auto" if not prev_disabled else "none"};">{left_arrow}</a>
                 <span style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Flow {current_flow_index + 1} of {len(all_flows)}</span>
-                {right_arrow_html}
+                <a href="?nav=next&t={hash(str(current_flow_index))}" 
+                   style="cursor: {"pointer" if not next_disabled else "not-allowed"}; 
+                          opacity: {"1" if not next_disabled else "0.3"}; 
+                          font-size: 1.1rem; 
+                          margin-left: 0.4rem; 
+                          text-decoration: none;
+                          pointer-events: {"auto" if not next_disabled else "none"};">{right_arrow}</a>
             </div>
-            <script>
-            document.getElementById('prev_arrow')?.addEventListener('click', function() {{
-                if ({str(not prev_disabled).lower()}) {{
-                    window.location.href = '?nav=prev&t=' + Date.now();
-                }}
-            }});
-            document.getElementById('next_arrow')?.addEventListener('click', function() {{
-                if ({str(not next_disabled).lower()}) {{
-                    window.location.href = '?nav=next&t=' + Date.now();
-                }}
-            }});
-            </script>
-        ''', unsafe_allow_html=True)
+        ''', height=35)
     
     # All controls in one row - Best/Worst FIRST, then Layout, Device, Domain, Keyword
     control_col1, control_col2, control_col3, control_col4, control_col5 = st.columns([1, 1, 1, 1.2, 1.2])
@@ -434,6 +434,21 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         [data-testid="stMarkdownContainer"] {
             margin-bottom: 0 !important;
             padding-bottom: 0 !important;
+        }
+        
+        /* Responsive gaps between stage cards and details */
+        [data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+            margin-bottom: clamp(0.5rem, 1vw, 1rem) !important;
+        }
+        
+        /* Responsive spacing between cards in vertical layout */
+        [data-testid="stVerticalBlock"] > div[data-testid="element-container"] {
+            margin-bottom: clamp(0.75rem, 1.5vw, 1.5rem) !important;
+        }
+        
+        /* Consistent spacing between card content and details */
+        .stMarkdown + .stMarkdown {
+            margin-top: clamp(0.25rem, 0.5vw, 0.5rem) !important;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -785,7 +800,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             # Add Keyword → Ad similarity for VERTICAL layout
             if st.session_state.flow_layout == 'vertical':
                 if 'similarities' in st.session_state and st.session_state.similarities:
-                    st.markdown("<div style='margin-top: 4px;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='margin-top: clamp(0.25rem, 0.3vw, 0.375rem);'></div>", unsafe_allow_html=True)
                     render_similarity_score('kwd_to_ad', st.session_state.similarities,
                                            custom_title="Keyword → Ad Copy Similarity",
                                            tooltip_text="Measures keyword-ad alignment. 70%+ = Good Match (keywords clearly in ad copy), 40-69% = Fair Match (topic relevance present), <40% = Poor Match (weak/no connection)",
@@ -1303,11 +1318,93 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                         else:
                                             raise Exception("Playwright returned empty HTML")
                                 except Exception:
-                                    st.warning("🚫 Could not load page")
-                                    st.info("💡 Set SCREENSHOT_API_KEY in secrets for screenshot fallback")
+                                    # Show error in device preview
+                                    error_html = f"""
+                                    <!DOCTYPE html>
+                                    <html>
+                                    <head>
+                                        <meta charset="UTF-8">
+                                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                        <style>
+                                            body {{
+                                                margin: 0;
+                                                padding: clamp(1rem, 2vw, 1.5rem);
+                                                font-family: system-ui, -apple-system, sans-serif;
+                                                background: #f8fafc;
+                                                display: flex;
+                                                align-items: center;
+                                                justify-content: center;
+                                                min-height: 100vh;
+                                            }}
+                                            .container {{
+                                                text-align: center;
+                                                padding: clamp(1.5rem, 3vw, 2rem);
+                                                background: white;
+                                                border-radius: clamp(0.75rem, 1.5vw, 1rem);
+                                                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                                                max-width: 90%;
+                                            }}
+                                            .icon {{ font-size: clamp(2.5rem, 5vw, 3.5rem); margin-bottom: clamp(0.75rem, 1.5vw, 1rem); }}
+                                            h2 {{ color: #dc2626; font-size: clamp(1rem, 2vw, 1.25rem); margin: 0 0 clamp(0.5rem, 1vw, 0.75rem) 0; font-weight: 700; }}
+                                            .url {{ background: #f1f5f9; padding: clamp(0.5rem, 1vw, 0.75rem); border-radius: clamp(0.375rem, 0.75vw, 0.5rem); font-size: clamp(0.625rem, 1.2vw, 0.75rem); color: #475569; word-break: break-all; margin-top: clamp(0.75rem, 1.5vw, 1rem); }}
+                                        </style>
+                                    </head>
+                                    <body>
+                                        <div class="container">
+                                            <div class="icon">🚫</div>
+                                            <h2>Could not load page</h2>
+                                            <div class="url">{html.escape(str(adv_url))}</div>
+                                        </div>
+                                    </body>
+                                    </html>
+                                    """
+                                    preview_html, height, _ = render_mini_device_preview(error_html, is_url=False, device=device_all)
+                                    preview_html = inject_unique_id(preview_html, 'landing_error', adv_url, device_all, current_flow)
+                                    st.components.v1.html(preview_html, height=height, scrolling=False)
                             else:
-                                st.warning("🚫 Could not load page")
-                                st.markdown(f"[🔗 Open landing page]({adv_url})")
+                                # Show error in device preview
+                                error_html = f"""
+                                <!DOCTYPE html>
+                                <html>
+                                <head>
+                                    <meta charset="UTF-8">
+                                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                    <style>
+                                        body {{
+                                            margin: 0;
+                                            padding: clamp(1rem, 2vw, 1.5rem);
+                                            font-family: system-ui, -apple-system, sans-serif;
+                                            background: #f8fafc;
+                                            display: flex;
+                                            align-items: center;
+                                            justify-content: center;
+                                            min-height: 100vh;
+                                        }}
+                                        .container {{
+                                            text-align: center;
+                                            padding: clamp(1.5rem, 3vw, 2rem);
+                                            background: white;
+                                            border-radius: clamp(0.75rem, 1.5vw, 1rem);
+                                            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                                            max-width: 90%;
+                                        }}
+                                        .icon {{ font-size: clamp(2.5rem, 5vw, 3.5rem); margin-bottom: clamp(0.75rem, 1.5vw, 1rem); }}
+                                        h2 {{ color: #dc2626; font-size: clamp(1rem, 2vw, 1.25rem); margin: 0 0 clamp(0.5rem, 1vw, 0.75rem) 0; font-weight: 700; }}
+                                        .url {{ background: #f1f5f9; padding: clamp(0.5rem, 1vw, 0.75rem); border-radius: clamp(0.375rem, 0.75vw, 0.5rem); font-size: clamp(0.625rem, 1.2vw, 0.75rem); color: #475569; word-break: break-all; margin-top: clamp(0.75rem, 1.5vw, 1rem); }}
+                                    </style>
+                                </head>
+                                <body>
+                                    <div class="container">
+                                        <div class="icon">🚫</div>
+                                        <h2>Could not load page</h2>
+                                        <div class="url">{html.escape(str(adv_url))}</div>
+                                    </div>
+                                </body>
+                                </html>
+                                """
+                                preview_html, height, _ = render_mini_device_preview(error_html, is_url=False, device=device_all)
+                                preview_html = inject_unique_id(preview_html, 'landing_error', adv_url, device_all, current_flow)
+                                st.components.v1.html(preview_html, height=height, scrolling=False)
                     
                     else:
                         # Other status codes - try Playwright or iframe
@@ -1374,7 +1471,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         st.session_state.similarities = {}
                 
                 if 'similarities' in st.session_state and st.session_state.similarities:
-                    st.markdown("<div style='margin-top: 4px;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='margin-top: clamp(0.25rem, 0.3vw, 0.375rem);'></div>", unsafe_allow_html=True)
                     render_similarity_score('kwd_to_page', st.session_state.similarities,
                                            custom_title="Keyword → Landing Page Similarity",
                                            tooltip_text="Measures end-to-end flow quality. 70%+ = Good Match (keyword intent matches page content), 40-69% = Fair Match (some relevance), <40% = Poor Match (poor user experience)")
