@@ -381,6 +381,44 @@ st.markdown("""
         padding: 0 !important;
     }
     
+    /* Hide all elements with 0 height */
+    div[style*="height: 0"], div[style*="height:0"], div[style*="height: 0px"], div[style*="height:0px"] {
+        display: none !important;
+    }
+    
+    /* Remove hr elements */
+    hr, hr[data-testid="stHorizontalRule"] {
+        display: none !important;
+        height: 0 !important;
+        margin: 0 !important;
+    }
+    
+    /* Remove vertical blocks with no content */
+    [data-testid="stVerticalBlock"]:empty {
+        display: none !important;
+    }
+    
+    /* Remove any horizontal blocks with minimal height */
+    [data-testid="stHorizontalBlock"]:empty {
+        display: none !important;
+    }
+    
+    /* Target specific problematic spacing divs */
+    .main > div[data-testid="stVerticalBlock"] > div:empty,
+    .main > div[data-testid="stVerticalBlock"] > div[style*="height: 0"] {
+        display: none !important;
+    }
+    
+    /* Aggressive: Remove any divs that are just taking up space (like 1120x65 boxes) */
+    [data-testid="stVerticalBlock"] > div[class*="st-emotion"] {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    [data-testid="stVerticalBlock"] > div[class*="st-emotion"]:empty {
+        display: none !important;
+    }
+    
     /* Reduce vertical block spacing */
     [data-testid="stVerticalBlock"] > div {
         gap: 0 !important;
