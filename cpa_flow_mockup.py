@@ -981,9 +981,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.markdown("""
                 <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding: 0.75rem 1rem; border-radius: 0.5rem; border-left: 4px solid #0ea5e9; margin-bottom: 0.75rem;">
                     <p style="font-size: 0.8rem; color: #334155; font-weight: 400; margin: 0; line-height: 1.5; font-family: system-ui;">
-                        <span style="font-weight: 700; color: #0f172a;">🔄 Flow Journey:</span> Publisher > Creative > SERP > Landing Page. 
-                        Showing top 5 ranked flows: <span style="font-weight: 600;">Best</span> (highest conversions) or <span style="font-weight: 600;">Worst</span> (zero conversions). 
-                        Only keywords/domains with 5%+ traffic are shown. Check <span style="font-weight: 600;">"Use Full Data"</span> to see everything.
+                        <span style="font-weight: 700; color: #0f172a;">🔄 What is a Flow?</span> A complete user journey: Keyword → Publisher → Creative → SERP → Landing Page.<br>
+                        <span style="font-weight: 700; color: #0f172a;">🎯 Why 5%+ Traffic Only?</span> Focuses on high-volume keywords/domains, filtering out long-tail traffic noise.<br>
+                        <span style="font-weight: 700; color: #0f172a;">📊 Best vs Worst:</span> <span style="font-weight: 600;">Best</span> = Top converting flows (most conversions). <span style="font-weight: 600;">Worst</span> = Zero conversion flows (spent money, got nothing).<br>
+                        <span style="font-weight: 700; color: #0f172a;">📂 Use Full Data:</span> Check this to include all traffic, even low-volume long-tail keywords/domains.
                     </p>
                 </div>
                     """, unsafe_allow_html=True)
