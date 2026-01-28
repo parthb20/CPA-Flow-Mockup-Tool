@@ -253,11 +253,17 @@ def find_top_n_best_flows(df, n=5, include_serp_filter=False):
             elif 'Serp_URL' in df.columns:
                 df['publisher_domain'] = df['Serp_URL'].apply(lambda x: urlparse(str(x)).netloc if pd.notna(x) else '')
         
-        # Determine uniqueness columns based on data variety
-        # All flow elements: keyword, domain, publisher_url, serp, creative, landing_page
-        unique_cols = ['keyword_term', 'publisher_domain', 'publisher_url']
+        # Define all flow element columns for uniqueness
+        unique_cols = []
         
-        # Add SERP to uniqueness
+        # Always include keyword and domain
+        unique_cols.extend(['keyword_term', 'publisher_domain'])
+        
+        # Add publisher URL
+        if 'publisher_url' in df.columns:
+            unique_cols.append('publisher_url')
+        
+        # Add SERP
         if 'Serp_URL' in df.columns:
             unique_cols.append('Serp_URL')
         elif include_serp_filter:
@@ -266,81 +272,68 @@ def find_top_n_best_flows(df, n=5, include_serp_filter=False):
             elif 'serp_template_id' in df.columns:
                 unique_cols.append('serp_template_id')
         
-        # Add Creative (Ad_ID) to uniqueness
+        # Add Creative
         if 'Ad_ID' in df.columns:
             unique_cols.append('Ad_ID')
         
-        # Add Landing Page (Destination_Url) to uniqueness
+        # Add Landing Page
         if 'Destination_Url' in df.columns:
             unique_cols.append('Destination_Url')
         
-        # Check which columns have only 1 unique value (are filtered/constant)
-        constant_cols = []
-        for col in unique_cols[:]:  # iterate over copy
-            if col in df.columns and df[col].nunique() == 1:
-                constant_cols.append(col)
-                unique_cols.remove(col)  # Remove from uniqueness check since it's constant
+        # Remove columns that are constant (filtered by user)
+        final_unique_cols = []
+        for col in unique_cols:
+            if col in df.columns and df[col].nunique() > 1:
+                final_unique_cols.append(col)
         
-        # Group by unique_cols to find best combinations
-        if len(unique_cols) > 0:
-            agg_df = df.groupby(unique_cols, dropna=False).agg({
-                'conversions': 'sum',
-                'clicks': 'sum',
-                'impressions': 'sum'
-            }).reset_index()
-            
-            # Calculate CVR for ranking
-            agg_df['cvr'] = agg_df.apply(lambda row: row['conversions'] / row['clicks'] if row['clicks'] > 0 else 0, axis=1)
-            
-            # Sort: converting combos first (conversions > 0), then by clicks desc
-            agg_df = agg_df.sort_values(['conversions', 'clicks'], ascending=[False, False])
-        else:
-            # All columns are constant (unlikely but handle it)
-            agg_df = pd.DataFrame()
+        # If no varying columns, use all available columns
+        if len(final_unique_cols) == 0:
+            final_unique_cols = [col for col in unique_cols if col in df.columns]
         
-        # Step 2: For each unique combination, pick best view_id
+        # DEBUG: Print what columns we're using for uniqueness
+        print(f"DEBUG [Best Flows]: Using {len(final_unique_cols)} columns for uniqueness: {final_unique_cols}")
+        print(f"DEBUG [Best Flows]: Total rows in df: {len(df)}")
+        
+        # SIMPLE APPROACH: Sort all rows by priority, then pick unique combinations
+        # Sort: conversions desc (converting first), clicks desc (high traffic), timestamp desc (latest)
+        sort_cols = ['conversions', 'clicks', 'ts'] if 'ts' in df.columns else ['conversions', 'clicks']
+        df_sorted = df.sort_values(sort_cols, ascending=False).copy()
+        
+        # Pick N flows with unique combinations
+        # CRITICAL: Each flow must be a DIFFERENT view_id (row)
         flows = []
         seen_combinations = set()
+        seen_indices = set()
         
-        if len(agg_df) > 0:
-            for _, combo in agg_df.iterrows():
-                if len(flows) >= n:
-                    break
-                
-                # Create combination key
-                combo_key = tuple(str(combo.get(col, '')) for col in unique_cols)
-                
-                if combo_key in seen_combinations:
-                    continue
-                
-                # Filter to this combination
-                combo_df = df.copy()
-                for col in unique_cols:
-                    combo_df = combo_df[combo_df[col] == combo[col]]
-                
-                if len(combo_df) == 0:
-                    continue
-                
-                # Within this combo, prioritize: conversions > 0 first, then high clicks, then latest timestamp
-                sort_cols = ['conversions', 'clicks', 'ts'] if 'ts' in combo_df.columns else ['conversions', 'clicks']
-                combo_df = combo_df.sort_values(sort_cols, ascending=False)
-                
-                # Get the best view_id (highest converting, latest timestamp)
-                if len(combo_df) > 0:
-                    row = combo_df.iloc[0]
-                    seen_combinations.add(combo_key)
-                    flow = row.to_dict()
-                    flow['flow_rank'] = len(flows) + 1
-                    flows.append(flow)
-        else:
-            # Fallback: just pick top N by conversions, clicks, timestamp
-            sort_cols = ['conversions', 'clicks', 'ts'] if 'ts' in df.columns else ['conversions', 'clicks']
-            df_sorted = df.sort_values(sort_cols, ascending=False)
-            for i, row in enumerate(df_sorted.head(n).iterrows()):
-                flow = row[1].to_dict()
-                flow['flow_rank'] = i + 1
-                flows.append(flow)
+        for idx, row in df_sorted.iterrows():
+            if len(flows) >= n:
+                break
+            
+            # MUST skip if we've already used this exact row (view_id)
+            if idx in seen_indices:
+                continue
+            
+            # Create combination key from varying columns
+            combo_key = tuple(str(row.get(col, '')) for col in final_unique_cols)
+            
+            # DEBUG: Print combo key for first few
+            if len(flows) < 3:
+                print(f"DEBUG [Best]: Row {idx}, combo_key: {combo_key}, conv={row.get('conversions')}, clicks={row.get('clicks')}")
+            
+            # Skip if we've already picked this combination
+            if combo_key in seen_combinations:
+                print(f"DEBUG [Best]: Skipping row {idx} - duplicate combination")
+                continue
+            
+            # Add this flow
+            seen_indices.add(idx)
+            seen_combinations.add(combo_key)
+            flow = row.to_dict()
+            flow['flow_rank'] = len(flows) + 1
+            flows.append(flow)
+            print(f"DEBUG [Best]: Added flow #{len(flows)}, idx={idx}")
         
+        print(f"DEBUG [Best Flows]: Returning {len(flows)} flows")
         return flows
     except Exception as e:
         print(f"Error finding top N flows: {str(e)}")
@@ -380,11 +373,17 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
             elif 'Serp_URL' in df.columns:
                 df['publisher_domain'] = df['Serp_URL'].apply(lambda x: urlparse(str(x)).netloc if pd.notna(x) else '')
         
-        # Determine uniqueness columns based on data variety
-        # All flow elements: keyword, domain, publisher_url, serp, creative, landing_page
-        unique_cols = ['keyword_term', 'publisher_domain', 'publisher_url']
+        # Define all flow element columns for uniqueness
+        unique_cols = []
         
-        # Add SERP to uniqueness
+        # Always include keyword and domain
+        unique_cols.extend(['keyword_term', 'publisher_domain'])
+        
+        # Add publisher URL
+        if 'publisher_url' in df.columns:
+            unique_cols.append('publisher_url')
+        
+        # Add SERP
         if 'Serp_URL' in df.columns:
             unique_cols.append('Serp_URL')
         elif include_serp_filter:
@@ -393,27 +392,36 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
             elif 'serp_template_id' in df.columns:
                 unique_cols.append('serp_template_id')
         
-        # Add Creative (Ad_ID) to uniqueness
+        # Add Creative
         if 'Ad_ID' in df.columns:
             unique_cols.append('Ad_ID')
         
-        # Add Landing Page (Destination_Url) to uniqueness
+        # Add Landing Page
         if 'Destination_Url' in df.columns:
             unique_cols.append('Destination_Url')
         
-        # Check which columns have only 1 unique value (are filtered/constant)
-        constant_cols = []
-        for col in unique_cols[:]:  # iterate over copy
-            if col in df.columns and df[col].nunique() == 1:
-                constant_cols.append(col)
-                unique_cols.remove(col)  # Remove from uniqueness check since it's constant
+        # Remove columns that are constant (filtered by user)
+        final_unique_cols = []
+        for col in unique_cols:
+            if col in df.columns and df[col].nunique() > 1:
+                final_unique_cols.append(col)
         
-        # CRITICAL: Filter for 0-conversions FIRST before any grouping
+        # If no varying columns, use all available columns
+        if len(final_unique_cols) == 0:
+            final_unique_cols = [col for col in unique_cols if col in df.columns]
+        
+        # DEBUG: Print what columns we're using for uniqueness
+        print(f"DEBUG [Worst Flows]: Using {len(final_unique_cols)} columns for uniqueness: {final_unique_cols}")
+        print(f"DEBUG [Worst Flows]: Total rows in df: {len(df)}")
+        
+        # CRITICAL: Filter for 0-conversions FIRST
         zero_conv_df = df[
             (df['conversions'] == 0) | 
             (df['conversions'] == 0.0) |
             (df['conversions'].isna())
         ].copy()
+        
+        print(f"DEBUG [Worst Flows]: After 0-conv filter: {len(zero_conv_df)} rows")
         
         if len(zero_conv_df) == 0:
             return []
@@ -422,46 +430,52 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
         zero_conv_df['cvr'] = zero_conv_df.apply(lambda row: row['conversions'] / row['clicks'] if row['clicks'] > 0 else 0, axis=1)
         zero_conv_df['ctr'] = zero_conv_df.apply(lambda row: row['clicks'] / row['impressions'] if row['impressions'] > 0 else 0, axis=1)
         
-        # Sort by: CVR asc (lowest first), CTR asc (lowest first), timestamp desc (latest first)
+        # SIMPLE APPROACH: Sort by CVR asc, CTR asc, timestamp desc (latest)
         sort_cols = ['cvr', 'ctr', 'ts'] if 'ts' in zero_conv_df.columns else ['cvr', 'ctr']
         sort_order = [True, True, False] if 'ts' in zero_conv_df.columns else [True, True]
         zero_conv_df = zero_conv_df.sort_values(sort_cols, ascending=sort_order)
         
-        # Step 2: Pick N flows with unique combinations
+        # Pick N flows with unique combinations
+        # CRITICAL: Each flow must be a DIFFERENT view_id (row)
         flows = []
         seen_combinations = set()
+        seen_indices = set()
         
-        if len(unique_cols) > 0:
-            for _, row in zero_conv_df.iterrows():
-                if len(flows) >= n:
-                    break
-                
-                # Create combination key from unique columns
-                combo_key = tuple(str(row.get(col, '')) for col in unique_cols)
-                
-                # Skip if we've already picked a flow with this combination
-                if combo_key in seen_combinations:
-                    continue
-                
-                # VERIFY: conversions must be exactly 0
-                conv_val = row.get('conversions', 0)
-                if not (conv_val == 0 or conv_val == 0.0 or pd.isna(conv_val)):
-                    continue
-                
-                # Add this flow
-                seen_combinations.add(combo_key)
-                flow = row.to_dict()
-                flow['flow_rank'] = len(flows) + 1
-                flows.append(flow)
-        else:
-            # Fallback: No varying columns, just pick top N by timestamp
-            for i, row in enumerate(zero_conv_df.head(n).iterrows()):
-                conv_val = row[1].get('conversions', 0)
-                if conv_val == 0 or conv_val == 0.0 or pd.isna(conv_val):
-                    flow = row[1].to_dict()
-                    flow['flow_rank'] = i + 1
-                    flows.append(flow)
+        for idx, row in zero_conv_df.iterrows():
+            if len(flows) >= n:
+                break
+            
+            # MUST skip if we've already used this exact row (view_id)
+            if idx in seen_indices:
+                continue
+            
+            # VERIFY: conversions must be exactly 0
+            conv_val = row.get('conversions', 0)
+            if not (conv_val == 0 or conv_val == 0.0 or pd.isna(conv_val)):
+                print(f"DEBUG [Worst]: Skipping row {idx} - has conversions: {conv_val}")
+                continue
+            
+            # Create combination key from varying columns
+            combo_key = tuple(str(row.get(col, '')) for col in final_unique_cols)
+            
+            # DEBUG: Print combo key for first few
+            if len(flows) < 3:
+                print(f"DEBUG [Worst]: Row {idx}, combo_key: {combo_key}, conv={conv_val}, clicks={row.get('clicks')}")
+            
+            # Skip if we've already picked this combination
+            if combo_key in seen_combinations:
+                print(f"DEBUG [Worst]: Skipping row {idx} - duplicate combination")
+                continue
+            
+            # Add this flow
+            seen_indices.add(idx)
+            seen_combinations.add(combo_key)
+            flow = row.to_dict()
+            flow['flow_rank'] = len(flows) + 1
+            flows.append(flow)
+            print(f"DEBUG [Worst]: Added flow #{len(flows)}, idx={idx}")
         
+        print(f"DEBUG [Worst Flows]: Returning {len(flows)} flows")
         return flows
     except Exception as e:
         print(f"Error finding worst flows: {str(e)}")
