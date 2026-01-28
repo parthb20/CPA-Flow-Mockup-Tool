@@ -433,13 +433,15 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
         with col3:
             from datetime import date, timedelta
             today = date.today()
-            default_start = today - timedelta(days=14)
+            # Default to January 2026 (Jan 1 - Jan 31)
+            jan_start = date(2026, 1, 1)
+            jan_end = date(2026, 1, 31)
             
-            # Initialize defaults
+            # Initialize defaults to January
             if 'start_date' not in st.session_state:
-                st.session_state.start_date = default_start
+                st.session_state.start_date = jan_start
             if 'end_date' not in st.session_state:
-                st.session_state.end_date = today
+                st.session_state.end_date = jan_end
             if 'start_hour' not in st.session_state:
                 st.session_state.start_hour = 0
             if 'end_hour' not in st.session_state:
@@ -470,19 +472,28 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         end_hour = st.selectbox("End", options=list(range(24)), index=st.session_state.get('end_hour', 23), format_func=lambda x: f"{x:02d}:00", key='end_hour_filter')
                         st.session_state.end_hour = end_hour
                     
-                    # Date selection below
+                    # Date range selection - interactive drag calendar
                     st.markdown("**Date Range**")
-                    date_row = st.columns(2)
-                    with date_row[0]:
-                        start_date = st.date_input("From", value=st.session_state.get('start_date', default_start), min_value=today - timedelta(days=90), max_value=today, key='start_date_filter')
-                        st.session_state.start_date = start_date
-                    with date_row[1]:
-                        end_date = st.date_input("To", value=st.session_state.get('end_date', today), min_value=today - timedelta(days=90), max_value=today, key='end_date_filter')
-                        st.session_state.end_date = end_date
+                    date_range = st.date_input(
+                        "Select Range",
+                        value=(st.session_state.get('start_date', jan_start), st.session_state.get('end_date', jan_end)),
+                        min_value=date(2026, 1, 1),
+                        max_value=date(2026, 12, 31),
+                        key='date_range_filter',
+                        label_visibility="collapsed"
+                    )
+                    
+                    # Handle date range tuple
+                    if isinstance(date_range, tuple) and len(date_range) == 2:
+                        st.session_state.start_date = date_range[0]
+                        st.session_state.end_date = date_range[1]
+                    elif isinstance(date_range, date):
+                        st.session_state.start_date = date_range
+                        st.session_state.end_date = date_range
             
             # Use current values
-            start_date = st.session_state.get('start_date', default_start)
-            end_date = st.session_state.get('end_date', today)
+            start_date = st.session_state.get('start_date', jan_start)
+            end_date = st.session_state.get('end_date', jan_end)
             start_hour = st.session_state.get('start_hour', 0)
             end_hour = st.session_state.get('end_hour', 23)
         
@@ -696,56 +707,49 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Wider columns to prevent text cutoff
                 flow_type_btns = st.columns([1.2, 1.2, 1.6])
                 
-                # Add CSS for Best/Worst button colors
-                st.markdown("""
-                    <style>
-                    /* Best button - GREEN */
-                    button[kind="secondary"]:has-text("✓ Best") {
-                        background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%) !important;
-                        border: 2px solid #10b981 !important;
-                        color: #1f2937 !important;
-                    }
-                    
-                    /* Worst button - RED */
-                    button[kind="secondary"]:has-text("✓ Worst") {
-                        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%) !important;
-                        border: 2px solid #ef4444 !important;
-                        color: #1f2937 !important;
-                    }
-                    </style>
-                """, unsafe_allow_html=True)
-                
                 with flow_type_btns[0]:
-                    if st.button("✓ Best" if is_best else "Best", key='best_button', use_container_width=True):
+                    if st.button("Best", key='best_button', use_container_width=True):
                         st.session_state.flow_type = 'Best'
                         st.rerun()
                 
                 with flow_type_btns[1]:
-                    if st.button("✓ Worst" if is_worst else "Worst", key='worst_button', use_container_width=True):
+                    if st.button("Worst", key='worst_button', use_container_width=True):
                         st.session_state.flow_type = 'Worst'
                         st.rerun()
                 
                 flow_type = st.session_state.flow_type
                 
-                # JavaScript to apply colors
-                st.markdown("""
+                # JavaScript to apply colors ONLY to selected button
+                st.markdown(f"""
                     <script>
-                    (function() {
-                        function applyColors() {
+                    (function() {{
+                        function applyColors() {{
                             const buttons = document.querySelectorAll('button');
-                            buttons.forEach(btn => {
+                            buttons.forEach(btn => {{
                                 const text = btn.textContent.trim();
-                                if (text === '✓ Best') {
-                                    btn.style.background = 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)';
-                                    btn.style.border = '2px solid #10b981';
-                                    btn.style.color = '#1f2937';
-                                } else if (text === '✓ Worst') {
-                                    btn.style.background = 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)';
-                                    btn.style.border = '2px solid #ef4444';
-                                    btn.style.color = '#1f2937';
-                                }
-                            });
-                        }
+                                if (text === 'Best') {{
+                                    if ('{'Best'}' === '{flow_type}') {{
+                                        btn.style.background = 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)';
+                                        btn.style.border = '2px solid #10b981';
+                                        btn.style.color = '#1f2937';
+                                    }} else {{
+                                        btn.style.background = '';
+                                        btn.style.border = '';
+                                        btn.style.color = '';
+                                    }}
+                                }} else if (text === 'Worst') {{
+                                    if ('{'Worst'}' === '{flow_type}') {{
+                                        btn.style.background = 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)';
+                                        btn.style.border = '2px solid #ef4444';
+                                        btn.style.color = '#1f2937';
+                                    }} else {{
+                                        btn.style.background = '';
+                                        btn.style.border = '';
+                                        btn.style.color = '';
+                                    }}
+                                }}
+                            }});
+                        }}
                         
                         applyColors();
                         setTimeout(applyColors, 10);
@@ -755,8 +759,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         setTimeout(applyColors, 500);
                         
                         const observer = new MutationObserver(applyColors);
-                        observer.observe(document.body, { childList: true, subtree: true });
-                    })();
+                        observer.observe(document.body, {{ childList: true, subtree: true }});
+                    }})();
                     </script>
                 """, unsafe_allow_html=True)
             
@@ -858,71 +862,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Render filters and get filter state
                 filters_changed, selected_keyword_filter, selected_domain_filter = render_advanced_filters(campaign_df, current_flow)
                 
-                # === FLOW NAVIGATION - TINY ARROWS ===
-                if len(st.session_state.get('all_flows', [])) > 1:
-                    # Make arrows look like text, not buttons
-                    st.markdown("""
-                        <style>
-                        /* Make navigation arrows tiny and borderless */
-                        button[key="prev_flow"],
-                        button[key="next_flow"] {
-                            background: transparent !important;
-                            border: none !important;
-                            padding: 0.15rem 0.3rem !important;
-                            font-size: 1.25rem !important;
-                            min-height: auto !important;
-                            height: auto !important;
-                            line-height: 1 !important;
-                            width: auto !important;
-                            color: #3b82f6 !important;
-                            box-shadow: none !important;
-                        }
-                        button[key="prev_flow"]:hover,
-                        button[key="next_flow"]:hover {
-                            background: transparent !important;
-                            color: #2563eb !important;
-                            border: none !important;
-                        }
-                        button[key="prev_flow"]:disabled,
-                        button[key="next_flow"]:disabled {
-                            color: #cbd5e1 !important;
-                        }
-                        </style>
-                    """, unsafe_allow_html=True)
-                    
-                    nav_cols = st.columns([0.3, 4.2, 0.3])
-                    
-                    with nav_cols[0]:
-                        prev_disabled = st.session_state.current_flow_index == 0
-                        if st.button("◀", key='prev_flow', disabled=prev_disabled, help="Previous"):
-                            st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
-                            st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
-                            st.rerun()
-                    
-                    with nav_cols[1]:
-                        selected_flow_idx = st.selectbox(
-                            "Flow",
-                            options=range(len(st.session_state.all_flows)),
-                            index=st.session_state.current_flow_index,
-                            format_func=lambda x: f"Flow {x + 1}",
-                            key='flow_selector',
-                            label_visibility="collapsed"
-                        )
-                        
-                        if selected_flow_idx != st.session_state.current_flow_index:
-                            st.session_state.current_flow_index = selected_flow_idx
-                            st.session_state.current_flow = st.session_state.all_flows[selected_flow_idx].copy()
-                            st.rerun()
-                    
-                    with nav_cols[2]:
-                        next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
-                        if st.button("▶", key='next_flow', disabled=next_disabled, help="Next"):
-                            st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
-                            st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
-                            st.rerun()
-                    
-                    st.markdown("<div style='margin-bottom: 0.5rem;'></div>", unsafe_allow_html=True)
-                
                 # Apply filtering logic using module
                 current_flow, final_filtered = apply_flow_filtering(
                     campaign_df, current_flow, filters_changed, selected_keyword_filter, selected_domain_filter
@@ -956,6 +895,62 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     A flow is the complete user journey: Publisher → Creative → SERP → Landing Page. Each stage can be customized using the filters above. We automatically select the best-performing combination based on conversions, clicks, and impressions.
                 </p>
                     """, unsafe_allow_html=True)
+                
+                # === FLOW NAVIGATION - BELOW FLOW JOURNEY DESCRIPTION ===
+                if len(st.session_state.get('all_flows', [])) > 1:
+                    st.markdown("""
+                        <style>
+                        /* Subtle text-like arrows */
+                        button[key="prev_flow"],
+                        button[key="next_flow"] {
+                            background: transparent !important;
+                            border: none !important;
+                            padding: 0 !important;
+                            font-size: 1.1rem !important;
+                            min-height: auto !important;
+                            height: auto !important;
+                            line-height: 1 !important;
+                            width: auto !important;
+                            color: #64748b !important;
+                            box-shadow: none !important;
+                            cursor: pointer !important;
+                        }
+                        button[key="prev_flow"]:hover,
+                        button[key="next_flow"]:hover {
+                            background: transparent !important;
+                            color: #3b82f6 !important;
+                            border: none !important;
+                        }
+                        button[key="prev_flow"]:disabled,
+                        button[key="next_flow"]:disabled {
+                            color: #e5e7eb !important;
+                            cursor: not-allowed !important;
+                        }
+                        </style>
+                    """, unsafe_allow_html=True)
+                    
+                    # Compact inline layout
+                    st.markdown(f"""
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin: 0.5rem 0; font-size: 0.9rem; color: #64748b;">
+                            <span style="font-weight: 600;">Flow {st.session_state.current_flow_index + 1} of {len(st.session_state.all_flows)}</span>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    nav_cols = st.columns([0.15, 0.15, 4.5])
+                    
+                    with nav_cols[0]:
+                        prev_disabled = st.session_state.current_flow_index == 0
+                        if st.button("←", key='prev_flow', disabled=prev_disabled, help="Previous Flow"):
+                            st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
+                            st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
+                            st.rerun()
+                    
+                    with nav_cols[1]:
+                        next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
+                        if st.button("→", key='next_flow', disabled=next_disabled, help="Next Flow"):
+                            st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
+                            st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
+                            st.rerun()
                 
                 # Show flow stats directly (no success messages)
                 if len(final_filtered) > 0:
