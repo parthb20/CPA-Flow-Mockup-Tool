@@ -354,12 +354,17 @@ st.markdown("""
     
     /* Remove empty space from element containers */
     .main .block-container {
-        padding-top: 2rem !important;
+        padding-top: 1.5rem !important;
         padding-bottom: 1rem !important;
     }
     
-    /* Reduce element container spacing */
+    /* Reduce element container spacing - MORE AGGRESSIVE */
     .element-container {
+        margin-bottom: 0.15rem !important;
+    }
+    
+    /* Reduce space between main sections */
+    .main > div > div > div > div {
         margin-bottom: 0.25rem !important;
     }
     
@@ -493,10 +498,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             if selected_campaign != '-- Select Campaign --':
                 st.session_state.preserved_campaign = selected_campaign
         
-        # Use Full Data checkbox - aligned with dropdowns
+        # Use Full Data checkbox - aligned EXACTLY with dropdown text
         with col3:
-            # Add label-like spacing to match dropdowns (label is ~21px + small gap)
-            st.markdown('<div style="height: 0.4rem;"></div>', unsafe_allow_html=True)
+            # Match dropdown label height (21px) to align checkbox label with dropdown text
+            st.markdown('<div style="height: 21px;"></div>', unsafe_allow_html=True)
             use_full_data = st.checkbox(
                 "Use Full Data",
                 value=False,
@@ -894,9 +899,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 </p>
                     """, unsafe_allow_html=True)
                 
-                # === FLOW NAVIGATION - Compact tight layout ===
+                # === FLOW NAVIGATION - Arrows INLINE with flow count ===
                 if len(st.session_state.get('all_flows', [])) > 1:
-                    nav_cols = st.columns([0.7, 0.7, 0.08, 1, 0.08, 2.44])
+                    nav_cols = st.columns([0.7, 0.7, 1.6, 2])
                     
                     # Best Flows button
                     with nav_cols[0]:
@@ -910,46 +915,49 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             st.session_state.flow_type = 'Worst'
                             st.rerun()
                     
-                    # Left arrow
+                    # Arrow + Flow count + Arrow in ONE inline div
                     with nav_cols[2]:
                         prev_disabled = st.session_state.current_flow_index == 0
+                        next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
+                        
+                        # Hidden buttons for navigation
                         if not prev_disabled:
                             if st.button("◀", key='prev_btn'):
                                 st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
                                 st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
                                 st.rerun()
-                        else:
-                            st.markdown('<div style="text-align: center; opacity: 0.3; font-size: 1rem; padding-top: 2px;">◀</div>', unsafe_allow_html=True)
-                    
-                    # Flow count - NO refresh emojis
-                    with nav_cols[3]:
-                        st.markdown(f'<div style="padding-top: 3px; font-size: 0.85rem; color: #64748b; font-weight: 600; text-align: center;">Flow {st.session_state.current_flow_index + 1} of {len(st.session_state.all_flows)}</div>', unsafe_allow_html=True)
-                    
-                    # Right arrow
-                    with nav_cols[4]:
-                        next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
                         if not next_disabled:
                             if st.button("▶", key='next_btn'):
                                 st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
                                 st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
                                 st.rerun()
-                        else:
-                            st.markdown('<div style="text-align: center; opacity: 0.3; font-size: 1rem; padding-top: 2px;">▶</div>', unsafe_allow_html=True)
+                        
+                        # Display: Arrow (emoji) Flow X of Y Arrow (emoji) - all inline
+                        left_arrow_html = f'<span onclick="document.querySelector(\'button[key=\\\'prev_btn\\\']\')?.click()" style="cursor: {"pointer" if not prev_disabled else "default"}; opacity: {"1" if not prev_disabled else "0.3"}; font-size: 1.1rem; margin-right: 0.5rem;">◀</span>'
+                        right_arrow_html = f'<span onclick="document.querySelector(\'button[key=\\\'next_btn\\\']\')?.click()" style="cursor: {"pointer" if not next_disabled else "default"}; opacity: {"1" if not next_disabled else "0.3"}; font-size: 1.1rem; margin-left: 0.5rem;">▶</span>'
+                        
+                        st.markdown(f'''
+                            <div style="display: flex; align-items: center; justify-content: center; padding-top: 3px;">
+                                {left_arrow_html}
+                                <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Flow {st.session_state.current_flow_index + 1} of {len(st.session_state.all_flows)}</span>
+                                {right_arrow_html}
+                            </div>
+                        ''', unsafe_allow_html=True)
                     
-                    # CSS for buttons - COMPUTE COLORS OUTSIDE F-STRING
-                    best_bg = '#10b981' if flow_type == 'Best' else 'white'
-                    best_border = '4px solid #065f46' if flow_type == 'Best' else '2px solid #d1d5db'
-                    best_color = '#ffffff' if flow_type == 'Best' else '#374151'
-                    best_shadow = '0 0 0 4px rgba(16, 185, 129, 0.5)' if flow_type == 'Best' else 'none'
+                    # CSS for buttons - LIGHT GREEN/RED backgrounds with borders when clicked
+                    best_bg = 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' if flow_type == 'Best' else 'white'
+                    best_border = '3px solid #10b981' if flow_type == 'Best' else '2px solid #d1d5db'
+                    best_color = '#065f46'  # Always dark green text
+                    best_shadow = '0 0 0 3px rgba(16, 185, 129, 0.2)' if flow_type == 'Best' else 'none'
                     
-                    worst_bg = '#ef4444' if flow_type == 'Worst' else 'white'
-                    worst_border = '4px solid #991b1b' if flow_type == 'Worst' else '2px solid #d1d5db'
-                    worst_color = '#ffffff' if flow_type == 'Worst' else '#374151'
-                    worst_shadow = '0 0 0 4px rgba(239, 68, 68, 0.5)' if flow_type == 'Worst' else 'none'
+                    worst_bg = 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)' if flow_type == 'Worst' else 'white'
+                    worst_border = '3px solid #ef4444' if flow_type == 'Worst' else '2px solid #d1d5db'
+                    worst_color = '#991b1b'  # Always dark red text
+                    worst_shadow = '0 0 0 3px rgba(239, 68, 68, 0.2)' if flow_type == 'Worst' else 'none'
                     
                     st.markdown(f"""
                         <style>
-                        /* Best/Worst buttons - TIGHT and HIGHLIGHTED */
+                        /* Best/Worst buttons - Light backgrounds with colored borders when active */
                         button[key="best_button"],
                         button[key="worst_button"] {{
                             padding: 0.3rem 0.6rem !important;
@@ -960,7 +968,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             border-radius: 0.375rem !important;
                         }}
                         
-                        /* Best button - GREEN when Best */
+                        /* Best button - LIGHT GREEN when active */
                         button[key="best_button"] {{
                             background: {best_bg} !important;
                             border: {best_border} !important;
@@ -968,7 +976,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             box-shadow: {best_shadow} !important;
                         }}
                         
-                        /* Worst button - RED when Worst */
+                        /* Worst button - LIGHT RED when active */
                         button[key="worst_button"] {{
                             background: {worst_bg} !important;
                             border: {worst_border} !important;
@@ -976,28 +984,19 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             box-shadow: {worst_shadow} !important;
                         }}
                         
-                        /* Arrow buttons - NO PADDING BOX */
+                        /* HIDE arrow navigation buttons completely */
                         button[key="prev_btn"],
                         button[key="next_btn"] {{
-                            background: transparent !important;
-                            border: none !important;
-                            padding: 0 !important;
-                            margin: 0 !important;
-                            font-size: 1.1rem !important;
-                            min-height: 1.1rem !important;
-                            height: 1.1rem !important;
-                            width: 100% !important;
-                            box-shadow: none !important;
-                            line-height: 1 !important;
+                            display: none !important;
                         }}
                         
-                        /* Remove ALL padding from arrow button innards */
-                        button[key="prev_btn"] > div,
-                        button[key="next_btn"] > div,
-                        button[key="prev_btn"] p,
-                        button[key="next_btn"] p {{
-                            padding: 0 !important;
+                        /* Hide button containers */
+                        div:has(> button[key="prev_btn"]),
+                        div:has(> button[key="next_btn"]) {{
+                            display: none !important;
+                            height: 0 !important;
                             margin: 0 !important;
+                            padding: 0 !important;
                         }}
                         </style>
                     """, unsafe_allow_html=True)
