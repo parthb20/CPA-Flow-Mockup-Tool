@@ -352,6 +352,8 @@ def find_top_n_best_flows(df, n=5, include_serp_filter=False):
                 print(f"DEBUG [Best]: Added FALLBACK flow #{len(flows)}, idx={idx}")
         
         print(f"DEBUG [Best Flows]: Returning {len(flows)} flows")
+        for i, flow in enumerate(flows):
+            print(f"DEBUG [Best Flows]: Flow {i+1}: conv={flow.get('conversions')}, clicks={flow.get('clicks')}, imps={flow.get('impressions')}")
         return flows
     except Exception as e:
         print(f"Error finding top N flows: {str(e)}")
@@ -432,14 +434,21 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
         print(f"DEBUG [Worst Flows]: Using {len(final_unique_cols)} columns for uniqueness: {final_unique_cols}")
         print(f"DEBUG [Worst Flows]: Total rows in df: {len(df)}")
         
-        # CRITICAL: Filter for 0-conversions FIRST
+        # DEBUG: Check conversion values in original df
+        print(f"DEBUG [Worst Flows]: Conversion values in df: {df['conversions'].unique()[:10]}")
+        print(f"DEBUG [Worst Flows]: Conversion dtypes: {df['conversions'].dtype}")
+        
+        # CRITICAL: Filter for 0-conversions FIRST - MORE AGGRESSIVE
         zero_conv_df = df[
             (df['conversions'] == 0) | 
             (df['conversions'] == 0.0) |
+            (df['conversions'] <= 0) |
             (df['conversions'].isna())
         ].copy()
         
         print(f"DEBUG [Worst Flows]: After 0-conv filter: {len(zero_conv_df)} rows")
+        if len(zero_conv_df) > 0:
+            print(f"DEBUG [Worst Flows]: Sample conversions after filter: {zero_conv_df['conversions'].head(10).tolist()}")
         
         if len(zero_conv_df) == 0:
             return []
@@ -469,8 +478,11 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
             
             # VERIFY: conversions must be exactly 0
             conv_val = row.get('conversions', 0)
-            if not (conv_val == 0 or conv_val == 0.0 or pd.isna(conv_val)):
-                print(f"DEBUG [Worst]: Skipping row {idx} - has conversions: {conv_val}")
+            print(f"DEBUG [Worst]: Checking row {idx}, conv_val={conv_val}, type={type(conv_val)}")
+            
+            # STRICT CHECK: Must be 0, 0.0, or NaN - NO values > 0 allowed
+            if pd.notna(conv_val) and conv_val > 0:
+                print(f"DEBUG [Worst]: REJECTING row {idx} - has conversions > 0: {conv_val}")
                 continue
             
             # Create combination key from varying columns
@@ -491,7 +503,7 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
             flow = row.to_dict()
             flow['flow_rank'] = len(flows) + 1
             flows.append(flow)
-            print(f"DEBUG [Worst]: Added flow #{len(flows)}, idx={idx}")
+            print(f"DEBUG [Worst]: Added flow #{len(flows)}, idx={idx}, conv={flow.get('conversions')}, clicks={flow.get('clicks')}")
         
         # FALLBACK: If we couldn't find N unique combinations, just pick different rows
         if len(flows) < n:
@@ -504,9 +516,10 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
                 if idx in seen_indices:
                     continue
                 
-                # VERIFY: conversions must be 0
+                # VERIFY: conversions must be 0 - STRICT CHECK
                 conv_val = row.get('conversions', 0)
-                if not (conv_val == 0 or conv_val == 0.0 or pd.isna(conv_val)):
+                if pd.notna(conv_val) and conv_val > 0:
+                    print(f"DEBUG [Worst]: FALLBACK - Rejecting row {idx}, conversions={conv_val}")
                     continue
                 
                 # Add this row even if combination is duplicate
@@ -517,6 +530,8 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
                 print(f"DEBUG [Worst]: Added FALLBACK flow #{len(flows)}, idx={idx}")
         
         print(f"DEBUG [Worst Flows]: Returning {len(flows)} flows")
+        for i, flow in enumerate(flows):
+            print(f"DEBUG [Worst Flows]: Flow {i+1}: conv={flow.get('conversions')}, clicks={flow.get('clicks')}, imps={flow.get('impressions')}")
         return flows
     except Exception as e:
         print(f"Error finding worst flows: {str(e)}")
