@@ -945,47 +945,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         st.session_state.current_flow_index = 0
                         st.session_state.default_flow = flows[0]
                         st.session_state.current_flow = flows[0].copy()
-                        
-                        # DEBUG: Show flow stats in UI
-                        with st.expander("🔍 DEBUG: Flow Stats", expanded=False):
-                            for i, flow in enumerate(flows):
-                                conv = flow.get('conversions', 0)
-                                clicks = flow.get('clicks', 0)
-                                imps = flow.get('impressions', 0)
-                                kwd = flow.get('keyword_term', 'N/A')
-                                domain = flow.get('publisher_domain', 'N/A')
-                                st.write(f"**Flow {i+1}:** conv={conv}, clicks={clicks}, imps={imps}, kwd={kwd[:30]}, domain={domain[:30]}")
                     else:
                         st.error(f"❌ No {flow_type.lower()} flows found with current filters.")
                         st.stop()
-            
-            # DEBUG PANEL - Show all flows stats
-            if len(st.session_state.get('all_flows', [])) > 0:
-                with st.expander("🔍 DEBUG: All 5 Flows Data (EXPAND TO SEE)", expanded=True):
-                    st.markdown("**Check if all flows have DIFFERENT stats:**")
-                    
-                    # Check if all flows have same stats
-                    stats_list = [(f.get('conversions', 0), f.get('clicks', 0), f.get('impressions', 0)) for f in st.session_state.all_flows]
-                    unique_stats = set(stats_list)
-                    
-                    if len(unique_stats) == 1:
-                        st.error(f"⚠️ **ALL 5 FLOWS HAVE IDENTICAL STATS!** This is the bug!")
-                    else:
-                        st.success(f"✅ Found {len(unique_stats)} different stat combinations")
-                    
-                    for i, f in enumerate(st.session_state.all_flows):
-                        conv = f.get('conversions', 0)
-                        clicks = f.get('clicks', 0)
-                        imps = f.get('impressions', 0)
-                        kwd = str(f.get('keyword_term', 'N/A'))[:20]
-                        domain = str(f.get('publisher_domain', 'N/A'))[:20]
-                        
-                        if conv > 0 and flow_type == "Worst":
-                            st.error(f"Flow {i+1}: ⚠️ conv={conv} (SHOULD BE 0!), clicks={clicks}, imps={imps}, kwd={kwd}, domain={domain}")
-                        elif conv > 0:
-                            st.info(f"Flow {i+1}: conv={conv}, clicks={clicks}, imps={imps}, kwd={kwd}, domain={domain}")
-                        else:
-                            st.success(f"Flow {i+1}: conv={conv}, clicks={clicks}, imps={imps}, kwd={kwd}, domain={domain}")
             
             if st.session_state.current_flow:
                 current_flow = st.session_state.current_flow.copy()
@@ -1061,10 +1023,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     single_view = current_flow
                     
                     render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs, flow_ctr, flow_cvr)
-                
-                # DEBUG: Show current flow being displayed
-                current_idx = st.session_state.get('current_flow_index', 0)
-                st.info(f"🔍 Displaying Flow #{current_idx + 1}: kwd={str(current_flow.get('keyword_term', 'N/A'))[:30]}, domain={str(current_flow.get('publisher_domain', 'N/A'))[:30]}, conv={current_flow.get('conversions')}, clicks={current_flow.get('clicks')}")
                 
                 # Render Flow Journey using module (heading now shown above)
                 with st.spinner("Loading flow cards..."):
