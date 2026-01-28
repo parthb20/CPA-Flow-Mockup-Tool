@@ -509,7 +509,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             
             # Use Full Data checkbox
             with sub_col1:
-                st.markdown('<div style="height: 1.65rem;"></div>', unsafe_allow_html=True)
+                st.markdown('<div style="height: 0.35rem;"></div>', unsafe_allow_html=True)
                 use_full_data = st.checkbox(
                     "Use Full Data",
                     value=False,
@@ -549,9 +549,21 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         max-width: 100px !important;
                     }
                     
-                    /* Remove special checkbox background */
+                    /* Remove special checkbox background and align properly */
                     [data-testid="stCheckbox"] {
                         background: transparent !important;
+                    }
+                    
+                    /* Align checkbox label with Time button */
+                    [data-testid="stCheckbox"] label {
+                        display: flex;
+                        align-items: center;
+                        padding-top: 0.25rem;
+                    }
+                    
+                    /* Ensure checkbox itself is aligned */
+                    [data-testid="stCheckbox"] input[type="checkbox"] {
+                        margin-top: 0 !important;
                     }
                     </style>
                 """, unsafe_allow_html=True)
@@ -903,106 +915,28 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     <strong>🔄 Flow Journey</strong>
                 </h2>
                 <p style="font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem); color: #64748b; font-weight: 400; margin: 0 0 0.25rem 0; line-height: 1.6; font-family: system-ui;">
-                    A flow is the complete user journey: Publisher → Creative → SERP → Landing Page. Each stage can be customized using the filters above. We automatically select the best-performing combination based on conversions, clicks, and impressions.
+                    <strong>What is a Flow?</strong> A complete user journey: Publisher → Creative → SERP → Landing Page.<br>
+                    <strong>Best/Worst Flows:</strong> We analyze your campaign data and show you the top 5 best (highest conversions) or worst (zero conversions) performing paths.<br>
+                    <strong>Data:</strong> Based on impressions, clicks, and conversions from your selected campaign. Use filters above to customize each stage.
                 </p>
                     """, unsafe_allow_html=True)
                 
-                # === FLOW NAVIGATION - Arrows INLINE with flow count ===
-                if len(st.session_state.get('all_flows', [])) > 1:
-                    nav_cols = st.columns([0.7, 0.7, 1.6, 2])
-                    
-                    # Best Flows button
-                    with nav_cols[0]:
-                        if st.button("Best Flows", key='best_button', use_container_width=True):
-                            st.session_state.flow_type = 'Best'
+                # Handle navigation via query params (navigation UI is now in flow_display.py)
+                query_params = st.query_params
+                if 'nav' in query_params:
+                    all_flows = st.session_state.get('all_flows', [])
+                    if len(all_flows) > 1:
+                        current_flow_index = st.session_state.get('current_flow_index', 0)
+                        if query_params['nav'] == 'prev' and current_flow_index > 0:
+                            st.session_state.current_flow_index = max(0, current_flow_index - 1)
+                            st.session_state.current_flow = all_flows[st.session_state.current_flow_index].copy()
+                            st.query_params.clear()
                             st.rerun()
-                    
-                    # Worst Flows button
-                    with nav_cols[1]:
-                        if st.button("Worst Flows", key='worst_button', use_container_width=True):
-                            st.session_state.flow_type = 'Worst'
+                        elif query_params['nav'] == 'next' and current_flow_index < len(all_flows) - 1:
+                            st.session_state.current_flow_index = min(len(all_flows) - 1, current_flow_index + 1)
+                            st.session_state.current_flow = all_flows[st.session_state.current_flow_index].copy()
+                            st.query_params.clear()
                             st.rerun()
-                    
-                    # Arrow + Flow count + Arrow in ONE inline div
-                    with nav_cols[2]:
-                        prev_disabled = st.session_state.current_flow_index == 0
-                        next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
-                        
-                        # Display: Arrow emoji Flow X of Y Arrow emoji - all inline, NO BOXES
-                        left_arrow_html = f'<span id="prev_arrow" style="cursor: {"pointer" if not prev_disabled else "default"}; opacity: {"1" if not prev_disabled else "0.3"}; font-size: 1.2rem; margin-right: 0.5rem; user-select: none;">⬅️</span>'
-                        right_arrow_html = f'<span id="next_arrow" style="cursor: {"pointer" if not next_disabled else "default"}; opacity: {"1" if not next_disabled else "0.3"}; font-size: 1.2rem; margin-left: 0.5rem; user-select: none;">➡️</span>'
-                        
-                        st.markdown(f'''
-                            <div style="display: flex; align-items: center; justify-content: center; padding-top: 3px;">
-                                {left_arrow_html}
-                                <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Flow {st.session_state.current_flow_index + 1} of {len(st.session_state.all_flows)}</span>
-                                {right_arrow_html}
-                            </div>
-                            <script>
-                            document.getElementById('prev_arrow')?.addEventListener('click', function() {{
-                                if ({str(not prev_disabled).lower()}) {{
-                                    window.location.href = '?nav=prev&t=' + Date.now();
-                                }}
-                            }});
-                            document.getElementById('next_arrow')?.addEventListener('click', function() {{
-                                if ({str(not next_disabled).lower()}) {{
-                                    window.location.href = '?nav=next&t=' + Date.now();
-                                }}
-                            }});
-                            </script>
-                        ''', unsafe_allow_html=True)
-                        
-                        # Handle navigation via query params
-                        import streamlit as st
-                        query_params = st.query_params
-                        if 'nav' in query_params:
-                            if query_params['nav'] == 'prev' and not prev_disabled:
-                                st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
-                                st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
-                                st.query_params.clear()
-                                st.rerun()
-                            elif query_params['nav'] == 'next' and not next_disabled:
-                                st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
-                                st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
-                                st.query_params.clear()
-                                st.rerun()
-                    
-                    # Simple CSS with button keys - COMPUTE COLORS FIRST
-                    best_styles = f"""
-                    button[key="best_button"],
-                    button[key="best_button"]:hover,
-                    .stButton > button[key="best_button"],
-                    [data-testid="baseButton-secondary"][key="best_button"] {{
-                        background: {'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' if flow_type == 'Best' else 'white'} !important;
-                        border: {'3px solid #10b981' if flow_type == 'Best' else '2px solid #d1d5db'} !important;
-                        color: #065f46 !important;
-                        box-shadow: {'0 0 0 3px rgba(16, 185, 129, 0.2)' if flow_type == 'Best' else 'none'} !important;
-                        padding: 0.4rem 0.8rem !important;
-                        font-size: 0.8rem !important;
-                        font-weight: 700 !important;
-                        min-height: 1.5rem !important;
-                        height: 1.5rem !important;
-                    }}
-                    """
-                    
-                    worst_styles = f"""
-                    button[key="worst_button"],
-                    button[key="worst_button"]:hover,
-                    .stButton > button[key="worst_button"],
-                    [data-testid="baseButton-secondary"][key="worst_button"] {{
-                        background: {'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)' if flow_type == 'Worst' else 'white'} !important;
-                        border: {'3px solid #ef4444' if flow_type == 'Worst' else '2px solid #d1d5db'} !important;
-                        color: #991b1b !important;
-                        box-shadow: {'0 0 0 3px rgba(239, 68, 68, 0.2)' if flow_type == 'Worst' else 'none'} !important;
-                        padding: 0.4rem 0.8rem !important;
-                        font-size: 0.8rem !important;
-                        font-weight: 700 !important;
-                        min-height: 1.5rem !important;
-                        height: 1.5rem !important;
-                    }}
-                    """
-                    
-                    st.markdown(f"<style>{best_styles}{worst_styles}</style>", unsafe_allow_html=True)
                 
                 # Show flow stats directly (no success messages)
                 if len(final_filtered) > 0:
