@@ -365,7 +365,7 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
         # Get worst combinations (up to n*2 to ensure we get n flows after filtering)
         worst_combos = agg_df.head(n * 2)
         
-        # For each combo, PRIORITIZE 0 conversions, get the latest view_id with highest timestamp
+        # For each combo, GET ONLY 0 conversion rows (skip if none exist)
         flows = []
         for _, combo in worst_combos.iterrows():
             if len(flows) >= n:
@@ -376,21 +376,16 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
                 filtered = filtered[filtered[col] == combo[col]]
             
             if len(filtered) > 0:
-                # First try to get rows with 0 conversions
+                # ONLY get rows with 0 conversions
                 zero_conv = filtered[filtered['conversions'] == 0]
                 
                 if len(zero_conv) > 0:
-                    # Use 0 conversion rows
+                    # Sort by timestamp desc (latest first)
                     if 'ts' in zero_conv.columns:
                         zero_conv = zero_conv.sort_values('ts', ascending=False)
                     flow = zero_conv.iloc[0].to_dict()
                     flows.append(flow)
-                else:
-                    # No 0 conversion rows, use latest row from combo
-                    if 'ts' in filtered.columns:
-                        filtered = filtered.sort_values('ts', ascending=False)
-                    flow = filtered.iloc[0].to_dict()
-                    flows.append(flow)
+                # If no 0 conversion rows, skip this combo entirely
         
         return flows
     except Exception as e:
