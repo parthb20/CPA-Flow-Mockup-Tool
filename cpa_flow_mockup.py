@@ -500,14 +500,24 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
         
         # Use Full Data checkbox - aligned EXACTLY with dropdown text
         with col3:
-            # Match dropdown label height (21px) to align checkbox label with dropdown text
-            st.markdown('<div style="height: 21px;"></div>', unsafe_allow_html=True)
             use_full_data = st.checkbox(
                 "Use Full Data",
                 value=False,
                 help="Bypass 5% threshold filter",
                 key='use_full_data_toggle'
             )
+            # Add negative margin to pull it up and align with dropdown text
+            st.markdown("""
+                <style>
+                div[data-testid="column"]:nth-child(3) [data-testid="stCheckbox"] {
+                    margin-top: -0.5rem !important;
+                }
+                div[data-testid="column"]:nth-child(3) [data-testid="stCheckbox"] label {
+                    display: flex;
+                    align-items: center;
+                }
+                </style>
+            """, unsafe_allow_html=True)
         
         # Time Filter at top right - clean and minimal
         with col4:
@@ -920,21 +930,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                         prev_disabled = st.session_state.current_flow_index == 0
                         next_disabled = st.session_state.current_flow_index >= len(st.session_state.all_flows) - 1
                         
-                        # Hidden buttons for navigation
-                        if not prev_disabled:
-                            if st.button("◀", key='prev_btn'):
-                                st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
-                                st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
-                                st.rerun()
-                        if not next_disabled:
-                            if st.button("▶", key='next_btn'):
-                                st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
-                                st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
-                                st.rerun()
-                        
                         # Display: Arrow (emoji) Flow X of Y Arrow (emoji) - all inline
-                        left_arrow_html = f'<span onclick="document.querySelector(\'button[key=\\\'prev_btn\\\']\')?.click()" style="cursor: {"pointer" if not prev_disabled else "default"}; opacity: {"1" if not prev_disabled else "0.3"}; font-size: 1.1rem; margin-right: 0.5rem;">◀</span>'
-                        right_arrow_html = f'<span onclick="document.querySelector(\'button[key=\\\'next_btn\\\']\')?.click()" style="cursor: {"pointer" if not next_disabled else "default"}; opacity: {"1" if not next_disabled else "0.3"}; font-size: 1.1rem; margin-left: 0.5rem;">▶</span>'
+                        left_arrow_html = f'<span id="prev_arrow" style="cursor: {"pointer" if not prev_disabled else "default"}; opacity: {"1" if not prev_disabled else "0.3"}; font-size: 1.1rem; margin-right: 0.5rem;">◀</span>'
+                        right_arrow_html = f'<span id="next_arrow" style="cursor: {"pointer" if not next_disabled else "default"}; opacity: {"1" if not next_disabled else "0.3"}; font-size: 1.1rem; margin-left: 0.5rem;">▶</span>'
                         
                         st.markdown(f'''
                             <div style="display: flex; align-items: center; justify-content: center; padding-top: 3px;">
@@ -942,7 +940,34 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                                 <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Flow {st.session_state.current_flow_index + 1} of {len(st.session_state.all_flows)}</span>
                                 {right_arrow_html}
                             </div>
+                            <script>
+                            document.getElementById('prev_arrow')?.addEventListener('click', function() {{
+                                if ({str(not prev_disabled).lower()}) {{
+                                    window.location.href = '?nav=prev&t=' + Date.now();
+                                }}
+                            }});
+                            document.getElementById('next_arrow')?.addEventListener('click', function() {{
+                                if ({str(not next_disabled).lower()}) {{
+                                    window.location.href = '?nav=next&t=' + Date.now();
+                                }}
+                            }});
+                            </script>
                         ''', unsafe_allow_html=True)
+                        
+                        # Handle navigation via query params
+                        import streamlit as st
+                        query_params = st.query_params
+                        if 'nav' in query_params:
+                            if query_params['nav'] == 'prev' and not prev_disabled:
+                                st.session_state.current_flow_index = max(0, st.session_state.current_flow_index - 1)
+                                st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
+                                st.query_params.clear()
+                                st.rerun()
+                            elif query_params['nav'] == 'next' and not next_disabled:
+                                st.session_state.current_flow_index = min(len(st.session_state.all_flows) - 1, st.session_state.current_flow_index + 1)
+                                st.session_state.current_flow = st.session_state.all_flows[st.session_state.current_flow_index].copy()
+                                st.query_params.clear()
+                                st.rerun()
                     
                     # CSS for buttons - LIGHT GREEN/RED backgrounds with borders when clicked
                     best_bg = 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' if flow_type == 'Best' else 'white'
@@ -955,11 +980,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     worst_color = '#991b1b'  # Always dark red text
                     worst_shadow = '0 0 0 3px rgba(239, 68, 68, 0.2)' if flow_type == 'Worst' else 'none'
                     
+                    # Apply CSS via JavaScript to force immediate application
                     st.markdown(f"""
-                        <style>
-                        /* Best/Worst buttons - Light backgrounds with colored borders when active */
-                        button[key="best_button"],
-                        button[key="worst_button"] {{
+                        <style id="flow-button-styles">
+                        /* Best/Worst buttons - First column and second column */
+                        div[data-testid="column"]:first-child button,
+                        div[data-testid="column"]:nth-child(2) button {{
                             padding: 0.3rem 0.6rem !important;
                             font-size: 0.8rem !important;
                             font-weight: 700 !important;
@@ -968,37 +994,37 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                             border-radius: 0.375rem !important;
                         }}
                         
-                        /* Best button - LIGHT GREEN when active */
-                        button[key="best_button"] {{
+                        /* Best button styling - first column */
+                        div[data-testid="column"]:first-child button {{
                             background: {best_bg} !important;
                             border: {best_border} !important;
                             color: {best_color} !important;
                             box-shadow: {best_shadow} !important;
                         }}
                         
-                        /* Worst button - LIGHT RED when active */
-                        button[key="worst_button"] {{
+                        /* Worst button styling - second column */
+                        div[data-testid="column"]:nth-child(2) button {{
                             background: {worst_bg} !important;
                             border: {worst_border} !important;
                             color: {worst_color} !important;
                             box-shadow: {worst_shadow} !important;
                         }}
-                        
-                        /* HIDE arrow navigation buttons completely */
-                        button[key="prev_btn"],
-                        button[key="next_btn"] {{
-                            display: none !important;
-                        }}
-                        
-                        /* Hide button containers */
-                        div:has(> button[key="prev_btn"]),
-                        div:has(> button[key="next_btn"]) {{
-                            display: none !important;
-                            height: 0 !important;
-                            margin: 0 !important;
-                            padding: 0 !important;
-                        }}
                         </style>
+                        <script>
+                        // Force style application on every render
+                        (function() {{
+                            const applyStyles = () => {{
+                                const style = document.getElementById('flow-button-styles');
+                                if (style) {{
+                                    style.parentNode.removeChild(style);
+                                    document.head.appendChild(style);
+                                }}
+                            }};
+                            applyStyles();
+                            setTimeout(applyStyles, 100);
+                            setTimeout(applyStyles, 500);
+                        }})();
+                        </script>
                     """, unsafe_allow_html=True)
                 
                 # Show flow stats directly (no success messages)
