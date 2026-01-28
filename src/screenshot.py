@@ -47,10 +47,12 @@ def get_screenshot_url(url, device='mobile', full_page=False):
         }
         vp = viewports.get(device, viewports['mobile'])
         
-        # Build ScreenshotOne API URL
+        # Build ScreenshotOne API URL with caching enabled
         # Format: https://api.screenshotone.com/take?url=<url>&access_key=<key>&viewport_width=<w>&viewport_height=<h>
+        # cache=true: Use ScreenshotOne's cache (saves API requests & costs)
+        # cache_ttl=2592000: Cache for 30 days (2592000 seconds)
         encoded_url = quote(url, safe='')
-        screenshot_url = f"https://api.screenshotone.com/take?url={encoded_url}&access_key={SCREENSHOT_API_KEY}&viewport_width={vp['width']}&viewport_height={vp['height']}&format=png&device_scale_factor=1"
+        screenshot_url = f"https://api.screenshotone.com/take?url={encoded_url}&access_key={SCREENSHOT_API_KEY}&viewport_width={vp['width']}&viewport_height={vp['height']}&format=png&device_scale_factor=1&cache=true&cache_ttl=2592000"
         
         if full_page:
             screenshot_url += "&full_page=true"
@@ -97,10 +99,14 @@ def capture_page_with_fallback(url, device='mobile'):
     return (None, 'error')
 
 
+@st.cache_data(ttl=3600, show_spinner=False)
 def capture_with_playwright(url, device='mobile'):
     """
-    Capture page using Playwright
+    Capture page using Playwright (cached for 1 hour)
     Returns HTML string if success, None if failed (or screenshot fallback HTML)
+    
+    NOTE: Shorter cache (1 hour) because page content can change frequently
+    For longer caching, rely on Screenshot API instead
     """
     if not PLAYWRIGHT_AVAILABLE:
         return None
