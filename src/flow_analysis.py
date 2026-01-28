@@ -376,17 +376,23 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
                 filtered = filtered[filtered[col] == combo[col]]
             
             if len(filtered) > 0:
-                # ONLY get rows with 0 conversions - STRICT CHECK
-                zero_conv = filtered[(filtered['conversions'] == 0) | (filtered['conversions'].isna())]
+                # ONLY get rows with 0 conversions - ULTRA STRICT CHECK
+                zero_conv = filtered[
+                    (filtered['conversions'] == 0) | 
+                    (filtered['conversions'] == 0.0) |
+                    (filtered['conversions'].isna()) |
+                    (filtered['conversions'] < 0.01)  # Handle floating point
+                ]
                 
                 if len(zero_conv) > 0:
                     # Sort by timestamp desc (latest first)
                     if 'ts' in zero_conv.columns:
                         zero_conv = zero_conv.sort_values('ts', ascending=False)
                     
-                    # Double check conversions is 0
+                    # Triple check conversions is truly 0
                     flow = zero_conv.iloc[0].to_dict()
-                    if flow.get('conversions', 0) == 0 or pd.isna(flow.get('conversions')):
+                    conv_val = flow.get('conversions', 0)
+                    if conv_val == 0 or conv_val == 0.0 or pd.isna(conv_val) or conv_val < 0.01:
                         flows.append(flow)
                 # If no 0 conversion rows, skip this combo entirely
         
