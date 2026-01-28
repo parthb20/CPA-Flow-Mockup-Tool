@@ -438,8 +438,8 @@ def render_creative_via_weaver(creative_id, creative_size, keyword_array, creati
             height: {height}px;
             position: relative;
             transform-origin: center center;
-            /* SCALE PROPORTIONALLY based on container width using cqw */
-            transform: scale(calc(100cqw / {width}px));
+            /* SCALE PROPORTIONALLY but NEVER exceed original size (max 1.0) */
+            transform: scale(min(calc(100cqw / {width}px), 1));
             background: white;
         }}
         
