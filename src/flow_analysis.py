@@ -333,6 +333,24 @@ def find_top_n_best_flows(df, n=5, include_serp_filter=False):
             flows.append(flow)
             print(f"DEBUG [Best]: Added flow #{len(flows)}, idx={idx}")
         
+        # FALLBACK: If we couldn't find N unique combinations, just pick different rows
+        if len(flows) < n:
+            print(f"DEBUG [Best]: Only found {len(flows)} unique combos, picking more rows to reach {n}")
+            for idx, row in df_sorted.iterrows():
+                if len(flows) >= n:
+                    break
+                
+                # Skip if already added
+                if idx in seen_indices:
+                    continue
+                
+                # Add this row even if combination is duplicate
+                seen_indices.add(idx)
+                flow = row.to_dict()
+                flow['flow_rank'] = len(flows) + 1
+                flows.append(flow)
+                print(f"DEBUG [Best]: Added FALLBACK flow #{len(flows)}, idx={idx}")
+        
         print(f"DEBUG [Best Flows]: Returning {len(flows)} flows")
         return flows
     except Exception as e:
@@ -474,6 +492,29 @@ def find_top_n_worst_flows(df, n=5, include_serp_filter=False):
             flow['flow_rank'] = len(flows) + 1
             flows.append(flow)
             print(f"DEBUG [Worst]: Added flow #{len(flows)}, idx={idx}")
+        
+        # FALLBACK: If we couldn't find N unique combinations, just pick different rows
+        if len(flows) < n:
+            print(f"DEBUG [Worst]: Only found {len(flows)} unique combos, picking more rows to reach {n}")
+            for idx, row in zero_conv_df.iterrows():
+                if len(flows) >= n:
+                    break
+                
+                # Skip if already added
+                if idx in seen_indices:
+                    continue
+                
+                # VERIFY: conversions must be 0
+                conv_val = row.get('conversions', 0)
+                if not (conv_val == 0 or conv_val == 0.0 or pd.isna(conv_val)):
+                    continue
+                
+                # Add this row even if combination is duplicate
+                seen_indices.add(idx)
+                flow = row.to_dict()
+                flow['flow_rank'] = len(flows) + 1
+                flows.append(flow)
+                print(f"DEBUG [Worst]: Added FALLBACK flow #{len(flows)}, idx={idx}")
         
         print(f"DEBUG [Worst Flows]: Returning {len(flows)} flows")
         return flows
