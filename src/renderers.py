@@ -235,7 +235,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     # Final wrapper HTML - TRULY RESPONSIVE with proper scaling
     # Use CSS to calculate scale dynamically based on container width
     html_output = f"""
-    <div style="display: flex; justify-content: center; padding: clamp(0.5rem, 0.4rem + 0.5vw, 0.625rem); background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem);">
+    <div style="display: flex; justify-content: center; padding: clamp(0.5rem, 0.4rem + 0.5vw, 0.625rem); background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem); overflow: hidden;">
         <div style="
             width: {responsive_width}; 
             aspect-ratio: {base_width} / {base_height}; 
@@ -245,6 +245,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
             box-shadow: 0 4px 20px rgba(0,0,0,0.2); 
             position: relative;
             container-type: size;
+            clip-path: inset(0);
         ">
             <iframe srcdoc='{escaped}' style="
                 position: absolute; 
@@ -257,6 +258,8 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                 display: block; 
                 background: white; 
                 transform: scale(calc(100cqw / {base_width}px));
+                overflow: hidden;
+                clip-path: inset(0);
             "></iframe>
         </div>
     </div>
