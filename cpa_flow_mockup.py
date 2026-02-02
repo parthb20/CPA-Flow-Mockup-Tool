@@ -33,7 +33,7 @@ import re
 import html
 
 # Import from modules (after page config)
-from src.config import FILE_A_ID, FILE_B_ID, FILE_C_ID, FILE_D_ID, SERP_BASE_URL
+from src.config import FILE_A_ID, FILE_B_ID, FILE_D_ID, SERP_BASE_URL
 from src.data_loader import load_csv_from_gdrive, load_json_from_gdrive
 from src.creative_renderer import load_prerendered_responses, render_creative_via_weaver, parse_keyword_array_from_flow
 from src.utils import safe_float, safe_int
