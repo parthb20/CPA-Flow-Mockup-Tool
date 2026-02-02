@@ -1197,21 +1197,23 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     except Exception as e:
                         debug_attempts.append(f"❌ Playwright error: {str(e)[:100]}")
                 
-                # PRIORITY 2: If Playwright unavailable, try Screenshot API directly (skip requests - it gets blocked)
-                if not rendered_successfully and not playwright_available:
-                    debug_attempts.append("2️⃣ Playwright not available - try Screenshot API directly")
+                # PRIORITY 2: If Playwright failed OR unavailable, try Screenshot API as fallback
+                if not rendered_successfully:
+                    debug_attempts.append("2️⃣ Try Screenshot API (fallback)")
                     screenshot_url = get_screenshot_url(adv_url, device=device_all, try_cleaned=True)
                     if screenshot_url:
                         try:
                             screenshot_html = f'<img src="{screenshot_url}" style="width:100%;height:auto;" />'
                             preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
-                            preview_html = inject_unique_id(preview_html, 'landing_screenshot_noplaywright', adv_url, device_all, current_flow)
+                            preview_html = inject_unique_id(preview_html, 'landing_screenshot_fallback', adv_url, device_all, current_flow)
                             st.components.v1.html(preview_html, height=height, scrolling=True)
                             st.caption("📸 Screenshot (ScreenshotOne API)")
                             debug_attempts.append("✅ Screenshot API success")
                             rendered_successfully = True
                         except Exception as e:
                             debug_attempts.append(f"❌ Screenshot API failed: {str(e)[:50]}")
+                    else:
+                        debug_attempts.append("❌ Screenshot API URL generation failed")
                 
                 # If still not rendered, show error
                 if not rendered_successfully:
