@@ -1,5 +1,6 @@
 """
 Data loading functions for Google Drive files
+All functions are cached to prevent Google Drive rate limits during development
 """
 
 import streamlit as st
@@ -147,8 +148,10 @@ def process_file_content(content):
         return None
 
 
+@st.cache_data(show_spinner=False, ttl=3600)  # Cache for 1 hour (3600 seconds)
 def load_csv_from_gdrive(file_id):
-    """Load CSV from Google Drive - handles CSV, ZIP, GZIP, and large file virus scan"""
+    """Load CSV from Google Drive - handles CSV, ZIP, GZIP, and large file virus scan
+    Cached for 1 hour to prevent rate limits"""
     # Method 1: Try gdown if available (best for large files)
     if GDOWN_AVAILABLE:
         try:
@@ -226,8 +229,10 @@ def load_csv_from_gdrive(file_id):
         return None  # Silent fail
 
 
+@st.cache_data(show_spinner=False, ttl=3600)  # Cache for 1 hour (3600 seconds)
 def load_json_from_gdrive(file_id):
-    """Load JSON file from Google Drive - returns dict of SERP templates {template_key: html_string}"""
+    """Load JSON file from Google Drive - returns dict of SERP templates {template_key: html_string}
+    Cached for 1 hour to prevent rate limits"""
     try:
         url = f"https://drive.google.com/uc?export=download&id={file_id}"
         response = requests.get(url, timeout=30)
