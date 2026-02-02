@@ -337,27 +337,64 @@ def get_prerendered_creative(creative_id, creative_size, prerendered_df):
     if prerendered_df is None or len(prerendered_df) == 0:
         return None
     
-    # DEBUG: Show available columns
-    # st.write(f"🔍 FILE D Columns: {prerendered_df.columns.tolist()}")
+    # DEBUG: Show available columns (ENABLE THIS TO DEBUG)
+    st.write(f"🔍 FILE D Columns: {prerendered_df.columns.tolist()}")
+    st.write(f"🔍 Looking for: creative_id={creative_id} (type: {type(creative_id)}), creative_size={creative_size} (type: {type(creative_size)})")
+    st.write(f"📋 FILE D shape: {prerendered_df.shape}")
     
-    # Match creative_id and creative_size (lowercase column names after loading)
+    # Normalize creative_size format (remove spaces, make lowercase)
+    creative_size_normalized = str(creative_size).replace(' ', '').lower()
+    
+    # Try to find creative_id column (case-insensitive)
+    id_col = None
+    size_col = None
+    request_col = None
+    
+    for col in prerendered_df.columns:
+        col_lower = col.lower()
+        if 'creative' in col_lower and 'id' in col_lower:
+            id_col = col
+        if 'creative' in col_lower and 'size' in col_lower:
+            size_col = col
+        if 'size' in col_lower and 'creative' not in col_lower and size_col is None:
+            size_col = col
+        if 'request' in col_lower:
+            request_col = col
+    
+    st.write(f"🔍 Detected columns - ID: {id_col}, Size: {size_col}, Request: {request_col}")
+    
+    if not id_col or not size_col or not request_col:
+        st.error(f"❌ Missing columns in FILE D! Need creative_id, creative_size, request")
+        return None
+    
+    # Show sample data
+    st.write(f"📋 Sample FILE D data (first 3 rows):")
+    st.dataframe(prerendered_df[[id_col, size_col]].head(3))
+    
+    # Normalize size column in dataframe (remove spaces, lowercase)
+    prerendered_df['size_normalized'] = prerendered_df[size_col].astype(str).str.replace(' ', '').str.lower()
+    
+    # Match creative_id and normalized creative_size
     matches = prerendered_df[
-        (prerendered_df['creative_id'].astype(str) == str(creative_id)) &
-        (prerendered_df['creative_size'].astype(str) == str(creative_size))
+        (prerendered_df[id_col].astype(str) == str(creative_id)) &
+        (prerendered_df['size_normalized'] == creative_size_normalized)
     ]
     
     if len(matches) == 0:
         # DEBUG: Show why no match
-        # st.warning(f"❌ No match in File D for creative_id={creative_id}, creative_size={creative_size}")
-        # matching_ids = prerendered_df[prerendered_df['creative_id'].astype(str) == str(creative_id)]
-        # if len(matching_ids) > 0:
-        #     st.write(f"✅ Found creative_id {creative_id} but with sizes: {matching_ids['creative_size'].unique().tolist()}")
-        # else:
-        #     st.write(f"❌ creative_id {creative_id} not found in File D at all")
-        #     st.write(f"📋 Sample creative_ids in File D: {prerendered_df['creative_id'].head(10).tolist()}")
+        st.warning(f"❌ No match in File D for creative_id={creative_id}, creative_size={creative_size} (normalized: {creative_size_normalized})")
+        matching_ids = prerendered_df[prerendered_df[id_col].astype(str) == str(creative_id)]
+        if len(matching_ids) > 0:
+            st.write(f"✅ Found creative_id {creative_id} but with sizes: {matching_ids[size_col].unique().tolist()}")
+            st.write(f"   Normalized sizes: {matching_ids['size_normalized'].unique().tolist()}")
+        else:
+            st.write(f"❌ creative_id {creative_id} not found in File D at all")
+            st.write(f"📋 Sample creative_ids in File D: {prerendered_df[id_col].head(10).tolist()}")
         return None
     
-    request_data = matches.iloc[0]['request']
+    st.success(f"✅ Found match for creative_id={creative_id}, size={creative_size}")
+    
+    request_data = matches.iloc[0][request_col]
     if pd.notna(request_data) and str(request_data).strip():
         request_str = str(request_data)
         
