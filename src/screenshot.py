@@ -52,8 +52,16 @@ def clean_url_for_capture(url):
 
 
 @st.cache_data(ttl=604800, show_spinner=False)
-def get_screenshot_url(url, device='mobile', full_page=False):
-    """Generate ScreenshotOne API URL (cached for 7 days)"""
+def get_screenshot_url(url, device='mobile', full_page=False, try_cleaned=False):
+    """
+    Generate ScreenshotOne API URL (cached for 7 days)
+    
+    Args:
+        url: URL to capture
+        device: Device type
+        full_page: Capture full page or viewport
+        try_cleaned: If True, remove all tracking params (fallback for 403 errors)
+    """
     try:
         # Try to get API key
         try:
@@ -71,10 +79,11 @@ def get_screenshot_url(url, device='mobile', full_page=False):
         
         url = str(url).strip()
         
-        # Clean URL FIRST (remove macros, www., etc.)
-        cleaned_url = clean_url_for_capture(url)
-        if cleaned_url:
-            url = cleaned_url
+        # Only clean URL if explicitly requested (fallback for 403 errors)
+        if try_cleaned:
+            cleaned_url = clean_url_for_capture(url)
+            if cleaned_url:
+                url = cleaned_url
         
         # Ensure URL starts with http/https
         if not url.startswith(('http://', 'https://')):
@@ -141,22 +150,30 @@ def capture_page_with_fallback(url, device='mobile'):
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
-def capture_with_playwright(url, device='mobile', retry_count=1, use_firefox=False):
+def capture_with_playwright(url, device='mobile', retry_count=1, use_firefox=False, try_cleaned_url=False):
     """
     Enhanced Playwright capture with anti-detection, light theme, and retry logic.
     Cached for 1 hour. Uses techniques from advanced screenshotter to bypass 403/bot detection.
+    
+    Args:
+        url: URL to capture
+        device: Device type (mobile, tablet, laptop)
+        retry_count: Current retry attempt
+        use_firefox: Use Firefox instead of Chromium
+        try_cleaned_url: If True, remove all tracking params (fallback for 403 errors)
     
     Returns: HTML string if success, screenshot fallback HTML if 403, None if failed
     """
     if not PLAYWRIGHT_AVAILABLE:
         return None
     
-    # Clean URL before capture
-    cleaned_url = clean_url_for_capture(url)
-    if cleaned_url:
-        # Reconstruct full URL
-        if not cleaned_url.startswith(('http://', 'https://')):
-            url = f"https://{cleaned_url}"
+    # Only clean URL if explicitly requested (fallback for 403 errors)
+    if try_cleaned_url:
+        cleaned_url = clean_url_for_capture(url)
+        if cleaned_url:
+            # Reconstruct full URL
+            if not cleaned_url.startswith(('http://', 'https://')):
+                url = f"https://{cleaned_url}"
     
     import random
     
@@ -294,10 +311,16 @@ def capture_with_playwright(url, device='mobile', retry_count=1, use_firefox=Fal
                 browser.close()
                 return None
             
-            # Check for 403 - fallback to screenshot API
+            # Check for 403 - try with cleaned URL first, then screenshot API
             if response and response.status == 403:
                 browser.close()
-                screenshot_url = get_screenshot_url(url, device=device)
+                # If not already trying cleaned URL, retry with cleaned URL
+                if not try_cleaned_url:
+                    import time
+                    time.sleep(random.uniform(1, 2))
+                    return capture_with_playwright(url, device, retry_count, use_firefox, try_cleaned_url=True)
+                # If cleaned URL also failed, use screenshot API
+                screenshot_url = get_screenshot_url(url, device=device, try_cleaned=True)
                 if screenshot_url:
                     return f'<!-- SCREENSHOT_FALLBACK --><img src="{screenshot_url}" style="width:100%;height:auto;" />'
                 return None
@@ -350,16 +373,23 @@ def capture_with_playwright(url, device='mobile', retry_count=1, use_firefox=Fal
     except Exception as e:
         error_str = str(e).lower()
         
-        # Fallback to screenshot API on 403
+        # On 403 error, try with cleaned URL first (remove tracking params)
+        if ('403' in error_str or 'forbidden' in error_str) and not try_cleaned_url:
+            import time
+            time.sleep(random.uniform(1, 2))
+            # Retry with cleaned URL (remove all tracking params)
+            return capture_with_playwright(url, device, retry_count, use_firefox, try_cleaned_url=True)
+        
+        # If cleaned URL also failed, fallback to screenshot API
         if '403' in error_str or 'forbidden' in error_str:
-            screenshot_url = get_screenshot_url(url, device=device)
+            screenshot_url = get_screenshot_url(url, device=device, try_cleaned=True)
             if screenshot_url:
                 return f'<!-- SCREENSHOT_FALLBACK --><img src="{screenshot_url}" style="width:100%;height:auto;" />'
         
-        # Retry with Firefox if first attempt failed (and not already using Firefox)
-        if retry_count < 2 and not use_firefox:
+        # Retry with Firefox if first attempt failed (and not already using Firefox or cleaned URL)
+        if retry_count < 2 and not use_firefox and not try_cleaned_url:
             import time
             time.sleep(random.uniform(2, 4))  # Random delay before retry
-            return capture_with_playwright(url, device, retry_count + 1, use_firefox=True)
+            return capture_with_playwright(url, device, retry_count + 1, use_firefox=True, try_cleaned_url=False)
         
         return None
