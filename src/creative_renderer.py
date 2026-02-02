@@ -77,14 +77,15 @@ def load_creative_requests(file_id):
 
 def load_prerendered_responses(file_id):
     """
-    Load File D - Pre-rendered creative responses from batch_render_creatives.py
-    Expected format: CSV with columns: creative_id, size, status, error, adcode
+    Load File D - Pre-rendered creative responses
+    Expected format: CSV with columns: Creative_id, Creative_size, Request
     
     Returns:
-        DataFrame with pre-rendered creatives, or None if loading fails
+        DataFrame with creative data, or None if loading fails
     """
     from src.data_loader import load_csv_from_gdrive
     import streamlit as st
+    import re
     
     if not file_id or file_id.strip() == "":
         return None
@@ -103,7 +104,7 @@ def load_prerendered_responses(file_id):
         col_mapping = {col.lower(): col for col in df.columns}
         
         # Verify required columns (case-insensitive)
-        required_cols = ['creative_id', 'size', 'adcode']
+        required_cols = ['creative_id', 'creative_size', 'request']
         missing = []
         for req_col in required_cols:
             if req_col.lower() not in col_mapping:
@@ -123,27 +124,27 @@ def load_prerendered_responses(file_id):
         if rename_map:
             df = df.rename(columns=rename_map)
         
-        # Filter to only successful creatives with adcode (if status column exists)
-        if 'status' in df.columns:
-            df = df[df['status'] == 'success'].copy()
-        df = df[df['adcode'].notna()].copy()
+        # Clean the Request column: replace ||| with commas and handle quotes
+        if 'request' in df.columns:
+            def clean_request(val):
+                if pd.isna(val) or val == '':
+                    return val
+                val_str = str(val)
+                # Replace ||| with comma
+                val_str = val_str.replace('|||', ',')
+                # Remove extra backslashes from escaped quotes
+                val_str = val_str.replace('\\"', '"')
+                # Clean up any double quotes that might cause issues
+                val_str = val_str.replace('""', '"')
+                return val_str
+            
+            df['request'] = df['request'].apply(clean_request)
         
-        # CRITICAL FIX: Unescape HTML entities and fix encoding in adcode column
-        import html
-        def clean_adcode(x):
-            if pd.notna(x):
-                try:
-                    x_str = str(x)
-                    # First unescape HTML entities
-                    x_str = html.unescape(x_str)
-                    # Then ensure proper encoding
-                    x_str = x_str.encode('utf-8', errors='ignore').decode('utf-8', errors='ignore')
-                    return x_str
-                except:
-                    return str(x)
-            return x
+        # Keep only rows with valid creative_id
+        df = df[df['creative_id'].notna()].copy()
         
-        df['adcode'] = df['adcode'].apply(clean_adcode)
+        if len(df) == 0:
+            return None
         
         return df
         
