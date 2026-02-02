@@ -330,36 +330,80 @@ def replace_kd_in_adcode(adcode, url_encoded_kd):
 
 
 def get_prerendered_creative(creative_id, creative_size, prerendered_df):
-    """Get pre-rendered creative from File D (uses 'request' column as adcode)"""
+    """Get pre-rendered creative from File D - parses Request JSON to extract creative info"""
     import streamlit as st
+    import json
     
     if prerendered_df is None or len(prerendered_df) == 0:
         return None
     
-    # Match creative_id and creative_size (new column name)
+    # DEBUG: Show available columns
+    # st.write(f"🔍 FILE D Columns: {prerendered_df.columns.tolist()}")
+    
+    # Match creative_id and creative_size (lowercase column names after loading)
     matches = prerendered_df[
         (prerendered_df['creative_id'].astype(str) == str(creative_id)) &
         (prerendered_df['creative_size'].astype(str) == str(creative_size))
     ]
     
     if len(matches) == 0:
-        # Debug: Show why no match (uncomment if needed)
-        # st.warning(f"❌ No match in File D for {creative_id} x {creative_size}")
+        # DEBUG: Show why no match
+        # st.warning(f"❌ No match in File D for creative_id={creative_id}, creative_size={creative_size}")
         # matching_ids = prerendered_df[prerendered_df['creative_id'].astype(str) == str(creative_id)]
         # if len(matching_ids) > 0:
-        #     st.write(f"Found creative_id {creative_id} but with sizes: {matching_ids['creative_size'].unique().tolist()}")
+        #     st.write(f"✅ Found creative_id {creative_id} but with sizes: {matching_ids['creative_size'].unique().tolist()}")
+        # else:
+        #     st.write(f"❌ creative_id {creative_id} not found in File D at all")
+        #     st.write(f"📋 Sample creative_ids in File D: {prerendered_df['creative_id'].head(10).tolist()}")
         return None
     
-    # Use 'request' column as adcode (this contains the cleaned JSON data)
     request_data = matches.iloc[0]['request']
     if pd.notna(request_data) and str(request_data).strip():
         request_str = str(request_data)
         
-        # DEBUG: Show basic info (comment out for production)
-        # st.write(f"📦 **Request Data Retrieved:** {len(request_str)} chars")
-        
-        # Return the request data (already cleaned with ||| replaced by commas)
-        return request_str
+        # Parse Request JSON to extract creative metadata
+        try:
+            # Request data is already cleaned (||| replaced with ,)
+            request_json = json.loads(request_str)
+            
+            # Extract useful info
+            crid = request_json.get('crid', creative_id)
+            size = request_json.get('size', creative_size)
+            domain = request_json.get('progDomain', 'N/A')
+            
+            # Create HTML placeholder showing the request data
+            placeholder_html = f"""
+            <div style="width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                        display: flex; flex-direction: column; align-items: center; justify-content: center; 
+                        color: white; font-family: Arial, sans-serif; padding: 20px; text-align: center;">
+                <div style="font-size: 48px; margin-bottom: 10px;">🎨</div>
+                <div style="font-size: 20px; font-weight: bold; margin-bottom: 15px;">Creative {crid}</div>
+                <div style="font-size: 14px; opacity: 0.9; margin-bottom: 5px;">Size: {size}</div>
+                <div style="font-size: 12px; opacity: 0.8;">Domain: {domain}</div>
+                <div style="margin-top: 20px; padding: 10px 20px; background: rgba(255,255,255,0.2); 
+                            border-radius: 20px; font-size: 11px;">
+                    📊 Bid Request Data Available
+                </div>
+            </div>
+            """
+            return placeholder_html
+            
+        except json.JSONDecodeError:
+            # If JSON parsing fails, return placeholder with basic info
+            placeholder_html = f"""
+            <div style="width: 100%; height: 100%; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
+                        display: flex; flex-direction: column; align-items: center; justify-content: center; 
+                        color: white; font-family: Arial, sans-serif; padding: 20px; text-align: center;">
+                <div style="font-size: 48px; margin-bottom: 10px;">🎨</div>
+                <div style="font-size: 20px; font-weight: bold; margin-bottom: 15px;">Creative {creative_id}</div>
+                <div style="font-size: 14px; opacity: 0.9;">Size: {creative_size}</div>
+                <div style="margin-top: 20px; padding: 10px 20px; background: rgba(255,255,255,0.2); 
+                            border-radius: 20px; font-size: 11px;">
+                    ⚠️ Request Data Format Issue
+                </div>
+            </div>
+            """
+            return placeholder_html
     
     return None
 
