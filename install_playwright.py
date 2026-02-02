@@ -41,15 +41,25 @@ def install_playwright_browsers():
         print("Installing Playwright Browsers")
         print("=" * 50)
         
+        # Check write permissions
+        cache_dir = Path.home() / ".cache"
+        if not cache_dir.exists():
+            try:
+                cache_dir.mkdir(parents=True, exist_ok=True)
+                print(f"✅ Created cache directory: {cache_dir}")
+            except Exception as e:
+                print(f"❌ Cannot create cache directory: {e}")
+                return False
+        
         try:
             # Ensure playwright is installed
             print("Ensuring playwright package is installed...")
             subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "playwright"])
             
-            # Install chromium browser
-            print("Installing chromium browser...")
+            # Install chromium browser (without --with-deps since we have packages.txt)
+            print("Installing chromium browser binary (system deps from packages.txt)...")
             result = subprocess.run(
-                [sys.executable, "-m", "playwright", "install", "chromium", "--with-deps"],
+                [sys.executable, "-m", "playwright", "install", "chromium"],
                 capture_output=True,
                 text=True,
                 timeout=300  # 5 minute timeout
