@@ -1208,13 +1208,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     response = session.get(adv_url, timeout=15, headers=headers, allow_redirects=True)
                     
                     if response.status_code == 200:
-                        # Clean URL - remove ALL tracking params and query parameters
-                        cleaned = clean_url_for_capture(adv_url)
-                        if cleaned:
-                            # Add https back for rendering
-                            render_url = f"https://{cleaned}" if not cleaned.startswith(('http://', 'https://')) else cleaned
-                        else:
-                            render_url = adv_url
+                        # Use original URL by default (don't clean unless 403)
+                        render_url = adv_url
                         
                         # Detect redirect/tracking URLs (these won't work in iframe)
                         is_redirect_url = any(keyword in str(adv_url).lower() 
@@ -1413,8 +1408,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                         else:
                                             raise Exception("Playwright returned empty HTML")
                                 except Exception:
-                                    # Try screenshot API as last resort before error
-                                    screenshot_url = get_screenshot_url(adv_url, device=device_all)
+                                    # Try screenshot API as last resort before error (with cleaned URL for 403)
+                                    screenshot_url = get_screenshot_url(adv_url, device=device_all, try_cleaned=True)
                                     if screenshot_url:
                                         try:
                                             screenshot_html = f'<img src="{screenshot_url}" style="width:100%;height:auto;" />'
