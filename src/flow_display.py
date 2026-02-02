@@ -1536,18 +1536,71 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                         preview_html = inject_unique_id(preview_html, 'landing_error', adv_url, device_all, current_flow)
                                         st.components.v1.html(preview_html, height=height, scrolling=False)
                             else:
-                                # Playwright not available - try cleaned URL with requests first!
+                                # Playwright not available - try ALL methods exhaustively
                                 debug_attempts.append("⚠️ Playwright NOT available on server")
-                                debug_attempts.append("Try fetching CLEANED URL with requests")
                                 
-                                # Get cleaned URL
+                                # Get cleaned URL upfront
                                 cleaned = clean_url_for_capture(adv_url)
-                                if cleaned:
-                                    cleaned_full_url = f"https://{cleaned}" if not cleaned.startswith(('http://', 'https://')) else cleaned
-                                    debug_attempts.append(f"Trying: {cleaned_full_url}")
-                                    
+                                cleaned_full_url = f"https://{cleaned}" if cleaned and not cleaned.startswith(('http://', 'https://')) else cleaned
+                                
+                                # PRIORITY 1: Try iframe on ORIGINAL URL
+                                if not rendered_successfully:
+                                    debug_attempts.append("1️⃣ Try iframe with ORIGINAL URL")
                                     try:
-                                        # Try fetching cleaned URL
+                                        preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all, display_url=adv_url)
+                                        preview_html = inject_unique_id(preview_html, 'landing_403_iframe_og', adv_url, device_all, current_flow)
+                                        st.components.v1.html(preview_html, height=height, scrolling=True)
+                                        st.caption("📺 Iframe (original URL)")
+                                        debug_attempts.append("✅ Iframe (original) rendered")
+                                        rendered_successfully = True
+                                    except Exception as e:
+                                        debug_attempts.append(f"❌ Iframe (original) failed: {str(e)[:50]}")
+                                
+                                # PRIORITY 2: Try HTML on ORIGINAL URL
+                                if not rendered_successfully:
+                                    debug_attempts.append("2️⃣ Try HTML render with ORIGINAL URL")
+                                    try:
+                                        # Re-fetch with better headers
+                                        og_headers = {
+                                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                                            'Referer': 'https://www.google.com/'
+                                        }
+                                        og_response = requests.get(adv_url, timeout=15, headers=og_headers, allow_redirects=True)
+                                        debug_attempts.append(f"Original URL re-fetch: {og_response.status_code}")
+                                        
+                                        if og_response.status_code == 200:
+                                            page_html = decode_with_multiple_encodings(og_response)
+                                            page_html = clean_and_prepare_html(page_html, adv_url)
+                                            preview_html, display_height = render_html_with_proper_encoding(
+                                                page_html, device_all, 'landing_403_html_og', adv_url, current_flow, scrolling=True
+                                            )
+                                            st.components.v1.html(preview_html, height=display_height, scrolling=True)
+                                            st.caption("📄 HTML (original URL)")
+                                            debug_attempts.append("✅ HTML (original) rendered")
+                                            rendered_successfully = True
+                                        else:
+                                            debug_attempts.append(f"⚠️ Original URL still blocked: {og_response.status_code}")
+                                    except Exception as e:
+                                        debug_attempts.append(f"❌ HTML (original) failed: {str(e)[:50]}")
+                                
+                                # PRIORITY 3: Try iframe on CLEANED URL
+                                if not rendered_successfully and cleaned_full_url:
+                                    debug_attempts.append(f"3️⃣ Try iframe with CLEANED URL: {cleaned_full_url[:80]}")
+                                    try:
+                                        preview_html, height, _ = render_mini_device_preview(cleaned_full_url, is_url=True, device=device_all, display_url=cleaned_full_url)
+                                        preview_html = inject_unique_id(preview_html, 'landing_403_iframe_clean', cleaned_full_url, device_all, current_flow)
+                                        st.components.v1.html(preview_html, height=height, scrolling=True)
+                                        st.caption("📺 Iframe (cleaned URL)")
+                                        debug_attempts.append("✅ Iframe (cleaned) rendered")
+                                        rendered_successfully = True
+                                    except Exception as e:
+                                        debug_attempts.append(f"❌ Iframe (cleaned) failed: {str(e)[:50]}")
+                                
+                                # PRIORITY 4: Try HTML on CLEANED URL
+                                if not rendered_successfully and cleaned_full_url:
+                                    debug_attempts.append("4️⃣ Try HTML render with CLEANED URL")
+                                    try:
                                         clean_headers = {
                                             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                                             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -1557,29 +1610,53 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                         debug_attempts.append(f"Cleaned URL response: {clean_response.status_code}")
                                         
                                         if clean_response.status_code == 200:
-                                            # Try HTML render with cleaned URL
-                                            debug_attempts.append("Try HTML render with cleaned URL")
-                                            try:
-                                                page_html = decode_with_multiple_encodings(clean_response)
-                                                page_html = clean_and_prepare_html(page_html, cleaned_full_url)
-                                                preview_html, display_height = render_html_with_proper_encoding(
-                                                    page_html, device_all, 'landing_cleaned_html', cleaned_full_url, current_flow, scrolling=True
-                                                )
-                                                st.components.v1.html(preview_html, height=display_height, scrolling=True)
-                                                st.caption("📄 HTML (cleaned URL)")
-                                                debug_attempts.append("✅ HTML rendered")
-                                                rendered_successfully = True
-                                            except Exception as e:
-                                                debug_attempts.append(f"❌ HTML failed: {str(e)[:50]}")
+                                            page_html = decode_with_multiple_encodings(clean_response)
+                                            page_html = clean_and_prepare_html(page_html, cleaned_full_url)
+                                            preview_html, display_height = render_html_with_proper_encoding(
+                                                page_html, device_all, 'landing_403_html_clean', cleaned_full_url, current_flow, scrolling=True
+                                            )
+                                            st.components.v1.html(preview_html, height=display_height, scrolling=True)
+                                            st.caption("📄 HTML (cleaned URL)")
+                                            debug_attempts.append("✅ HTML (cleaned) rendered")
+                                            rendered_successfully = True
                                         else:
-                                            # Cleaned URL also got non-200 (likely 403)
-                                            debug_attempts.append(f"⚠️ Cleaned URL still blocked: {clean_response.status_code}")
+                                            debug_attempts.append(f"⚠️ Cleaned URL blocked: {clean_response.status_code}")
                                     except Exception as e:
-                                        debug_attempts.append(f"❌ Cleaned URL request failed: {str(e)[:80]}")
+                                        debug_attempts.append(f"❌ HTML (cleaned) failed: {str(e)[:50]}")
                                 
-                                # If cleaned URL methods didn't work, try screenshot API
+                                # PRIORITY 5: Try Playwright/screenshotter on ORIGINAL URL (if available)
+                                if not rendered_successfully and playwright_available:
+                                    debug_attempts.append("5️⃣ Try Playwright on ORIGINAL URL")
+                                    try:
+                                        page_html = capture_with_playwright(adv_url, device=device_all, try_cleaned_url=False)
+                                        if page_html:
+                                            preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                            preview_html = inject_unique_id(preview_html, 'landing_403_pw_og', adv_url, device_all, current_flow)
+                                            st.components.v1.html(preview_html, height=height, scrolling=True)
+                                            st.caption("🤖 Playwright (original URL)")
+                                            debug_attempts.append("✅ Playwright (original) rendered")
+                                            rendered_successfully = True
+                                    except Exception as e:
+                                        debug_attempts.append(f"❌ Playwright (original) failed: {str(e)[:50]}")
+                                
+                                # PRIORITY 6: Try Playwright/screenshotter on CLEANED URL (if available)
+                                if not rendered_successfully and playwright_available and cleaned_full_url:
+                                    debug_attempts.append("6️⃣ Try Playwright on CLEANED URL")
+                                    try:
+                                        page_html = capture_with_playwright(cleaned_full_url, device=device_all, try_cleaned_url=False)
+                                        if page_html:
+                                            preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                            preview_html = inject_unique_id(preview_html, 'landing_403_pw_clean', cleaned_full_url, device_all, current_flow)
+                                            st.components.v1.html(preview_html, height=height, scrolling=True)
+                                            st.caption("🤖 Playwright (cleaned URL)")
+                                            debug_attempts.append("✅ Playwright (cleaned) rendered")
+                                            rendered_successfully = True
+                                    except Exception as e:
+                                        debug_attempts.append(f"❌ Playwright (cleaned) failed: {str(e)[:50]}")
+                                
+                                # PRIORITY 7: Try Screenshot API (LAST RESORT)
                                 if not rendered_successfully:
-                                    debug_attempts.append("Try Screenshot API (last resort)")
+                                    debug_attempts.append("7️⃣ Try Screenshot API (LAST RESORT)")
                                     screenshot_url = get_screenshot_url(adv_url, device=device_all, try_cleaned=True)
                                     debug_attempts.append(f"Screenshot API URL: {screenshot_url[:120] if screenshot_url else 'None'}")
                                     if screenshot_url:
@@ -1592,11 +1669,11 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                             debug_attempts.append("✅ Screenshot API rendered successfully")
                                             rendered_successfully = True
                                         except Exception as e:
-                                            debug_attempts.append(f"❌ Screenshot render failed: {str(e)[:50]}")
+                                            debug_attempts.append(f"❌ Screenshot API failed: {str(e)[:50]}")
                                 
                                 # If EVERYTHING failed, show error
                                 if not rendered_successfully:
-                                    debug_attempts.append("❌ ALL methods failed - showing error")
+                                    debug_attempts.append("❌ ALL 7 METHODS FAILED - showing error")
                                     error_html = f"""
                                     <!DOCTYPE html>
                                     <html>
