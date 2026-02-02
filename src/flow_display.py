@@ -1557,7 +1557,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                         debug_attempts.append(f"Cleaned URL response: {clean_response.status_code}")
                                         
                                         if clean_response.status_code == 200:
-                                            # Try rendering the cleaned URL's HTML
+                                            # Try HTML render with cleaned URL
+                                            debug_attempts.append("Try HTML render with cleaned URL")
                                             try:
                                                 page_html = decode_with_multiple_encodings(clean_response)
                                                 page_html = clean_and_prepare_html(page_html, cleaned_full_url)
@@ -1566,22 +1567,13 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                                 )
                                                 st.components.v1.html(preview_html, height=display_height, scrolling=True)
                                                 st.caption("📄 HTML (cleaned URL)")
-                                                debug_attempts.append("✅ Cleaned URL HTML rendered successfully")
+                                                debug_attempts.append("✅ HTML rendered")
                                                 rendered_successfully = True
                                             except Exception as e:
-                                                debug_attempts.append(f"❌ Cleaned URL HTML render failed: {str(e)[:50]}")
-                                        
-                                        # If HTML didn't work, try iframe with cleaned URL
-                                        if not rendered_successfully:
-                                            try:
-                                                preview_html, height, _ = render_mini_device_preview(cleaned_full_url, is_url=True, device=device_all, display_url=cleaned_full_url)
-                                                preview_html = inject_unique_id(preview_html, 'landing_cleaned_iframe', cleaned_full_url, device_all, current_flow)
-                                                st.components.v1.html(preview_html, height=height, scrolling=True)
-                                                st.caption("📺 Iframe (cleaned URL)")
-                                                debug_attempts.append("✅ Cleaned URL iframe rendered successfully")
-                                                rendered_successfully = True
-                                            except Exception as e:
-                                                debug_attempts.append(f"❌ Cleaned URL iframe failed: {str(e)[:50]}")
+                                                debug_attempts.append(f"❌ HTML failed: {str(e)[:50]}")
+                                        else:
+                                            # Cleaned URL also got non-200 (likely 403)
+                                            debug_attempts.append(f"⚠️ Cleaned URL still blocked: {clean_response.status_code}")
                                     except Exception as e:
                                         debug_attempts.append(f"❌ Cleaned URL request failed: {str(e)[:80]}")
                                 
@@ -1601,51 +1593,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                             rendered_successfully = True
                                         except Exception as e:
                                             debug_attempts.append(f"❌ Screenshot render failed: {str(e)[:50]}")
-                                        # Show error in device preview
-                                        error_html = f"""
-                                        <!DOCTYPE html>
-                                        <html>
-                                        <head>
-                                            <meta charset="UTF-8">
-                                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                                            <style>
-                                                body {{
-                                                    margin: 0;
-                                                    padding: clamp(1rem, 2vw, 1.5rem);
-                                                    font-family: system-ui, -apple-system, sans-serif;
-                                                    background: #f8fafc;
-                                                    display: flex;
-                                                    align-items: center;
-                                                    justify-content: center;
-                                                    min-height: 100vh;
-                                                }}
-                                                .container {{
-                                                    text-align: center;
-                                                    padding: clamp(1.5rem, 3vw, 2rem);
-                                                    background: white;
-                                                    border-radius: clamp(0.75rem, 1.5vw, 1rem);
-                                                    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-                                                    max-width: 90%;
-                                                }}
-                                                .icon {{ font-size: clamp(2.5rem, 5vw, 3.5rem); margin-bottom: clamp(0.75rem, 1.5vw, 1rem); }}
-                                                h2 {{ color: #dc2626; font-size: clamp(1rem, 2vw, 1.25rem); margin: 0 0 clamp(0.5rem, 1vw, 0.75rem) 0; font-weight: 700; }}
-                                                .url {{ background: #f1f5f9; padding: clamp(0.5rem, 1vw, 0.75rem); border-radius: clamp(0.375rem, 0.75vw, 0.5rem); font-size: clamp(0.625rem, 1.2vw, 0.75rem); color: #475569; word-break: break-all; margin-top: clamp(0.75rem, 1.5vw, 1rem); }}
-                                            </style>
-                                        </head>
-                                        <body>
-                                            <div class="container">
-                                                <div class="icon">🚫</div>
-                                                <h2>Could not load page</h2>
-                                                <div class="url">{html.escape(str(adv_url))}</div>
-                                            </div>
-                                        </body>
-                                        </html>
-                                        """
-                                        preview_html, height, _ = render_mini_device_preview(error_html, is_url=False, device=device_all)
-                                        preview_html = inject_unique_id(preview_html, 'landing_error', adv_url, device_all, current_flow)
-                                        st.components.v1.html(preview_html, height=height, scrolling=False)
-                                else:
-                                    # Show error in device preview
+                                
+                                # If EVERYTHING failed, show error
+                                if not rendered_successfully:
+                                    debug_attempts.append("❌ ALL methods failed - showing error")
                                     error_html = f"""
                                     <!DOCTYPE html>
                                     <html>
