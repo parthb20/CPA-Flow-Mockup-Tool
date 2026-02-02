@@ -91,17 +91,29 @@ def load_prerendered_responses(file_id):
         return None
     
     try:
-        # Load CSV from Google Drive silently
+        # Load CSV from Google Drive with debug
+        st.write("📥 Downloading FILE D from Google Drive...")
         df = load_csv_from_gdrive(file_id)
         
-        if df is None or len(df) == 0:
+        if df is None:
+            st.error("❌ load_csv_from_gdrive returned None")
             return None
+            
+        if len(df) == 0:
+            st.error("❌ FILE D is empty (0 rows)")
+            return None
+        
+        st.success(f"✅ Downloaded FILE D: {len(df)} rows, {len(df.columns)} columns")
         
         # Clean column names (strip whitespace, lowercase for comparison)
         df.columns = df.columns.str.strip()
         
+        st.write(f"📋 Original column names: {df.columns.tolist()}")
+        
         # Create case-insensitive column mapping
         col_mapping = {col.lower(): col for col in df.columns}
+        
+        st.write(f"📋 Lowercase mapping: {list(col_mapping.keys())}")
         
         # Verify required columns (case-insensitive)
         required_cols = ['creative_id', 'creative_size', 'request']
@@ -109,10 +121,14 @@ def load_prerendered_responses(file_id):
         for req_col in required_cols:
             if req_col.lower() not in col_mapping:
                 missing.append(req_col)
+                st.error(f"❌ Missing required column: '{req_col}' (case-insensitive)")
         
         if missing:
-            # Silent fail - errors will be shown in the UI later if needed
+            st.error(f"❌ Cannot load FILE D - missing columns: {missing}")
+            st.write(f"Available columns: {df.columns.tolist()}")
             return None
+        
+        st.success("✅ All required columns found!")
         
         # Rename columns to standardized names if needed
         rename_map = {}
