@@ -235,7 +235,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
     # Final wrapper HTML - TRULY RESPONSIVE with proper scaling
     # Use CSS to calculate scale dynamically based on container width
     html_output = f"""
-    <div style="display: flex; justify-content: center; padding: clamp(0.5rem, 0.4rem + 0.5vw, 0.625rem); background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem); overflow: hidden;">
+    <div class="device-preview-container" style="display: flex; justify-content: center; padding: clamp(0.5rem, 0.4rem + 0.5vw, 0.625rem); background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem); overflow: hidden;">
         <div style="
             width: {responsive_width}; 
             aspect-ratio: {base_width} / {base_height}; 
