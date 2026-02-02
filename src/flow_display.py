@@ -1185,6 +1185,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         landing_preview_container = landing_card_left if st.session_state.flow_layout == 'vertical' and landing_card_left else stage_4_container
         
+        # Track rendering attempts for debug
+        debug_attempts = []
+        
         if adv_url and pd.notna(adv_url) and str(adv_url).strip():
             with landing_preview_container:
                 # Try fetching and rendering HTML FIRST (most reliable)
@@ -1206,6 +1209,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     
                     session = requests.Session()
                     response = session.get(adv_url, timeout=15, headers=headers, allow_redirects=True)
+                    debug_attempts.append(f"HTTP Request: {response.status_code}")
                     
                     if response.status_code == 200:
                         # Use original URL by default (don't clean unless 403)
@@ -1218,11 +1222,13 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         # Method 1: Try Playwright FIRST (most reliable)
                         if not rendered_successfully and playwright_available:
                             try:
+                                debug_attempts.append(f"Try Playwright with URL: {render_url[:100]}")
                                 with st.spinner("🔄 Trying browser automation..."):
                                     page_html = capture_with_playwright(render_url, device=device_all)
                                     if page_html:
                                         if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
                                             # Screenshot API was used
+                                            debug_attempts.append("✅ Playwright returned Screenshot API fallback")
                                             preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                             preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
                                             # Use proportional height from renderer
@@ -1231,18 +1237,22 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                             rendered_successfully = True
                                         else:
                                             # Full HTML from Playwright
+                                            debug_attempts.append("✅ Playwright HTML success")
                                             preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                             preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
                                             # Use proportional height from renderer
                                             st.components.v1.html(preview_html, height=height, scrolling=True)
                                             st.caption("🤖 Browser")
                                             rendered_successfully = True
-                            except:
-                                pass
+                                    else:
+                                        debug_attempts.append("❌ Playwright returned None")
+                            except Exception as e:
+                                debug_attempts.append(f"❌ Playwright error: {str(e)[:100]}")
                         
                         # Method 2: If Playwright unavailable/failed, try HTML rendering first (more reliable than iframe)
                         if not rendered_successfully and not is_redirect_url:
                             try:
+                                debug_attempts.append("Try HTML render")
                                 page_html = decode_with_multiple_encodings(response)
                                 page_html = clean_and_prepare_html(page_html, render_url)
                                 preview_html, display_height = render_html_with_proper_encoding(
@@ -1250,24 +1260,30 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                 )
                                 st.components.v1.html(preview_html, height=display_height, scrolling=True)
                                 st.caption("📄 HTML")
+                                debug_attempts.append("✅ HTML render success")
                                 rendered_successfully = True
-                            except:
-                                pass
+                            except Exception as e:
+                                debug_attempts.append(f"❌ HTML render failed: {str(e)[:50]}")
                         
                         # Method 3: Try iframe as fallback (may be blocked by X-Frame-Options)
                         if not rendered_successfully and not is_redirect_url:
                             try:
+                                debug_attempts.append("Try iframe")
                                 preview_html, height, _ = render_mini_device_preview(render_url, is_url=True, device=device_all, display_url=render_url)
                                 preview_html = inject_unique_id(preview_html, 'landing_iframe', render_url, device_all, current_flow)
                                 # Use proportional height
                                 st.components.v1.html(preview_html, height=height, scrolling=True)
                                 st.caption("📺 Iframe (may be blocked by site)")
+                                debug_attempts.append("✅ Iframe success")
                                 rendered_successfully = True
-                            except:
-                                pass
+                            except Exception as e:
+                                debug_attempts.append(f"❌ Iframe failed: {str(e)[:50]}")
                         
                         # Method 4: Try Screenshot API as last resort for non-redirect URLs (try cleaned)
                         if not rendered_successfully and not is_redirect_url:
+                            debug_attempts.append("Try Screenshot API (with cleaned URL)")
+                            cleaned_for_api = clean_url_for_capture(adv_url)
+                            debug_attempts.append(f"Cleaned URL for API: {cleaned_for_api}")
                             screenshot_url = get_screenshot_url(adv_url, device=device_all, try_cleaned=True)
                             if screenshot_url:
                                 try:
@@ -1276,9 +1292,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                     preview_html = inject_unique_id(preview_html, 'landing_screenshot_final', adv_url, device_all, current_flow)
                                     st.components.v1.html(preview_html, height=height, scrolling=True)
                                     st.caption("📸 Screenshot (ScreenshotOne API)")
+                                    debug_attempts.append("✅ Screenshot API success")
                                     rendered_successfully = True
-                                except:
-                                    pass
+                                except Exception as e:
+                                    debug_attempts.append(f"❌ Screenshot API failed: {str(e)[:50]}")
                         
                         # For redirect URLs that still haven't rendered, try fetching with cleaned URL
                         if not rendered_successfully and is_redirect_url:
@@ -1674,12 +1691,24 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                            custom_title="Keyword → Landing Page Similarity",
                                            tooltip_text="Measures end-to-end flow quality. 70%+ = Good Match (keyword intent matches page content), 40-69% = Fair Match (some relevance), <40% = Poor Match (poor user experience)")
         
-        # Close wrapper div for horizontal layout - show Landing Page URL below preview
+        # Close wrapper div for horizontal layout - show Landing Page URL below preview + DEBUG INFO
         if st.session_state.flow_layout == 'horizontal':
             adv_url = current_flow.get('Destination_Url', '') or current_flow.get('reporting_destination_url', '')
+            
+            # Calculate cleaned URL for debug
+            cleaned_url = clean_url_for_capture(adv_url) if adv_url and pd.notna(adv_url) else None
+            
+            # Get debug attempts if available
+            debug_info = ""
+            if 'debug_attempts' in locals() and debug_attempts:
+                debug_list = "<br>".join([f"<span style='font-size: 11px;'>• {attempt}</span>" for attempt in debug_attempts])
+                debug_info = f'<div style="margin-top: 4px; padding: 6px 8px; background: #e0f2fe; border-left: 3px solid #0ea5e9; border-radius: 4px;"><strong style="color: #075985; font-size: 13px;">🔧 Rendering Attempts:</strong><br>{debug_list}</div>'
+            
             st.markdown(f"""
             <div style='margin-top: 8px; font-size: 14px;'>
                 {f'<div><strong style="color: #0f172a; font-size: 16px;">Landing Page URL:</strong> <a href="{adv_url}" style="color: #3b82f6; text-decoration: none; font-size: 14px;">{html.escape(str(adv_url))}</a></div>' if adv_url and pd.notna(adv_url) else ''}
+                {f'<div style="margin-top: 4px; padding: 6px 8px; background: #fef3c7; border-left: 3px solid #f59e0b; border-radius: 4px;"><strong style="color: #92400e; font-size: 13px;">🔍 Cleaned URL (used on 403):</strong> <span style="color: #78350f; font-size: 12px; font-family: monospace;">{html.escape(str(cleaned_url))}</span></div>' if cleaned_url else ''}
+                {debug_info}
             </div>
             """, unsafe_allow_html=True)
     
