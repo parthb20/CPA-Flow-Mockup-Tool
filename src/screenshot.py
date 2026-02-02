@@ -38,15 +38,19 @@ def clean_url_for_capture(url):
     # Remove www.
     url = re.sub(r'^www\.', '', url)
     
-    # Remove ALL query parameters (everything after ?)
+    # Store if URL originally had trailing slash before query params
+    has_trailing_slash = False
     if '?' in url:
-        url = url.split('?')[0]
+        path_before_query = url.split('?')[0]
+        has_trailing_slash = path_before_query.endswith('/')
+        url = path_before_query
     
     # Remove any {macros} that might be in the path
     url = re.sub(r'\{[^}]+\}', '', url)
     
-    # Clean up trailing slashes (keep consistent format)
-    url = url.rstrip('/')
+    # Keep trailing slash if original URL had it (important for some sites!)
+    if has_trailing_slash and not url.endswith('/'):
+        url = url + '/'
     
     return url
 
