@@ -437,17 +437,35 @@ def capture_with_playwright(url, device='mobile', retry_count=1, use_firefox=Fal
             
             # Try navigation with fallback strategies
             response = None
+            navigation_error = None
             try:
                 response = page.goto(url, wait_until='domcontentloaded', timeout=timeout)
             except PlaywrightTimeoutError:
                 try:
                     # Fallback to 'commit' if domcontentloaded times out
                     response = page.goto(url, wait_until='commit', timeout=timeout // 2)
-                except:
-                    pass
+                except Exception as e:
+                    navigation_error = e
+            except Exception as e:
+                navigation_error = e
             
-            # If no response at all (complete navigation failure), give up
+            # If no response but we have an error, check if it's a 403
             if not response:
+                if navigation_error:
+                    error_str = str(navigation_error).lower()
+                    # Handle 403 in exception
+                    if '403' in error_str or 'forbidden' in error_str:
+                        browser.close()
+                        # Try cleaned URL first
+                        if not try_cleaned_url:
+                            import time
+                            time.sleep(random.uniform(1, 2))
+                            return capture_with_playwright(url, device, retry_count, use_firefox, try_cleaned_url=True)
+                        # Use screenshot API
+                        screenshot_url = get_screenshot_url(url, device=device, try_cleaned=True)
+                        if screenshot_url:
+                            return f'<!-- SCREENSHOT_FALLBACK --><img src="{screenshot_url}" style="width:100%;height:auto;" />'
+                # Complete failure
                 browser.close()
                 return None
             
