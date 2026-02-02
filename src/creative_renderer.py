@@ -365,18 +365,7 @@ def get_prerendered_creative(creative_id, creative_size, prerendered_df):
     ]
     
     if len(matches) == 0:
-        # DEBUG: Show why no match
-        st.warning(f"❌ No match in File D for creative_id={creative_id}, creative_size={creative_size} (normalized: {creative_size_normalized})")
-        matching_ids = prerendered_df[prerendered_df[id_col].astype(str) == str(creative_id)]
-        if len(matching_ids) > 0:
-            st.write(f"✅ Found creative_id {creative_id} but with sizes: {matching_ids[size_col].unique().tolist()}")
-            st.write(f"   Normalized sizes: {matching_ids['size_normalized'].unique().tolist()}")
-        else:
-            st.write(f"❌ creative_id {creative_id} not found in File D at all")
-            st.write(f"📋 Sample creative_ids in File D: {prerendered_df[id_col].head(10).tolist()}")
         return None
-    
-    st.success(f"✅ Found match for creative_id={creative_id}, size={creative_size}")
     
     request_data = matches.iloc[0][request_col]
     if pd.notna(request_data) and str(request_data).strip():
