@@ -661,9 +661,13 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             # Use Full Data checkbox
             with sub_col1:
                 st.markdown('<div style="height: 1.65rem;"></div>', unsafe_allow_html=True)
+                # Preserve checkbox state across campaign changes
+                if 'use_full_data_toggle' not in st.session_state:
+                    st.session_state.use_full_data_toggle = False
+                
                 use_full_data = st.checkbox(
                     "Use Full Data",
-                    value=False,
+                    value=st.session_state.use_full_data_toggle,
                     help="Bypass 5% threshold filter",
                     key='use_full_data_toggle'
                 )
