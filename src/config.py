@@ -5,7 +5,7 @@ Configuration constants and settings
 # Google Drive File IDs
 FILE_A_ID = "1DXR77Tges9kkH3x7pYin2yo9De7cxqpc"  # Main CSV file (.csv.gz) - REQUIRED
 FILE_B_ID = "1SXcLm1hhzQK23XY6Qt7E1YX5Fa-2Tlr9"  # SERP templates JSON file - REQUIRED
-FILE_D_ID = "1Uz29aIA1YtrnqmJaROgiiG4q1CvJ6arK"  # Pre-rendered creative responses (.csv): creative_id, size, status, error, adcode - REQUIRED
+FILE_D_ID = "1VjgRBBJJS3zJ9jKciiQzTpTmF0Y2oXgL"  # Pre-rendered creative responses (.csv): creative_id, creative_size, request - REQUIRED
 
 # SERP URL base - template key gets appended
 SERP_BASE_URL = "https://related.performmedia.com/search/?srprc=3&oscar=1&a=100&q=nada+vehicle+value+by+vin&mkt=perform&purl=forbes.com/home&tpid="
