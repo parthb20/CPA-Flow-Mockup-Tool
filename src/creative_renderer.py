@@ -330,16 +330,16 @@ def replace_kd_in_adcode(adcode, url_encoded_kd):
 
 
 def get_prerendered_creative(creative_id, creative_size, prerendered_df):
-    """Get pre-rendered creative from File D"""
+    """Get pre-rendered creative from File D (uses 'request' column as adcode)"""
     import streamlit as st
     
     if prerendered_df is None or len(prerendered_df) == 0:
         return None
     
-    # Match creative_id and size
+    # Match creative_id and creative_size (new column name)
     matches = prerendered_df[
         (prerendered_df['creative_id'].astype(str) == str(creative_id)) &
-        (prerendered_df['size'].astype(str) == str(creative_size))
+        (prerendered_df['creative_size'].astype(str) == str(creative_size))
     ]
     
     if len(matches) == 0:
@@ -347,23 +347,19 @@ def get_prerendered_creative(creative_id, creative_size, prerendered_df):
         # st.warning(f"❌ No match in File D for {creative_id} x {creative_size}")
         # matching_ids = prerendered_df[prerendered_df['creative_id'].astype(str) == str(creative_id)]
         # if len(matching_ids) > 0:
-        #     st.write(f"Found creative_id {creative_id} but with sizes: {matching_ids['size'].unique().tolist()}")
+        #     st.write(f"Found creative_id {creative_id} but with sizes: {matching_ids['creative_size'].unique().tolist()}")
         return None
     
-    adcode = matches.iloc[0]['adcode']
-    if pd.notna(adcode) and str(adcode).strip():
-        adcode_str = str(adcode)
+    # Use 'request' column as adcode (this contains the cleaned JSON data)
+    request_data = matches.iloc[0]['request']
+    if pd.notna(request_data) and str(request_data).strip():
+        request_str = str(request_data)
         
         # DEBUG: Show basic info (comment out for production)
-        # st.write(f"📦 **Adcode Retrieved:** {len(adcode_str)} chars")
-        # import re
-        # script_srcs = re.findall(r'src\s*=\s*["\']?(https?://[^"\'\s>]+)', adcode_str, re.IGNORECASE)
-        # if script_srcs:
-        #     st.write(f"🌐 **External scripts:** {', '.join(script_srcs)}")
+        # st.write(f"📦 **Request Data Retrieved:** {len(request_str)} chars")
         
-        # Already cleaned during File D loading (html.unescape + utf-8 encoding)
-        # Just return it as-is
-        return adcode_str
+        # Return the request data (already cleaned with ||| replaced by commas)
+        return request_str
     
     return None
 
