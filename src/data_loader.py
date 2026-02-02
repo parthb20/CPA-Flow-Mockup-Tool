@@ -2,6 +2,7 @@
 Data loading functions for Google Drive files
 """
 
+import streamlit as st
 import requests
 import pandas as pd
 import json
@@ -21,7 +22,6 @@ except:
 
 def process_file_content(content):
     """Process file content - detect type and decompress if needed"""
-    import streamlit as st
     import csv
     
     try:
@@ -149,8 +149,6 @@ def process_file_content(content):
 
 def load_csv_from_gdrive(file_id):
     """Load CSV from Google Drive - handles CSV, ZIP, GZIP, and large file virus scan"""
-    import streamlit as st
-    
     # Method 1: Try gdown if available (best for large files)
     if GDOWN_AVAILABLE:
         try:
