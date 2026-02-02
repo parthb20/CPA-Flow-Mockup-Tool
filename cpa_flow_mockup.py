@@ -7,7 +7,7 @@ Modular architecture for maintainability
 import streamlit as st
 
 # VERSION CHECK - To confirm new code is running
-APP_VERSION = "v2.5-CLEAN-RESPONSIVE"
+APP_VERSION = "v2.6-FINAL-CLEAN"
 
 # Page config - MUST be FIRST Streamlit command (before any imports that use Streamlit)
 st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊", layout="wide")
@@ -814,15 +814,16 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             # Use Full Data checkbox
             with sub_col1:
                 st.markdown('<div style="height: 1.65rem;"></div>', unsafe_allow_html=True)
-                # Preserve checkbox state across campaign changes
-                if 'use_full_data_toggle' not in st.session_state:
-                    st.session_state.use_full_data_toggle = False
+                # Initialize checkbox state once if not exists
+                if 'use_full_data' not in st.session_state:
+                    st.session_state.use_full_data = False
                 
                 use_full_data = st.checkbox(
                     "Use Full Data",
-                    value=st.session_state.use_full_data_toggle,
+                    value=st.session_state.use_full_data,
                     help="Bypass 5% threshold filter",
-                    key='use_full_data_toggle'
+                    key='use_full_data',
+                    on_change=lambda: None  # Force re-run on change
                 )
             
             # Time Filter
