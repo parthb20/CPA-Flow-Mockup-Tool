@@ -181,12 +181,26 @@ def capture_with_playwright(url, device='mobile', retry_count=1, use_firefox=Fal
     
     import random
     
-    # Enhanced user agents rotation
+    # MASSIVELY EXPANDED user agents rotation (12+ different agents)
     user_agents = [
+        # Chrome Windows
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+        # Chrome Mac
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        # Firefox Windows
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15'
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0',
+        # Firefox Mac
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:121.0) Gecko/20100101 Firefox/121.0',
+        # Safari Mac
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',
+        # Edge Windows
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 Edg/121.0.0.0',
     ]
     user_agent = random.choice(user_agents)
     
@@ -221,6 +235,15 @@ def capture_with_playwright(url, device='mobile', retry_count=1, use_firefox=Fal
             browser = browser_type.launch(headless=True, args=browser_args if browser_args else None)
             
             # Enhanced context with realistic fingerprint + FORCE LIGHT THEME
+            # Add random referer to appear more like real traffic
+            referers = [
+                'https://www.google.com/',
+                'https://www.bing.com/',
+                'https://www.yahoo.com/',
+                'https://www.duckduckgo.com/',
+            ]
+            referer = random.choice(referers)
+            
             context = browser.new_context(
                 viewport=viewport,
                 user_agent=user_agent,
@@ -238,19 +261,25 @@ def capture_with_playwright(url, device='mobile', retry_count=1, use_firefox=Fal
                     'Upgrade-Insecure-Requests': '1',
                     'Sec-Fetch-Dest': 'document',
                     'Sec-Fetch-Mode': 'navigate',
-                    'Sec-Fetch-Site': 'none',
+                    'Sec-Fetch-Site': 'cross-site',
                     'Sec-Fetch-User': '?1',
                     'Cache-Control': 'max-age=0',
-                    'DNT': '1'
+                    'DNT': '1',
+                    'Referer': referer  # Random referer makes traffic look organic
                 }
             )
             
             page = context.new_page()
             
-            # Inject anti-detection scripts
+            # ENHANCED anti-detection scripts (more aggressive)
             page.add_init_script("""
                 // Hide webdriver property
                 Object.defineProperty(navigator, 'webdriver', {
+                    get: () => undefined
+                });
+                
+                // Override automation property
+                Object.defineProperty(navigator, 'automation', {
                     get: () => undefined
                 });
                 
@@ -262,7 +291,7 @@ def capture_with_playwright(url, device='mobile', retry_count=1, use_firefox=Fal
                         originalQuery(parameters)
                 );
                 
-                // Mock plugins
+                // Mock plugins (more realistic)
                 Object.defineProperty(navigator, 'plugins', {
                     get: () => [
                         {
@@ -271,6 +300,13 @@ def capture_with_playwright(url, device='mobile', retry_count=1, use_firefox=Fal
                             filename: "internal-pdf-viewer",
                             length: 1,
                             name: "Chrome PDF Plugin"
+                        },
+                        {
+                            0: {type: "application/pdf", suffixes: "pdf", description: ""},
+                            description: "",
+                            filename: "mhjfbmdgcfjbbpaeojofohoefgiehjai",
+                            length: 1,
+                            name: "Chrome PDF Viewer"
                         }
                     ]
                 });
@@ -278,6 +314,21 @@ def capture_with_playwright(url, device='mobile', retry_count=1, use_firefox=Fal
                 // Mock languages
                 Object.defineProperty(navigator, 'languages', {
                     get: () => ['en-US', 'en']
+                });
+                
+                // Mock platform
+                Object.defineProperty(navigator, 'platform', {
+                    get: () => 'Win32'
+                });
+                
+                // Mock hardwareConcurrency
+                Object.defineProperty(navigator, 'hardwareConcurrency', {
+                    get: () => 8
+                });
+                
+                // Mock deviceMemory
+                Object.defineProperty(navigator, 'deviceMemory', {
+                    get: () => 8
                 });
                 
                 // Add chrome object for Chromium
@@ -289,6 +340,25 @@ def capture_with_playwright(url, device='mobile', retry_count=1, use_firefox=Fal
                         app: {}
                     };
                 }
+                
+                // Override toString to hide that properties are modified
+                const originalToString = Function.prototype.toString;
+                Function.prototype.toString = function() {
+                    if (this === navigator.webdriver) {
+                        return 'function webdriver() { [native code] }';
+                    }
+                    return originalToString.call(this);
+                };
+                
+                // Mock connection
+                Object.defineProperty(navigator, 'connection', {
+                    get: () => ({
+                        effectiveType: '4g',
+                        rtt: 50,
+                        downlink: 10,
+                        saveData: false
+                    })
+                });
             """)
             
             page.set_default_navigation_timeout(timeout)
