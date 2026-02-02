@@ -20,12 +20,12 @@ def clean_url_for_capture(url):
     """
     Clean URL for screenshot capture:
     - Remove https://, http://, www.
-    - Trim everything after macros ({clickId}, {click}, etc.)
-    - Keep domain + path + first query param before macros
+    - Remove ALL query parameters (everything after ?)
+    - Keep only: domain + path
     
     Examples:
         https://www.forbes.com/advisor/m/sports-streaming/?utm_campaign=streaming-services&campaign_id=218804&mcid={clickId}
-        → forbes.com/advisor/m/sports-streaming/?utm_campaign=streaming-services&campaign_id=218804
+        → forbes.com/advisor/m/sports-streaming/
     """
     if not url or pd.isna(url):
         return None
@@ -38,17 +38,15 @@ def clean_url_for_capture(url):
     # Remove www.
     url = re.sub(r'^www\.', '', url)
     
-    # Trim after macro parameters (anything with {})
-    # Find first occurrence of parameter with {macro}
-    macro_match = re.search(r'[&?][\w_]+=\{[^}]+\}', url)
-    if macro_match:
-        url = url[:macro_match.start()]
+    # Remove ALL query parameters (everything after ?)
+    if '?' in url:
+        url = url.split('?')[0]
     
-    # Also remove any remaining {macros} in the URL
+    # Remove any {macros} that might be in the path
     url = re.sub(r'\{[^}]+\}', '', url)
     
-    # Clean up trailing & or ?
-    url = url.rstrip('?&')
+    # Clean up trailing slashes (keep consistent format)
+    url = url.rstrip('/')
     
     return url
 
@@ -72,6 +70,11 @@ def get_screenshot_url(url, device='mobile', full_page=False):
             return None
         
         url = str(url).strip()
+        
+        # Clean URL FIRST (remove macros, www., etc.)
+        cleaned_url = clean_url_for_capture(url)
+        if cleaned_url:
+            url = cleaned_url
         
         # Ensure URL starts with http/https
         if not url.startswith(('http://', 'https://')):
@@ -274,6 +277,7 @@ def capture_with_playwright(url, device='mobile', retry_count=1, use_firefox=Fal
             
             # Try navigation with fallback strategies
             navigation_success = False
+            response = None
             try:
                 response = page.goto(url, wait_until='domcontentloaded', timeout=timeout)
                 if response and response.status < 400:
@@ -281,7 +285,7 @@ def capture_with_playwright(url, device='mobile', retry_count=1, use_firefox=Fal
             except PlaywrightTimeoutError:
                 try:
                     # Fallback to 'commit' if domcontentloaded times out
-                    page.goto(url, wait_until='commit', timeout=timeout // 2)
+                    response = page.goto(url, wait_until='commit', timeout=timeout // 2)
                     navigation_success = True
                 except:
                     pass
