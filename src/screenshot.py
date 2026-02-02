@@ -436,33 +436,39 @@ def capture_with_playwright(url, device='mobile', retry_count=1, use_firefox=Fal
                     pass  # If homepage fails, continue anyway
             
             # Try navigation with fallback strategies
-            navigation_success = False
             response = None
             try:
                 response = page.goto(url, wait_until='domcontentloaded', timeout=timeout)
-                if response and response.status < 400:
-                    navigation_success = True
             except PlaywrightTimeoutError:
                 try:
                     # Fallback to 'commit' if domcontentloaded times out
                     response = page.goto(url, wait_until='commit', timeout=timeout // 2)
-                    navigation_success = True
                 except:
                     pass
             
-            if not navigation_success:
+            # If no response at all (complete navigation failure), give up
+            if not response:
                 browser.close()
                 return None
             
-            # Check for 403 - try with cleaned URL first, then screenshot API
-            if response and response.status == 403:
+            # Check for error status codes
+            if response.status >= 400:
+                # Handle 403 Forbidden
+                if response.status == 403:
+                    browser.close()
+                    # If not already trying cleaned URL, retry with cleaned URL
+                    if not try_cleaned_url:
+                        import time
+                        time.sleep(random.uniform(1, 2))
+                        return capture_with_playwright(url, device, retry_count, use_firefox, try_cleaned_url=True)
+                    # If cleaned URL also failed, use screenshot API as fallback
+                    screenshot_url = get_screenshot_url(url, device=device, try_cleaned=True)
+                    if screenshot_url:
+                        return f'<!-- SCREENSHOT_FALLBACK --><img src="{screenshot_url}" style="width:100%;height:auto;" />'
+                    return None
+                
+                # Handle other 4xx/5xx errors - try screenshot API directly
                 browser.close()
-                # If not already trying cleaned URL, retry with cleaned URL
-                if not try_cleaned_url:
-                    import time
-                    time.sleep(random.uniform(1, 2))
-                    return capture_with_playwright(url, device, retry_count, use_firefox, try_cleaned_url=True)
-                # If cleaned URL also failed, use screenshot API
                 screenshot_url = get_screenshot_url(url, device=device, try_cleaned=True)
                 if screenshot_url:
                     return f'<!-- SCREENSHOT_FALLBACK --><img src="{screenshot_url}" style="width:100%;height:auto;" />'
