@@ -6,6 +6,9 @@ Modular architecture for maintainability
 
 import streamlit as st
 
+# VERSION CHECK - To confirm new code is running
+APP_VERSION = "v2.3-DEBUG-FILE-D"
+
 # Page config - MUST be FIRST Streamlit command (before any imports that use Streamlit)
 st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊", layout="wide")
 
@@ -578,6 +581,14 @@ for key in ['data_a', 'data_b', 'data_d', 'loading_done', 'default_flow', 'curre
         else:
             st.session_state[key] = None
 
+# VERSION CHECK - Shows at very top
+st.markdown(f"""
+<div style="background: #fef3c7; border: 2px solid #f59e0b; padding: 10px; margin-bottom: 10px; border-radius: 5px;">
+    <strong>🔧 Running Version: {APP_VERSION}</strong><br>
+    <small>If you don't see "v2.3-DEBUG-FILE-D" above, you're running OLD CODE! Clear cache and restart!</small>
+</div>
+""", unsafe_allow_html=True)
+
 # Main title - BIG and BOLD at top - RESPONSIVE
 st.markdown("""
     <div style="margin: 0 0 clamp(0.25rem, 0.2rem + 0.2vw, 0.25rem) 0; padding: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem) 0; border-bottom: clamp(2px, 0.1rem + 0.15vw, 3px) solid #e2e8f0;">
@@ -598,18 +609,33 @@ if not st.session_state.loading_done:
             st.session_state.data_b = load_json_from_gdrive(FILE_B_ID)
             
             # Load File D (pre-rendered responses) - with debug
+            st.write("🔄 Attempting to load FILE D...")
+            st.write(f"📋 FILE_D_ID: {FILE_D_ID}")
+            
             if FILE_D_ID and FILE_D_ID.strip() != "":
-                st.session_state.data_d = load_prerendered_responses(FILE_D_ID)
-                if st.session_state.data_d is not None:
-                    st.success(f"✅ FILE D loaded: {len(st.session_state.data_d)} rows")
-                    st.write(f"📋 FILE D columns: {st.session_state.data_d.columns.tolist()}")
-                    st.write(f"📊 FILE D sample:")
-                    st.dataframe(st.session_state.data_d.head(3))
+                result = load_prerendered_responses(FILE_D_ID)
+                st.session_state.data_d = result
+                
+                if result is not None:
+                    st.success(f"✅ FILE D loaded successfully: {len(result)} rows")
+                    st.write(f"📋 FILE D columns: {result.columns.tolist()}")
+                    st.write(f"📊 First 3 rows of FILE D:")
+                    st.dataframe(result.head(3))
+                    
+                    # Verify data types
+                    st.write(f"🔍 Data types:")
+                    for col in result.columns:
+                        st.write(f"  - {col}: {result[col].dtype}")
                 else:
-                    st.error("❌ FILE D returned None - check load_prerendered_responses function")
+                    st.error("❌ FILE D returned None!")
+                    st.error("Possible reasons:")
+                    st.error("1. File not found on Google Drive")
+                    st.error("2. Wrong column names in CSV")
+                    st.error("3. File is empty")
+                    st.error("4. Network/download error")
             else:
                 st.session_state.data_d = None
-                st.warning("⚠️ FILE_D_ID is empty or not set")
+                st.error("⚠️ FILE_D_ID is empty or not set in config.py")
             
             st.session_state.loading_done = True
         except Exception as e:
