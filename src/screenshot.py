@@ -271,19 +271,31 @@ def capture_with_playwright(url, device='mobile', retry_count=1, use_firefox=Fal
             
             page = context.new_page()
             
-            # ENHANCED anti-detection scripts (more aggressive)
+            # ULTRA-ENHANCED anti-detection scripts (stealth mode)
             page.add_init_script("""
-                // Hide webdriver property
+                // 1. Hide webdriver property (critical)
                 Object.defineProperty(navigator, 'webdriver', {
-                    get: () => undefined
+                    get: () => undefined,
+                    configurable: true
                 });
                 
-                // Override automation property
+                // 2. Override automation property
                 Object.defineProperty(navigator, 'automation', {
-                    get: () => undefined
+                    get: () => undefined,
+                    configurable: true
                 });
                 
-                // Override the permissions API
+                // 3. Chrome object (make it look real)
+                if (!window.chrome) {
+                    window.chrome = {
+                        runtime: {},
+                        loadTimes: function() {},
+                        csi: function() {},
+                        app: {}
+                    };
+                }
+                
+                // 4. Override permissions API
                 const originalQuery = window.navigator.permissions.query;
                 window.navigator.permissions.query = (parameters) => (
                     parameters.name === 'notifications' ?
@@ -291,7 +303,7 @@ def capture_with_playwright(url, device='mobile', retry_count=1, use_firefox=Fal
                         originalQuery(parameters)
                 );
                 
-                // Mock plugins (more realistic)
+                // 5. Mock plugins (more realistic)
                 Object.defineProperty(navigator, 'plugins', {
                     get: () => [
                         {
@@ -359,12 +371,69 @@ def capture_with_playwright(url, device='mobile', retry_count=1, use_firefox=Fal
                         saveData: false
                     })
                 });
+                
+                // 6. Canvas fingerprint noise (makes each session unique)
+                const originalGetImageData = CanvasRenderingContext2D.prototype.getImageData;
+                CanvasRenderingContext2D.prototype.getImageData = function() {
+                    const imageData = originalGetImageData.apply(this, arguments);
+                    // Add tiny random noise (invisible to eye, defeats fingerprinting)
+                    for (let i = 0; i < imageData.data.length; i += 4) {
+                        if (Math.random() < 0.001) { // Only 0.1% of pixels
+                            imageData.data[i] = imageData.data[i] ^ 1; // Flip one bit
+                        }
+                    }
+                    return imageData;
+                };
+                
+                // 7. WebGL fingerprint randomization
+                const getParameter = WebGLRenderingContext.prototype.getParameter;
+                WebGLRenderingContext.prototype.getParameter = function(parameter) {
+                    if (parameter === 37445) {
+                        return 'Intel Inc.'; // Fake vendor
+                    }
+                    if (parameter === 37446) {
+                        return 'Intel Iris OpenGL Engine'; // Fake renderer
+                    }
+                    return getParameter.call(this, parameter);
+                };
+                
+                // 8. Battery API (make it look like not charging)
+                if (navigator.getBattery) {
+                    const originalGetBattery = navigator.getBattery;
+                    navigator.getBattery = function() {
+                        return Promise.resolve({
+                            charging: false,
+                            chargingTime: Infinity,
+                            dischargingTime: 5400,
+                            level: 0.75
+                        });
+                    };
+                }
             """)
             
             page.set_default_navigation_timeout(timeout)
             
             # Handle dialogs automatically
             page.on("dialog", lambda dialog: dialog.dismiss())
+            
+            # SESSION WARMING: Visit homepage first to get cookies (helps bypass SOME 403s)
+            if retry_count == 1 and not try_cleaned_url:
+                try:
+                    # Extract domain from URL
+                    from urllib.parse import urlparse
+                    parsed = urlparse(url)
+                    homepage = f"{parsed.scheme}://{parsed.netloc}"
+                    
+                    # Visit homepage briefly to establish session
+                    home_response = page.goto(homepage, wait_until='domcontentloaded', timeout=10000)
+                    import time
+                    time.sleep(random.uniform(0.5, 1.5))  # Human-like delay
+                    
+                    # Scroll a bit (human behavior)
+                    page.evaluate("window.scrollTo(0, 100);")
+                    time.sleep(random.uniform(0.3, 0.7))
+                except:
+                    pass  # If homepage fails, continue anyway
             
             # Try navigation with fallback strategies
             navigation_success = False
