@@ -19,7 +19,7 @@ from src.renderers import (
     render_similarity_score,
     inject_unique_id
 )
-from src.screenshot import get_screenshot_url, capture_with_playwright, capture_page_with_fallback, clean_url_for_capture
+from src.screenshot import get_screenshot_url, capture_with_playwright, clean_url_for_capture
 from src.serp import generate_serp_mockup
 from src.similarity import calculate_similarities
 from src.creative_renderer import render_creative_via_weaver, parse_keyword_array_from_flow
