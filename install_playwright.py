@@ -17,12 +17,24 @@ def install_playwright_browsers():
         Path("/home/appuser/.cache/ms-playwright"),
     ]
     
+    print(f"🔍 Checking for existing Playwright browsers...")
+    print(f"   Home directory: {Path.home()}")
+    print(f"   User: {os.environ.get('USER', 'unknown')}")
+    
     browsers_exist = False
     for browser_path in browser_paths:
-        if browser_path.exists() and list(browser_path.glob("chromium*")):
-            print(f"✅ Playwright browsers already installed at: {browser_path}")
-            browsers_exist = True
-            break
+        print(f"   Checking: {browser_path}")
+        if browser_path.exists():
+            print(f"     ✅ Path exists")
+            chromium_dirs = list(browser_path.glob("chromium*"))
+            if chromium_dirs:
+                print(f"     ✅ Playwright browsers already installed at: {browser_path}")
+                browsers_exist = True
+                break
+            else:
+                print(f"     ⚠️ Path exists but no chromium found")
+        else:
+            print(f"     ❌ Path doesn't exist")
     
     if not browsers_exist:
         print("=" * 50)
