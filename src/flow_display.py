@@ -1536,12 +1536,61 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                         preview_html = inject_unique_id(preview_html, 'landing_error', adv_url, device_all, current_flow)
                                         st.components.v1.html(preview_html, height=height, scrolling=False)
                             else:
-                                # Playwright not available - try screenshot API
+                                # Playwright not available - try cleaned URL with requests first!
                                 debug_attempts.append("⚠️ Playwright NOT available on server")
-                                debug_attempts.append("Try Screenshot API directly (with cleaned URL)")
-                                screenshot_url = get_screenshot_url(adv_url, device=device_all, try_cleaned=True)
-                                debug_attempts.append(f"Screenshot API URL: {screenshot_url[:120] if screenshot_url else 'None'}")
-                                if screenshot_url:
+                                debug_attempts.append("Try fetching CLEANED URL with requests")
+                                
+                                # Get cleaned URL
+                                cleaned = clean_url_for_capture(adv_url)
+                                if cleaned:
+                                    cleaned_full_url = f"https://{cleaned}" if not cleaned.startswith(('http://', 'https://')) else cleaned
+                                    debug_attempts.append(f"Trying: {cleaned_full_url}")
+                                    
+                                    try:
+                                        # Try fetching cleaned URL
+                                        clean_headers = {
+                                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                                            'Referer': 'https://www.google.com/'
+                                        }
+                                        clean_response = requests.get(cleaned_full_url, timeout=15, headers=clean_headers, allow_redirects=True)
+                                        debug_attempts.append(f"Cleaned URL response: {clean_response.status_code}")
+                                        
+                                        if clean_response.status_code == 200:
+                                            # Try rendering the cleaned URL's HTML
+                                            try:
+                                                page_html = decode_with_multiple_encodings(clean_response)
+                                                page_html = clean_and_prepare_html(page_html, cleaned_full_url)
+                                                preview_html, display_height = render_html_with_proper_encoding(
+                                                    page_html, device_all, 'landing_cleaned_html', cleaned_full_url, current_flow, scrolling=True
+                                                )
+                                                st.components.v1.html(preview_html, height=display_height, scrolling=True)
+                                                st.caption("📄 HTML (cleaned URL)")
+                                                debug_attempts.append("✅ Cleaned URL HTML rendered successfully")
+                                                rendered_successfully = True
+                                            except Exception as e:
+                                                debug_attempts.append(f"❌ Cleaned URL HTML render failed: {str(e)[:50]}")
+                                        
+                                        # If HTML didn't work, try iframe with cleaned URL
+                                        if not rendered_successfully:
+                                            try:
+                                                preview_html, height, _ = render_mini_device_preview(cleaned_full_url, is_url=True, device=device_all, display_url=cleaned_full_url)
+                                                preview_html = inject_unique_id(preview_html, 'landing_cleaned_iframe', cleaned_full_url, device_all, current_flow)
+                                                st.components.v1.html(preview_html, height=height, scrolling=True)
+                                                st.caption("📺 Iframe (cleaned URL)")
+                                                debug_attempts.append("✅ Cleaned URL iframe rendered successfully")
+                                                rendered_successfully = True
+                                            except Exception as e:
+                                                debug_attempts.append(f"❌ Cleaned URL iframe failed: {str(e)[:50]}")
+                                    except Exception as e:
+                                        debug_attempts.append(f"❌ Cleaned URL request failed: {str(e)[:80]}")
+                                
+                                # If cleaned URL methods didn't work, try screenshot API
+                                if not rendered_successfully:
+                                    debug_attempts.append("Try Screenshot API (last resort)")
+                                    screenshot_url = get_screenshot_url(adv_url, device=device_all, try_cleaned=True)
+                                    debug_attempts.append(f"Screenshot API URL: {screenshot_url[:120] if screenshot_url else 'None'}")
+                                    if screenshot_url:
                                     try:
                                         screenshot_html = f'<img src="{screenshot_url}" style="width:100%;height:auto;" />'
                                         preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
