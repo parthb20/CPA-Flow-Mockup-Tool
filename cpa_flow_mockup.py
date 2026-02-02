@@ -597,11 +597,19 @@ if not st.session_state.loading_done:
             # Load JSON second (nice to have)
             st.session_state.data_b = load_json_from_gdrive(FILE_B_ID)
             
-            # Load File D (pre-rendered responses) - silently
+            # Load File D (pre-rendered responses) - with debug
             if FILE_D_ID and FILE_D_ID.strip() != "":
                 st.session_state.data_d = load_prerendered_responses(FILE_D_ID)
+                if st.session_state.data_d is not None:
+                    st.success(f"✅ FILE D loaded: {len(st.session_state.data_d)} rows")
+                    st.write(f"📋 FILE D columns: {st.session_state.data_d.columns.tolist()}")
+                    st.write(f"📊 FILE D sample:")
+                    st.dataframe(st.session_state.data_d.head(3))
+                else:
+                    st.error("❌ FILE D returned None - check load_prerendered_responses function")
             else:
                 st.session_state.data_d = None
+                st.warning("⚠️ FILE_D_ID is empty or not set")
             
             st.session_state.loading_done = True
         except Exception as e:
