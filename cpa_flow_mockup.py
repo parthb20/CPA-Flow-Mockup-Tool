@@ -688,12 +688,6 @@ for key in ['data_a', 'data_b', 'data_d', 'loading_done', 'default_flow', 'curre
             st.session_state[key] = None
 
 # VERSION CHECK - Shows at very top
-st.markdown(f"""
-<div style="background: #d1fae5; border: 2px solid #10b981; padding: 10px; margin-bottom: 10px; border-radius: 5px;">
-    <strong>✅ Running Version: {APP_VERSION}</strong><br>
-    <small>Debug messages removed • Responsive design enabled • FILE D loading fixed</small>
-</div>
-""", unsafe_allow_html=True)
 
 # Main title - BIG and BOLD at top - RESPONSIVE
 st.markdown("""
