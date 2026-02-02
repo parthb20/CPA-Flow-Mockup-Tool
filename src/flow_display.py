@@ -1152,17 +1152,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         adv_url = current_flow.get('Destination_Url', '') or current_flow.get('reporting_destination_url', '')
         flow_clicks = current_flow.get('clicks', 0)
         
-        # Landing URL will be shown BELOW card preview
-        
-        # Old code removed
-        if False:
-            st.markdown(f"""
-            <div style="margin-bottom: 8px; font-size: 14px;">
-                <div style="font-weight: 700; color: #0f172a; font-size: 17px; margin-bottom: 4px;"><strong>Landing URL:</strong></div>
-                <div style="margin-left: 8px; word-break: break-word;"><a href="{adv_url}" style="color: #3b82f6; text-decoration: none;">{html.escape(str(adv_url))}</a></div>
-            </div>
-            """, unsafe_allow_html=True)
-        
         landing_preview_container = landing_card_left if st.session_state.flow_layout == 'vertical' and landing_card_left else stage_4_container
         
         # Track rendering attempts for debug
