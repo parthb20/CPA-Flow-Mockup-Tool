@@ -169,10 +169,12 @@ def load_csv_from_gdrive(file_id):
                     pass
                 
                 # Process the content (detect type and decompress if needed)
-                return process_file_content(content)
+                result = process_file_content(content)
+                if result is not None:
+                    return result
                 
         except Exception as e:
-            pass  # Silently try alternative
+            st.warning(f"⚠️ gdown method failed: {str(e)[:100]}")
     
     # Method 2: Manual download (fallback)
     try:
@@ -203,15 +205,18 @@ def load_csv_from_gdrive(file_id):
                     response = session.get(url, timeout=60, stream=False)
                     content = response.content
                 else:
+                    st.error("❌ Could not download file - check sharing settings (no confirmation token found)")
                     return None
         
         if response.status_code != 200:
+            st.error(f"❌ HTTP {response.status_code} when downloading file")
             return None
         
         # Process the content
         return process_file_content(content)
             
     except Exception as e:
+        st.error(f"❌ Error downloading file: {str(e)[:200]}")
         return None
 
 
