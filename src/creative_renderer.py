@@ -92,43 +92,23 @@ def load_prerendered_responses(file_id):
     
     try:
         # Load CSV from Google Drive with debug
-        st.write("📥 Downloading FILE D from Google Drive...")
         df = load_csv_from_gdrive(file_id)
         
-        if df is None:
-            st.error("❌ load_csv_from_gdrive returned None")
-            return None
-            
-        if len(df) == 0:
-            st.error("❌ FILE D is empty (0 rows)")
+        if df is None or len(df) == 0:
             return None
         
-        st.success(f"✅ Downloaded FILE D: {len(df)} rows, {len(df.columns)} columns")
-        
-        # Clean column names (strip whitespace, lowercase for comparison)
+        # Clean column names (strip whitespace)
         df.columns = df.columns.str.strip()
-        
-        st.write(f"📋 Original column names: {df.columns.tolist()}")
         
         # Create case-insensitive column mapping
         col_mapping = {col.lower(): col for col in df.columns}
         
-        st.write(f"📋 Lowercase mapping: {list(col_mapping.keys())}")
-        
         # Verify required columns (case-insensitive)
         required_cols = ['creative_id', 'creative_size', 'request']
-        missing = []
-        for req_col in required_cols:
-            if req_col.lower() not in col_mapping:
-                missing.append(req_col)
-                st.error(f"❌ Missing required column: '{req_col}' (case-insensitive)")
+        missing = [req_col for req_col in required_cols if req_col.lower() not in col_mapping]
         
         if missing:
-            st.error(f"❌ Cannot load FILE D - missing columns: {missing}")
-            st.write(f"Available columns: {df.columns.tolist()}")
             return None
-        
-        st.success("✅ All required columns found!")
         
         # Rename columns to standardized names if needed
         rename_map = {}
@@ -353,15 +333,10 @@ def get_prerendered_creative(creative_id, creative_size, prerendered_df):
     if prerendered_df is None or len(prerendered_df) == 0:
         return None
     
-    # DEBUG: Show available columns (ENABLE THIS TO DEBUG)
-    st.write(f"🔍 FILE D Columns: {prerendered_df.columns.tolist()}")
-    st.write(f"🔍 Looking for: creative_id={creative_id} (type: {type(creative_id)}), creative_size={creative_size} (type: {type(creative_size)})")
-    st.write(f"📋 FILE D shape: {prerendered_df.shape}")
-    
     # Normalize creative_size format (remove spaces, make lowercase)
     creative_size_normalized = str(creative_size).replace(' ', '').lower()
     
-    # Try to find creative_id column (case-insensitive)
+    # Find column names (case-insensitive)
     id_col = None
     size_col = None
     request_col = None
@@ -377,15 +352,8 @@ def get_prerendered_creative(creative_id, creative_size, prerendered_df):
         if 'request' in col_lower:
             request_col = col
     
-    st.write(f"🔍 Detected columns - ID: {id_col}, Size: {size_col}, Request: {request_col}")
-    
     if not id_col or not size_col or not request_col:
-        st.error(f"❌ Missing columns in FILE D! Need creative_id, creative_size, request")
         return None
-    
-    # Show sample data
-    st.write(f"📋 Sample FILE D data (first 3 rows):")
-    st.dataframe(prerendered_df[[id_col, size_col]].head(3))
     
     # Normalize size column in dataframe (remove spaces, lowercase)
     prerendered_df['size_normalized'] = prerendered_df[size_col].astype(str).str.replace(' ', '').str.lower()
