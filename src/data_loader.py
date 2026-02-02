@@ -26,11 +26,7 @@ def process_file_content(content):
     import csv
     
     try:
-        st.write(f"🔍 Processing file: {len(content)} bytes")
-        if len(content) > 0:
-            st.write(f"🔍 First 50 bytes: {content[:50]}")
-        else:
-            st.error("❌ File content is EMPTY (0 bytes)!")
+        if len(content) == 0:
             return None
         # Check if Google Drive returned HTML error page
         if content.startswith(b'<!DOCTYPE') or content.startswith(b'<html') or b'<title>Google Drive' in content[:1000]:
@@ -90,16 +86,13 @@ def process_file_content(content):
                 st.error(f"❌ Error extracting ZIP: {str(e)}")
                 return None
         else:
-            # Try as plain CSV
-            st.write("📄 Treating as plain CSV file")
+            # Try as plain CSV with complex quoting support
             try:
                 decoded = content.decode('utf-8')
-                st.write(f"✅ Decoded to UTF-8: {len(decoded)} characters")
-                st.write(f"🔍 First 200 characters:\n{decoded[:200]}")
                 
-                # Try with different CSV parsing options for files with complex quoting
-                # First try: Standard parser with QUOTE_ALL
+                # Try multiple CSV parsing methods for files with nested quotes
                 try:
+                    # Method 1: Python engine with escape characters
                     df = pd.read_csv(
                         StringIO(decoded), 
                         dtype=str,
@@ -109,11 +102,9 @@ def process_file_content(content):
                         escapechar='\\',
                         on_bad_lines='skip'
                     )
-                    st.write(f"✅ Parsed CSV (standard): {len(df)} rows, {len(df.columns)} columns")
-                except Exception as e1:
-                    st.write(f"⚠️ Standard parser failed: {str(e1)}")
-                    # Second try: C engine with different options
+                except Exception:
                     try:
+                        # Method 2: C engine with doublequote
                         df = pd.read_csv(
                             StringIO(decoded),
                             dtype=str,
@@ -123,36 +114,18 @@ def process_file_content(content):
                             doublequote=True,
                             on_bad_lines='skip'
                         )
-                        st.write(f"✅ Parsed CSV (C engine): {len(df)} rows, {len(df.columns)} columns")
-                    except Exception as e2:
-                        st.write(f"⚠️ C engine failed: {str(e2)}")
-                        # Third try: Read line by line manually
+                    except Exception:
+                        # Method 3: Manual CSV parsing
                         import csv as csv_module
-                        try:
-                            reader = csv_module.reader(StringIO(decoded), quotechar='"', escapechar='\\')
-                            rows = list(reader)
-                            if len(rows) > 1:
-                                df = pd.DataFrame(rows[1:], columns=rows[0])
-                                st.write(f"✅ Parsed CSV (manual): {len(df)} rows, {len(df.columns)} columns")
-                            else:
-                                raise ValueError("No data rows found")
-                        except Exception as e3:
-                            st.error(f"❌ All CSV parsing methods failed!")
-                            st.error(f"Method 1: {str(e1)}")
-                            st.error(f"Method 2: {str(e2)}")
-                            st.error(f"Method 3: {str(e3)}")
+                        reader = csv_module.reader(StringIO(decoded), quotechar='"', escapechar='\\')
+                        rows = list(reader)
+                        if len(rows) > 1:
+                            df = pd.DataFrame(rows[1:], columns=rows[0])
+                        else:
                             return None
                 
-                if len(df) > 0:
-                    st.write(f"📋 Columns: {df.columns.tolist()}")
-                    st.write(f"📊 First row sample: {dict(list(df.iloc[0].items())[:2])}")
-                else:
-                    st.warning("⚠️ Parsed 0 rows - possible data format issue")
-                return df
-            except Exception as e:
-                st.error(f"❌ CSV parse error: {str(e)}")
-                import traceback
-                st.error(f"Full error: {traceback.format_exc()}")
+                return df if len(df) > 0 else None
+            except Exception:
                 return None
                 
     except Exception as e:
