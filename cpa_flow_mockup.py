@@ -9,6 +9,21 @@ import streamlit as st
 # Page config - MUST be FIRST Streamlit command (before any imports that use Streamlit)
 st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊", layout="wide")
 
+# White background during loading
+st.markdown("""
+<style>
+    /* White background for entire app */
+    .stApp {
+        background-color: white;
+    }
+    
+    /* Hide default spinner text */
+    .stSpinner > div {
+        text-align: center;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
@@ -41,9 +56,9 @@ from src.flow_display import render_flow_journey
 # Fallback rendering will be used automatically if unavailable
 
 # Check if we're on Streamlit Cloud and need to install browsers
-@st.cache_resource
+@st.cache_resource(show_spinner=False)
 def ensure_playwright_installed():
-    """Auto-install Playwright browsers on Streamlit Cloud (runs once)"""
+    """Auto-install Playwright browsers on Streamlit Cloud (runs once, silent)"""
     install_log = []
     try:
         import install_playwright
@@ -61,7 +76,7 @@ def ensure_playwright_installed():
         install_log.append(f"❌ Auto-install error: {str(e)[:200]}")
         return False, install_log
 
-# Attempt installation (cached, runs only once)
+# Attempt installation (cached, runs only once, silent)
 PLAYWRIGHT_INSTALL_SUCCESS, PLAYWRIGHT_INSTALL_LOG = ensure_playwright_installed()
 
 PLAYWRIGHT_AVAILABLE = False
@@ -1145,4 +1160,22 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             else:
                 st.warning("⚠️ Data is too granular - no entities meet the 5% threshold. Please enable 'Use Full Data' option above to see all flows.")
 else:
-    st.error("❌ Could not load data - Check FILE_A_ID and file sharing settings")
+    st.error("❌ Could not load data")
+    with st.expander("🔍 Troubleshooting"):
+        st.markdown("""
+        **Possible causes:**
+        1. **Google Drive rate limit** (most common)
+           - Google temporarily blocks after too many downloads
+           - Wait 5-10 minutes and refresh the page
+           - This is temporary and will resolve itself
+        
+        2. **File sharing settings**
+           - Files must be set to "Anyone with link can view"
+           - Check FILE_A_ID in `src/config.py`
+        
+        3. **Network issues**
+           - Check your internet connection
+           - Try refreshing the page
+        
+        **Current FILE_A_ID:** `1DXR77Tges9kkH3x7pYin2yo9De7cxqpc`
+        """)
