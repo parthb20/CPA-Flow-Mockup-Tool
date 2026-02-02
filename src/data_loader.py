@@ -151,7 +151,31 @@ def process_file_content(content):
 @st.cache_data(show_spinner=False, ttl=3600)  # Cache for 1 hour (3600 seconds)
 def load_csv_from_gdrive(file_id):
     """Load CSV from Google Drive - handles CSV, ZIP, GZIP, and large file virus scan
-    Cached for 1 hour to prevent rate limits"""
+    Cached for 1 hour to prevent rate limits
+    
+    During development: If you hit rate limits, download files manually to 'data/' folder:
+    - FILE_A: data/file_a.csv.gz
+    - FILE_D: data/file_d.csv
+    """
+    # Method 0: Try local file first (for development when rate limited)
+    import os
+    local_file_path = None
+    if file_id == "1DXR77Tges9kkH3x7pYin2yo9De7cxqpc":  # FILE_A
+        local_file_path = "data/file_a.csv.gz"
+    elif file_id == "1Uz29aIA1YtrnqmJaROgiiG4q1CvJ6arK":  # FILE_D
+        local_file_path = "data/file_d.csv"
+    
+    if local_file_path and os.path.exists(local_file_path):
+        try:
+            with open(local_file_path, 'rb') as f:
+                content = f.read()
+            result = process_file_content(content)
+            if result is not None:
+                st.info(f"✅ Loaded from local file: {local_file_path}")
+                return result
+        except Exception as e:
+            pass  # Continue to cloud download
+    
     # Method 1: Try gdown if available (best for large files)
     if GDOWN_AVAILABLE:
         try:
@@ -232,7 +256,26 @@ def load_csv_from_gdrive(file_id):
 @st.cache_data(show_spinner=False, ttl=3600)  # Cache for 1 hour (3600 seconds)
 def load_json_from_gdrive(file_id):
     """Load JSON file from Google Drive - returns dict of SERP templates {template_key: html_string}
-    Cached for 1 hour to prevent rate limits"""
+    Cached for 1 hour to prevent rate limits
+    
+    During development: If you hit rate limits, download file manually to 'data/file_b.json'
+    """
+    # Method 0: Try local file first (for development when rate limited)
+    import os
+    if file_id == "1SXcLm1hhzQK23XY6Qt7E1YX5Fa-2Tlr9":  # FILE_B
+        local_file_path = "data/file_b.json"
+        if os.path.exists(local_file_path):
+            try:
+                with open(local_file_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                st.info(f"✅ Loaded from local file: {local_file_path}")
+                if isinstance(data, dict):
+                    return data
+                if isinstance(data, list) and len(data) > 0:
+                    return data
+            except Exception as e:
+                pass  # Continue to cloud download
+    
     try:
         url = f"https://drive.google.com/uc?export=download&id={file_id}"
         response = requests.get(url, timeout=30)
