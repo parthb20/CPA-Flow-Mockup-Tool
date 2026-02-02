@@ -696,6 +696,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             has_file_d = st.session_state.get('data_d') is not None
             has_file_c = st.session_state.get('data_c') is not None
             
+            st.write(f"🔍 FILE D available: {has_file_d}, FILE C available: {has_file_c}")
+            if has_file_d:
+                st.write(f"📊 FILE D has {len(st.session_state.data_d)} rows")
+            
             if has_file_d or has_file_c:
                 try:
                     # Get cipher key from secrets or use default
