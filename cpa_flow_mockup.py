@@ -623,10 +623,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
     col1, col2, col3 = st.columns([1.5, 1.5, 2.5])
     with col1:
         
-        # Create "Name_ID" format for display
+        # Create "Name - [ID]" format for display
         if adv_id_col in df.columns:
             df_adv = df[[adv_name_col, adv_id_col]].drop_duplicates().dropna()
-            advertiser_display = df_adv.apply(lambda row: f"{row[adv_name_col]}_{row[adv_id_col]}", axis=1).tolist()
+            advertiser_display = df_adv.apply(lambda row: f"{row[adv_name_col]} - [{row[adv_id_col]}]", axis=1).tolist()
             advertisers = ['-- Select Advertiser --'] + sorted(advertiser_display)
         else:
             advertisers = ['-- Select Advertiser --'] + sorted(df[adv_name_col].dropna().unique().tolist())
@@ -640,10 +640,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             st.session_state.preserved_advertiser = selected_advertiser
     
     if selected_advertiser and selected_advertiser != '-- Select Advertiser --':
-        # Extract advertiser name from "Name_ID" format (if ID column exists)
-        if adv_id_col in df.columns and '_' in selected_advertiser:
-            # Split from the last underscore to handle names with underscores
-            selected_advertiser_name = selected_advertiser.rsplit('_', 1)[0]
+        # Extract advertiser name from "Name - [ID]" format (if ID column exists)
+        if adv_id_col in df.columns and ' - [' in selected_advertiser:
+            # Split to extract name from "Name - [ID]" format
+            selected_advertiser_name = selected_advertiser.split(' - [')[0]
         else:
             selected_advertiser_name = selected_advertiser
         
@@ -651,10 +651,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             # Filter campaigns by selected advertiser
             advertiser_df = df[df[adv_name_col] == selected_advertiser_name]
             
-            # Create "Name_ID" format for display
+            # Create "Name - [ID]" format for display
             if camp_id_col in df.columns:
                 df_camp = advertiser_df[[camp_name_col, camp_id_col]].drop_duplicates().dropna()
-                campaign_display = df_camp.apply(lambda row: f"{row[camp_name_col]}_{row[camp_id_col]}", axis=1).tolist()
+                campaign_display = df_camp.apply(lambda row: f"{row[camp_name_col]} - [{row[camp_id_col]}]", axis=1).tolist()
                 campaigns = ['-- Select Campaign --'] + sorted(campaign_display)
             else:
                 campaigns = ['-- Select Campaign --'] + sorted(advertiser_df[camp_name_col].dropna().unique().tolist())
@@ -796,10 +796,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             st.rerun()
         
         if selected_campaign and selected_campaign != '-- Select Campaign --':
-            # Extract campaign name from "Name_ID" format (if ID column exists)
-            if camp_id_col in df.columns and '_' in selected_campaign:
-                # Split from the last underscore to handle names with underscores
-                selected_campaign_name = selected_campaign.rsplit('_', 1)[0]
+            # Extract campaign name from "Name - [ID]" format (if ID column exists)
+            if camp_id_col in df.columns and ' - [' in selected_campaign:
+                # Split to extract name from "Name - [ID]" format
+                selected_campaign_name = selected_campaign.split(' - [')[0]
             else:
                 selected_campaign_name = selected_campaign
             
