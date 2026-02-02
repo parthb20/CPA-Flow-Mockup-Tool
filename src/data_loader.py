@@ -26,6 +26,12 @@ def process_file_content(content):
     import csv
     
     try:
+        st.write(f"🔍 Processing file: {len(content)} bytes")
+        if len(content) > 0:
+            st.write(f"🔍 First 50 bytes: {content[:50]}")
+        else:
+            st.error("❌ File content is EMPTY (0 bytes)!")
+            return None
         # Check if Google Drive returned HTML error page
         if content.startswith(b'<!DOCTYPE') or content.startswith(b'<html') or b'<title>Google Drive' in content[:1000]:
             st.error("❌ Could not download file - check sharing settings")
@@ -84,18 +90,29 @@ def process_file_content(content):
                 st.error(f"❌ Error extracting ZIP: {str(e)}")
                 return None
         else:
-            # Try as CSV
+            # Try as plain CSV
+            st.write("📄 Treating as plain CSV file")
             try:
+                decoded = content.decode('utf-8')
+                st.write(f"✅ Decoded to UTF-8: {len(decoded)} characters")
+                st.write(f"🔍 First 200 characters:\n{decoded[:200]}")
+                
                 df = pd.read_csv(
-                    StringIO(content.decode('utf-8')), 
+                    StringIO(decoded), 
                     dtype=str, 
                     on_bad_lines='skip',
                     encoding='utf-8',
                     engine='python'
                 )
+                st.write(f"✅ Parsed CSV: {len(df)} rows, {len(df.columns)} columns")
+                if len(df) > 0:
+                    st.write(f"📋 Columns: {df.columns.tolist()}")
+                    st.write(f"📊 First row: {df.iloc[0].to_dict()}")
                 return df
             except Exception as e:
                 st.error(f"❌ CSV parse error: {str(e)}")
+                import traceback
+                st.error(f"Full error: {traceback.format_exc()}")
                 return None
                 
     except Exception as e:
@@ -117,8 +134,10 @@ def load_csv_from_gdrive(file_id):
     local_file_path = None
     if file_id == "1DXR77Tges9kkH3x7pYin2yo9De7cxqpc":  # FILE_A
         local_file_path = "data/file_a.csv.gz"
-    elif file_id == "1Uz29aIA1YtrnqmJaROgiiG4q1CvJ6arK":  # FILE_D
+    elif file_id == "1Uz29aIA1YtrnqmJaROgiiG4q1CvJ6arK":  # OLD FILE_D
         local_file_path = "data/file_d.csv"
+    elif file_id == "1VjgRBBJJS3zJ9jKciiQzTpTmF0Y2oXgL":  # NEW FILE_D
+        local_file_path = "data/file_d_new.csv"
     
     if local_file_path and os.path.exists(local_file_path):
         try:
