@@ -456,6 +456,7 @@ def capture_with_playwright(url, device='mobile', retry_count=1, use_firefox=Fal
                     # Handle 403 in exception
                     if '403' in error_str or 'forbidden' in error_str:
                         browser.close()
+                        print(f"🚫 Playwright got 403 error: {str(navigation_error)[:200]}")  # DEBUG
                         # Try cleaned URL first
                         if not try_cleaned_url:
                             import time
@@ -464,16 +465,20 @@ def capture_with_playwright(url, device='mobile', retry_count=1, use_firefox=Fal
                         # Use screenshot API
                         screenshot_url = get_screenshot_url(url, device=device, try_cleaned=True)
                         if screenshot_url:
+                            print(f"✅ Using Screenshot API fallback for 403 error")  # DEBUG
                             return f'<!-- SCREENSHOT_FALLBACK --><img src="{screenshot_url}" style="width:100%;height:auto;" />'
                 # Complete failure
                 browser.close()
+                print(f"❌ Playwright navigation failed: {str(navigation_error)[:200] if navigation_error else 'Unknown error'}")  # DEBUG
                 return None
             
             # Check for error status codes
             if response.status >= 400:
+                print(f"🚫 Playwright got HTTP {response.status} from {url[:100]}")  # DEBUG
                 # Handle 403 Forbidden
                 if response.status == 403:
                     browser.close()
+                    print(f"🔴 Forbes/Site blocked Playwright with 403 Forbidden (bot detected)")  # DEBUG
                     # If not already trying cleaned URL, retry with cleaned URL
                     if not try_cleaned_url:
                         import time
@@ -482,11 +487,13 @@ def capture_with_playwright(url, device='mobile', retry_count=1, use_firefox=Fal
                     # If cleaned URL also failed, use screenshot API as fallback
                     screenshot_url = get_screenshot_url(url, device=device, try_cleaned=True)
                     if screenshot_url:
+                        print(f"✅ Using Screenshot API fallback for 403")  # DEBUG
                         return f'<!-- SCREENSHOT_FALLBACK --><img src="{screenshot_url}" style="width:100%;height:auto;" />'
                     return None
                 
                 # Handle other 4xx/5xx errors - try screenshot API directly
                 browser.close()
+                print(f"⚠️ Got HTTP {response.status}, using Screenshot API")  # DEBUG
                 screenshot_url = get_screenshot_url(url, device=device, try_cleaned=True)
                 if screenshot_url:
                     return f'<!-- SCREENSHOT_FALLBACK --><img src="{screenshot_url}" style="width:100%;height:auto;" />'
