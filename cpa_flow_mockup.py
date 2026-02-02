@@ -1305,7 +1305,15 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Render "What is Flow" section using module
                 render_what_is_flow_section()
             else:
-                st.warning("⚠️ Data is too granular - no entities meet the 5% threshold. Please enable 'Use Full Data' option above to see all flows.")
+                # Debug: Show why no data
+                st.write(f"🔍 DEBUG: final_filtered is empty, campaign_df has {len(campaign_df)} rows")
+                st.write(f"🔍 DEBUG: current_flow keyword: {current_flow.get('keyword_term', 'N/A')}")
+                st.write(f"🔍 DEBUG: current_flow domain: {current_flow.get('publisher_domain', 'N/A')}")
+                
+                if use_full_data:
+                    st.warning("⚠️ No matching flow found. The selected keyword/domain combination doesn't exist in the filtered data.")
+                else:
+                    st.warning("⚠️ Data is too granular - no entities meet the 5% threshold. Please enable 'Use Full Data' option above to see all flows.")
 else:
     st.error("❌ Could not load data")
     with st.expander("🔍 Troubleshooting"):
