@@ -39,6 +39,20 @@ from src.flow_display import render_flow_journey
 # Try to import playwright (for 403 bypass)
 # Note: Playwright requires browser binaries which may not be available on Streamlit Cloud
 # Fallback rendering will be used automatically if unavailable
+
+# Check if we're on Streamlit Cloud and need to install browsers
+@st.cache_resource
+def ensure_playwright_installed():
+    """Auto-install Playwright browsers on Streamlit Cloud (runs once)"""
+    try:
+        import install_playwright
+        return install_playwright.install_playwright_browsers()
+    except Exception as e:
+        return False
+
+# Attempt installation (cached, runs only once)
+ensure_playwright_installed()
+
 PLAYWRIGHT_AVAILABLE = False
 PLAYWRIGHT_DEBUG = []
 
