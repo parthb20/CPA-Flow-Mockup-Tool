@@ -39,10 +39,15 @@ from src.flow_display import render_flow_journey
 # Try to import playwright (for 403 bypass)
 # Note: Playwright requires browser binaries which may not be available on Streamlit Cloud
 # Fallback rendering will be used automatically if unavailable
+PLAYWRIGHT_AVAILABLE = False
+PLAYWRIGHT_DEBUG = []
+
 try:
     from playwright.sync_api import sync_playwright
     from pathlib import Path
     import os
+    
+    PLAYWRIGHT_DEBUG.append("✅ Playwright module imported")
     
     # Check multiple possible browser locations
     browser_paths = [
@@ -52,14 +57,32 @@ try:
     ]
     
     browsers_exist = False
+    found_path = None
+    
     for browser_path in browser_paths:
-        if browser_path.exists() and list(browser_path.glob("chromium*")):
-            browsers_exist = True
-            break
+        PLAYWRIGHT_DEBUG.append(f"Checking: {browser_path}")
+        if browser_path.exists():
+            PLAYWRIGHT_DEBUG.append(f"  ✅ Path exists")
+            chromium_dirs = list(browser_path.glob("chromium*"))
+            if chromium_dirs:
+                PLAYWRIGHT_DEBUG.append(f"  ✅ Found chromium: {chromium_dirs[0].name}")
+                browsers_exist = True
+                found_path = str(browser_path)
+                break
+            else:
+                PLAYWRIGHT_DEBUG.append(f"  ❌ No chromium found")
+        else:
+            PLAYWRIGHT_DEBUG.append(f"  ❌ Path doesn't exist")
+    
+    if browsers_exist:
+        PLAYWRIGHT_DEBUG.append(f"✅ Playwright AVAILABLE at: {found_path}")
+    else:
+        PLAYWRIGHT_DEBUG.append("❌ No Playwright browsers found in any location")
     
     PLAYWRIGHT_AVAILABLE = browsers_exist
     
-except Exception:
+except Exception as e:
+    PLAYWRIGHT_DEBUG.append(f"❌ Error loading Playwright: {str(e)[:100]}")
     PLAYWRIGHT_AVAILABLE = False
 
 # Get API keys from secrets - safe access pattern
@@ -556,11 +579,18 @@ if not st.session_state.loading_done:
 if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
     df = st.session_state.data_a
     
-    # Add cache clear button for testing (can remove after debugging)
-    if st.button("🔄 Clear Screenshot Cache", help="Clear cached screenshots to test new rendering logic"):
-        st.cache_data.clear()
-        st.success("✅ Cache cleared! Reloading page...")
-        st.rerun()
+    # Add cache clear button and Playwright debug info
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        if st.button("🔄 Clear Screenshot Cache", help="Clear cached screenshots to test new rendering logic"):
+            st.cache_data.clear()
+            st.success("✅ Cache cleared! Reloading page...")
+            st.rerun()
+    
+    with col2:
+        with st.expander(f"🔧 Playwright Status: {'✅ Available' if PLAYWRIGHT_AVAILABLE else '❌ Not Available'}", expanded=False):
+            for debug_line in PLAYWRIGHT_DEBUG:
+                st.text(debug_line)
     
     # Select Advertiser, Campaign, and combined Use Full Data + Time filter
     col1, col2, col3 = st.columns([1.5, 1.5, 2.5])
