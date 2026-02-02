@@ -30,11 +30,34 @@ def render_advanced_filters(campaign_df, current_flow):
         
         with filter_col2:
             if 'publisher_domain' in campaign_df.columns:
-                domains = sorted(campaign_df['publisher_domain'].dropna().unique().tolist())
+                # Check if publisher_id column exists
+                pub_id_col = None
+                for col in campaign_df.columns:
+                    if col.lower() in ['publisher_id', 'publisherid', 'pub_id']:
+                        pub_id_col = col
+                        break
+                
+                # Create domain display with format: "domain - [id]" if ID exists
+                if pub_id_col:
+                    df_domains = campaign_df[['publisher_domain', pub_id_col]].drop_duplicates().dropna()
+                    domain_display = df_domains.apply(lambda row: f"{row['publisher_domain']} - [{row[pub_id_col]}]", axis=1).tolist()
+                    domains = sorted(domain_display)
+                else:
+                    domains = sorted(campaign_df['publisher_domain'].dropna().unique().tolist())
+                
                 current_dom_val = current_flow.get('publisher_domain', '')
                 default_dom_idx = 0
-                if current_dom_val in domains:
+                
+                # Check if current domain needs to be matched with "domain - [id]" format
+                if pub_id_col and current_dom_val:
+                    # Try to find matching domain (with or without ID)
+                    for idx, dom in enumerate(domains):
+                        if dom.startswith(current_dom_val + ' - [') or dom == current_dom_val:
+                            default_dom_idx = idx + 1  # +1 because 'All' is first
+                            break
+                elif current_dom_val in domains:
                     default_dom_idx = domains.index(current_dom_val) + 1  # +1 because 'All' is first
+                
                 selected_domain_filter = st.selectbox("🌐 Filter by Domain:", ['All'] + domains, index=default_dom_idx, key='dom_filter_adv')
             else:
                 selected_domain_filter = 'All'
@@ -178,7 +201,11 @@ def apply_flow_filtering(campaign_df, current_flow, filters_changed, selected_ke
         kw_filtered = campaign_df[campaign_df['keyword_term'] == current_kw]
         
         if selected_domain_filter != 'All':
-            current_dom = selected_domain_filter
+            # Extract domain name from "domain - [id]" format if present
+            if ' - [' in selected_domain_filter:
+                current_dom = selected_domain_filter.split(' - [')[0]
+            else:
+                current_dom = selected_domain_filter
         else:
             domains = sorted(kw_filtered['publisher_domain'].dropna().unique().tolist()) if 'publisher_domain' in kw_filtered.columns else []
             current_dom = current_flow.get('publisher_domain', domains[0] if domains else '')
