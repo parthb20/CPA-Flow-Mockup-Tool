@@ -7,12 +7,12 @@ Modular architecture for maintainability
 import streamlit as st
 
 # VERSION CHECK - To confirm new code is running
-APP_VERSION = "v2.4-CSV-PARSE-FIX"
+APP_VERSION = "v2.5-CLEAN-RESPONSIVE"
 
 # Page config - MUST be FIRST Streamlit command (before any imports that use Streamlit)
 st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊", layout="wide")
 
-# White background during loading
+# White background during loading + Responsive CSS
 st.markdown("""
 <style>
     /* White background for entire app */
@@ -23,6 +23,112 @@ st.markdown("""
     /* Hide default spinner text */
     .stSpinner > div {
         text-align: center;
+    }
+    
+    /* ===== RESPONSIVE DESIGN ===== */
+    /* Make cards scale proportionally across screen sizes */
+    
+    /* Base: Use viewport width (vw) units for responsive scaling */
+    [data-testid="column"] {
+        min-width: 0 !important;
+        flex: 1 1 auto !important;
+    }
+    
+    /* Container for device previews - scales with viewport */
+    .device-preview-container {
+        width: 100%;
+        max-width: 25vw; /* 25% of viewport width */
+        min-width: 280px; /* Minimum size */
+        margin: 0 auto;
+    }
+    
+    /* Scale creative cards proportionally */
+    .creative-card {
+        width: 100%;
+        max-width: 22vw;
+        min-width: 260px;
+        margin: 0 auto;
+    }
+    
+    /* Responsive iframe containers */
+    iframe {
+        max-width: 100%;
+        height: auto;
+    }
+    
+    /* ===== MEDIA QUERIES FOR DIFFERENT SCREEN SIZES ===== */
+    
+    /* Large monitors (> 1920px) - scale up slightly */
+    @media (min-width: 1921px) {
+        .device-preview-container {
+            max-width: 23vw;
+        }
+        .creative-card {
+            max-width: 20vw;
+        }
+    }
+    
+    /* Standard desktop (1280px - 1920px) - optimal size */
+    @media (min-width: 1280px) and (max-width: 1920px) {
+        .device-preview-container {
+            max-width: 25vw;
+        }
+        .creative-card {
+            max-width: 22vw;
+        }
+    }
+    
+    /* Laptop (1024px - 1279px) - slightly smaller */
+    @media (min-width: 1024px) and (max-width: 1279px) {
+        .device-preview-container {
+            max-width: 28vw;
+        }
+        .creative-card {
+            max-width: 25vw;
+        }
+    }
+    
+    /* Tablet (768px - 1023px) - stack cards */
+    @media (min-width: 768px) and (max-width: 1023px) {
+        .device-preview-container {
+            max-width: 45vw;
+        }
+        .creative-card {
+            max-width: 45vw;
+        }
+        
+        [data-testid="column"] {
+            flex: 0 0 100% !important;
+            max-width: 100% !important;
+        }
+    }
+    
+    /* Mobile (< 768px) - full width */
+    @media (max-width: 767px) {
+        .device-preview-container {
+            max-width: 90vw;
+        }
+        .creative-card {
+            max-width: 90vw;
+        }
+        
+        [data-testid="column"] {
+            flex: 0 0 100% !important;
+            max-width: 100% !important;
+        }
+    }
+    
+    /* Prevent horizontal scrolling */
+    .main .block-container {
+        max-width: 100%;
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+    
+    /* Ensure images scale properly */
+    img {
+        max-width: 100%;
+        height: auto;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -583,9 +689,9 @@ for key in ['data_a', 'data_b', 'data_d', 'loading_done', 'default_flow', 'curre
 
 # VERSION CHECK - Shows at very top
 st.markdown(f"""
-<div style="background: #fef3c7; border: 2px solid #f59e0b; padding: 10px; margin-bottom: 10px; border-radius: 5px;">
-    <strong>🔧 Running Version: {APP_VERSION}</strong><br>
-    <small>If you don't see "v2.3-DEBUG-FILE-D" above, you're running OLD CODE! Clear cache and restart!</small>
+<div style="background: #d1fae5; border: 2px solid #10b981; padding: 10px; margin-bottom: 10px; border-radius: 5px;">
+    <strong>✅ Running Version: {APP_VERSION}</strong><br>
+    <small>Debug messages removed • Responsive design enabled • FILE D loading fixed</small>
 </div>
 """, unsafe_allow_html=True)
 
