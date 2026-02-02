@@ -674,6 +674,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         creative_size = current_flow.get('Creative_Size_Final', 'N/A')  # From File A
         keyword = current_flow.get('keyword_term', 'N/A')
         
+        # DEBUG: Show what we're looking for
+        st.write(f"🔍 FROM FILE A - creative_id: {creative_id}, Creative_Size_Final: {creative_size}")
+        
         # Keyword will be shown BELOW card preview
         
         if st.session_state.flow_layout != 'vertical':
