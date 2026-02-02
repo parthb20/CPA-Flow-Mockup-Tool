@@ -35,7 +35,7 @@ import html
 # Import from modules (after page config)
 from src.config import FILE_A_ID, FILE_B_ID, FILE_C_ID, FILE_D_ID, SERP_BASE_URL
 from src.data_loader import load_csv_from_gdrive, load_json_from_gdrive
-from src.creative_renderer import load_creative_requests, load_prerendered_responses, render_creative_via_weaver, parse_keyword_array_from_flow
+from src.creative_renderer import load_prerendered_responses, render_creative_via_weaver, parse_keyword_array_from_flow
 from src.utils import safe_float, safe_int
 from src.flow_analysis import find_default_flow
 from src.similarity import calculate_similarities
@@ -561,7 +561,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Session state initialization
-for key in ['data_a', 'data_b', 'data_c', 'data_d', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'similarities', 'last_campaign_key', 'all_flows', 'current_flow_index', 'last_filter_key', 'show_time_filter', 'flow_type']:
+for key in ['data_a', 'data_b', 'data_d', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'similarities', 'last_campaign_key', 'all_flows', 'current_flow_index', 'last_filter_key', 'show_time_filter', 'flow_type']:
     if key not in st.session_state:
         if key == 'view_mode':
             st.session_state[key] = 'basic'
@@ -602,12 +602,6 @@ if not st.session_state.loading_done:
                 st.session_state.data_d = load_prerendered_responses(FILE_D_ID)
             else:
                 st.session_state.data_d = None
-            
-            # Load File C (creative requests) - silently, optional
-            if FILE_C_ID and FILE_C_ID.strip() != "":
-                st.session_state.data_c = load_creative_requests(FILE_C_ID)
-            else:
-                st.session_state.data_c = None
             
             st.session_state.loading_done = True
         except Exception as e:
