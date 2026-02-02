@@ -1406,291 +1406,158 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     
                     elif response.status_code == 403:
                             debug_attempts.append("Status 403 detected - trying enhanced methods")
-                            if playwright_available:
+                            debug_attempts.append("⚠️ SKIP iframe (403 pages block iframes with X-Frame-Options)")
+                            
+                            # Get cleaned URL upfront
+                            cleaned = clean_url_for_capture(adv_url)
+                            cleaned_full_url = f"https://{cleaned}" if cleaned and not cleaned.startswith(('http://', 'https://')) else cleaned
+                            
+                            # PRIORITY 1: Try HTML on ORIGINAL URL
+                            if not rendered_successfully:
+                                debug_attempts.append("1️⃣ Try HTML render with ORIGINAL URL")
                                 try:
-                                    debug_attempts.append(f"Try Enhanced Playwright (anti-bot) with: {adv_url[:100]}")
-                                    with st.spinner("🔄 Trying browser automation..."):
-                                        page_html = capture_with_playwright(adv_url, device=device_all)
-                                        if page_html:
-                                            if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
-                                                debug_attempts.append("✅ Playwright auto-retried with cleaned URL → Screenshot API used")
-                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                                preview_html = inject_unique_id(preview_html, 'landing_screenshot_fallback', adv_url, device_all, current_flow)
-                                                # Use proportional height
-                                                st.components.v1.html(preview_html, height=height, scrolling=True)
-                                                st.caption("📸 Screenshot (ScreenshotOne API)")
-                                                rendered_successfully = True
-                                            else:
-                                                debug_attempts.append("✅ Playwright bypassed 403 with anti-detection!")
-                                                preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                                preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
-                                                # Use proportional height
-                                                st.components.v1.html(preview_html, height=height, scrolling=True)
-                                                st.caption("🤖 Rendered via browser automation (bypassed 403)")
-                                                rendered_successfully = True
-                                        else:
-                                            debug_attempts.append("❌ Playwright returned empty HTML")
-                                            raise Exception("Playwright returned empty HTML")
-                                except Exception as e:
-                                    debug_attempts.append(f"❌ Playwright failed: {str(e)[:80]}")
-                                    debug_attempts.append("Try Screenshot API directly (with cleaned URL)")
-                                    # Try screenshot API as last resort before error (with cleaned URL for 403)
-                                    screenshot_url = get_screenshot_url(adv_url, device=device_all, try_cleaned=True)
-                                    debug_attempts.append(f"Screenshot API URL generated: {screenshot_url[:120] if screenshot_url else 'None'}")
-                                    if screenshot_url:
-                                        try:
-                                            screenshot_html = f'<img src="{screenshot_url}" style="width:100%;height:auto;" />'
-                                            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
-                                            preview_html = inject_unique_id(preview_html, 'landing_screenshot_api', adv_url, device_all, current_flow)
-                                            st.components.v1.html(preview_html, height=height, scrolling=True)
-                                            st.caption("📸 Screenshot (ScreenshotOne API)")
-                                            debug_attempts.append("✅ Screenshot API rendered successfully")
-                                            rendered_successfully = True
-                                        except Exception as e:
-                                            debug_attempts.append(f"❌ Screenshot render failed: {str(e)[:50]}")
-                                            # Show error in device preview
-                                            error_html = f"""
-                                            <!DOCTYPE html>
-                                            <html>
-                                            <head>
-                                                <meta charset="UTF-8">
-                                                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                                                <style>
-                                                    body {{
-                                                        margin: 0;
-                                                        padding: clamp(1rem, 2vw, 1.5rem);
-                                                        font-family: system-ui, -apple-system, sans-serif;
-                                                        background: #f8fafc;
-                                                        display: flex;
-                                                        align-items: center;
-                                                        justify-content: center;
-                                                        min-height: 100vh;
-                                                    }}
-                                                    .container {{
-                                                        text-align: center;
-                                                        padding: clamp(1.5rem, 3vw, 2rem);
-                                                        background: white;
-                                                        border-radius: clamp(0.75rem, 1.5vw, 1rem);
-                                                        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-                                                        max-width: 90%;
-                                                    }}
-                                                    .icon {{ font-size: clamp(2.5rem, 5vw, 3.5rem); margin-bottom: clamp(0.75rem, 1.5vw, 1rem); }}
-                                                    h2 {{ color: #dc2626; font-size: clamp(1rem, 2vw, 1.25rem); margin: 0 0 clamp(0.5rem, 1vw, 0.75rem) 0; font-weight: 700; }}
-                                                    .url {{ background: #f1f5f9; padding: clamp(0.5rem, 1vw, 0.75rem); border-radius: clamp(0.375rem, 0.75vw, 0.5rem); font-size: clamp(0.625rem, 1.2vw, 0.75rem); color: #475569; word-break: break-all; margin-top: clamp(0.75rem, 1.5vw, 1rem); }}
-                                                </style>
-                                            </head>
-                                            <body>
-                                                <div class="container">
-                                                    <div class="icon">🚫</div>
-                                                    <h2>Could not load page</h2>
-                                                    <div class="url">{html.escape(str(adv_url))}</div>
-                                                </div>
-                                            </body>
-                                            </html>
-                                            """
-                                            preview_html, height, _ = render_mini_device_preview(error_html, is_url=False, device=device_all)
-                                            preview_html = inject_unique_id(preview_html, 'landing_error', adv_url, device_all, current_flow)
-                                            st.components.v1.html(preview_html, height=height, scrolling=False)
+                                    og_headers = {
+                                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                                        'Referer': 'https://www.google.com/'
+                                    }
+                                    og_response = requests.get(adv_url, timeout=15, headers=og_headers, allow_redirects=True)
+                                    debug_attempts.append(f"Original URL re-fetch: {og_response.status_code}")
+                                    
+                                    if og_response.status_code == 200:
+                                        page_html = decode_with_multiple_encodings(og_response)
+                                        page_html = clean_and_prepare_html(page_html, adv_url)
+                                        preview_html, display_height = render_html_with_proper_encoding(
+                                            page_html, device_all, 'landing_403_html_og', adv_url, current_flow, scrolling=True
+                                        )
+                                        st.components.v1.html(preview_html, height=display_height, scrolling=True)
+                                        st.caption("📄 HTML (original URL)")
+                                        debug_attempts.append("✅ HTML (original) rendered")
+                                        rendered_successfully = True
                                     else:
-                                        # No screenshot API available, show error
-                                        error_html = f"""
-                                        <!DOCTYPE html>
-                                        <html>
-                                        <head>
-                                            <meta charset="UTF-8">
-                                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                                            <style>
-                                                body {{
-                                                    margin: 0;
-                                                    padding: clamp(1rem, 2vw, 1.5rem);
-                                                    font-family: system-ui, -apple-system, sans-serif;
-                                                    background: #f8fafc;
-                                                    display: flex;
-                                                    align-items: center;
-                                                    justify-content: center;
-                                                    min-height: 100vh;
-                                                }}
-                                                .container {{
-                                                    text-align: center;
-                                                    padding: clamp(1.5rem, 3vw, 2rem);
-                                                    background: white;
-                                                    border-radius: clamp(0.75rem, 1.5vw, 1rem);
-                                                    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-                                                    max-width: 90%;
-                                                }}
-                                                .icon {{ font-size: clamp(2.5rem, 5vw, 3.5rem); margin-bottom: clamp(0.75rem, 1.5vw, 1rem); }}
-                                                h2 {{ color: #dc2626; font-size: clamp(1rem, 2vw, 1.25rem); margin: 0 0 clamp(0.5rem, 1vw, 0.75rem) 0; font-weight: 700; }}
-                                                .url {{ background: #f1f5f9; padding: clamp(0.5rem, 1vw, 0.75rem); border-radius: clamp(0.375rem, 0.75vw, 0.5rem); font-size: clamp(0.625rem, 1.2vw, 0.75rem); color: #475569; word-break: break-all; margin-top: clamp(0.75rem, 1.5vw, 1rem); }}
-                                            </style>
-                                        </head>
-                                        <body>
-                                            <div class="container">
-                                                <div class="icon">🚫</div>
-                                                <h2>Could not load page</h2>
-                                                <div class="url">{html.escape(str(adv_url))}</div>
-                                            </div>
-                                        </body>
-                                        </html>
-                                        """
-                                        preview_html, height, _ = render_mini_device_preview(error_html, is_url=False, device=device_all)
-                                        preview_html = inject_unique_id(preview_html, 'landing_error', adv_url, device_all, current_flow)
-                                        st.components.v1.html(preview_html, height=height, scrolling=False)
-                            else:
-                                # Playwright not available - try ALL methods exhaustively
-                                debug_attempts.append("⚠️ Playwright NOT available on server")
-                                debug_attempts.append("⚠️ SKIP iframe (403 pages block iframes with X-Frame-Options)")
-                                
-                                # Get cleaned URL upfront
-                                cleaned = clean_url_for_capture(adv_url)
-                                cleaned_full_url = f"https://{cleaned}" if cleaned and not cleaned.startswith(('http://', 'https://')) else cleaned
-                                
-                                # PRIORITY 1: Try HTML on ORIGINAL URL (skip iframe - always blocked on 403)
-                                if not rendered_successfully:
-                                    debug_attempts.append("1️⃣ Try HTML render with ORIGINAL URL")
+                                        debug_attempts.append(f"⚠️ Original URL still blocked: {og_response.status_code}")
+                                except Exception as e:
+                                    debug_attempts.append(f"❌ HTML (original) failed: {str(e)[:50]}")
+                            
+                            # PRIORITY 2: Try HTML on CLEANED URL
+                            if not rendered_successfully and cleaned_full_url:
+                                debug_attempts.append("2️⃣ Try HTML render with CLEANED URL")
+                                try:
+                                    clean_headers = {
+                                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                                        'Referer': 'https://www.google.com/'
+                                    }
+                                    clean_response = requests.get(cleaned_full_url, timeout=15, headers=clean_headers, allow_redirects=True)
+                                    debug_attempts.append(f"Cleaned URL response: {clean_response.status_code}")
+                                    
+                                    if clean_response.status_code == 200:
+                                        page_html = decode_with_multiple_encodings(clean_response)
+                                        page_html = clean_and_prepare_html(page_html, cleaned_full_url)
+                                        preview_html, display_height = render_html_with_proper_encoding(
+                                            page_html, device_all, 'landing_403_html_clean', cleaned_full_url, current_flow, scrolling=True
+                                        )
+                                        st.components.v1.html(preview_html, height=display_height, scrolling=True)
+                                        st.caption("📄 HTML (cleaned URL)")
+                                        debug_attempts.append("✅ HTML (cleaned) rendered")
+                                        rendered_successfully = True
+                                    else:
+                                        debug_attempts.append(f"⚠️ Cleaned URL blocked: {clean_response.status_code}")
+                                except Exception as e:
+                                    debug_attempts.append(f"❌ HTML (cleaned) failed: {str(e)[:50]}")
+                            
+                            # PRIORITY 3: Try Playwright on ORIGINAL URL (if available)
+                            if not rendered_successfully and playwright_available:
+                                debug_attempts.append("3️⃣ Try Playwright on ORIGINAL URL")
+                                try:
+                                    page_html = capture_with_playwright(adv_url, device=device_all, try_cleaned_url=False)
+                                    if page_html:
+                                        preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                        preview_html = inject_unique_id(preview_html, 'landing_403_pw_og', adv_url, device_all, current_flow)
+                                        st.components.v1.html(preview_html, height=height, scrolling=True)
+                                        st.caption("🤖 Playwright (original URL)")
+                                        debug_attempts.append("✅ Playwright (original) rendered")
+                                        rendered_successfully = True
+                                except Exception as e:
+                                    debug_attempts.append(f"❌ Playwright (original) failed: {str(e)[:50]}")
+                            
+                            # PRIORITY 4: Try Playwright on CLEANED URL (if available)
+                            if not rendered_successfully and playwright_available and cleaned_full_url:
+                                debug_attempts.append("4️⃣ Try Playwright on CLEANED URL")
+                                try:
+                                    page_html = capture_with_playwright(cleaned_full_url, device=device_all, try_cleaned_url=False)
+                                    if page_html:
+                                        preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
+                                        preview_html = inject_unique_id(preview_html, 'landing_403_pw_clean', cleaned_full_url, device_all, current_flow)
+                                        st.components.v1.html(preview_html, height=height, scrolling=True)
+                                        st.caption("🤖 Playwright (cleaned URL)")
+                                        debug_attempts.append("✅ Playwright (cleaned) rendered")
+                                        rendered_successfully = True
+                                except Exception as e:
+                                    debug_attempts.append(f"❌ Playwright (cleaned) failed: {str(e)[:50]}")
+                            
+                            # PRIORITY 5: Try Screenshot API (LAST RESORT)
+                            if not rendered_successfully:
+                                debug_attempts.append("5️⃣ Try Screenshot API (LAST RESORT)")
+                                screenshot_url = get_screenshot_url(adv_url, device=device_all, try_cleaned=True)
+                                debug_attempts.append(f"Screenshot API URL: {screenshot_url[:120] if screenshot_url else 'None'}")
+                                if screenshot_url:
                                     try:
-                                        # Re-fetch with better headers
-                                        og_headers = {
-                                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                                            'Referer': 'https://www.google.com/'
-                                        }
-                                        og_response = requests.get(adv_url, timeout=15, headers=og_headers, allow_redirects=True)
-                                        debug_attempts.append(f"Original URL re-fetch: {og_response.status_code}")
-                                        
-                                        if og_response.status_code == 200:
-                                            page_html = decode_with_multiple_encodings(og_response)
-                                            page_html = clean_and_prepare_html(page_html, adv_url)
-                                            preview_html, display_height = render_html_with_proper_encoding(
-                                                page_html, device_all, 'landing_403_html_og', adv_url, current_flow, scrolling=True
-                                            )
-                                            st.components.v1.html(preview_html, height=display_height, scrolling=True)
-                                            st.caption("📄 HTML (original URL)")
-                                            debug_attempts.append("✅ HTML (original) rendered")
-                                            rendered_successfully = True
-                                        else:
-                                            debug_attempts.append(f"⚠️ Original URL still blocked: {og_response.status_code}")
+                                        screenshot_html = f'<img src="{screenshot_url}" style="width:100%;height:auto;" />'
+                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                        preview_html = inject_unique_id(preview_html, 'landing_screenshot_api', adv_url, device_all, current_flow)
+                                        st.components.v1.html(preview_html, height=height, scrolling=True)
+                                        st.caption("📸 Screenshot (ScreenshotOne API)")
+                                        debug_attempts.append("✅ Screenshot API rendered successfully")
+                                        rendered_successfully = True
                                     except Exception as e:
-                                        debug_attempts.append(f"❌ HTML (original) failed: {str(e)[:50]}")
-                                
-                                # PRIORITY 2: Try HTML on CLEANED URL (skip iframe - always blocked)
-                                if not rendered_successfully and cleaned_full_url:
-                                    debug_attempts.append("2️⃣ Try HTML render with CLEANED URL")
-                                    try:
-                                        clean_headers = {
-                                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                                            'Referer': 'https://www.google.com/'
-                                        }
-                                        clean_response = requests.get(cleaned_full_url, timeout=15, headers=clean_headers, allow_redirects=True)
-                                        debug_attempts.append(f"Cleaned URL response: {clean_response.status_code}")
-                                        
-                                        if clean_response.status_code == 200:
-                                            page_html = decode_with_multiple_encodings(clean_response)
-                                            page_html = clean_and_prepare_html(page_html, cleaned_full_url)
-                                            preview_html, display_height = render_html_with_proper_encoding(
-                                                page_html, device_all, 'landing_403_html_clean', cleaned_full_url, current_flow, scrolling=True
-                                            )
-                                            st.components.v1.html(preview_html, height=display_height, scrolling=True)
-                                            st.caption("📄 HTML (cleaned URL)")
-                                            debug_attempts.append("✅ HTML (cleaned) rendered")
-                                            rendered_successfully = True
-                                        else:
-                                            debug_attempts.append(f"⚠️ Cleaned URL blocked: {clean_response.status_code}")
-                                    except Exception as e:
-                                        debug_attempts.append(f"❌ HTML (cleaned) failed: {str(e)[:50]}")
-                                
-                                # PRIORITY 3: Try Playwright/screenshotter on ORIGINAL URL (if available)
-                                if not rendered_successfully and playwright_available:
-                                    debug_attempts.append("3️⃣ Try Playwright on ORIGINAL URL")
-                                    try:
-                                        page_html = capture_with_playwright(adv_url, device=device_all, try_cleaned_url=False)
-                                        if page_html:
-                                            preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                            preview_html = inject_unique_id(preview_html, 'landing_403_pw_og', adv_url, device_all, current_flow)
-                                            st.components.v1.html(preview_html, height=height, scrolling=True)
-                                            st.caption("🤖 Playwright (original URL)")
-                                            debug_attempts.append("✅ Playwright (original) rendered")
-                                            rendered_successfully = True
-                                    except Exception as e:
-                                        debug_attempts.append(f"❌ Playwright (original) failed: {str(e)[:50]}")
-                                
-                                # PRIORITY 4: Try Playwright/screenshotter on CLEANED URL (if available)
-                                if not rendered_successfully and playwright_available and cleaned_full_url:
-                                    debug_attempts.append("4️⃣ Try Playwright on CLEANED URL")
-                                    try:
-                                        page_html = capture_with_playwright(cleaned_full_url, device=device_all, try_cleaned_url=False)
-                                        if page_html:
-                                            preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
-                                            preview_html = inject_unique_id(preview_html, 'landing_403_pw_clean', cleaned_full_url, device_all, current_flow)
-                                            st.components.v1.html(preview_html, height=height, scrolling=True)
-                                            st.caption("🤖 Playwright (cleaned URL)")
-                                            debug_attempts.append("✅ Playwright (cleaned) rendered")
-                                            rendered_successfully = True
-                                    except Exception as e:
-                                        debug_attempts.append(f"❌ Playwright (cleaned) failed: {str(e)[:50]}")
-                                
-                                # PRIORITY 5: Try Screenshot API (LAST RESORT)
-                                if not rendered_successfully:
-                                    debug_attempts.append("5️⃣ Try Screenshot API (LAST RESORT)")
-                                    screenshot_url = get_screenshot_url(adv_url, device=device_all, try_cleaned=True)
-                                    debug_attempts.append(f"Screenshot API URL: {screenshot_url[:120] if screenshot_url else 'None'}")
-                                    if screenshot_url:
-                                        try:
-                                            screenshot_html = f'<img src="{screenshot_url}" style="width:100%;height:auto;" />'
-                                            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
-                                            preview_html = inject_unique_id(preview_html, 'landing_screenshot_api', adv_url, device_all, current_flow)
-                                            st.components.v1.html(preview_html, height=height, scrolling=True)
-                                            st.caption("📸 Screenshot (ScreenshotOne API)")
-                                            debug_attempts.append("✅ Screenshot API rendered successfully")
-                                            rendered_successfully = True
-                                        except Exception as e:
-                                            debug_attempts.append(f"❌ Screenshot API failed: {str(e)[:50]}")
-                                
-                                # If EVERYTHING failed, show error
-                                if not rendered_successfully:
-                                    debug_attempts.append("❌ ALL 5 METHODS FAILED - showing error")
-                                    error_html = f"""
-                                    <!DOCTYPE html>
-                                    <html>
-                                    <head>
-                                        <meta charset="UTF-8">
-                                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                                        <style>
-                                            body {{
-                                                margin: 0;
-                                                padding: clamp(1rem, 2vw, 1.5rem);
-                                                font-family: system-ui, -apple-system, sans-serif;
-                                                background: #f8fafc;
-                                                display: flex;
-                                                align-items: center;
-                                                justify-content: center;
-                                                min-height: 100vh;
-                                            }}
-                                            .container {{
-                                                text-align: center;
-                                                padding: clamp(1.5rem, 3vw, 2rem);
-                                                background: white;
-                                                border-radius: clamp(0.75rem, 1.5vw, 1rem);
-                                                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-                                                max-width: 90%;
-                                            }}
-                                            .icon {{ font-size: clamp(2.5rem, 5vw, 3.5rem); margin-bottom: clamp(0.75rem, 1.5vw, 1rem); }}
-                                            h2 {{ color: #dc2626; font-size: clamp(1rem, 2vw, 1.25rem); margin: 0 0 clamp(0.5rem, 1vw, 0.75rem) 0; font-weight: 700; }}
-                                            .url {{ background: #f1f5f9; padding: clamp(0.5rem, 1vw, 0.75rem); border-radius: clamp(0.375rem, 0.75vw, 0.5rem); font-size: clamp(0.625rem, 1.2vw, 0.75rem); color: #475569; word-break: break-all; margin-top: clamp(0.75rem, 1.5vw, 1rem); }}
-                                        </style>
-                                    </head>
-                                    <body>
-                                        <div class="container">
-                                            <div class="icon">🚫</div>
-                                            <h2>Could not load page</h2>
-                                            <div class="url">{html.escape(str(adv_url))}</div>
-                                        </div>
-                                    </body>
-                                    </html>
-                                    """
-                                    preview_html, height, _ = render_mini_device_preview(error_html, is_url=False, device=device_all)
-                                    preview_html = inject_unique_id(preview_html, 'landing_error', adv_url, device_all, current_flow)
-                                    st.components.v1.html(preview_html, height=height, scrolling=False)
+                                        debug_attempts.append(f"❌ Screenshot API failed: {str(e)[:50]}")
+                            
+                            # If EVERYTHING failed, show error
+                            if not rendered_successfully:
+                                debug_attempts.append("❌ ALL METHODS FAILED - showing error")
+                                error_html = f"""
+                                <!DOCTYPE html>
+                                <html>
+                                <head>
+                                    <meta charset="UTF-8">
+                                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                    <style>
+                                        body {{
+                                            margin: 0;
+                                            padding: clamp(1rem, 2vw, 1.5rem);
+                                            font-family: system-ui, -apple-system, sans-serif;
+                                            background: #f8fafc;
+                                            display: flex;
+                                            align-items: center;
+                                            justify-content: center;
+                                            min-height: 100vh;
+                                        }}
+                                        .container {{
+                                            text-align: center;
+                                            padding: clamp(1.5rem, 3vw, 2rem);
+                                            background: white;
+                                            border-radius: clamp(0.75rem, 1.5vw, 1rem);
+                                            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                                            max-width: 90%;
+                                        }}
+                                        .icon {{ font-size: clamp(2.5rem, 5vw, 3.5rem); margin-bottom: clamp(0.75rem, 1.5vw, 1rem); }}
+                                        h2 {{ color: #dc2626; font-size: clamp(1rem, 2vw, 1.25rem); margin: 0 0 clamp(0.5rem, 1vw, 0.75rem) 0; font-weight: 700; }}
+                                        .url {{ background: #f1f5f9; padding: clamp(0.5rem, 1vw, 0.75rem); border-radius: clamp(0.375rem, 0.75vw, 0.5rem); font-size: clamp(0.625rem, 1.2vw, 0.75rem); color: #475569; word-break: break-all; margin-top: clamp(0.75rem, 1.5vw, 1rem); }}
+                                    </style>
+                                </head>
+                                <body>
+                                    <div class="container">
+                                        <div class="icon">🚫</div>
+                                        <h2>Could not load page</h2>
+                                        <div class="url">{html.escape(str(adv_url))}</div>
+                                    </div>
+                                </body>
+                                </html>
+                                """
+                                preview_html, height, _ = render_mini_device_preview(error_html, is_url=False, device=device_all)
+                                preview_html = inject_unique_id(preview_html, 'landing_error', adv_url, device_all, current_flow)
+                                st.components.v1.html(preview_html, height=height, scrolling=False)
                     
                     else:
                         # Other status codes - try Playwright or iframe
