@@ -42,10 +42,20 @@ from src.flow_display import render_flow_journey
 try:
     from playwright.sync_api import sync_playwright
     from pathlib import Path
+    import os
     
-    # Check if browser binaries are installed
-    browser_path = Path.home() / ".cache" / "ms-playwright"
-    browsers_exist = browser_path.exists() and list(browser_path.glob("chromium*"))
+    # Check multiple possible browser locations
+    browser_paths = [
+        Path.home() / ".cache" / "ms-playwright",
+        Path("/home/appuser/.cache/ms-playwright"),  # Streamlit Cloud location
+        Path("/root/.cache/ms-playwright"),  # Docker location
+    ]
+    
+    browsers_exist = False
+    for browser_path in browser_paths:
+        if browser_path.exists() and list(browser_path.glob("chromium*")):
+            browsers_exist = True
+            break
     
     PLAYWRIGHT_AVAILABLE = browsers_exist
     
