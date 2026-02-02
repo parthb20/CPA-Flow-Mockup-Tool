@@ -1538,27 +1538,15 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             else:
                                 # Playwright not available - try ALL methods exhaustively
                                 debug_attempts.append("⚠️ Playwright NOT available on server")
+                                debug_attempts.append("⚠️ SKIP iframe (403 pages block iframes with X-Frame-Options)")
                                 
                                 # Get cleaned URL upfront
                                 cleaned = clean_url_for_capture(adv_url)
                                 cleaned_full_url = f"https://{cleaned}" if cleaned and not cleaned.startswith(('http://', 'https://')) else cleaned
                                 
-                                # PRIORITY 1: Try iframe on ORIGINAL URL
+                                # PRIORITY 1: Try HTML on ORIGINAL URL (skip iframe - always blocked on 403)
                                 if not rendered_successfully:
-                                    debug_attempts.append("1️⃣ Try iframe with ORIGINAL URL")
-                                    try:
-                                        preview_html, height, _ = render_mini_device_preview(adv_url, is_url=True, device=device_all, display_url=adv_url)
-                                        preview_html = inject_unique_id(preview_html, 'landing_403_iframe_og', adv_url, device_all, current_flow)
-                                        st.components.v1.html(preview_html, height=height, scrolling=True)
-                                        st.caption("📺 Iframe (original URL)")
-                                        debug_attempts.append("✅ Iframe (original) rendered")
-                                        rendered_successfully = True
-                                    except Exception as e:
-                                        debug_attempts.append(f"❌ Iframe (original) failed: {str(e)[:50]}")
-                                
-                                # PRIORITY 2: Try HTML on ORIGINAL URL
-                                if not rendered_successfully:
-                                    debug_attempts.append("2️⃣ Try HTML render with ORIGINAL URL")
+                                    debug_attempts.append("1️⃣ Try HTML render with ORIGINAL URL")
                                     try:
                                         # Re-fetch with better headers
                                         og_headers = {
@@ -1584,22 +1572,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                     except Exception as e:
                                         debug_attempts.append(f"❌ HTML (original) failed: {str(e)[:50]}")
                                 
-                                # PRIORITY 3: Try iframe on CLEANED URL
+                                # PRIORITY 2: Try HTML on CLEANED URL (skip iframe - always blocked)
                                 if not rendered_successfully and cleaned_full_url:
-                                    debug_attempts.append(f"3️⃣ Try iframe with CLEANED URL: {cleaned_full_url[:80]}")
-                                    try:
-                                        preview_html, height, _ = render_mini_device_preview(cleaned_full_url, is_url=True, device=device_all, display_url=cleaned_full_url)
-                                        preview_html = inject_unique_id(preview_html, 'landing_403_iframe_clean', cleaned_full_url, device_all, current_flow)
-                                        st.components.v1.html(preview_html, height=height, scrolling=True)
-                                        st.caption("📺 Iframe (cleaned URL)")
-                                        debug_attempts.append("✅ Iframe (cleaned) rendered")
-                                        rendered_successfully = True
-                                    except Exception as e:
-                                        debug_attempts.append(f"❌ Iframe (cleaned) failed: {str(e)[:50]}")
-                                
-                                # PRIORITY 4: Try HTML on CLEANED URL
-                                if not rendered_successfully and cleaned_full_url:
-                                    debug_attempts.append("4️⃣ Try HTML render with CLEANED URL")
+                                    debug_attempts.append("2️⃣ Try HTML render with CLEANED URL")
                                     try:
                                         clean_headers = {
                                             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -1624,9 +1599,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                     except Exception as e:
                                         debug_attempts.append(f"❌ HTML (cleaned) failed: {str(e)[:50]}")
                                 
-                                # PRIORITY 5: Try Playwright/screenshotter on ORIGINAL URL (if available)
+                                # PRIORITY 3: Try Playwright/screenshotter on ORIGINAL URL (if available)
                                 if not rendered_successfully and playwright_available:
-                                    debug_attempts.append("5️⃣ Try Playwright on ORIGINAL URL")
+                                    debug_attempts.append("3️⃣ Try Playwright on ORIGINAL URL")
                                     try:
                                         page_html = capture_with_playwright(adv_url, device=device_all, try_cleaned_url=False)
                                         if page_html:
@@ -1639,9 +1614,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                     except Exception as e:
                                         debug_attempts.append(f"❌ Playwright (original) failed: {str(e)[:50]}")
                                 
-                                # PRIORITY 6: Try Playwright/screenshotter on CLEANED URL (if available)
+                                # PRIORITY 4: Try Playwright/screenshotter on CLEANED URL (if available)
                                 if not rendered_successfully and playwright_available and cleaned_full_url:
-                                    debug_attempts.append("6️⃣ Try Playwright on CLEANED URL")
+                                    debug_attempts.append("4️⃣ Try Playwright on CLEANED URL")
                                     try:
                                         page_html = capture_with_playwright(cleaned_full_url, device=device_all, try_cleaned_url=False)
                                         if page_html:
@@ -1654,9 +1629,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                     except Exception as e:
                                         debug_attempts.append(f"❌ Playwright (cleaned) failed: {str(e)[:50]}")
                                 
-                                # PRIORITY 7: Try Screenshot API (LAST RESORT)
+                                # PRIORITY 5: Try Screenshot API (LAST RESORT)
                                 if not rendered_successfully:
-                                    debug_attempts.append("7️⃣ Try Screenshot API (LAST RESORT)")
+                                    debug_attempts.append("5️⃣ Try Screenshot API (LAST RESORT)")
                                     screenshot_url = get_screenshot_url(adv_url, device=device_all, try_cleaned=True)
                                     debug_attempts.append(f"Screenshot API URL: {screenshot_url[:120] if screenshot_url else 'None'}")
                                     if screenshot_url:
@@ -1673,7 +1648,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                 
                                 # If EVERYTHING failed, show error
                                 if not rendered_successfully:
-                                    debug_attempts.append("❌ ALL 7 METHODS FAILED - showing error")
+                                    debug_attempts.append("❌ ALL 5 METHODS FAILED - showing error")
                                     error_html = f"""
                                     <!DOCTYPE html>
                                     <html>
