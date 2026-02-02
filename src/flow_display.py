@@ -591,9 +591,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     except:
                         pass
                 
-                # Method 4: Try screenshot API before giving up
+                # Method 4: Try screenshot API before giving up (as last resort, try cleaned URL)
                 if not rendered:
-                    screenshot_url = get_screenshot_url(pub_url, device=device_all)
+                    screenshot_url = get_screenshot_url(pub_url, device=device_all, try_cleaned=True)
                     if screenshot_url:
                         try:
                             screenshot_html = f'<img src="{screenshot_url}" style="width:100%;height:auto;" />'
@@ -1076,8 +1076,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                     if st.session_state.flow_layout != 'horizontal':
                                         st.caption("📺 SERP (via Playwright)")
                                 else:
-                                    # Try screenshot API directly
-                                    screenshot_url = get_screenshot_url(serp_url, device=device_all)
+                                    # Try screenshot API directly (as fallback after Playwright 403, try cleaned)
+                                    screenshot_url = get_screenshot_url(serp_url, device=device_all, try_cleaned=True)
                                     if screenshot_url:
                                         screenshot_html = f'<img src="{screenshot_url}" style="width:100%;height:auto;" />'
                                         preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
@@ -1266,9 +1266,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             except:
                                 pass
                         
-                        # Method 4: Try Screenshot API as last resort for non-redirect URLs
+                        # Method 4: Try Screenshot API as last resort for non-redirect URLs (try cleaned)
                         if not rendered_successfully and not is_redirect_url:
-                            screenshot_url = get_screenshot_url(adv_url, device=device_all)
+                            screenshot_url = get_screenshot_url(adv_url, device=device_all, try_cleaned=True)
                             if screenshot_url:
                                 try:
                                     screenshot_html = f'<img src="{screenshot_url}" style="width:100%;height:auto;" />'
