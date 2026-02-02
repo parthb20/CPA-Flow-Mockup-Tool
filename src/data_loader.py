@@ -97,17 +97,57 @@ def process_file_content(content):
                 st.write(f"✅ Decoded to UTF-8: {len(decoded)} characters")
                 st.write(f"🔍 First 200 characters:\n{decoded[:200]}")
                 
-                df = pd.read_csv(
-                    StringIO(decoded), 
-                    dtype=str, 
-                    on_bad_lines='skip',
-                    encoding='utf-8',
-                    engine='python'
-                )
-                st.write(f"✅ Parsed CSV: {len(df)} rows, {len(df.columns)} columns")
+                # Try with different CSV parsing options for files with complex quoting
+                # First try: Standard parser with QUOTE_ALL
+                try:
+                    df = pd.read_csv(
+                        StringIO(decoded), 
+                        dtype=str,
+                        encoding='utf-8',
+                        engine='python',
+                        quotechar='"',
+                        escapechar='\\',
+                        on_bad_lines='skip'
+                    )
+                    st.write(f"✅ Parsed CSV (standard): {len(df)} rows, {len(df.columns)} columns")
+                except Exception as e1:
+                    st.write(f"⚠️ Standard parser failed: {str(e1)}")
+                    # Second try: C engine with different options
+                    try:
+                        df = pd.read_csv(
+                            StringIO(decoded),
+                            dtype=str,
+                            encoding='utf-8',
+                            engine='c',
+                            quotechar='"',
+                            doublequote=True,
+                            on_bad_lines='skip'
+                        )
+                        st.write(f"✅ Parsed CSV (C engine): {len(df)} rows, {len(df.columns)} columns")
+                    except Exception as e2:
+                        st.write(f"⚠️ C engine failed: {str(e2)}")
+                        # Third try: Read line by line manually
+                        import csv as csv_module
+                        try:
+                            reader = csv_module.reader(StringIO(decoded), quotechar='"', escapechar='\\')
+                            rows = list(reader)
+                            if len(rows) > 1:
+                                df = pd.DataFrame(rows[1:], columns=rows[0])
+                                st.write(f"✅ Parsed CSV (manual): {len(df)} rows, {len(df.columns)} columns")
+                            else:
+                                raise ValueError("No data rows found")
+                        except Exception as e3:
+                            st.error(f"❌ All CSV parsing methods failed!")
+                            st.error(f"Method 1: {str(e1)}")
+                            st.error(f"Method 2: {str(e2)}")
+                            st.error(f"Method 3: {str(e3)}")
+                            return None
+                
                 if len(df) > 0:
                     st.write(f"📋 Columns: {df.columns.tolist()}")
-                    st.write(f"📊 First row: {df.iloc[0].to_dict()}")
+                    st.write(f"📊 First row sample: {dict(list(df.iloc[0].items())[:2])}")
+                else:
+                    st.warning("⚠️ Parsed 0 rows - possible data format issue")
                 return df
             except Exception as e:
                 st.error(f"❌ CSV parse error: {str(e)}")
