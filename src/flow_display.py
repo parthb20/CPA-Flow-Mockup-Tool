@@ -1591,16 +1591,16 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                     screenshot_url = get_screenshot_url(adv_url, device=device_all, try_cleaned=True)
                                     debug_attempts.append(f"Screenshot API URL: {screenshot_url[:120] if screenshot_url else 'None'}")
                                     if screenshot_url:
-                                    try:
-                                        screenshot_html = f'<img src="{screenshot_url}" style="width:100%;height:auto;" />'
-                                        preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
-                                        preview_html = inject_unique_id(preview_html, 'landing_screenshot_api', adv_url, device_all, current_flow)
-                                        st.components.v1.html(preview_html, height=height, scrolling=True)
-                                        st.caption("📸 Screenshot (ScreenshotOne API)")
-                                        debug_attempts.append("✅ Screenshot API rendered successfully")
-                                        rendered_successfully = True
-                                    except Exception as e:
-                                        debug_attempts.append(f"❌ Screenshot render failed: {str(e)[:50]}")
+                                        try:
+                                            screenshot_html = f'<img src="{screenshot_url}" style="width:100%;height:auto;" />'
+                                            preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                            preview_html = inject_unique_id(preview_html, 'landing_screenshot_api', adv_url, device_all, current_flow)
+                                            st.components.v1.html(preview_html, height=height, scrolling=True)
+                                            st.caption("📸 Screenshot (ScreenshotOne API)")
+                                            debug_attempts.append("✅ Screenshot API rendered successfully")
+                                            rendered_successfully = True
+                                        except Exception as e:
+                                            debug_attempts.append(f"❌ Screenshot render failed: {str(e)[:50]}")
                                         # Show error in device preview
                                         error_html = f"""
                                         <!DOCTYPE html>
