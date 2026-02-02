@@ -7,7 +7,7 @@ Modular architecture for maintainability
 import streamlit as st
 
 # VERSION CHECK - To confirm new code is running
-APP_VERSION = "v2.3-DEBUG-FILE-D"
+APP_VERSION = "v2.4-CSV-PARSE-FIX"
 
 # Page config - MUST be FIRST Streamlit command (before any imports that use Streamlit)
 st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊", layout="wide")
