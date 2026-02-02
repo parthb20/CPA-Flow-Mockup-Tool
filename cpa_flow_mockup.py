@@ -546,6 +546,12 @@ if not st.session_state.loading_done:
 if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
     df = st.session_state.data_a
     
+    # Add cache clear button for testing (can remove after debugging)
+    if st.button("🔄 Clear Screenshot Cache", help="Clear cached screenshots to test new rendering logic"):
+        st.cache_data.clear()
+        st.success("✅ Cache cleared! Reloading page...")
+        st.rerun()
+    
     # Select Advertiser, Campaign, and combined Use Full Data + Time filter
     col1, col2, col3 = st.columns([1.5, 1.5, 2.5])
     with col1:
