@@ -808,16 +808,12 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             # Use Full Data checkbox
             with sub_col1:
                 st.markdown('<div style="height: 1.65rem;"></div>', unsafe_allow_html=True)
-                # Initialize checkbox state once if not exists
-                if 'use_full_data' not in st.session_state:
-                    st.session_state.use_full_data = False
-                
+                # Let Streamlit manage the state automatically via key
                 use_full_data = st.checkbox(
                     "Use Full Data",
-                    value=st.session_state.use_full_data,
+                    value=False,  # Default value
                     help="Bypass 5% threshold filter",
-                    key='use_full_data',
-                    on_change=lambda: None  # Force re-run on change
+                    key='use_full_data_checkbox'  # Unique key
                 )
             
             # Time Filter
@@ -1129,6 +1125,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.warning("⚠️ No data found for selected date range. Please adjust filters.")
                 st.stop()
             
+            # Debug: Show checkbox state
+            st.write(f"🔍 DEBUG: use_full_data = {use_full_data}, type = {type(use_full_data)}")
+            st.write(f"🔍 DEBUG: Applying filter? {not use_full_data}")
+            
             # Apply threshold filters only if not using full data
             if not use_full_data and entity_threshold > 0:
                 original_len = len(campaign_df)
@@ -1269,14 +1269,20 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 
                 # Render Flow Journey using module (heading now shown above)
                 with st.spinner("Loading flow cards..."):
-                    render_flow_journey(
-                        campaign_df=campaign_df,
-                        current_flow=current_flow,
-                        api_key=API_KEY,
-                        playwright_available=PLAYWRIGHT_AVAILABLE,
-                        thumio_configured=THUMIO_CONFIGURED,
-                        thumio_referer_domain=THUMIO_REFERER_DOMAIN
-                    )
+                    try:
+                        render_flow_journey(
+                            campaign_df=campaign_df,
+                            current_flow=current_flow,
+                            api_key=API_KEY,
+                            playwright_available=PLAYWRIGHT_AVAILABLE,
+                            thumio_configured=THUMIO_CONFIGURED,
+                            thumio_referer_domain=THUMIO_REFERER_DOMAIN
+                        )
+                    except Exception as e:
+                        st.error(f"❌ Error rendering flow: {str(e)}")
+                        import traceback
+                        with st.expander("🔍 Error Details"):
+                            st.code(traceback.format_exc())
                 
                 # ============================================================
                 # FILTERS, TABLE, AND OVERVIEW - MOVED BELOW FLOW JOURNEY
