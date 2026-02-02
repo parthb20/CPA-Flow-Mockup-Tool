@@ -19,7 +19,7 @@ from src.renderers import (
     render_similarity_score,
     inject_unique_id
 )
-from src.screenshot import get_screenshot_url, capture_with_playwright, capture_page_with_fallback
+from src.screenshot import get_screenshot_url, capture_with_playwright, capture_page_with_fallback, clean_url_for_capture
 from src.serp import generate_serp_mockup
 from src.similarity import calculate_similarities
 from src.creative_renderer import render_creative_via_weaver, parse_keyword_array_from_flow
@@ -1208,20 +1208,17 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     response = session.get(adv_url, timeout=15, headers=headers, allow_redirects=True)
                     
                     if response.status_code == 200:
-                        # Clean URL by removing placeholder parameters
-                        clean_url = str(adv_url)
-                        # Remove {clickid}, {click}, and other placeholder parameters
-                        clean_url = re.sub(r'[&?]?[\w_]+=\{[^}]+\}', '', clean_url)
-                        clean_url = re.sub(r'\{[^}]+\}', '', clean_url)
-                        # Remove trailing ? or & if params were removed
-                        clean_url = clean_url.rstrip('?&')
+                        # Clean URL - remove ALL tracking params and query parameters
+                        cleaned = clean_url_for_capture(adv_url)
+                        if cleaned:
+                            # Add https back for rendering
+                            render_url = f"https://{cleaned}" if not cleaned.startswith(('http://', 'https://')) else cleaned
+                        else:
+                            render_url = adv_url
                         
                         # Detect redirect/tracking URLs (these won't work in iframe)
                         is_redirect_url = any(keyword in str(adv_url).lower() 
                                             for keyword in ['htrk', 'track', 'redirect', 'aff_c', 'aff_', 'click', 'goto', '/c?', '/aff?'])
-                        
-                        # If URL was cleaned, use the clean version for rendering
-                        render_url = clean_url if clean_url != str(adv_url) else adv_url
                         
                         # Method 1: Try Playwright FIRST (most reliable)
                         if not rendered_successfully and playwright_available:
@@ -1273,6 +1270,20 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                 rendered_successfully = True
                             except:
                                 pass
+                        
+                        # Method 4: Try Screenshot API as last resort for non-redirect URLs
+                        if not rendered_successfully and not is_redirect_url:
+                            screenshot_url = get_screenshot_url(adv_url, device=device_all)
+                            if screenshot_url:
+                                try:
+                                    screenshot_html = f'<img src="{screenshot_url}" style="width:100%;height:auto;" />'
+                                    preview_html, height, _ = render_mini_device_preview(screenshot_html, is_url=False, device=device_all)
+                                    preview_html = inject_unique_id(preview_html, 'landing_screenshot_final', adv_url, device_all, current_flow)
+                                    st.components.v1.html(preview_html, height=height, scrolling=True)
+                                    st.caption("📸 Screenshot (ScreenshotOne API)")
+                                    rendered_successfully = True
+                                except:
+                                    pass
                         
                         # For redirect URLs that still haven't rendered, try fetching with cleaned URL
                         if not rendered_successfully and is_redirect_url:
