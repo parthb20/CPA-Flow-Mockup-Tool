@@ -42,61 +42,18 @@ def process_file_content(content):
                 # Read CSV with maximum field size to prevent truncation
                 csv.field_size_limit(100000000)  # 100MB per field
                 
-                # Read as CSV - Try different parsing strategies silently
-                df = None
-                error_msgs = []
-                
-                # Strategy 1: QUOTE_ALL (assume all fields quoted)
-                try:
-                    df = pd.read_csv(
-                        BytesIO(decompressed), 
-                        dtype=str, 
-                        encoding='utf-8',
-                        engine='python',
-                        quoting=csv.QUOTE_ALL,
-                        escapechar='\\',
-                        on_bad_lines='warn'
-                    )
-                except Exception as e:
-                    error_msgs.append(f"QUOTE_ALL: {str(e)[:100]}")
-                
-                # Strategy 2: QUOTE_MINIMAL (default quoting)
-                if df is None or len(df) == 0:
-                    try:
-                        df = pd.read_csv(
-                            BytesIO(decompressed), 
-                            dtype=str, 
-                            encoding='utf-8',
-                            engine='python',
-                            quoting=csv.QUOTE_MINIMAL,
-                            on_bad_lines='warn'
-                        )
-                    except Exception as e:
-                        error_msgs.append(f"QUOTE_MINIMAL: {str(e)[:100]}")
-                
-                # Strategy 3: No quoting (raw parsing)
-                if df is None or len(df) == 0:
-                    try:
-                        df = pd.read_csv(
-                            BytesIO(decompressed), 
-                            dtype=str, 
-                            encoding='utf-8',
-                            engine='python',
-                            quoting=csv.QUOTE_NONE,
-                            on_bad_lines='warn'
-                        )
-                    except Exception as e:
-                        error_msgs.append(f"QUOTE_NONE: {str(e)[:100]}")
-                
-                if df is None or len(df) == 0:
-                    st.error(f"❌ All parsing strategies failed: {'; '.join(error_msgs)}")
-                    return None
+                # Parse CSV (use default quoting, handles most cases)
+                df = pd.read_csv(
+                    BytesIO(decompressed), 
+                    dtype=str, 
+                    encoding='utf-8',
+                    engine='python',
+                    on_bad_lines='warn'
+                )
                 
                 return df
             except Exception as e:
                 st.error(f"❌ Error decompressing GZIP: {str(e)}")
-                import traceback
-                st.error(f"Traceback: {traceback.format_exc()[:500]}")
                 return None
         
         # ZIP: 50 4b (PK)
@@ -139,8 +96,6 @@ def process_file_content(content):
                 return df
             except Exception as e:
                 st.error(f"❌ CSV parse error: {str(e)}")
-                import traceback
-                st.error(f"Traceback: {traceback.format_exc()[:500]}")
                 return None
                 
     except Exception as e:
