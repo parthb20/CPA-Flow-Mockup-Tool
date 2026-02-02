@@ -298,10 +298,36 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     
     with control_col4:
         st.markdown('<p style="font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem) 0; font-family: system-ui;">Domain</p>', unsafe_allow_html=True)
-        domains = ['All Domains'] + sorted(campaign_df['publisher_domain'].dropna().unique().tolist()) if 'publisher_domain' in campaign_df.columns else ['All Domains']
+        
+        # Check if publisher_id column exists
+        pub_id_col = None
+        for col in campaign_df.columns:
+            if col.lower() in ['publisher_id', 'publisherid', 'pub_id']:
+                pub_id_col = col
+                break
+        
+        # Create domain display with format: "domain - [id]" if ID exists
+        if 'publisher_domain' in campaign_df.columns:
+            if pub_id_col:
+                # Create "domain - [id]" format
+                df_domains = campaign_df[['publisher_domain', pub_id_col]].drop_duplicates().dropna()
+                domain_display = df_domains.apply(lambda row: f"{row['publisher_domain']} - [{row[pub_id_col]}]", axis=1).tolist()
+                domains = ['All Domains'] + sorted(domain_display)
+            else:
+                # Just domain names
+                domains = ['All Domains'] + sorted(campaign_df['publisher_domain'].dropna().unique().tolist())
+        else:
+            domains = ['All Domains']
+        
         selected_domain_inline = st.selectbox("Domain", domains, key='domain_inline_filter', label_visibility="collapsed")
+        
         if selected_domain_inline != 'All Domains':
-            campaign_df = campaign_df[campaign_df['publisher_domain'] == selected_domain_inline]
+            # Extract domain name from "domain - [id]" format if ID column exists
+            if pub_id_col and ' - [' in selected_domain_inline:
+                selected_domain_name = selected_domain_inline.split(' - [')[0]
+            else:
+                selected_domain_name = selected_domain_inline
+            campaign_df = campaign_df[campaign_df['publisher_domain'] == selected_domain_name]
     
     with control_col5:
         st.markdown('<p style="font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem) 0; font-family: system-ui;">Keyword</p>', unsafe_allow_html=True)
