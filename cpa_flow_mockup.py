@@ -44,14 +44,25 @@ from src.flow_display import render_flow_journey
 @st.cache_resource
 def ensure_playwright_installed():
     """Auto-install Playwright browsers on Streamlit Cloud (runs once)"""
+    install_log = []
     try:
         import install_playwright
-        return install_playwright.install_playwright_browsers()
+        # Capture stdout
+        import io
+        from contextlib import redirect_stdout
+        
+        f = io.StringIO()
+        with redirect_stdout(f):
+            success = install_playwright.install_playwright_browsers()
+        
+        install_log = f.getvalue().split('\n')
+        return success, install_log
     except Exception as e:
-        return False
+        install_log.append(f"❌ Auto-install error: {str(e)[:200]}")
+        return False, install_log
 
 # Attempt installation (cached, runs only once)
-ensure_playwright_installed()
+PLAYWRIGHT_INSTALL_SUCCESS, PLAYWRIGHT_INSTALL_LOG = ensure_playwright_installed()
 
 PLAYWRIGHT_AVAILABLE = False
 PLAYWRIGHT_DEBUG = []
@@ -603,6 +614,16 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
     
     with col2:
         with st.expander(f"🔧 Playwright Status: {'✅ Available' if PLAYWRIGHT_AVAILABLE else '❌ Not Available'}", expanded=False):
+            st.markdown("**Installation Log:**")
+            if PLAYWRIGHT_INSTALL_LOG:
+                for log_line in PLAYWRIGHT_INSTALL_LOG:
+                    if log_line.strip():
+                        st.text(log_line)
+            else:
+                st.text("No installation log available")
+            
+            st.markdown("---")
+            st.markdown("**Detection Log:**")
             for debug_line in PLAYWRIGHT_DEBUG:
                 st.text(debug_line)
     
