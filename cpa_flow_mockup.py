@@ -613,35 +613,24 @@ if not st.session_state.loading_done:
 if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
     df = st.session_state.data_a
     
-    # Add cache clear button and Playwright debug info
-    col1, col2 = st.columns([1, 3])
-    with col1:
-        if st.button("🔄 Clear Screenshot Cache", help="Clear cached screenshots to test new rendering logic"):
-            st.cache_data.clear()
-            st.success("✅ Cache cleared! Reloading page...")
-            st.rerun()
-    
-    with col2:
-        with st.expander(f"🔧 Playwright Status: {'✅ Available' if PLAYWRIGHT_AVAILABLE else '❌ Not Available'}", expanded=False):
-            st.markdown("**Installation Log:**")
-            if PLAYWRIGHT_INSTALL_LOG:
-                for log_line in PLAYWRIGHT_INSTALL_LOG:
-                    if log_line.strip():
-                        st.text(log_line)
-            else:
-                st.text("No installation log available")
-            
-            st.markdown("---")
-            st.markdown("**Detection Log:**")
-            for debug_line in PLAYWRIGHT_DEBUG:
-                st.text(debug_line)
+    # Find advertiser and campaign columns (handle case variations) - define at top for accessibility
+    adv_name_col = next((col for col in df.columns if col.lower() == 'advertiser_name'), 'Advertiser_Name')
+    adv_id_col = next((col for col in df.columns if col.lower() == 'advertiser_id'), 'Advertiser_Id')
+    camp_name_col = next((col for col in df.columns if col.lower() == 'campaign_name'), 'Campaign_Name')
+    camp_id_col = next((col for col in df.columns if col.lower() == 'campaign_id'), 'Campaign_Id')
     
     # Select Advertiser, Campaign, and combined Use Full Data + Time filter
     col1, col2, col3 = st.columns([1.5, 1.5, 2.5])
     with col1:
-        # Find advertiser column (handle case variations)
-        adv_col = next((col for col in df.columns if col.lower() == 'advertiser_name'), 'Advertiser_Name')
-        advertisers = ['-- Select Advertiser --'] + sorted(df[adv_col].dropna().unique().tolist())
+        
+        # Create "Name_ID" format for display
+        if adv_id_col in df.columns:
+            df_adv = df[[adv_name_col, adv_id_col]].drop_duplicates().dropna()
+            advertiser_display = df_adv.apply(lambda row: f"{row[adv_name_col]}_{row[adv_id_col]}", axis=1).tolist()
+            advertisers = ['-- Select Advertiser --'] + sorted(advertiser_display)
+        else:
+            advertisers = ['-- Select Advertiser --'] + sorted(df[adv_name_col].dropna().unique().tolist())
+        
         # Preserve advertiser selection
         default_adv_idx = 0
         if 'preserved_advertiser' in st.session_state and st.session_state.preserved_advertiser in advertisers:
@@ -651,10 +640,25 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             st.session_state.preserved_advertiser = selected_advertiser
     
     if selected_advertiser and selected_advertiser != '-- Select Advertiser --':
+        # Extract advertiser name from "Name_ID" format (if ID column exists)
+        if adv_id_col in df.columns and '_' in selected_advertiser:
+            # Split from the last underscore to handle names with underscores
+            selected_advertiser_name = selected_advertiser.rsplit('_', 1)[0]
+        else:
+            selected_advertiser_name = selected_advertiser
+        
         with col2:
-            # Find campaign column (handle case variations)
-            camp_col = next((col for col in df.columns if col.lower() == 'campaign_name'), 'Campaign_Name')
-            campaigns = ['-- Select Campaign --'] + sorted(df[df[adv_col] == selected_advertiser][camp_col].dropna().unique().tolist())
+            # Filter campaigns by selected advertiser
+            advertiser_df = df[df[adv_name_col] == selected_advertiser_name]
+            
+            # Create "Name_ID" format for display
+            if camp_id_col in df.columns:
+                df_camp = advertiser_df[[camp_name_col, camp_id_col]].drop_duplicates().dropna()
+                campaign_display = df_camp.apply(lambda row: f"{row[camp_name_col]}_{row[camp_id_col]}", axis=1).tolist()
+                campaigns = ['-- Select Campaign --'] + sorted(campaign_display)
+            else:
+                campaigns = ['-- Select Campaign --'] + sorted(advertiser_df[camp_name_col].dropna().unique().tolist())
+            
             # Preserve campaign selection
             default_camp_idx = 0
             if 'preserved_campaign' in st.session_state and st.session_state.preserved_campaign in campaigns:
@@ -792,7 +796,15 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             st.rerun()
         
         if selected_campaign and selected_campaign != '-- Select Campaign --':
-            campaign_df = df[(df[adv_col] == selected_advertiser) & (df[camp_col] == selected_campaign)].copy()
+            # Extract campaign name from "Name_ID" format (if ID column exists)
+            if camp_id_col in df.columns and '_' in selected_campaign:
+                # Split from the last underscore to handle names with underscores
+                selected_campaign_name = selected_campaign.rsplit('_', 1)[0]
+            else:
+                selected_campaign_name = selected_campaign
+            
+            # Filter data using extracted names
+            campaign_df = df[(df[adv_name_col] == selected_advertiser_name) & (df[camp_name_col] == selected_campaign_name)].copy()
             
             # Check if we have data
             if len(campaign_df) == 0:
