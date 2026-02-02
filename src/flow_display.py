@@ -1405,28 +1405,38 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                 rendered_successfully = True
                     
                     elif response.status_code == 403:
+                            debug_attempts.append("Status 403 detected - trying enhanced methods")
                             if playwright_available:
                                 try:
+                                    debug_attempts.append(f"Try Enhanced Playwright (anti-bot) with: {adv_url[:100]}")
                                     with st.spinner("🔄 Trying browser automation..."):
                                         page_html = capture_with_playwright(adv_url, device=device_all)
                                         if page_html:
                                             if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
+                                                debug_attempts.append("✅ Playwright auto-retried with cleaned URL → Screenshot API used")
                                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                                 preview_html = inject_unique_id(preview_html, 'landing_screenshot_fallback', adv_url, device_all, current_flow)
                                                 # Use proportional height
                                                 st.components.v1.html(preview_html, height=height, scrolling=True)
                                                 st.caption("📸 Screenshot (ScreenshotOne API)")
+                                                rendered_successfully = True
                                             else:
+                                                debug_attempts.append("✅ Playwright bypassed 403 with anti-detection!")
                                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                                 preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
                                                 # Use proportional height
                                                 st.components.v1.html(preview_html, height=height, scrolling=True)
                                                 st.caption("🤖 Rendered via browser automation (bypassed 403)")
+                                                rendered_successfully = True
                                         else:
+                                            debug_attempts.append("❌ Playwright returned empty HTML")
                                             raise Exception("Playwright returned empty HTML")
-                                except Exception:
+                                except Exception as e:
+                                    debug_attempts.append(f"❌ Playwright failed: {str(e)[:80]}")
+                                    debug_attempts.append("Try Screenshot API directly (with cleaned URL)")
                                     # Try screenshot API as last resort before error (with cleaned URL for 403)
                                     screenshot_url = get_screenshot_url(adv_url, device=device_all, try_cleaned=True)
+                                    debug_attempts.append(f"Screenshot API URL generated: {screenshot_url[:120] if screenshot_url else 'None'}")
                                     if screenshot_url:
                                         try:
                                             screenshot_html = f'<img src="{screenshot_url}" style="width:100%;height:auto;" />'
@@ -1434,7 +1444,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                             preview_html = inject_unique_id(preview_html, 'landing_screenshot_api', adv_url, device_all, current_flow)
                                             st.components.v1.html(preview_html, height=height, scrolling=True)
                                             st.caption("📸 Screenshot (ScreenshotOne API)")
-                                        except:
+                                            debug_attempts.append("✅ Screenshot API rendered successfully")
+                                            rendered_successfully = True
+                                        except Exception as e:
+                                            debug_attempts.append(f"❌ Screenshot render failed: {str(e)[:50]}")
                                             # Show error in device preview
                                             error_html = f"""
                                             <!DOCTYPE html>
@@ -1524,7 +1537,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                         st.components.v1.html(preview_html, height=height, scrolling=False)
                             else:
                                 # Playwright not available - try screenshot API
-                                screenshot_url = get_screenshot_url(adv_url, device=device_all)
+                                debug_attempts.append("⚠️ Playwright NOT available on server")
+                                debug_attempts.append("Try Screenshot API directly (with cleaned URL)")
+                                screenshot_url = get_screenshot_url(adv_url, device=device_all, try_cleaned=True)
+                                debug_attempts.append(f"Screenshot API URL: {screenshot_url[:120] if screenshot_url else 'None'}")
                                 if screenshot_url:
                                     try:
                                         screenshot_html = f'<img src="{screenshot_url}" style="width:100%;height:auto;" />'
@@ -1532,7 +1548,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                         preview_html = inject_unique_id(preview_html, 'landing_screenshot_api', adv_url, device_all, current_flow)
                                         st.components.v1.html(preview_html, height=height, scrolling=True)
                                         st.caption("📸 Screenshot (ScreenshotOne API)")
-                                    except:
+                                        debug_attempts.append("✅ Screenshot API rendered successfully")
+                                        rendered_successfully = True
+                                    except Exception as e:
+                                        debug_attempts.append(f"❌ Screenshot render failed: {str(e)[:50]}")
                                         # Show error in device preview
                                         error_html = f"""
                                         <!DOCTYPE html>
