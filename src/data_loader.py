@@ -174,7 +174,12 @@ def load_csv_from_gdrive(file_id):
                     return result
                 
         except Exception as e:
-            st.warning(f"⚠️ gdown method failed: {str(e)[:100]}")
+            # Check if it's a rate limit error
+            error_msg = str(e).lower()
+            if 'too many users' in error_msg or 'quota' in error_msg:
+                # Silent fail on rate limit - will try alternative method
+                pass
+            # Otherwise silently try fallback
     
     # Method 2: Manual download (fallback)
     try:
@@ -189,6 +194,10 @@ def load_csv_from_gdrive(file_id):
         # Check for virus scan warning or download confirmation (handle silently)
         if b'virus scan warning' in content.lower() or b'download anyway' in content.lower() or content.startswith(b'<!DOCTYPE'):
             text = content.decode('utf-8', errors='ignore')
+            
+            # Check for rate limit message
+            if 'too many users' in text.lower() or 'quota' in text.lower():
+                return None  # Silent fail - rate limit
             
             # Try to find confirmation token
             confirm_match = re.search(r'confirm=([a-zA-Z0-9_-]+)', text)
@@ -205,19 +214,16 @@ def load_csv_from_gdrive(file_id):
                     response = session.get(url, timeout=60, stream=False)
                     content = response.content
                 else:
-                    st.error("❌ Could not download file - check sharing settings (no confirmation token found)")
-                    return None
+                    return None  # Silent fail
         
         if response.status_code != 200:
-            st.error(f"❌ HTTP {response.status_code} when downloading file")
             return None
         
         # Process the content
         return process_file_content(content)
             
     except Exception as e:
-        st.error(f"❌ Error downloading file: {str(e)[:200]}")
-        return None
+        return None  # Silent fail
 
 
 def load_json_from_gdrive(file_id):
