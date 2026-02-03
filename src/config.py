@@ -45,8 +45,8 @@ DEVICE_DIMENSIONS = {
         'chrome_height': 88
     },
     'laptop': {
-        'width': 1366,  # Laptop width (landscape orientation, common 16:9 laptop)
-        'height': 768,  # Laptop height
+        'width': 768,  # Portrait width (will be swapped to landscape by orientation='horizontal')
+        'height': 1366,  # Portrait height (will be swapped to landscape)
         'target_width_portrait': '22vw',  # Same for all devices
         'target_width_landscape': '22vw',  # Same for all devices
         'min_width_portrait': 340,  # LAPTOP minimum - BIGGER than mobile/tablet
