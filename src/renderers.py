@@ -203,11 +203,22 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                 -webkit-overflow-scrolling: touch;
                 background: white;
             }}
-            .content-area * {{
+            .content-area > * {{
                 max-width: 100% !important;
                 word-wrap: break-word !important;
                 overflow-wrap: break-word !important;
                 box-sizing: border-box !important;
+            }}
+            /* Allow sidebar and widget areas to display normally */
+            .content-area aside,
+            .content-area .sidebar,
+            .content-area [class*="widget"],
+            .content-area [class*="related"],
+            .content-area [id*="related"],
+            .content-area [class*="popular"] {{
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
             }}
             .content-area img {{
                 max-width: 100% !important;
