@@ -69,8 +69,14 @@ def render_creative_from_adcode(adcode_raw, creative_size="300x250"):
         # Unescape the ad code
         adcode = unescape_adcode(adcode_raw)
         
+        # DEBUG: Check if ad code looks valid
+        has_script = '<script' in adcode.lower() if adcode else False
+        
         if not adcode:
             return None, "Ad code is empty after unescaping"
+        
+        if not has_script:
+            return None, f"Ad code doesn't contain <script> tag. First 200 chars: {adcode[:200]}"
         
         # Parse creative size
         try:
@@ -95,10 +101,12 @@ def render_creative_from_adcode(adcode_raw, creative_size="300x250"):
             padding: 0;
             box-sizing: border-box;
         }}
-        body {{
+        html, body {{
+            width: 100%;
+            height: 100%;
             font-family: Arial, sans-serif;
-            background: #f5f5f5;
-            overflow: hidden;
+            background: white;
+            overflow: visible;
         }}
         .ad-container {{
             width: {width}px;
@@ -106,34 +114,27 @@ def render_creative_from_adcode(adcode_raw, creative_size="300x250"):
             margin: 0 auto;
             background: white;
             position: relative;
-            overflow: hidden;
+            overflow: visible;
             border: 1px solid #e0e0e0;
         }}
-        .loading {{
+        .debug-info {{
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #666;
-            font-size: 14px;
+            top: 5px;
+            right: 5px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 4px 8px;
+            font-size: 11px;
+            border-radius: 3px;
+            z-index: 9999;
         }}
     </style>
 </head>
 <body>
+    <div class="debug-info">Creative {width}x{height}</div>
     <div class="ad-container" id="ad-container">
-        <div class="loading">Loading ad...</div>
         {adcode}
     </div>
-    <script>
-        // Remove loading message once scripts start executing
-        setTimeout(function() {{
-            var loading = document.querySelector('.loading');
-            if (loading) loading.remove();
-        }}, 500);
-        
-        // Cache-busting timestamp
-        var cacheBuster = {timestamp};
-    </script>
 </body>
 </html>
 '''
