@@ -794,13 +794,20 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                     break
                         
                         if adcode_raw and pd.notna(adcode_raw):
+                            st.info(f"🎯 Calling render_creative_from_adcode with size: {creative_size}")
+                            
                             # Render directly from Response.adcode
                             rendered_html, error_msg = render_creative_from_adcode(
                                 adcode_raw=adcode_raw,
                                 creative_size=creative_size
                             )
                             
+                            st.write(f"🔍 render_creative_from_adcode returned:")
+                            st.write(f"  - rendered_html is None: {rendered_html is None}")
+                            st.write(f"  - error_msg: {error_msg}")
+                            
                             if rendered_html:
+                                st.success(f"✅ Got rendered HTML ({len(rendered_html)} chars), displaying...")
                                 # Display creative directly - NO device frame for creatives
                                 st.components.v1.html(rendered_html, height=400, scrolling=False)
                                 creative_rendered = True
