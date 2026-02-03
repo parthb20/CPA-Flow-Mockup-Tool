@@ -49,10 +49,10 @@ DEVICE_DIMENSIONS = {
         'height': 768,  # Laptop height
         'target_width_portrait': '22vw',  # Same for all devices
         'target_width_landscape': '22vw',  # Same for all devices
-        'min_width_portrait': 280,  # Larger minimum
-        'max_width_portrait': 380,  # Larger maximum
-        'min_width_landscape': 280,
-        'max_width_landscape': 380,
+        'min_width_portrait': 340,  # LAPTOP minimum - BIGGER than mobile/tablet
+        'max_width_portrait': 440,  # LAPTOP maximum - BIGGER than mobile/tablet
+        'min_width_landscape': 340,  # LAPTOP landscape minimum
+        'max_width_landscape': 440,  # LAPTOP landscape maximum
         'chrome_height': 48
     }
 }
