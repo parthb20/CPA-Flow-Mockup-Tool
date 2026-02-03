@@ -783,39 +783,58 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             )
                             
                             if rendered_html:
-                                # Display creative directly - NO device frame for creatives
-                                # Use height based on creative_size
-                                try:
-                                    _, height_str = creative_size.split('x')
-                                    display_height = int(height_str) + 50  # Add padding
-                                except:
-                                    display_height = 300
-                                
-                                # Media.net ads block iframe rendering - show placeholder
+                                # Display creative with proper sizing
                                 try:
                                     width_px, height_px = map(int, creative_size.split('x'))
+                                    # Increase height significantly for ad to render
+                                    iframe_height = max(height_px + 150, 400)
                                 except:
                                     width_px, height_px = 300, 250
+                                    iframe_height = 400
+                                
+                                # Use data URL iframe
+                                import base64
+                                html_b64 = base64.b64encode(rendered_html.encode('utf-8')).decode('utf-8')
                                 
                                 st.markdown(f"""
-                                <div style="width: {width_px}px; height: {height_px}px; border: 2px solid #e2e8f0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; border-radius: 8px; margin: 0 auto;">
-                                    <div style="text-align: center; color: white; padding: 20px;">
-                                        <div style="font-size: 48px; margin-bottom: 10px;">🎨</div>
-                                        <div style="font-size: 16px; font-weight: 600; margin-bottom: 5px;">Creative {creative_size}</div>
-                                        <div style="font-size: 12px; opacity: 0.9;">ID: {creative_id}</div>
-                                        <div style="font-size: 11px; opacity: 0.7; margin-top: 10px;">Media.net Ad</div>
-                                    </div>
+                                <div style="width: 100%; max-width: {width_px + 100}px; margin: 0 auto;">
+                                    <iframe 
+                                        src="data:text/html;base64,{html_b64}" 
+                                        width="100%" 
+                                        height="{iframe_height}px" 
+                                        frameborder="0"
+                                        sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-top-navigation"
+                                        style="border: 1px solid #e0e0e0; background: white; border-radius: 4px;"
+                                    ></iframe>
                                 </div>
                                 """, unsafe_allow_html=True)
                                 creative_rendered = True
                             elif error_msg:
                                 st.error(f"❌ {error_msg}")
                         else:
-                            st.error(f"❌ No Response.adcode found for creative {creative_id}")
+                            # No ad code found - show placeholder
+                            try:
+                                width_px, height_px = map(int, creative_size.split('x'))
+                            except:
+                                width_px, height_px = 300, 250
+                            
+                            st.markdown(f"""
+                            <div style="width: {width_px}px; height: {height_px}px; border: 2px dashed #cbd5e1; background: #f8fafc; display: flex; align-items: center; justify-content: center; border-radius: 8px; margin: 0 auto;">
+                                <div style="text-align: center; color: #64748b; padding: 20px;">
+                                    <div style="font-size: 14px; font-weight: 500;">Creative {creative_size}</div>
+                                    <div style="font-size: 12px; margin-top: 5px;">No ad available</div>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
                     except Exception as e:
-                        st.error(f"⚠️ Creative error: {str(e)[:200]}")
+                        st.warning(f"⚠️ Creative unavailable")
                 else:
-                    st.error(f"❌ Creative data not found for {creative_id} ({creative_size})")
+                    # No flow data - show placeholder
+                    st.markdown("""
+                    <div style="padding: 40px; text-align: center; color: #94a3b8; border: 2px dashed #cbd5e1; border-radius: 8px; background: #f8fafc;">
+                        <div style="font-size: 14px;">Creative data unavailable</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
                 # Fallback: Try old response column if Response.adcode failed
                 if not creative_rendered:
