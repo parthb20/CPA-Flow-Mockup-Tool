@@ -22,7 +22,7 @@ from src.renderers import (
 from src.screenshot import get_screenshot_url, capture_with_playwright, clean_url_for_capture
 from src.serp import generate_serp_mockup
 from src.similarity import calculate_similarities
-from src.creative_renderer import render_creative_via_weaver, parse_keyword_array_from_flow
+from src.creative_renderer import render_creative_from_adcode, parse_keyword_array_from_flow
 from src.flow_analysis import find_default_flow
 
 
@@ -776,40 +776,38 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         except Exception:
                             cipher_key = None
                         
-                        # Parse keyword array from flow
-                        keyword_array = parse_keyword_array_from_flow(current_flow)
+                        # Get ad code from Response.adcode column
+                        adcode_raw = current_flow.get('Response.adcode', None)
+                        if not adcode_raw:
+                            # Try alternate column name (lowercase, no dot)
+                            adcode_raw = current_flow.get('response.adcode', None) or current_flow.get('response_adcode', None) or current_flow.get('adcode', None)
                         
-                        # Render via Weaver API with File D priority
-                        # File C is optional - if not present, only File D will be used
-                        rendered_html, error_msg = render_creative_via_weaver(
-                            creative_id=creative_id,
-                            creative_size=creative_size,
-                            keyword_array=keyword_array,
-                            creative_requests_df=st.session_state.get('data_c', None),
-                            cipher_key=cipher_key,
-                            prerendered_df=st.session_state.get('data_d', None)
-                        )
-                        
-                        if rendered_html:
-                            # Display creative directly - NO device frame for creatives
-                            # Just render the ad itself with minimal height
-                            st.components.v1.html(rendered_html, height=400, scrolling=False)
-                            creative_rendered = True
-                        elif error_msg:
-                            # Show detailed error message
-                            st.error(f"❌ {error_msg}")
+                        if adcode_raw and pd.notna(adcode_raw):
+                            # Render directly from Response.adcode
+                            rendered_html, error_msg = render_creative_from_adcode(
+                                adcode_raw=adcode_raw,
+                                creative_size=creative_size
+                            )
+                            
+                            if rendered_html:
+                                # Display creative directly - NO device frame for creatives
+                                st.components.v1.html(rendered_html, height=400, scrolling=False)
+                                creative_rendered = True
+                            elif error_msg:
+                                st.error(f"❌ {error_msg}")
+                        else:
+                            st.error(f"❌ No Response.adcode found for creative {creative_id}")
                     except Exception as e:
                         st.error(f"⚠️ Creative error: {str(e)[:200]}")
                 else:
-                    # Neither File C nor File D available
                     st.error(f"❌ Creative data not found for {creative_id} ({creative_size})")
                 
-                # Fallback: Try response column from File A if File D failed
+                # Fallback: Try old response column if Response.adcode failed
                 if not creative_rendered:
                     response_value = current_flow.get('response', None)
                     if response_value and pd.notna(response_value) and str(response_value).strip():
                         try:
-                            # Parse and render response from File A
+                            # Legacy fallback - render old response format
                             if isinstance(response_value, str) and response_value.strip():
                                 # Extract width and height from creative_size
                                 try:
