@@ -783,31 +783,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             )
                             
                             if rendered_html:
-                                # Display creative with proper sizing
-                                try:
-                                    width_px, height_px = map(int, creative_size.split('x'))
-                                    # Increase height significantly for ad to render
-                                    iframe_height = max(height_px + 150, 400)
-                                except:
-                                    width_px, height_px = 300, 250
-                                    iframe_height = 400
-                                
-                                # Use data URL iframe
-                                import base64
-                                html_b64 = base64.b64encode(rendered_html.encode('utf-8')).decode('utf-8')
-                                
-                                st.markdown(f"""
-                                <div style="width: 100%; max-width: {width_px + 100}px; margin: 0 auto;">
-                                    <iframe 
-                                        src="data:text/html;base64,{html_b64}" 
-                                        width="100%" 
-                                        height="{iframe_height}px" 
-                                        frameborder="0"
-                                        sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-top-navigation"
-                                        style="border: 1px solid #e0e0e0; background: white; border-radius: 4px;"
-                                    ></iframe>
-                                </div>
-                                """, unsafe_allow_html=True)
+                                # Display creative FULL WIDTH like other cards (600px height to match)
+                                # Use st.components.v1.html with proper height
+                                st.components.v1.html(rendered_html, height=600, scrolling=True)
                                 creative_rendered = True
                             elif error_msg:
                                 st.error(f"❌ {error_msg}")
