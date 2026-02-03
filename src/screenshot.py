@@ -187,6 +187,41 @@ def capture_with_playwright(url, device='mobile', retry_count=1, use_firefox=Fal
                     window.chrome = { runtime: {}, loadTimes: function() {}, csi: function() {} };
                 }
                 
+                // Hide chat widgets and AI assistants
+                const hideSelectors = [
+                    '[class*="chat" i]', '[class*="assistant" i]', '[id*="chat" i]', 
+                    '[id*="assistant" i]', '[class*="intercom" i]', '[class*="drift" i]',
+                    '[class*="zendesk" i]', '[class*="livechat" i]', '[class*="tawk" i]',
+                    '[class*="tidio" i]', '[class*="freshchat" i]', '[class*="crisp" i]',
+                    'iframe[src*="chat" i]', 'iframe[title*="chat" i]'
+                ].join(',');
+                
+                // Add CSS to hide widgets immediately
+                const style = document.createElement('style');
+                style.textContent = `
+                    ${hideSelectors} {
+                        display: none !important;
+                        visibility: hidden !important;
+                        opacity: 0 !important;
+                        position: absolute !important;
+                        left: -9999px !important;
+                    }
+                `;
+                if (document.head) {
+                    document.head.appendChild(style);
+                } else {
+                    document.addEventListener('DOMContentLoaded', () => {
+                        document.head.appendChild(style);
+                    });
+                }
+                
+                // Remove widgets after page load
+                window.addEventListener('load', () => {
+                    document.querySelectorAll(hideSelectors).forEach(el => {
+                        if (el) el.remove();
+                    });
+                });
+                
                 // Mock permissions
                 const originalQuery = window.navigator.permissions.query;
                 window.navigator.permissions.query = (params) => (
