@@ -265,27 +265,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         with nav_col2:
             st.markdown(f'<div style="text-align: center; padding-top: 0.3rem;"><span style="font-size: 0.85rem; color: #0f172a; font-weight: 700;">Flow {current_flow_index + 1} of {len(all_flows)}</span></div>', unsafe_allow_html=True)
-    
-    # Display flow stats below navigation and above controls
-    current_flow = st.session_state.get('current_flow', {})
-    if current_flow:
-        impressions = current_flow.get('impressions', 0)
-        clicks = current_flow.get('clicks', 0)
-        ctr = (clicks / impressions * 100) if impressions > 0 else 0
-        
-        st.markdown(f"""
-        <div style="text-align: center; padding: 0.5rem 0; margin: 0.25rem 0;">
-            <span style="font-size: 0.75rem; color: #64748b; font-weight: 600; margin-right: 1rem;">
-                📊 Impressions: <strong style="color: #0f172a;">{impressions:,}</strong>
-            </span>
-            <span style="font-size: 0.75rem; color: #64748b; font-weight: 600; margin-right: 1rem;">
-                🖱️ Clicks: <strong style="color: #0f172a;">{clicks:,}</strong>
-            </span>
-            <span style="font-size: 0.75rem; color: #64748b; font-weight: 600;">
-                📈 CTR: <strong style="color: #0f172a;">{ctr:.2f}%</strong>
-            </span>
-        </div>
-        """, unsafe_allow_html=True)
         
         with nav_col3:
             if not next_disabled:
@@ -414,6 +393,26 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         else:
             # If no data after filtering, show warning and keep original flow
             st.warning(f"⚠️ No data found for the selected filters. Showing original flow.")
+    
+    # Display flow stats below filters and above cards
+    if current_flow:
+        impressions = current_flow.get('impressions', 0)
+        clicks = current_flow.get('clicks', 0)
+        conversions = current_flow.get('conversions', 0)
+        
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.75rem 0; margin: 0.5rem 0; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <span style="font-size: 0.875rem; color: #64748b; font-weight: 600; margin-right: 2rem;">
+                📊 Impressions: <strong style="color: #0f172a; font-size: 1rem;">{impressions:,}</strong>
+            </span>
+            <span style="font-size: 0.875rem; color: #64748b; font-weight: 600; margin-right: 2rem;">
+                🖱️ Clicks: <strong style="color: #0f172a; font-size: 1rem;">{clicks:,}</strong>
+            </span>
+            <span style="font-size: 0.875rem; color: #64748b; font-weight: 600;">
+                ✅ Conversions: <strong style="color: #0f172a; font-size: 1rem;">{conversions:,}</strong>
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
     
     # ZERO GAPS CSS - Remove empty containers
     st.markdown("""
