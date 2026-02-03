@@ -105,35 +105,37 @@ def render_creative_from_adcode(adcode_raw, creative_size="300x250"):
             width: 100%;
             height: 100%;
             font-family: Arial, sans-serif;
-            background: white;
+            background: #f8fafc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             overflow: visible;
+        }}
+        .ad-wrapper {{
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
         }}
         .ad-container {{
             width: {width}px;
             height: {height}px;
-            margin: 0 auto;
             background: white;
             position: relative;
             overflow: visible;
-            border: 1px solid #e0e0e0;
-        }}
-        .debug-info {{
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 4px 8px;
-            font-size: 11px;
-            border-radius: 3px;
-            z-index: 9999;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }}
     </style>
 </head>
 <body>
-    <div class="debug-info">Creative {width}x{height}</div>
-    <div class="ad-container" id="ad-container">
-        {adcode}
+    <div class="ad-wrapper">
+        <div class="ad-container" id="ad-container">
+            {adcode}
+        </div>
     </div>
 </body>
 </html>
