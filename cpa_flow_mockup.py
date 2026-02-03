@@ -142,9 +142,9 @@ import re
 import html
 
 # Import from modules (after page config)
-from src.config import FILE_A_ID, FILE_B_ID, FILE_D_ID, SERP_BASE_URL
+from src.config import FILE_X_ID, FILE_B_ID, SERP_BASE_URL
 from src.data_loader import load_csv_from_gdrive, load_json_from_gdrive
-from src.creative_renderer import load_prerendered_responses, render_creative_via_weaver, parse_keyword_array_from_flow
+from src.creative_renderer import render_creative_from_adcode, parse_keyword_array_from_flow
 from src.utils import safe_float, safe_int
 from src.flow_analysis import find_default_flow
 from src.similarity import calculate_similarities
@@ -670,7 +670,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Session state initialization
-for key in ['data_a', 'data_b', 'data_d', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'similarities', 'last_campaign_key', 'all_flows', 'current_flow_index', 'last_filter_key', 'show_time_filter', 'flow_type']:
+for key in ['data_x', 'data_b', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'similarities', 'last_campaign_key', 'all_flows', 'current_flow_index', 'last_filter_key', 'show_time_filter', 'flow_type']:
     if key not in st.session_state:
         if key == 'view_mode':
             st.session_state[key] = 'basic'
@@ -703,18 +703,11 @@ if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
         try:
             # Load CSV first (critical)
-            st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
+            # Load File X (main campaign data with Response.adcode)
+            st.session_state.data_x = load_csv_from_gdrive(FILE_X_ID)
             
-            # Load JSON second (nice to have)
+            # Load File B (SERP templates JSON)
             st.session_state.data_b = load_json_from_gdrive(FILE_B_ID)
-            
-            # Load File D (pre-rendered responses)
-            if FILE_D_ID and FILE_D_ID.strip() != "":
-                result = load_prerendered_responses(FILE_D_ID)
-                st.session_state.data_d = result
-            else:
-                st.session_state.data_d = None
-                st.error("⚠️ FILE_D_ID is empty or not set in config.py")
             
             st.session_state.loading_done = True
         except Exception as e:
@@ -723,8 +716,8 @@ if not st.session_state.loading_done:
 
 # No view mode toggle here - moved to flow controls
 
-if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
-    df = st.session_state.data_a
+if st.session_state.data_x is not None and len(st.session_state.data_x) > 0:
+    df = st.session_state.data_x
     
     # Find advertiser and campaign columns (handle case variations) - define at top for accessibility
     adv_name_col = next((col for col in df.columns if col.lower() == 'advertiser_name'), 'Advertiser_Name')
@@ -1226,11 +1219,11 @@ else:
         
         2. **File sharing settings**
            - Files must be set to "Anyone with link can view"
-           - Check FILE_A_ID in `src/config.py`
+           - Check FILE_X_ID in `src/config.py`
         
         3. **Network issues**
            - Check your internet connection
            - Try refreshing the page
         
-        **Current FILE_A_ID:** `1DXR77Tges9kkH3x7pYin2yo9De7cxqpc`
+        **Current FILE_X_ID:** `1v-lBcF-gdms4ZVtxAmkyZql0TPDyD27x`
         """)
