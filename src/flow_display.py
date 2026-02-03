@@ -816,7 +816,20 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                 except:
                                     display_height = 300
                                 
-                                st.components.v1.html(rendered_html, height=display_height, scrolling=True)
+                                # Use iframe with sandbox to allow scripts
+                                import base64
+                                html_b64 = base64.b64encode(rendered_html.encode('utf-8')).decode('utf-8')
+                                iframe_html = f"""
+                                <iframe 
+                                    srcdoc="{rendered_html.replace('"', '&quot;')}" 
+                                    width="100%" 
+                                    height="{display_height}px" 
+                                    frameborder="0"
+                                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                                    style="border: 1px solid #e0e0e0; background: white;"
+                                ></iframe>
+                                """
+                                st.markdown(iframe_html, unsafe_allow_html=True)
                                 creative_rendered = True
                             elif error_msg:
                                 st.error(f"❌ {error_msg}")
