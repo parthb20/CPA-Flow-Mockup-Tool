@@ -708,31 +708,10 @@ if not st.session_state.loading_done:
             # Load JSON second (nice to have)
             st.session_state.data_b = load_json_from_gdrive(FILE_B_ID)
             
-            # Load File D (pre-rendered responses) - with debug
-            st.write("🔄 Attempting to load FILE D...")
-            st.write(f"📋 FILE_D_ID: {FILE_D_ID}")
-            
+            # Load File D (pre-rendered responses)
             if FILE_D_ID and FILE_D_ID.strip() != "":
                 result = load_prerendered_responses(FILE_D_ID)
                 st.session_state.data_d = result
-                
-                if result is not None:
-                    st.success(f"✅ FILE D loaded successfully: {len(result)} rows")
-                    st.write(f"📋 FILE D columns: {result.columns.tolist()}")
-                    st.write(f"📊 First 3 rows of FILE D:")
-                    st.dataframe(result.head(3))
-                    
-                    # Verify data types
-                    st.write(f"🔍 Data types:")
-                    for col in result.columns:
-                        st.write(f"  - {col}: {result[col].dtype}")
-                else:
-                    st.error("❌ FILE D returned None!")
-                    st.error("Possible reasons:")
-                    st.error("1. File not found on Google Drive")
-                    st.error("2. Wrong column names in CSV")
-                    st.error("3. File is empty")
-                    st.error("4. Network/download error")
             else:
                 st.session_state.data_d = None
                 st.error("⚠️ FILE_D_ID is empty or not set in config.py")
@@ -1125,10 +1104,6 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 st.warning("⚠️ No data found for selected date range. Please adjust filters.")
                 st.stop()
             
-            # Debug: Show checkbox state
-            st.write(f"🔍 DEBUG: use_full_data = {use_full_data}, type = {type(use_full_data)}")
-            st.write(f"🔍 DEBUG: Applying filter? {not use_full_data}")
-            
             # Apply threshold filters only if not using full data
             if not use_full_data and entity_threshold > 0:
                 original_len = len(campaign_df)
@@ -1305,13 +1280,8 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                 # Render "What is Flow" section using module
                 render_what_is_flow_section()
             else:
-                # Debug: Show why no data
-                st.write(f"🔍 DEBUG: final_filtered is empty, campaign_df has {len(campaign_df)} rows")
-                st.write(f"🔍 DEBUG: current_flow keyword: {current_flow.get('keyword_term', 'N/A')}")
-                st.write(f"🔍 DEBUG: current_flow domain: {current_flow.get('publisher_domain', 'N/A')}")
-                
                 if use_full_data:
-                    st.warning("⚠️ No matching flow found. The selected keyword/domain combination doesn't exist in the filtered data.")
+                    st.warning("⚠️ No matching flow found for the current selection.")
                 else:
                     st.warning("⚠️ Data is too granular - no entities meet the 5% threshold. Please enable 'Use Full Data' option above to see all flows.")
 else:
