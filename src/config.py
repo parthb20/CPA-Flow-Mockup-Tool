@@ -34,7 +34,7 @@ DEVICE_DIMENSIONS = {
         'chrome_height': 68  # 22px status bar + 46px URL bar
     },
     'tablet': {
-        'width': 820,  # Portrait width
+        'width': 820,  # Portrait width (9.7" iPad size)
         'height': 1180,  # Portrait height
         'target_width_portrait': '22vw',
         'target_width_landscape': '22vw',
