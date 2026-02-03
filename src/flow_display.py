@@ -741,8 +741,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         creative_id = current_flow.get('creative_id', 'N/A')
         creative_name = current_flow.get('creative_template_name', 'N/A')
-        # Try multiple column names for creative size
-        creative_size = current_flow.get('creative_size', current_flow.get('Creative_Size_Final', current_flow.get('size', 'N/A')))
+        creative_size = current_flow.get('creative_size', 'N/A')  # Exact column name from File X
         keyword = current_flow.get('keyword_term', 'N/A')
         
         # Keyword will be shown BELOW card preview
@@ -777,11 +776,15 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         except Exception:
                             cipher_key = None
                         
-                        # Get ad code from Response.adcode column
+                        # Get ad code from Response.adcode column (exact name from File X)
                         adcode_raw = current_flow.get('Response.adcode', None)
-                        if not adcode_raw:
-                            # Try alternate column name (lowercase, no dot)
-                            adcode_raw = current_flow.get('response.adcode', None) or current_flow.get('response_adcode', None) or current_flow.get('adcode', None)
+                        
+                        if not adcode_raw or pd.isna(adcode_raw):
+                            # Fallback: search for <script tag in any column
+                            for key, value in current_flow.items():
+                                if pd.notna(value) and isinstance(value, str) and '<script' in str(value).lower():
+                                    adcode_raw = value
+                                    break
                         
                         if adcode_raw and pd.notna(adcode_raw):
                             # Render directly from Response.adcode
@@ -860,8 +863,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     """, unsafe_allow_html=True)
         
         # Show creative details - DIFFERENT LAYOUT for horizontal vs vertical
-        # Try multiple column names for creative size
-        creative_size = current_flow.get('creative_size', current_flow.get('Creative_Size_Final', current_flow.get('size', 'N/A')))
+        creative_size = current_flow.get('creative_size', 'N/A')  # Exact column name from File X
         creative_name = current_flow.get('creative_template_name', 'N/A')
         keyword = current_flow.get('keyword_term', 'N/A')
         
