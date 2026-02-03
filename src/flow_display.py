@@ -308,14 +308,16 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         device_options = ['Mobile', 'Tablet', 'Laptop']
         current_index = device_options.index(st.session_state.selected_device) if st.session_state.selected_device in device_options else 0
         
-        device_all = st.selectbox("Device", device_options, 
-                                 key='device_all', index=current_index, label_visibility="collapsed")
+        device_choice = st.selectbox("Device", device_options, 
+                                    index=current_index, key='device_dropdown', label_visibility="collapsed")
         
-        # Update session state when selection changes
-        st.session_state.selected_device = device_all
+        # Update session state ONLY if changed to trigger rerun
+        if device_choice != st.session_state.selected_device:
+            st.session_state.selected_device = device_choice
+            st.rerun()
         
-        # Extract actual device name
-        device_all = device_all.lower()
+        # Extract actual device name from current session state
+        device_all = st.session_state.selected_device.lower()
     
     with control_col4:
         st.markdown('<p style="font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem) 0; font-family: system-ui;">Domain</p>', unsafe_allow_html=True)
@@ -340,7 +342,18 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         else:
             domains = ['All Domains']
         
-        selected_domain_inline = st.selectbox("Domain", domains, key='domain_inline_filter', label_visibility="collapsed")
+        # Initialize domain selection in session state
+        if 'selected_domain' not in st.session_state:
+            st.session_state.selected_domain = 'All Domains'
+        
+        # Get current index
+        domain_index = domains.index(st.session_state.selected_domain) if st.session_state.selected_domain in domains else 0
+        
+        selected_domain_inline = st.selectbox("Domain", domains, index=domain_index, key='domain_dropdown', label_visibility="collapsed")
+        
+        # Update session state if changed
+        if selected_domain_inline != st.session_state.selected_domain:
+            st.session_state.selected_domain = selected_domain_inline
         
         if selected_domain_inline != 'All Domains':
             # Extract domain name from "domain - [id]" format if ID column exists
@@ -353,7 +366,20 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     with control_col5:
         st.markdown('<p style="font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem) 0; font-family: system-ui;">Keyword</p>', unsafe_allow_html=True)
         keywords = ['All Keywords'] + sorted(campaign_df['keyword_term'].dropna().unique().tolist()) if 'keyword_term' in campaign_df.columns else ['All Keywords']
-        selected_keyword_inline = st.selectbox("Keyword", keywords, key='keyword_inline_filter', label_visibility="collapsed")
+        
+        # Initialize keyword selection in session state
+        if 'selected_keyword' not in st.session_state:
+            st.session_state.selected_keyword = 'All Keywords'
+        
+        # Get current index
+        keyword_index = keywords.index(st.session_state.selected_keyword) if st.session_state.selected_keyword in keywords else 0
+        
+        selected_keyword_inline = st.selectbox("Keyword", keywords, index=keyword_index, key='keyword_dropdown', label_visibility="collapsed")
+        
+        # Update session state if changed
+        if selected_keyword_inline != st.session_state.selected_keyword:
+            st.session_state.selected_keyword = selected_keyword_inline
+        
         if selected_keyword_inline != 'All Keywords':
             campaign_df = campaign_df[campaign_df['keyword_term'] == selected_keyword_inline]
     
