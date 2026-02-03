@@ -790,29 +790,11 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             elif error_msg:
                                 st.error(f"❌ {error_msg}")
                         else:
-                            # No ad code found - show placeholder
-                            try:
-                                width_px, height_px = map(int, creative_size.split('x'))
-                            except:
-                                width_px, height_px = 300, 250
-                            
-                            st.markdown(f"""
-                            <div style="width: {width_px}px; height: {height_px}px; border: 2px dashed #cbd5e1; background: #f8fafc; display: flex; align-items: center; justify-content: center; border-radius: 8px; margin: 0 auto;">
-                                <div style="text-align: center; color: #64748b; padding: 20px;">
-                                    <div style="font-size: 14px; font-weight: 500;">Creative {creative_size}</div>
-                                    <div style="font-size: 12px; margin-top: 5px;">No ad available</div>
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
+                            # No ad code found - skip, will try legacy fallback below
+                            pass
                     except Exception as e:
-                        st.warning(f"⚠️ Creative unavailable")
-                else:
-                    # No flow data - show placeholder
-                    st.markdown("""
-                    <div style="padding: 40px; text-align: center; color: #94a3b8; border: 2px dashed #cbd5e1; border-radius: 8px; background: #f8fafc;">
-                        <div style="font-size: 14px;">Creative data unavailable</div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                        # Silent fail, will try legacy fallback
+                        pass
                 
                 # Fallback: Try old response column if Response.adcode failed
                 if not creative_rendered:
