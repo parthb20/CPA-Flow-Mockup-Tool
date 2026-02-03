@@ -773,36 +773,26 @@ if st.session_state.data_x is not None and len(st.session_state.data_x) > 0:
             if selected_campaign != '-- Select Campaign 🔽':
                 st.session_state.preserved_campaign = selected_campaign
         
-        # Use Full Data checkbox and Date Filter toggle
+        # Use Full Data checkbox + Time Filter popover
         with col3:
-            filter_col1, filter_col2 = st.columns([1, 1])
-            with filter_col1:
+            time_col1, time_col2 = st.columns([1, 1])
+            
+            with time_col1:
                 use_full_data = st.checkbox(
                     "Use Full Data",
                     value=False,  # Default value
                     help="Bypass 5% threshold filter",
                     key='use_full_data_checkbox'
                 )
-            with filter_col2:
-                enable_date_filter = st.checkbox(
-                    "📅 Date Filter",
-                    value=False,  # Default OFF - show all data
-                    help="Enable to filter by date range",
-                    key='enable_date_filter'
-                )
-        
-        # Date Filter UI (only if enabled)
-        from datetime import date, timedelta
-        today = date.today()
-        jan_start = date(2026, 1, 1)
-        jan_end = date(2026, 1, 31)
-        
-        if enable_date_filter:
-            # Show date filter controls
-            with st.expander("📅 Date & Time Range", expanded=True):
-                date_col1, date_col2 = st.columns(2)
+            
+            with time_col2:
+                # Time Filter with popover
+                from datetime import date, timedelta
+                today = date.today()
+                jan_start = date(2026, 1, 1)
+                jan_end = date(2026, 1, 31)
                 
-                # Initialize defaults
+                # Initialize defaults to January 2026
                 if 'start_date' not in st.session_state:
                     st.session_state.start_date = jan_start
                 if 'end_date' not in st.session_state:
@@ -811,50 +801,73 @@ if st.session_state.data_x is not None and len(st.session_state.data_x) > 0:
                     st.session_state.start_hour = 0
                 if 'end_hour' not in st.session_state:
                     st.session_state.end_hour = 23
+                if 'enable_date_filter' not in st.session_state:
+                    st.session_state.enable_date_filter = False
                 
-                with date_col1:
-                    start_date = st.date_input(
-                        "Start Date",
-                        value=st.session_state.start_date,
-                        min_value=date(2026, 1, 1),
-                        max_value=date(2026, 12, 31),
-                        key='start_date_input'
-                    )
-                    st.session_state.start_date = start_date
-                    
-                    start_hour = st.selectbox(
-                        "Start Hour",
-                        options=list(range(24)),
-                        index=st.session_state.start_hour,
-                        format_func=lambda x: f"{x:02d}:00",
-                        key='start_hour_select'
-                    )
-                    st.session_state.start_hour = start_hour
+                # Popover button styling
+                st.markdown("""
+                    <style>
+                    /* Compact Time popover button */
+                    button[data-testid*="popover"] {
+                        background-color: white !important;
+                        color: #1f2937 !important;
+                        border: 2px solid #cbd5e1 !important;
+                        padding: 0.25rem 0.5rem !important;
+                        font-size: 0.8rem !important;
+                        min-height: 1.8rem !important;
+                        max-width: 120px !important;
+                    }
+                    </style>
+                """, unsafe_allow_html=True)
                 
-                with date_col2:
-                    end_date = st.date_input(
-                        "End Date",
-                        value=st.session_state.end_date,
-                        min_value=date(2026, 1, 1),
-                        max_value=date(2026, 12, 31),
-                        key='end_date_input'
+                with st.popover("📅 Date Filter", use_container_width=False):
+                    # Enable/disable toggle
+                    enable_date_filter = st.checkbox(
+                        "Enable Date Filtering",
+                        value=st.session_state.enable_date_filter,
+                        help="Turn off to show all data regardless of date",
+                        key='enable_date_filter_toggle'
                     )
-                    st.session_state.end_date = end_date
+                    st.session_state.enable_date_filter = enable_date_filter
                     
-                    end_hour = st.selectbox(
-                        "End Hour",
-                        options=list(range(24)),
-                        index=st.session_state.end_hour,
-                        format_func=lambda x: f"{x:02d}:00",
-                        key='end_hour_select'
-                    )
-                    st.session_state.end_hour = end_hour
-        else:
-            # Date filter disabled - use full date range (no filtering)
-            start_date = date(2000, 1, 1)  # Very old date
-            end_date = date(2099, 12, 31)  # Very future date
-            start_hour = 0
-            end_hour = 23
+                    if enable_date_filter:
+                        # Hour selection first
+                        st.markdown("**Hour Range**")
+                        hour_row = st.columns(2)
+                        with hour_row[0]:
+                            start_hour = st.selectbox("Start", options=list(range(24)), index=st.session_state.get('start_hour', 0), format_func=lambda x: f"{x:02d}:00", key='start_hour_filter')
+                            st.session_state.start_hour = start_hour
+                        with hour_row[1]:
+                            end_hour = st.selectbox("End", options=list(range(24)), index=st.session_state.get('end_hour', 23), format_func=lambda x: f"{x:02d}:00", key='end_hour_filter')
+                            st.session_state.end_hour = end_hour
+                        
+                        # Date range selection
+                        st.markdown("**Date Range**")
+                        date_range = st.date_input(
+                            "Select Range",
+                            value=(st.session_state.get('start_date', jan_start), st.session_state.get('end_date', jan_end)),
+                            min_value=date(2026, 1, 1),
+                            max_value=date(2026, 12, 31),
+                            key='date_range_filter',
+                            label_visibility="collapsed"
+                        )
+                        
+                        # Handle date range tuple
+                        if isinstance(date_range, tuple) and len(date_range) == 2:
+                            st.session_state.start_date = date_range[0]
+                            st.session_state.end_date = date_range[1]
+                        elif isinstance(date_range, date):
+                            st.session_state.start_date = date_range
+                            st.session_state.end_date = date_range
+                    else:
+                        st.info("📊 Showing all data (no date filtering)")
+                
+                # Use current values
+                start_date = st.session_state.get('start_date', jan_start)
+                end_date = st.session_state.get('end_date', jan_end)
+                start_hour = st.session_state.get('start_hour', 0)
+                end_hour = st.session_state.get('end_hour', 23)
+                enable_date_filter = st.session_state.get('enable_date_filter', False)
         
         # Hidden defaults
         entity_threshold = 0.0 if use_full_data else 5.0
@@ -1073,12 +1086,15 @@ if st.session_state.data_x is not None and len(st.session_state.data_x) > 0:
             
             # Apply date filter
             from src.flow_analysis import filter_by_date_range, filter_by_threshold
-            # Apply date filter only if enabled
+            # Apply date filter only if explicitly enabled
             if enable_date_filter:
+                before_filter_count = len(campaign_df)
                 campaign_df = filter_by_date_range(campaign_df, start_date, start_hour, end_date, end_hour)
+                after_filter_count = len(campaign_df)
                 
                 if len(campaign_df) == 0:
-                    st.warning("⚠️ No data found for selected date range. Please adjust the date filter or disable it.")
+                    st.warning(f"⚠️ No data found for selected date range ({start_date.strftime('%Y-%m-%d')} {start_hour:02d}:00 to {end_date.strftime('%Y-%m-%d')} {end_hour:02d}:00). Filtered from {before_filter_count} rows to 0.")
+                    st.info("💡 **Tip:** Open the '📅 Date Filter' and either adjust the date range or uncheck 'Enable Date Filtering' to see all data.")
                     st.stop()
             
             # Apply threshold filters only if not using full data
