@@ -783,17 +783,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             )
                             
                             if rendered_html:
-                                # Wrap in device preview like other cards for consistent sizing
-                                orientation = 'horizontal' if device_all == 'laptop' else 'vertical'
-                                preview_html, height, _ = render_mini_device_preview(
-                                    rendered_html, 
-                                    is_url=False, 
-                                    device=device_all, 
-                                    use_srcdoc=True,
-                                    orientation=orientation
-                                )
-                                preview_html = inject_unique_id(preview_html, 'creative_adcode', '', device_all, current_flow)
-                                st.components.v1.html(preview_html, height=height, scrolling=True)
+                                # Display creative at FIXED height to match other cards
+                                # Other cards are ~600-800px, use 700px for consistency
+                                st.components.v1.html(rendered_html, height=700, scrolling=True)
                                 creative_rendered = True
                             elif error_msg:
                                 st.error(f"❌ {error_msg}")
@@ -1292,16 +1284,19 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 with landing_preview_container:
                     st.warning("No landing page URL")
         
+        # Show Landing Page URL below the card for BOTH layouts
+        adv_url = current_flow.get('Destination_Url', '') or current_flow.get('reporting_destination_url', '')
+        if adv_url and pd.notna(adv_url):
+            st.markdown(f"""
+            <div style='margin-top: 12px; font-size: 14px;'>
+                <strong style="color: #0f172a; font-size: 16px;">🎯 Landing Page URL:</strong> 
+                <a href="{adv_url}" target="_blank" style="color: #3b82f6; text-decoration: none; font-size: 14px; word-break: break-all;">{html.escape(str(adv_url))}</a>
+            </div>
+            """, unsafe_allow_html=True)
+        
         if st.session_state.flow_layout == 'vertical' and landing_card_right:
             with landing_card_right:
-                adv_url = current_flow.get('Destination_Url', '')
-                
                 st.markdown("<h4 style='font-size: 20px; font-weight: 900; color: #0f172a; margin: 0 0 6px 0;'><strong>🎯 Landing Page Details</strong></h4>", unsafe_allow_html=True)
-                st.markdown(f"""
-                <div style="margin-bottom: 6px; font-size: 14px;">
-                    {f'<div><strong style="color: #0f172a; font-size: 16px;">Landing Page URL:</strong> <a href="{adv_url}" style="color: #3b82f6; text-decoration: none; font-size: 14px;">{html.escape(str(adv_url))}</a></div>' if adv_url and pd.notna(adv_url) else ''}
-                </div>
-                """, unsafe_allow_html=True)
                 
                 if 'similarities' not in st.session_state or st.session_state.similarities is None:
                     if api_key:
@@ -1315,19 +1310,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                            custom_title="Keyword → Landing Page Similarity",
                                            tooltip_text="Measures end-to-end flow quality. 70%+ = Good Match (keyword intent matches page content), 40-69% = Fair Match (some relevance), <40% = Poor Match (poor user experience)")
         
-        # Close wrapper div for horizontal layout - show Landing Page URL below preview + DEBUG INFO
-        if st.session_state.flow_layout == 'horizontal':
-            adv_url = current_flow.get('Destination_Url', '') or current_flow.get('reporting_destination_url', '')
-            
-            # Calculate cleaned URL for debug
-            cleaned_url = clean_url_for_capture(adv_url) if adv_url and pd.notna(adv_url) else None
-            
-            # Show landing page URL only (clean display, no debug)
-            st.markdown(f"""
-            <div style='margin-top: 8px; font-size: 14px;'>
-                {f'<div><strong style="color: #0f172a; font-size: 16px;">Landing Page URL:</strong> <a href="{adv_url}" style="color: #3b82f6; text-decoration: none; font-size: 14px;">{html.escape(str(adv_url))}</a></div>' if adv_url and pd.notna(adv_url) else ''}
-            </div>
-            """, unsafe_allow_html=True)
+        # (Landing Page URL is now shown above for both layouts)
     
     # Similarity Scores Section for Horizontal Layout
     if st.session_state.flow_layout == 'horizontal':
