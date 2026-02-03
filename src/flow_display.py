@@ -299,8 +299,21 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
     
     with control_col3:
         st.markdown('<p style="font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.8125rem); font-weight: 900; color: #0f172a; margin: 0 0 clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem) 0; font-family: system-ui;">Device</p>', unsafe_allow_html=True)
-        device_all = st.selectbox("Device", ['Mobile', 'Tablet', 'Laptop'], 
-                                 key='device_all', index=0, label_visibility="collapsed")
+        
+        # Initialize device selection in session state if not present
+        if 'selected_device' not in st.session_state:
+            st.session_state.selected_device = 'Mobile'
+        
+        # Get current index based on session state
+        device_options = ['Mobile', 'Tablet', 'Laptop']
+        current_index = device_options.index(st.session_state.selected_device) if st.session_state.selected_device in device_options else 0
+        
+        device_all = st.selectbox("Device", device_options, 
+                                 key='device_all', index=current_index, label_visibility="collapsed")
+        
+        # Update session state when selection changes
+        st.session_state.selected_device = device_all
+        
         # Extract actual device name
         device_all = device_all.lower()
     
