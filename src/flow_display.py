@@ -1180,9 +1180,6 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         landing_preview_container = landing_card_left if st.session_state.flow_layout == 'vertical' and landing_card_left else stage_4_container
         
-        # Track rendering attempts for debug
-        debug_attempts = []
-        
         if adv_url and pd.notna(adv_url) and str(adv_url).strip():
             with landing_preview_container:
                 rendered_successfully = False
@@ -1190,31 +1187,25 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 # PRIORITY 1: Try Playwright FIRST (best anti-detection, bypasses most 403s)
                 if playwright_available:
                     try:
-                        debug_attempts.append(f"1️⃣ Try Playwright with URL: {adv_url[:100]}")
                         page_html = capture_with_playwright(adv_url, device=device_all)
                         if page_html:
                             if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
-                                debug_attempts.append("✅ Playwright used Screenshot API fallback")
                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                 preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
                                 st.components.v1.html(preview_html, height=height, scrolling=True)
                                 st.caption("📸 Screenshot (ScreenshotOne API)")
                                 rendered_successfully = True
                             else:
-                                debug_attempts.append("✅ Playwright HTML success")
                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all)
                                 preview_html = inject_unique_id(preview_html, 'landing_playwright', adv_url, device_all, current_flow)
                                 st.components.v1.html(preview_html, height=height, scrolling=True)
                                 st.caption("🤖 Playwright")
                                 rendered_successfully = True
-                        else:
-                            debug_attempts.append("❌ Playwright returned None")
-                    except Exception as e:
-                        debug_attempts.append(f"❌ Playwright error: {str(e)[:100]}")
+                    except Exception:
+                        pass
                 
                 # PRIORITY 2: If Playwright failed OR unavailable, try Screenshot API as fallback
                 if not rendered_successfully:
-                    debug_attempts.append("2️⃣ Try Screenshot API (fallback)")
                     screenshot_url = get_screenshot_url(adv_url, device=device_all, try_cleaned=True)
                     if screenshot_url:
                         try:
@@ -1223,16 +1214,12 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             preview_html = inject_unique_id(preview_html, 'landing_screenshot_fallback', adv_url, device_all, current_flow)
                             st.components.v1.html(preview_html, height=height, scrolling=True)
                             st.caption("📸 Screenshot (ScreenshotOne API)")
-                            debug_attempts.append("✅ Screenshot API success")
                             rendered_successfully = True
-                        except Exception as e:
-                            debug_attempts.append(f"❌ Screenshot API failed: {str(e)[:50]}")
-                    else:
-                        debug_attempts.append("❌ Screenshot API URL generation failed")
+                        except Exception:
+                            pass
                 
                 # If still not rendered, show error
                 if not rendered_successfully:
-                    debug_attempts.append("❌ All methods failed - showing error")
                     error_html = f"""
                     <!DOCTYPE html>
                     <html>
