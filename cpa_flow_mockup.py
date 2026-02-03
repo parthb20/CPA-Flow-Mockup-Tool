@@ -1237,10 +1237,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     flow_ctr = (flow_clicks / flow_imps * 100) if flow_imps > 0 else 0
                     flow_cvr = (flow_convs / flow_clicks * 100) if flow_clicks > 0 else 0
                     
-                    # Use current_flow as single_view (it's already the selected flow record)
-                    single_view = current_flow
-                    
-                    render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs, flow_ctr, flow_cvr)
+                    # Stats now displayed in flow_display.py below filters
+                    # render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs, flow_ctr, flow_cvr)
+                    pass
                 
                 # Render Flow Journey using module (heading now shown above)
                 with st.spinner("Loading flow cards..."):
