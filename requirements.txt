@@ -1,13 +1,19 @@
-streamlit>=1.28.0
-pandas>=2.0.0
-requests>=2.31.0
-Pillow>=10.0.0
-openai>=1.0.0
-google-auth>=2.23.0
-google-auth-oauthlib>=1.1.0
-google-auth-httplib2>=0.1.1
-gspread>=5.11.0
-playwright>=1.40.0
-easyocr>=1.7.0
-beautifulsoup4>=4.12.0
-gdown>=4.7.0
+# Core dependencies
+streamlit==1.31.0
+pandas==2.1.4
+numpy==1.26.3
+
+# Data loading
+requests==2.31.0
+gdown==4.7.1
+
+# Web scraping
+beautifulsoup4==4.12.3
+lxml==5.1.0
+
+# Browser automation (optional - for screenshots)
+playwright==1.41.0
+
+# Utilities
+python-dateutil==2.8.2
+pytz==2024.1
