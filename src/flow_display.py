@@ -123,8 +123,12 @@ def render_html_with_proper_encoding(page_html, device, unique_id_prefix, url, f
     """Render HTML with proper encoding using standard renderer"""
     from src.renderers import render_mini_device_preview, inject_unique_id
     
-    # Determine orientation based on layout mode
-    orientation = 'horizontal' if st.session_state.flow_layout == 'horizontal' else 'vertical'
+    # Determine orientation based on DEVICE TYPE, not layout
+    # Laptop = always landscape (wide), Mobile/Tablet = portrait (tall)
+    if device == 'laptop':
+        orientation = 'horizontal'  # Laptop is always wide/landscape
+    else:
+        orientation = 'vertical'  # Mobile/Tablet are portrait/tall
     
     # Use standard renderer with use_srcdoc for proper device preview
     preview_html, height, _ = render_mini_device_preview(
@@ -587,7 +591,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     try:
                         page_html = capture_with_playwright(pub_url, device=device_all)
                         if page_html:
-                            orientation = 'horizontal' if st.session_state.flow_layout == 'horizontal' else 'vertical'
+                            # Orientation based on device type: laptop=landscape, mobile/tablet=portrait
+                            orientation = 'horizontal' if device_all == 'laptop' else 'vertical'
                             if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all, orientation=orientation)
                                 preview_html = inject_unique_id(preview_html, 'pub_screenshot', pub_url, device_all, current_flow)
@@ -725,21 +730,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     )
                     
                     if rendered_html:
-                        # Wrap creative in device frame for consistency with other cards
-                        from src.renderers import render_mini_device_preview, inject_unique_id
-                        
-                        orientation = 'horizontal' if st.session_state.flow_layout == 'horizontal' else 'vertical'
-                        preview_html, height, _ = render_mini_device_preview(
-                            rendered_html, 
-                            is_url=False, 
-                            device=device_all, 
-                            use_srcdoc=True,
-                            orientation=orientation
-                        )
-                        preview_html = inject_unique_id(preview_html, 'creative_render', creative_id or '', device_all, current_flow)
-                        
-                        st.components.v1.html(preview_html, height=height, scrolling=False)
-                        st.caption("🎨 Creative")
+                        # Display creative directly - NO device frame for creatives
+                        # Just render the ad itself with minimal height
+                        st.components.v1.html(rendered_html, height=400, scrolling=False)
                         creative_rendered = True
                     elif error_msg:
                         # Show detailed error message
@@ -921,7 +914,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         if serp_html and serp_html.strip():
             with serp_preview_container:
-                orientation = 'horizontal' if st.session_state.flow_layout == 'horizontal' else 'vertical'
+                # Orientation based on device type: laptop=landscape, mobile/tablet=portrait
+                orientation = 'horizontal' if device_all == 'laptop' else 'vertical'
                 preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True, orientation=orientation)
                 preview_html = inject_unique_id(preview_html, 'serp_template', serp_url or '', device_all, current_flow)
                 display_height = height
@@ -1079,7 +1073,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                         count=1
                                     )
                                     
-                                    orientation = 'horizontal' if st.session_state.flow_layout == 'horizontal' else 'vertical'
+                                    # Orientation based on device type: laptop=landscape, mobile/tablet=portrait
+                                    orientation = 'horizontal' if device_all == 'laptop' else 'vertical'
                                     preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True, orientation=orientation)
                                     preview_html = inject_unique_id(preview_html, 'serp_playwright', serp_url, device_all, current_flow)
                                     display_height = height
@@ -1194,7 +1189,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     try:
                         page_html = capture_with_playwright(adv_url, device=device_all)
                         if page_html:
-                            orientation = 'horizontal' if st.session_state.flow_layout == 'horizontal' else 'vertical'
+                            # Orientation based on device type: laptop=landscape, mobile/tablet=portrait
+                            orientation = 'horizontal' if device_all == 'laptop' else 'vertical'
                             if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all, orientation=orientation)
                                 preview_html = inject_unique_id(preview_html, 'landing_screenshot', adv_url, device_all, current_flow)
