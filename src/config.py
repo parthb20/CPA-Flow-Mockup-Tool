@@ -45,8 +45,8 @@ DEVICE_DIMENSIONS = {
         'chrome_height': 88
     },
     'laptop': {
-        'width': 1080,  # Portrait width (for consistency, though laptops are rarely portrait)
-        'height': 1920,  # Portrait height 
+        'width': 1366,  # Laptop width (landscape orientation, common 16:9 laptop)
+        'height': 768,  # Laptop height
         'target_width_portrait': '22vw',  # Same for all devices
         'target_width_landscape': '22vw',  # Same for all devices
         'min_width_portrait': 280,  # Larger minimum
