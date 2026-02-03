@@ -725,9 +725,21 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     )
                     
                     if rendered_html:
-                        # Display creative directly without excessive wrapper
-                        # Just render the creative HTML as-is with minimal padding
-                        st.components.v1.html(rendered_html, height=450, scrolling=False)
+                        # Wrap creative in device frame for consistency with other cards
+                        from src.renderers import render_mini_device_preview, inject_unique_id
+                        
+                        orientation = 'horizontal' if st.session_state.flow_layout == 'horizontal' else 'vertical'
+                        preview_html, height, _ = render_mini_device_preview(
+                            rendered_html, 
+                            is_url=False, 
+                            device=device_all, 
+                            use_srcdoc=True,
+                            orientation=orientation
+                        )
+                        preview_html = inject_unique_id(preview_html, 'creative_render', creative_id or '', device_all, current_flow)
+                        
+                        st.components.v1.html(preview_html, height=height, scrolling=False)
+                        st.caption("🎨 Creative")
                         creative_rendered = True
                     elif error_msg:
                         # Show detailed error message
