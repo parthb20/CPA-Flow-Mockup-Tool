@@ -773,37 +773,88 @@ if st.session_state.data_x is not None and len(st.session_state.data_x) > 0:
             if selected_campaign != '-- Select Campaign 🔽':
                 st.session_state.preserved_campaign = selected_campaign
         
-        # Use Full Data checkbox aligned with dropdowns  
+        # Use Full Data checkbox and Date Filter toggle
         with col3:
-            use_full_data = st.checkbox(
-                "Use Full Data",
-                value=False,  # Default value
-                help="Bypass 5% threshold filter",
-                key='use_full_data_checkbox'  # Unique key
-            )
+            filter_col1, filter_col2 = st.columns([1, 1])
+            with filter_col1:
+                use_full_data = st.checkbox(
+                    "Use Full Data",
+                    value=False,  # Default value
+                    help="Bypass 5% threshold filter",
+                    key='use_full_data_checkbox'
+                )
+            with filter_col2:
+                enable_date_filter = st.checkbox(
+                    "📅 Date Filter",
+                    value=False,  # Default OFF - show all data
+                    help="Enable to filter by date range",
+                    key='enable_date_filter'
+                )
         
-        # Time Filter section - moved outside to avoid layout issues
+        # Date Filter UI (only if enabled)
         from datetime import date, timedelta
         today = date.today()
-        # Default to January 2026 (Jan 1 - Jan 31)
         jan_start = date(2026, 1, 1)
         jan_end = date(2026, 1, 31)
         
-        # Initialize defaults to January
-        if 'start_date' not in st.session_state:
-            st.session_state.start_date = jan_start
-        if 'end_date' not in st.session_state:
-            st.session_state.end_date = jan_end
-        if 'start_hour' not in st.session_state:
-            st.session_state.start_hour = 0
-        if 'end_hour' not in st.session_state:
-            st.session_state.end_hour = 23
-        
-        # Use default time values (hidden filters)
-        start_date = st.session_state.get('start_date', jan_start)
-        end_date = st.session_state.get('end_date', jan_end)
-        start_hour = st.session_state.get('start_hour', 0)
-        end_hour = st.session_state.get('end_hour', 23)
+        if enable_date_filter:
+            # Show date filter controls
+            with st.expander("📅 Date & Time Range", expanded=True):
+                date_col1, date_col2 = st.columns(2)
+                
+                # Initialize defaults
+                if 'start_date' not in st.session_state:
+                    st.session_state.start_date = jan_start
+                if 'end_date' not in st.session_state:
+                    st.session_state.end_date = jan_end
+                if 'start_hour' not in st.session_state:
+                    st.session_state.start_hour = 0
+                if 'end_hour' not in st.session_state:
+                    st.session_state.end_hour = 23
+                
+                with date_col1:
+                    start_date = st.date_input(
+                        "Start Date",
+                        value=st.session_state.start_date,
+                        min_value=date(2026, 1, 1),
+                        max_value=date(2026, 12, 31),
+                        key='start_date_input'
+                    )
+                    st.session_state.start_date = start_date
+                    
+                    start_hour = st.selectbox(
+                        "Start Hour",
+                        options=list(range(24)),
+                        index=st.session_state.start_hour,
+                        format_func=lambda x: f"{x:02d}:00",
+                        key='start_hour_select'
+                    )
+                    st.session_state.start_hour = start_hour
+                
+                with date_col2:
+                    end_date = st.date_input(
+                        "End Date",
+                        value=st.session_state.end_date,
+                        min_value=date(2026, 1, 1),
+                        max_value=date(2026, 12, 31),
+                        key='end_date_input'
+                    )
+                    st.session_state.end_date = end_date
+                    
+                    end_hour = st.selectbox(
+                        "End Hour",
+                        options=list(range(24)),
+                        index=st.session_state.end_hour,
+                        format_func=lambda x: f"{x:02d}:00",
+                        key='end_hour_select'
+                    )
+                    st.session_state.end_hour = end_hour
+        else:
+            # Date filter disabled - use full date range (no filtering)
+            start_date = date(2000, 1, 1)  # Very old date
+            end_date = date(2099, 12, 31)  # Very future date
+            start_hour = 0
+            end_hour = 23
         
         # Hidden defaults
         entity_threshold = 0.0 if use_full_data else 5.0
@@ -1022,11 +1073,13 @@ if st.session_state.data_x is not None and len(st.session_state.data_x) > 0:
             
             # Apply date filter
             from src.flow_analysis import filter_by_date_range, filter_by_threshold
-            campaign_df = filter_by_date_range(campaign_df, start_date, start_hour, end_date, end_hour)
-            
-            if len(campaign_df) == 0:
-                st.warning("⚠️ No data found for selected date range. Please adjust filters.")
-                st.stop()
+            # Apply date filter only if enabled
+            if enable_date_filter:
+                campaign_df = filter_by_date_range(campaign_df, start_date, start_hour, end_date, end_hour)
+                
+                if len(campaign_df) == 0:
+                    st.warning("⚠️ No data found for selected date range. Please adjust the date filter or disable it.")
+                    st.stop()
             
             # Apply threshold filters only if not using full data
             if not use_full_data and entity_threshold > 0:
