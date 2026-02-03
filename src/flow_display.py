@@ -783,9 +783,9 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             )
                             
                             if rendered_html:
-                                # Display creative FULL WIDTH like other cards (600px height to match)
-                                # Use st.components.v1.html with proper height
-                                st.components.v1.html(rendered_html, height=600, scrolling=True)
+                                # Display creative FULL WIDTH like other cards
+                                # Use 800px height to match device preview cards
+                                st.components.v1.html(rendered_html, height=800, scrolling=True)
                                 creative_rendered = True
                             elif error_msg:
                                 st.error(f"❌ {error_msg}")
@@ -796,49 +796,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         # Silent fail, will try legacy fallback
                         pass
                 
-                # Fallback: Try old response column if Response.adcode failed
-                if not creative_rendered:
-                    response_value = current_flow.get('response', None)
-                    if response_value and pd.notna(response_value) and str(response_value).strip():
-                        try:
-                            # Legacy fallback - render old response format
-                            if isinstance(response_value, str) and response_value.strip():
-                                # Extract width and height from creative_size
-                                try:
-                                    width_str, height_str = creative_size.split('x')
-                                    width, height = int(width_str), int(height_str)
-                                except:
-                                    width, height = 300, 250
-                                
-                                # Wrap in HTML container
-                                rendered_html = f"""
-                                <!DOCTYPE html>
-                                <html>
-                                <head>
-                                    <meta charset="UTF-8">
-                                    <style>
-                                        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-                                        body {{ width: {width}px; height: {height}px; overflow: hidden; }}
-                                    </style>
-                                </head>
-                                <body>
-                                    {response_value}
-                                </body>
-                                </html>
-                                """
-                                # Use responsive height based on creative size
-                                try:
-                                    width_str, height_str = creative_size.split('x')
-                                    creative_height = int(height_str)
-                                    creative_width = int(width_str)
-                                    aspect_ratio = creative_height / creative_width
-                                    display_height = min(max(int(330 * aspect_ratio), 400), 700)
-                                except:
-                                    display_height = 500
-                                st.components.v1.html(rendered_html, height=display_height, scrolling=True)
-                                creative_rendered = True
-                        except Exception as e:
-                            pass
+                # No legacy fallback needed - File X has Response.adcode for all rows
             
             # Show placeholder if all rendering failed
             if not creative_rendered:
