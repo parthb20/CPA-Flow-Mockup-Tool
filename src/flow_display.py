@@ -402,14 +402,14 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         st.markdown(f"""
         <div style="text-align: left; padding: 0.75rem 1rem; margin: 0.5rem 0; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
-            <span style="font-size: 0.875rem; color: #64748b; font-weight: 600; margin-right: 2rem;">
-                📊 Impressions: <strong style="color: #0f172a; font-size: 1rem;">{impressions:,}</strong>
+            <span style="font-size: 0.875rem; color: #64748b; font-weight: 700; margin-right: 2rem;">
+                📊 <strong style="font-weight: 900;">Impressions:</strong> <strong style="color: #0f172a; font-size: 1rem; font-weight: 600;">{impressions:,}</strong>
             </span>
-            <span style="font-size: 0.875rem; color: #64748b; font-weight: 600; margin-right: 2rem;">
-                🖱️ Clicks: <strong style="color: #0f172a; font-size: 1rem;">{clicks:,}</strong>
+            <span style="font-size: 0.875rem; color: #64748b; font-weight: 700; margin-right: 2rem;">
+                🖱️ <strong style="font-weight: 900;">Clicks:</strong> <strong style="color: #0f172a; font-size: 1rem; font-weight: 600;">{clicks:,}</strong>
             </span>
-            <span style="font-size: 0.875rem; color: #64748b; font-weight: 600;">
-                ✅ Conversions: <strong style="color: #0f172a; font-size: 1rem;">{conversions:,}</strong>
+            <span style="font-size: 0.875rem; color: #64748b; font-weight: 700;">
+                ✅ <strong style="font-weight: 900;">Conversions:</strong> <strong style="color: #0f172a; font-size: 1rem; font-weight: 600;">{conversions:,}</strong>
             </span>
         </div>
         """, unsafe_allow_html=True)
