@@ -997,7 +997,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         serp_html = re.sub(r'href=["\'](?!http|//|#|javascript:)([^"\']+)["\']', 
                                           lambda m: f'href="{urljoin(serp_url, m.group(1))}"', serp_html)
                         
-                        orientation = 'horizontal' if st.session_state.flow_layout == 'horizontal' else 'vertical'
+                        # Orientation based on device type: laptop=landscape, mobile/tablet=portrait
+                        orientation = 'horizontal' if device_all == 'laptop' else 'vertical'
                         preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True, orientation=orientation)
                         preview_html = inject_unique_id(preview_html, 'serp_injected', serp_url, device_all, current_flow)
                         display_height = height
@@ -1011,7 +1012,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                 page_html = capture_with_playwright(serp_url, device=device_all)
                                 if page_html and '<!-- SCREENSHOT_FALLBACK -->' in page_html:
                                     # Screenshot API was used
-                                    orientation = 'horizontal' if st.session_state.flow_layout == 'horizontal' else 'vertical'
+                                    # Orientation based on device type: laptop=landscape, mobile/tablet=portrait
+                                    orientation = 'horizontal' if device_all == 'laptop' else 'vertical'
                                     preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all, orientation=orientation)
                                     preview_html = inject_unique_id(preview_html, 'serp_screenshot', serp_url, device_all, current_flow)
                                     st.components.v1.html(preview_html, height=height, scrolling=True)
