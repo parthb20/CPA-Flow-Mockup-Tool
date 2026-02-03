@@ -757,14 +757,13 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         with creative_preview_container:
             with st.spinner("🎨 Loading Creative..."):
-                # Try rendering with File D (pre-rendered) or File C (Weaver API)
+                # Render creative from Response.adcode column in File X
                 creative_rendered = False
                 
-                # Check if we have either File D or File C
-                has_file_d = st.session_state.get('data_d') is not None
-                has_file_c = st.session_state.get('data_c') is not None
+                # Check if we have File X data
+                has_data = current_flow is not None and len(current_flow) > 0
                 
-                if has_file_d or has_file_c:
+                if has_data:
                     try:
                         # Get cipher key from secrets or use default
                         cipher_key = None
