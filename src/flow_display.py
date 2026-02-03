@@ -760,85 +760,81 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 # Render creative from Response.adcode column in File X
                 creative_rendered = False
                 
-                # DEBUG: Check current_flow
-                st.write(f"🔍 DEBUG: current_flow type: {type(current_flow)}, is None: {current_flow is None}")
-                if current_flow is not None:
-                    st.write(f"🔍 DEBUG: current_flow length: {len(current_flow)}")
-                    st.write(f"🔍 DEBUG: creative_id in flow: {current_flow.get('creative_id', 'NOT FOUND')}")
-                
                 # Check if we have File X data
                 has_data = current_flow is not None and len(current_flow) > 0
                 
                 if has_data:
                     try:
-                        # DEBUG: Show available columns
-                        debug_cols = [c for c in current_flow.keys() if 'response' in c.lower() or 'code' in c.lower() or 'script' in c.lower()]
-                        if debug_cols:
-                            st.info(f"🔍 Found columns: {', '.join(debug_cols[:5])}")
-                        
                         # Get ad code from Response.adcode column (exact name from File X)
                         adcode_raw = current_flow.get('Response.adcode', None)
-                        
-                        # DEBUG: Show what we got
-                        if adcode_raw:
-                            st.success(f"✅ Found Response.adcode: {str(adcode_raw)[:100]}...")
-                        else:
-                            st.warning(f"⚠️ Response.adcode is empty. Trying fallback...")
                         
                         if not adcode_raw or pd.isna(adcode_raw):
                             # Fallback: search for <script tag in any column
                             for key, value in current_flow.items():
                                 if pd.notna(value) and isinstance(value, str) and '<script' in str(value).lower():
                                     adcode_raw = value
-                                    st.success(f"✅ Found ad code in column: '{key}'")
                                     break
                         
                         if adcode_raw and pd.notna(adcode_raw):
-                            st.info(f"🎯 Calling render_creative_from_adcode with size: {creative_size}")
-                            
                             # Render directly from Response.adcode
                             rendered_html, error_msg = render_creative_from_adcode(
                                 adcode_raw=adcode_raw,
                                 creative_size=creative_size
                             )
                             
-                            st.write(f"🔍 render_creative_from_adcode returned:")
-                            st.write(f"  - rendered_html is None: {rendered_html is None}")
-                            st.write(f"  - error_msg: {error_msg}")
-                            
                             if rendered_html:
-                                st.success(f"✅ Got rendered HTML ({len(rendered_html)} chars), displaying...")
-                                # Display creative directly - NO device frame for creatives
-                                # Use height based on creative_size
+                                # Display creative with proper sizing
                                 try:
-                                    _, height_str = creative_size.split('x')
-                                    display_height = int(height_str) + 50  # Add padding
+                                    width_px, height_px = map(int, creative_size.split('x'))
+                                    # Increase height significantly for ad to render
+                                    iframe_height = max(height_px + 150, 400)
                                 except:
-                                    display_height = 300
+                                    width_px, height_px = 300, 250
+                                    iframe_height = 400
                                 
-                                # Use iframe with sandbox to allow scripts
+                                # Use data URL iframe
                                 import base64
                                 html_b64 = base64.b64encode(rendered_html.encode('utf-8')).decode('utf-8')
-                                iframe_html = f"""
-                                <iframe 
-                                    srcdoc="{rendered_html.replace('"', '&quot;')}" 
-                                    width="100%" 
-                                    height="{display_height}px" 
-                                    frameborder="0"
-                                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-                                    style="border: 1px solid #e0e0e0; background: white;"
-                                ></iframe>
-                                """
-                                st.markdown(iframe_html, unsafe_allow_html=True)
+                                
+                                st.markdown(f"""
+                                <div style="width: 100%; max-width: {width_px + 100}px; margin: 0 auto;">
+                                    <iframe 
+                                        src="data:text/html;base64,{html_b64}" 
+                                        width="100%" 
+                                        height="{iframe_height}px" 
+                                        frameborder="0"
+                                        sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-top-navigation"
+                                        style="border: 1px solid #e0e0e0; background: white; border-radius: 4px;"
+                                    ></iframe>
+                                </div>
+                                """, unsafe_allow_html=True)
                                 creative_rendered = True
                             elif error_msg:
                                 st.error(f"❌ {error_msg}")
                         else:
-                            st.error(f"❌ No Response.adcode found for creative {creative_id}")
+                            # No ad code found - show placeholder
+                            try:
+                                width_px, height_px = map(int, creative_size.split('x'))
+                            except:
+                                width_px, height_px = 300, 250
+                            
+                            st.markdown(f"""
+                            <div style="width: {width_px}px; height: {height_px}px; border: 2px dashed #cbd5e1; background: #f8fafc; display: flex; align-items: center; justify-content: center; border-radius: 8px; margin: 0 auto;">
+                                <div style="text-align: center; color: #64748b; padding: 20px;">
+                                    <div style="font-size: 14px; font-weight: 500;">Creative {creative_size}</div>
+                                    <div style="font-size: 12px; margin-top: 5px;">No ad available</div>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
                     except Exception as e:
-                        st.error(f"⚠️ Creative error: {str(e)[:200]}")
+                        st.warning(f"⚠️ Creative unavailable")
                 else:
-                    st.error(f"❌ Creative data not found for {creative_id} ({creative_size})")
+                    # No flow data - show placeholder
+                    st.markdown("""
+                    <div style="padding: 40px; text-align: center; color: #94a3b8; border: 2px dashed #cbd5e1; border-radius: 8px; background: #f8fafc;">
+                        <div style="font-size: 14px;">Creative data unavailable</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
                 # Fallback: Try old response column if Response.adcode failed
                 if not creative_rendered:
