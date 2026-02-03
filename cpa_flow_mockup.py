@@ -780,8 +780,8 @@ if st.session_state.data_x is not None and len(st.session_state.data_x) > 0:
             with time_col1:
                 use_full_data = st.checkbox(
                     "Use Full Data",
-                    value=False,  # Default value
-                    help="Bypass 5% threshold filter",
+                    value=False,  # Default to FALSE (unchecked) to show all data
+                    help="When UNCHECKED: Shows all traffic. When CHECKED: Filters to 5%+ volume only.",
                     key='use_full_data_checkbox'
                 )
             
