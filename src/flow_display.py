@@ -401,7 +401,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         conversions = current_flow.get('conversions', 0)
         
         st.markdown(f"""
-        <div style="text-align: center; padding: 0.75rem 0; margin: 0.5rem 0; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+        <div style="text-align: left; padding: 0.75rem 1rem; margin: 0.5rem 0; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
             <span style="font-size: 0.875rem; color: #64748b; font-weight: 600; margin-right: 2rem;">
                 📊 Impressions: <strong style="color: #0f172a; font-size: 1rem;">{impressions:,}</strong>
             </span>
