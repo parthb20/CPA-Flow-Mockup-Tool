@@ -1241,21 +1241,21 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
                     pass
                 
                 # Render Flow Journey using module (heading now shown above)
-                with st.spinner("Loading flow cards..."):
-                    try:
-                        render_flow_journey(
-                            campaign_df=campaign_df,
-                            current_flow=current_flow,
-                            api_key=API_KEY,
-                            playwright_available=PLAYWRIGHT_AVAILABLE,
-                            thumio_configured=THUMIO_CONFIGURED,
-                            thumio_referer_domain=THUMIO_REFERER_DOMAIN
-                        )
-                    except Exception as e:
-                        st.error(f"❌ Error rendering flow: {str(e)}")
-                        import traceback
-                        with st.expander("🔍 Error Details"):
-                            st.code(traceback.format_exc())
+                # Individual spinners now shown on each card
+                try:
+                    render_flow_journey(
+                        campaign_df=campaign_df,
+                        current_flow=current_flow,
+                        api_key=API_KEY,
+                        playwright_available=PLAYWRIGHT_AVAILABLE,
+                        thumio_configured=THUMIO_CONFIGURED,
+                        thumio_referer_domain=THUMIO_REFERER_DOMAIN
+                    )
+                except Exception as e:
+                    st.error(f"❌ Error rendering flow: {str(e)}")
+                    import traceback
+                    with st.expander("🔍 Error Details"):
+                        st.code(traceback.format_exc())
                 
                 # ============================================================
                 # FILTERS, TABLE, AND OVERVIEW - MOVED BELOW FLOW JOURNEY
