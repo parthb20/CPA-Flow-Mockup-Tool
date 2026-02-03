@@ -57,7 +57,10 @@ def process_file_content(content):
                         'ts': 'str',  # Keep ts as string for parsing
                         'view_id': 'str',
                         'advertiser_id': 'str',
-                        'campaign_id': 'str'
+                        'campaign_id': 'str',
+                        'Response.adcode': 'str',  # Ad code column (exact name from File X)
+                        'creative_id': 'str',
+                        'creative_size': 'str'  # Exact column name from File X
                     },
                     on_bad_lines='warn'
                 )
