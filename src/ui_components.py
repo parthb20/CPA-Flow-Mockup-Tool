@@ -9,8 +9,9 @@ import pandas as pd
 import html
 
 
+@st.fragment
 def render_flow_combinations_table(campaign_df):
-    """Render the Flow Combinations Overview table with filters"""
+    """Render the Flow Combinations Overview table with filters - Isolated fragment to prevent full page rerun"""
     if 'publisher_domain' not in campaign_df.columns or 'keyword_term' not in campaign_df.columns:
         st.warning("Could not generate table - missing required columns")
         return
