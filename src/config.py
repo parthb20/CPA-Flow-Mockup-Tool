@@ -3,7 +3,7 @@ Configuration constants and settings
 """
 
 # Google Drive File IDs
-FILE_X_ID = "1QZy7DZrn6jPvSh1-zXa4CETCY5UPvbbt"  # Main CSV file with Response.adcode column - REQUIRED
+FILE_X_ID = "1PTQcTZgBXreZD1tMu36GFgDS_t4QpN7u"  # Main CSV file (.csv.gz compressed) with Response.adcode column - REQUIRED
 FILE_B_ID = "1SXcLm1hhzQK23XY6Qt7E1YX5Fa-2Tlr9"  # SERP templates JSON file - REQUIRED
 
 # DEPRECATED - No longer used (kept for reference)
