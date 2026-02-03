@@ -6,8 +6,132 @@ Modular architecture for maintainability
 
 import streamlit as st
 
+# VERSION CHECK - To confirm new code is running
+APP_VERSION = "v2.6-FINAL-CLEAN"
+
 # Page config - MUST be FIRST Streamlit command (before any imports that use Streamlit)
 st.set_page_config(page_title="CPA Flow Analysis v2", page_icon="📊", layout="wide")
+
+# White background during loading + Responsive CSS
+st.markdown("""
+<style>
+    /* White background for entire app */
+    .stApp {
+        background-color: white;
+    }
+    
+    /* Hide default spinner text */
+    .stSpinner > div {
+        text-align: center;
+    }
+    
+    /* ===== RESPONSIVE DESIGN ===== */
+    /* Make cards scale proportionally across screen sizes */
+    
+    /* Base: Use viewport width (vw) units for responsive scaling */
+    [data-testid="column"] {
+        min-width: 0 !important;
+        flex: 1 1 auto !important;
+    }
+    
+    /* Container for device previews - scales with viewport */
+    .device-preview-container {
+        width: 100%;
+        max-width: 25vw; /* 25% of viewport width */
+        min-width: 280px; /* Minimum size */
+        margin: 0 auto;
+    }
+    
+    /* Scale creative cards proportionally */
+    .creative-card {
+        width: 100%;
+        max-width: 22vw;
+        min-width: 260px;
+        margin: 0 auto;
+    }
+    
+    /* Responsive iframe containers */
+    iframe {
+        max-width: 100%;
+        height: auto;
+    }
+    
+    /* ===== MEDIA QUERIES FOR DIFFERENT SCREEN SIZES ===== */
+    
+    /* Large monitors (> 1920px) - scale up slightly */
+    @media (min-width: 1921px) {
+        .device-preview-container {
+            max-width: 23vw;
+        }
+        .creative-card {
+            max-width: 20vw;
+        }
+    }
+    
+    /* Standard desktop (1280px - 1920px) - optimal size */
+    @media (min-width: 1280px) and (max-width: 1920px) {
+        .device-preview-container {
+            max-width: 25vw;
+        }
+        .creative-card {
+            max-width: 22vw;
+        }
+    }
+    
+    /* Laptop (1024px - 1279px) - slightly smaller */
+    @media (min-width: 1024px) and (max-width: 1279px) {
+        .device-preview-container {
+            max-width: 28vw;
+        }
+        .creative-card {
+            max-width: 25vw;
+        }
+    }
+    
+    /* Tablet (768px - 1023px) - stack cards */
+    @media (min-width: 768px) and (max-width: 1023px) {
+        .device-preview-container {
+            max-width: 45vw;
+        }
+        .creative-card {
+            max-width: 45vw;
+        }
+        
+        [data-testid="column"] {
+            flex: 0 0 100% !important;
+            max-width: 100% !important;
+        }
+    }
+    
+    /* Mobile (< 768px) - full width */
+    @media (max-width: 767px) {
+        .device-preview-container {
+            max-width: 90vw;
+        }
+        .creative-card {
+            max-width: 90vw;
+        }
+        
+        [data-testid="column"] {
+            flex: 0 0 100% !important;
+            max-width: 100% !important;
+        }
+    }
+    
+    /* Prevent horizontal scrolling */
+    .main .block-container {
+        max-width: 100%;
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+    
+    /* Ensure images scale properly */
+    img {
+        max-width: 100%;
+        height: auto;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 import pandas as pd
 import requests
@@ -18,8 +142,9 @@ import re
 import html
 
 # Import from modules (after page config)
-from src.config import FILE_A_ID, FILE_B_ID, SERP_BASE_URL
+from src.config import FILE_X_ID, FILE_B_ID, SERP_BASE_URL
 from src.data_loader import load_csv_from_gdrive, load_json_from_gdrive
+from src.creative_renderer import render_creative_from_adcode, parse_keyword_array_from_flow
 from src.utils import safe_float, safe_int
 from src.flow_analysis import find_default_flow
 from src.similarity import calculate_similarities
@@ -28,8 +153,7 @@ from src.renderers import (
     render_mini_device_preview,
     render_similarity_score,
     inject_unique_id,
-    create_screenshot_html,
-    parse_creative_html
+    create_screenshot_html
 )
 from src.screenshot import get_screenshot_url, capture_with_playwright
 from src.ui_components import render_flow_combinations_table, render_what_is_flow_section, render_selected_flow_display
@@ -37,15 +161,78 @@ from src.filters import render_advanced_filters, apply_flow_filtering
 from src.flow_display import render_flow_journey
 
 # Try to import playwright (for 403 bypass)
+# Note: Playwright requires browser binaries which may not be available on Streamlit Cloud
+# Fallback rendering will be used automatically if unavailable
+
+# Check if we're on Streamlit Cloud and need to install browsers
+@st.cache_resource(show_spinner=False)
+def ensure_playwright_installed():
+    """Auto-install Playwright browsers on Streamlit Cloud (runs once, silent)"""
+    install_log = []
+    try:
+        import install_playwright
+        # Capture stdout
+        import io
+        from contextlib import redirect_stdout
+        
+        f = io.StringIO()
+        with redirect_stdout(f):
+            success = install_playwright.install_playwright_browsers()
+        
+        install_log = f.getvalue().split('\n')
+        return success, install_log
+    except Exception as e:
+        install_log.append(f"❌ Auto-install error: {str(e)[:200]}")
+        return False, install_log
+
+# Attempt installation (cached, runs only once, silent)
+PLAYWRIGHT_INSTALL_SUCCESS, PLAYWRIGHT_INSTALL_LOG = ensure_playwright_installed()
+
+PLAYWRIGHT_AVAILABLE = False
+PLAYWRIGHT_DEBUG = []
+
 try:
     from playwright.sync_api import sync_playwright
-    PLAYWRIGHT_AVAILABLE = True
+    from pathlib import Path
+    import os
     
-    # Note: Browsers should be pre-installed via packages.txt
-    # Skip auto-install to prevent blocking app startup
-except Exception:
+    PLAYWRIGHT_DEBUG.append("✅ Playwright module imported")
+    
+    # Check multiple possible browser locations
+    browser_paths = [
+        Path.home() / ".cache" / "ms-playwright",
+        Path("/home/appuser/.cache/ms-playwright"),  # Streamlit Cloud location
+        Path("/root/.cache/ms-playwright"),  # Docker location
+    ]
+    
+    browsers_exist = False
+    found_path = None
+    
+    for browser_path in browser_paths:
+        PLAYWRIGHT_DEBUG.append(f"Checking: {browser_path}")
+        if browser_path.exists():
+            PLAYWRIGHT_DEBUG.append(f"  ✅ Path exists")
+            chromium_dirs = list(browser_path.glob("chromium*"))
+            if chromium_dirs:
+                PLAYWRIGHT_DEBUG.append(f"  ✅ Found chromium: {chromium_dirs[0].name}")
+                browsers_exist = True
+                found_path = str(browser_path)
+                break
+            else:
+                PLAYWRIGHT_DEBUG.append(f"  ❌ No chromium found")
+        else:
+            PLAYWRIGHT_DEBUG.append(f"  ❌ Path doesn't exist")
+    
+    if browsers_exist:
+        PLAYWRIGHT_DEBUG.append(f"✅ Playwright AVAILABLE at: {found_path}")
+    else:
+        PLAYWRIGHT_DEBUG.append("❌ No Playwright browsers found in any location")
+    
+    PLAYWRIGHT_AVAILABLE = browsers_exist
+    
+except Exception as e:
+    PLAYWRIGHT_DEBUG.append(f"❌ Error loading Playwright: {str(e)[:100]}")
     PLAYWRIGHT_AVAILABLE = False
-    # Don't show warning here - it's optional
 
 # Get API keys from secrets - safe access pattern
 API_KEY = ""
@@ -76,7 +263,7 @@ except Exception:
 
 THUMIO_CONFIGURED = False  # Disabled - Playwright only!
 
-# Custom CSS
+# Custom CSS - RESPONSIVE VERSION
 st.markdown("""
     <style>
     /* Background */
@@ -91,19 +278,22 @@ st.markdown("""
         background: white !important;
     }
     
-    /* All text elements */
+    /* RESPONSIVE TEXT - scales between min and max based on viewport */
     h1:not(.main-title), h2, h3, h4, h5, h6, p, span, div, label, .stMarkdown {
         color: #0f172a !important;
         font-weight: 500 !important;
-        font-size: 16px !important;
+        font-size: clamp(0.875rem, 0.8rem + 0.4vw, 1rem) !important; /* 14-16px */
     }
     
     /* Don't override the main title - it has its own inline styles */
-    h1:not(.main-title) { font-weight: 700 !important; font-size: 32px !important; }
+    h1:not(.main-title) { 
+        font-weight: 700 !important; 
+        font-size: clamp(1.75rem, 1.5rem + 1.25vw, 2rem) !important; /* 28-32px */
+    }
     
-    /* Ensure main title is properly sized - override everything - VERY BIG */
+    /* Ensure main title is properly sized - RESPONSIVE & BIG */
     .main-title {
-        font-size: 72px !important;
+        font-size: clamp(2.5rem, 2rem + 2.5vw, 4.5rem) !important; /* 40-72px */
         font-weight: 900 !important;
         color: #0f172a !important;
         margin: 0 !important;
@@ -114,18 +304,31 @@ st.markdown("""
         white-space: normal !important;
     }
     
-    h2 { font-weight: 700 !important; font-size: 26px !important; }
-    h3 { font-weight: 700 !important; font-size: 22px !important; }
+    h2 { 
+        font-weight: 700 !important; 
+        font-size: clamp(1.375rem, 1.2rem + 0.9vw, 1.625rem) !important; /* 22-26px */
+    }
+    h3 { 
+        font-weight: 700 !important; 
+        font-size: clamp(1.25rem, 1.1rem + 0.75vw, 1.375rem) !important; /* 20-22px */
+    }
     
-    /* Buttons */
-    .stButton > button {
+    /* Buttons - RESPONSIVE & CONSISTENT */
+    .stButton > button,
+    button[data-testid*="baseButton"],
+    .stButton button {
         background-color: white !important;
         color: #0f172a !important;
         border: 2px solid #cbd5e1 !important;
         font-weight: 600 !important;
-        font-size: 16px !important;
+        font-size: clamp(0.875rem, 0.8rem + 0.4vw, 1rem) !important; /* 14-16px */
+        padding: clamp(0.4rem, 0.3rem + 0.4vw, 0.6rem) clamp(0.875rem, 0.7rem + 0.8vw, 1.25rem) !important;
+        border-radius: 0.375rem !important;
+        min-height: auto !important;
+        height: auto !important;
     }
-    .stButton > button:hover {
+    .stButton > button:hover,
+    button[data-testid*="baseButton"]:hover {
         background-color: #f1f5f9 !important;
         border-color: #94a3b8 !important;
     }
@@ -142,7 +345,28 @@ st.markdown("""
         border: 2px solid #e2e8f0 !important;
     }
     
-    /* Dropdowns */
+    /* Popover buttons specifically - WHITE BACKGROUND */
+    .stPopover > button,
+    button[data-testid*="popover"],
+    [data-testid*="stPopover"] button {
+        background-color: white !important;
+        color: #0f172a !important;
+        border: 2px solid #cbd5e1 !important;
+        font-size: 0.875rem !important;
+        padding: 0.5rem 1rem !important;
+    }
+    
+    /* Flow navigation buttons - VERY COMPACT */
+    button[key*="prev_flow"],
+    button[key*="next_flow"] {
+        padding: 0.25rem 0.5rem !important;
+        font-size: 0.875rem !important;
+        min-height: 1.75rem !important;
+        max-height: 2rem !important;
+        width: auto !important;
+    }
+    
+    /* Dropdowns - RESPONSIVE */
     [data-baseweb="select"] { background-color: white !important; }
     [data-baseweb="select"] > div { 
         background-color: white !important; 
@@ -151,7 +375,7 @@ st.markdown("""
     [data-baseweb="select"] span { 
         color: #0f172a !important; 
         font-weight: 500 !important; 
-        font-size: 16px !important; 
+        font-size: clamp(0.875rem, 0.8rem + 0.4vw, 1rem) !important; /* 14-16px */
     }
     [role="listbox"] { 
         background-color: white !important; 
@@ -161,7 +385,8 @@ st.markdown("""
         color: #0f172a !important; 
     }
     [role="option"]:hover { 
-        background-color: #f1f5f9 !important; 
+        background-color: #f8fafc !important; 
+        color: #0f172a !important; 
     }
     [role="option"][aria-selected="true"] { 
         background-color: #e0f2fe !important; 
@@ -184,23 +409,23 @@ st.markdown("""
         border-color: #cbd5e1 !important;
     }
     
-    /* Metrics */
+    /* Metrics - RESPONSIVE */
     [data-testid="stMetric"] {
         background: white;
-        padding: 16px;
-        border-radius: 8px;
+        padding: clamp(0.75rem, 0.6rem + 0.8vw, 1rem);
+        border-radius: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem);
         border: 2px solid #e2e8f0;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
     [data-testid="stMetricValue"] {
         color: #0f172a !important;
         font-weight: 700 !important;
-        font-size: 28px !important;
+        font-size: clamp(1.5rem, 1.3rem + 1vw, 1.75rem) !important; /* 24-28px */
     }
     [data-testid="stMetricLabel"] {
         color: #64748b !important;
         font-weight: 600 !important;
-        font-size: 14px !important;
+        font-size: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem) !important; /* 12-14px */
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
@@ -227,51 +452,51 @@ st.markdown("""
         background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
     }
     
-    /* Flow Card */
+    /* Flow Card - RESPONSIVE */
     .flow-card {
         background: white;
         border: 2px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 20px;
-        margin: 10px 0;
+        border-radius: clamp(0.5rem, 0.4rem + 0.6vw, 0.75rem);
+        padding: clamp(1rem, 0.8rem + 1vw, 1.25rem);
+        margin: clamp(0.25rem, 0.2rem + 0.3vw, 0.375rem) 0;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     
     .flow-stage {
         text-align: center;
-        padding: 16px;
+        padding: clamp(0.75rem, 0.6rem + 0.8vw, 1rem);
         background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
         border: 2px solid #3b82f6;
-        border-radius: 8px;
-        margin: 0 10px;
+        border-radius: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem);
+        margin: 0 clamp(0.5rem, 0.4rem + 0.5vw, 0.625rem);
     }
     
     .flow-arrow {
-        font-size: 32px;
+        font-size: clamp(1.5rem, 1.3rem + 1vw, 2rem); /* 24-32px */
         color: #3b82f6;
         font-weight: 700;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin: 0 5px;
+        margin: 0 clamp(0.25rem, 0.2rem + 0.25vw, 0.3125rem);
     }
     
     .similarity-card {
         background: white;
-        border-radius: 12px;
-        padding: 20px;
+        border-radius: clamp(0.5rem, 0.4rem + 0.6vw, 0.75rem);
+        padding: clamp(1rem, 0.8rem + 1vw, 1.25rem);
         border: 2px solid #e2e8f0;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     
     .score-box {
         display: inline-block;
-        padding: 16px 24px;
-        border-radius: 10px;
+        padding: clamp(0.75rem, 0.6rem + 0.8vw, 1rem) clamp(1.25rem, 1rem + 1.25vw, 1.5rem);
+        border-radius: clamp(0.5rem, 0.4rem + 0.5vw, 0.625rem);
         border: 3px solid;
-        font-size: 42px;
+        font-size: clamp(2rem, 1.75rem + 1.3vw, 2.625rem); /* 32-42px */
         font-weight: 700;
-        margin: 15px 0;
+        margin: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem) 0;
     }
     
     .score-excellent { border-color: #22c55e; background: linear-gradient(135deg, #22c55e15, #22c55e08); color: #22c55e; }
@@ -282,13 +507,13 @@ st.markdown("""
     
     .info-box {
         background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-        padding: 18px;
-        border-radius: 8px;
+        padding: clamp(1rem, 0.8rem + 1vw, 1.125rem);
+        border-radius: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem);
         border: 1px solid #bae6fd;
-        border-left: 4px solid #3b82f6;
-        margin: 15px 0;
+        border-left: clamp(0.25rem, 0.2rem + 0.2vw, 0.25rem) solid #3b82f6;
+        margin: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem) 0;
         line-height: 1.8;
-        font-size: 16px;
+        font-size: clamp(0.875rem, 0.8rem + 0.4vw, 1rem); /* 14-16px */
         color: #0f172a !important;
         box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         font-weight: 500;
@@ -297,24 +522,178 @@ st.markdown("""
         color: #0f172a !important;
         background: transparent !important;
     }
+    
+    /* Custom Loading Spinner - Circular Arrow */
+    .stSpinner > div {
+        border-color: #3b82f6 !important;
+        border-right-color: transparent !important;
+    }
+    
+    /* Streamlit's native spinner styling - small and subtle */
+    [data-testid="stSpinner"] {
+        position: relative !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0.5rem !important;
+        margin: 0.5rem 0 !important;
+    }
+    
+    [data-testid="stSpinner"] > div {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 0.5rem !important;
+        font-size: 0.85rem !important;
+        color: #666 !important;
+    }
+    
+    /* Show small spinning circle */
+    [data-testid="stSpinner"]::before {
+        content: "" !important;
+        display: inline-block !important;
+        width: 16px !important;
+        height: 16px !important;
+        border: 2px solid #f3f3f3 !important;
+        border-top: 2px solid #3b82f6 !important;
+        border-radius: 50% !important;
+        animation: spin 0.8s linear infinite !important;
+        margin-right: 0.5rem !important;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    /* Remove empty space from element containers */
+    .main .block-container {
+        padding-top: 0.5rem !important;
+        padding-bottom: 1rem !important;
+    }
+    
+    /* Reduce element container spacing - MORE AGGRESSIVE */
+    .element-container {
+        margin-bottom: 0.1rem !important;
+    }
+    
+    /* Reduce space between main sections - RESPONSIVE */
+    .main > div > div > div > div {
+        margin-bottom: clamp(0.1rem, 0.2vw, 0.15rem) !important;
+    }
+    
+    /* Reduce space after dropdown row */
+    [data-testid="stHorizontalBlock"]:has(.stSelectbox) {
+        margin-bottom: 0.15rem !important;
+    }
+    
+    /* Remove empty divs that create unnecessary space */
+    div:empty {
+        display: none !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    /* Hide all elements with 0 height */
+    div[style*="height: 0"], div[style*="height:0"], div[style*="height: 0px"], div[style*="height:0px"] {
+        display: none !important;
+    }
+    
+    /* Remove hr elements */
+    hr, hr[data-testid="stHorizontalRule"] {
+        display: none !important;
+        height: 0 !important;
+        margin: 0 !important;
+    }
+    
+    /* Remove vertical blocks with no content */
+    [data-testid="stVerticalBlock"]:empty {
+        display: none !important;
+    }
+    
+    /* Remove any horizontal blocks with minimal height */
+    [data-testid="stHorizontalBlock"]:empty {
+        display: none !important;
+    }
+    
+    /* Target specific problematic spacing divs */
+    .main > div[data-testid="stVerticalBlock"] > div:empty,
+    .main > div[data-testid="stVerticalBlock"] > div[style*="height: 0"] {
+        display: none !important;
+    }
+    
+    /* Aggressive: Remove any divs that are just taking up space (like 1120x65 boxes) */
+    [data-testid="stVerticalBlock"] > div[class*="st-emotion"] {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    [data-testid="stVerticalBlock"] > div[class*="st-emotion"]:empty {
+        display: none !important;
+    }
+    
+    /* Reduce vertical block spacing */
+    [data-testid="stVerticalBlock"] > div {
+        gap: 0 !important;
+    }
+    
+    /* Compact row spacing */
+    [data-testid="column"] {
+        padding: 0 0.5rem !important;
+    }
+    
+    /* Remove spacing from horizontal blocks */
+    [data-testid="stHorizontalBlock"] {
+        gap: 0.5rem !important;
+    }
+    
+    /* Remove extra margins from element containers */
+    .element-container:has(> .row-widget) {
+        margin-bottom: 0 !important;
+    }
+    
+    /* AGGRESSIVE: Hide specific empty containers that create gaps */
+    .element-container:empty,
+    div[data-testid="stVerticalBlock"]:empty,
+    div[data-testid="stHorizontalBlock"]:empty {
+        display: none !important;
+        height: 0 !important;
+        min-height: 0 !important;
+    }
+    
+    /* Remove gaps between advertiser/campaign and flow journey */
+    .main > div > div > div {
+        margin-bottom: 0 !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
 # Session state initialization
-for key in ['data_a', 'data_b', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'similarities', 'last_campaign_key']:
+for key in ['data_x', 'data_b', 'loading_done', 'default_flow', 'current_flow', 'view_mode', 'flow_layout', 'similarities', 'last_campaign_key', 'all_flows', 'current_flow_index', 'last_filter_key', 'show_time_filter', 'flow_type']:
     if key not in st.session_state:
         if key == 'view_mode':
             st.session_state[key] = 'basic'
         elif key == 'flow_layout':
             st.session_state[key] = 'horizontal'
+        elif key == 'current_flow_index':
+            st.session_state[key] = 0
+        elif key == 'all_flows':
+            st.session_state[key] = []
+        elif key == 'show_time_filter':
+            st.session_state[key] = False
+        elif key == 'flow_type':
+            st.session_state[key] = 'Best'
         else:
             st.session_state[key] = None
 
-# Main title - BIG and BOLD at top
+# VERSION CHECK - Shows at very top
+
+# Main title - BIG and BOLD at top - RESPONSIVE
 st.markdown("""
-    <div style="margin: 0 0 20px 0; padding: 20px 0 16px 0; border-bottom: 3px solid #e2e8f0;">
-        <h1 style="font-size: 64px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui, -apple-system, sans-serif;">
-            📊 <strong>CPA Flow Analysis</strong>
+    <div style="margin: 0 0 clamp(0.25rem, 0.2rem + 0.2vw, 0.25rem) 0; padding: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem) 0; border-bottom: clamp(2px, 0.1rem + 0.15vw, 3px) solid #e2e8f0;">
+        <h1 style="font-size: clamp(2.5rem, 2rem + 2.5vw, 4rem); font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui, -apple-system, sans-serif;">
+            📊 CPA Flow Analysis
         </h1>
     </div>
 """, unsafe_allow_html=True)
@@ -324,9 +703,10 @@ if not st.session_state.loading_done:
     with st.spinner("Loading data..."):
         try:
             # Load CSV first (critical)
-            st.session_state.data_a = load_csv_from_gdrive(FILE_A_ID)
+            # Load File X (main campaign data with Response.adcode)
+            st.session_state.data_x = load_csv_from_gdrive(FILE_X_ID)
             
-            # Load JSON second (nice to have)
+            # Load File B (SERP templates JSON)
             st.session_state.data_b = load_json_from_gdrive(FILE_B_ID)
             
             st.session_state.loading_done = True
@@ -335,34 +715,152 @@ if not st.session_state.loading_done:
             st.session_state.loading_done = True
 
 # No view mode toggle here - moved to flow controls
-# Reduce spacing - minimal margin
-st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
 
-if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
-    df = st.session_state.data_a
+if st.session_state.data_x is not None and len(st.session_state.data_x) > 0:
+    df = st.session_state.data_x
     
-    # Select Advertiser and Campaign - preserve selection when switching views
-    col1, col2 = st.columns(2)
+    # Find advertiser and campaign columns (handle case variations) - define at top for accessibility
+    adv_name_col = next((col for col in df.columns if col.lower() == 'advertiser_name'), 'Advertiser_Name')
+    adv_id_col = next((col for col in df.columns if col.lower() == 'advertiser_id'), 'Advertiser_Id')
+    camp_name_col = next((col for col in df.columns if col.lower() == 'campaign_name'), 'Campaign_Name')
+    camp_id_col = next((col for col in df.columns if col.lower() == 'campaign_id'), 'Campaign_Id')
+    
+    # Select Advertiser, Campaign, and combined Use Full Data + Time filter
+    col1, col2, col3 = st.columns([1.5, 1.5, 2.5])
     with col1:
-        advertisers = ['-- Select Advertiser --'] + sorted(df['Advertiser_Name'].dropna().unique().tolist())
+        
+        # Create "Name - [ID]" format for display
+        if adv_id_col in df.columns:
+            df_adv = df[[adv_name_col, adv_id_col]].drop_duplicates().dropna()
+            advertiser_display = df_adv.apply(lambda row: f"{row[adv_name_col]} - [{row[adv_id_col]}]", axis=1).tolist()
+            advertisers = ['Select Advertiser 🔽'] + sorted(advertiser_display)
+        else:
+            advertisers = ['Select Advertiser 🔽'] + sorted(df[adv_name_col].dropna().unique().tolist())
+        
         # Preserve advertiser selection
         default_adv_idx = 0
         if 'preserved_advertiser' in st.session_state and st.session_state.preserved_advertiser in advertisers:
             default_adv_idx = advertisers.index(st.session_state.preserved_advertiser)
-        selected_advertiser = st.selectbox("Advertiser", advertisers, index=default_adv_idx)
-        if selected_advertiser != '-- Select Advertiser --':
+        selected_advertiser = st.selectbox("Advertiser", advertisers, index=default_adv_idx, label_visibility="visible")
+        if selected_advertiser != 'Select Advertiser 🔽':
             st.session_state.preserved_advertiser = selected_advertiser
     
-    if selected_advertiser and selected_advertiser != '-- Select Advertiser --':
+    if selected_advertiser and selected_advertiser != 'Select Advertiser 🔽':
+        # Extract advertiser name from "Name - [ID]" format (if ID column exists)
+        if adv_id_col in df.columns and ' - [' in selected_advertiser:
+            # Split to extract name from "Name - [ID]" format
+            selected_advertiser_name = selected_advertiser.split(' - [')[0]
+        else:
+            selected_advertiser_name = selected_advertiser
+        
         with col2:
-            campaigns = ['-- Select Campaign --'] + sorted(df[df['Advertiser_Name'] == selected_advertiser]['Campaign_Name'].dropna().unique().tolist())
+            # Filter campaigns by selected advertiser
+            advertiser_df = df[df[adv_name_col] == selected_advertiser_name]
+            
+            # Create "Name - [ID]" format for display
+            if camp_id_col in df.columns:
+                df_camp = advertiser_df[[camp_name_col, camp_id_col]].drop_duplicates().dropna()
+                campaign_display = df_camp.apply(lambda row: f"{row[camp_name_col]} - [{row[camp_id_col]}]", axis=1).tolist()
+                campaigns = ['Select Campaign 🔽'] + sorted(campaign_display)
+            else:
+                campaigns = ['Select Campaign 🔽'] + sorted(advertiser_df[camp_name_col].dropna().unique().tolist())
+            
             # Preserve campaign selection
             default_camp_idx = 0
             if 'preserved_campaign' in st.session_state and st.session_state.preserved_campaign in campaigns:
                 default_camp_idx = campaigns.index(st.session_state.preserved_campaign)
-            selected_campaign = st.selectbox("Campaign", campaigns, key='campaign_selector', index=default_camp_idx)
-            if selected_campaign != '-- Select Campaign --':
+            selected_campaign = st.selectbox("Campaign", campaigns, key='campaign_selector', index=default_camp_idx, label_visibility="visible")
+            if selected_campaign != '-- Select Campaign 🔽':
                 st.session_state.preserved_campaign = selected_campaign
+        
+        # Use Full Data checkbox + Time Filter popover
+        with col3:
+            time_col1, time_col2 = st.columns([1, 1])
+            
+            with time_col1:
+                use_full_data = st.checkbox(
+                    "Use Full Data",
+                    value=True,  # Default to TRUE - show all data by default
+                    help="Show all traffic including low-volume keywords/domains",
+                    key='use_full_data_checkbox'
+                )
+            
+            with time_col2:
+                # Time Filter with popover
+                from datetime import date, timedelta
+                today = date.today()
+                jan_start = date(2026, 1, 1)
+                jan_end = date(2026, 1, 31)
+                
+                # Initialize defaults to January 2026
+                if 'start_date' not in st.session_state:
+                    st.session_state.start_date = jan_start
+                if 'end_date' not in st.session_state:
+                    st.session_state.end_date = jan_end
+                if 'start_hour' not in st.session_state:
+                    st.session_state.start_hour = 0
+                if 'end_hour' not in st.session_state:
+                    st.session_state.end_hour = 23
+                
+                # Popover button styling
+                st.markdown("""
+                    <style>
+                    /* Compact Time popover button */
+                    button[data-testid*="popover"] {
+                        background-color: white !important;
+                        color: #1f2937 !important;
+                        border: 2px solid #cbd5e1 !important;
+                        padding: 0.25rem 0.5rem !important;
+                        font-size: 0.8rem !important;
+                        min-height: 1.8rem !important;
+                        max-width: 120px !important;
+                    }
+                    </style>
+                """, unsafe_allow_html=True)
+                
+                with st.popover("📅 Date Filter", use_container_width=False):
+                    # Hour selection first
+                    st.markdown("**Hour Range**")
+                    hour_row = st.columns(2)
+                    with hour_row[0]:
+                        start_hour = st.selectbox("Start", options=list(range(24)), index=st.session_state.get('start_hour', 0), format_func=lambda x: f"{x:02d}:00", key='start_hour_filter')
+                        st.session_state.start_hour = start_hour
+                    with hour_row[1]:
+                        end_hour = st.selectbox("End", options=list(range(24)), index=st.session_state.get('end_hour', 23), format_func=lambda x: f"{x:02d}:00", key='end_hour_filter')
+                        st.session_state.end_hour = end_hour
+                    
+                    # Date range selection
+                    st.markdown("**Date Range**")
+                    date_range = st.date_input(
+                        "Select Range",
+                        value=(st.session_state.get('start_date', jan_start), st.session_state.get('end_date', jan_end)),
+                        min_value=date(2026, 1, 1),
+                        max_value=date(2026, 12, 31),
+                        key='date_range_filter',
+                        label_visibility="collapsed"
+                    )
+                    
+                    # Handle date range tuple
+                    if isinstance(date_range, tuple) and len(date_range) == 2:
+                        st.session_state.start_date = date_range[0]
+                        st.session_state.end_date = date_range[1]
+                    elif isinstance(date_range, date):
+                        st.session_state.start_date = date_range
+                        st.session_state.end_date = date_range
+                
+                # Use current values
+                start_date = st.session_state.get('start_date', jan_start)
+                end_date = st.session_state.get('end_date', jan_end)
+                start_hour = st.session_state.get('start_hour', 0)
+                end_hour = st.session_state.get('end_hour', 23)
+                
+                # Date filtering is always enabled (users control it via popover)
+                enable_date_filter = True
+        
+        # Hidden defaults
+        entity_threshold = 0.0 if use_full_data else 5.0
+        num_flows = 5
+        include_serp_in_flow = False  # Always false, hidden
         
         # Reset flow when campaign changes - CLEAR ALL OLD DATA IMMEDIATELY
         campaign_key = f"{selected_advertiser}_{selected_campaign}"
@@ -383,13 +881,226 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             st.empty()  # Clear any lingering containers
             st.rerun()
         
-        if selected_campaign and selected_campaign != '-- Select Campaign --':
-            campaign_df = df[(df['Advertiser_Name'] == selected_advertiser) & (df['Campaign_Name'] == selected_campaign)].copy()
+        if selected_campaign and selected_campaign != 'Select Campaign 🔽':
+            # Extract campaign name from "Name - [ID]" format (if ID column exists)
+            if camp_id_col in df.columns and ' - [' in selected_campaign:
+                # Split to extract name from "Name - [ID]" format
+                selected_campaign_name = selected_campaign.split(' - [')[0]
+            else:
+                selected_campaign_name = selected_campaign
             
-            # Calculate metrics
-            campaign_df['impressions'] = campaign_df['impressions'].apply(safe_float)
-            campaign_df['clicks'] = campaign_df['clicks'].apply(safe_float)
-            campaign_df['conversions'] = campaign_df['conversions'].apply(safe_float)
+            # Filter data using extracted names
+            campaign_df = df[(df[adv_name_col] == selected_advertiser_name) & (df[camp_name_col] == selected_campaign_name)].copy()
+            
+            # Check if we have data
+            if len(campaign_df) == 0:
+                st.warning("⚠️ No rows found for this campaign. Check advertiser/campaign names match exactly.")
+                st.stop()
+            
+            # === FLOW FILTERS - LIGHT & CLEAN ===
+            st.markdown("""
+                <style>
+                /* Force light theme for ALL inputs */
+                .stDateInput > div > div > input,
+                .stDateInput input,
+                .stDateInput,
+                .stSelectbox > div > div,
+                .stSelectbox > div > div > div,
+                .stSelectbox input,
+                .stCheckbox,
+                .stRadio > div,
+                [data-baseweb="select"],
+                [data-baseweb="select"] > div,
+                [data-baseweb="input"],
+                [data-baseweb="base-input"],
+                [data-baseweb="calendar"],
+                [data-baseweb="datepicker"] {
+                    background-color: white !important;
+                    color: #1f2937 !important;
+                    border-color: #d1d5db !important;
+                }
+                
+                /* Fix Popover - WHITE BACKGROUND */
+                .stPopover,
+                [data-baseweb="popover"],
+                [data-baseweb="popover"] > div,
+                .stPopover > div,
+                .stPopover [data-baseweb="popover"] {
+                    background-color: white !important;
+                    color: #1f2937 !important;
+                }
+                
+                /* Popover content */
+                [data-baseweb="popover"] [data-baseweb="layer"] {
+                    background-color: white !important;
+                }
+                
+                /* Popover inner content */
+                .stPopover div[data-testid="stVerticalBlock"],
+                .stPopover div {
+                    background-color: white !important;
+                    color: #1f2937 !important;
+                }
+                
+                /* Date picker calendar - FIX BLACK ELEMENTS */
+                [data-baseweb="calendar"],
+                [data-baseweb="calendar"] *,
+                [data-baseweb="calendar"] div,
+                [data-baseweb="calendar"] button,
+                [data-baseweb="calendar"] span,
+                [data-baseweb="calendar"] [role="gridcell"] {
+                    background-color: white !important;
+                    color: #1f2937 !important;
+                }
+                
+                /* Calendar header */
+                [data-baseweb="calendar"] [data-baseweb="select"],
+                [data-baseweb="calendar"] select {
+                    background-color: white !important;
+                    color: #1f2937 !important;
+                }
+                
+                /* Selected/highlighted dates */
+                [data-baseweb="calendar"] button[aria-selected="true"],
+                [data-baseweb="calendar"] [aria-selected="true"] {
+                    background-color: #3b82f6 !important;
+                    color: white !important;
+                }
+                
+                /* Hover states for calendar */
+                [data-baseweb="calendar"] button:hover {
+                    background-color: #f3f4f6 !important;
+                    color: #1f2937 !important;
+                }
+                
+                /* Dropdown menus */
+                [data-baseweb="popover"],
+                [data-baseweb="menu"],
+                [role="listbox"],
+                [role="option"] {
+                    background-color: white !important;
+                    color: #1f2937 !important;
+                }
+                
+                /* Hover states */
+                [role="option"]:hover,
+                [data-baseweb="menu"] li:hover {
+                    background-color: #f3f4f6 !important;
+                    color: #1f2937 !important;
+                }
+                
+                /* Selected state */
+                [aria-selected="true"] {
+                    background-color: #e5e7eb !important;
+                    color: #1f2937 !important;
+                }
+                
+                /* Radio buttons - Custom styled with colors */
+                .stRadio > div {
+                    flex-direction: row !important;
+                    gap: 1rem !important;
+                    justify-content: flex-start !important;
+                    align-items: center !important;
+                }
+                .stRadio label {
+                    font-size: clamp(1rem, 0.9rem + 0.5vw, 1.125rem) !important;
+                    font-weight: 600 !important;
+                    padding: clamp(0.625rem, 0.5rem + 0.5vw, 0.75rem) clamp(1.5rem, 1.2rem + 1.5vw, 2rem) !important;
+                    border-radius: clamp(0.5rem, 0.4rem + 0.5vw, 0.625rem) !important;
+                    background: white !important;
+                    border: 2px solid #d1d5db !important;
+                    cursor: pointer !important;
+                    transition: all 0.2s ease !important;
+                    min-width: clamp(5rem, 4rem + 5vw, 6.25rem) !important;
+                    text-align: center !important;
+                    color: #1f2937 !important;
+                }
+                .stRadio label:hover {
+                    border-color: #9ca3af !important;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+                }
+                
+                /* Best flow - green */
+                .stRadio label:has(input[value="Best"]:checked) {
+                    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%) !important;
+                    color: #1f2937 !important;
+                    border-color: #10b981 !important;
+                    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2) !important;
+                }
+                
+                /* Worst flow - red */
+                .stRadio label:has(input[value="Worst"]:checked) {
+                    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%) !important;
+                    color: #1f2937 !important;
+                    border-color: #ef4444 !important;
+                    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2) !important;
+                }
+                
+                .stRadio input[type="radio"] {
+                    display: none !important;
+                }
+                
+                /* Buttons - clean and consistent */
+                .stButton > button {
+                    background-color: white !important;
+                    color: #1f2937 !important;
+                    border: 2px solid #d1d5db !important;
+                    border-radius: 0.5rem !important;
+                    font-weight: 600 !important;
+                    transition: all 0.2s ease !important;
+                }
+                .stButton > button:hover:not(:disabled) {
+                    border-color: #9ca3af !important;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+                    background-color: #f9fafb !important;
+                }
+                .stButton > button:disabled {
+                    opacity: 0.4 !important;
+                    cursor: not-allowed !important;
+                }
+                
+                /* Custom styles applied via inline later */
+                </style>
+            """, unsafe_allow_html=True)
+            
+            # Initialize flow type if not set
+            if 'flow_type' not in st.session_state:
+                st.session_state.flow_type = 'Best'
+            
+            flow_type = st.session_state.flow_type
+            
+            st.markdown("---")
+            # === END FILTERS ===
+            
+            # Apply date filter
+            from src.flow_analysis import filter_by_date_range, filter_by_threshold
+            # Apply date filter only if explicitly enabled
+            if enable_date_filter:
+                before_filter_count = len(campaign_df)
+                campaign_df = filter_by_date_range(campaign_df, start_date, start_hour, end_date, end_hour)
+                after_filter_count = len(campaign_df)
+                
+                if len(campaign_df) == 0:
+                    st.warning(f"⚠️ No data found for selected date range ({start_date.strftime('%Y-%m-%d')} {start_hour:02d}:00 to {end_date.strftime('%Y-%m-%d')} {end_hour:02d}:00). Filtered from {before_filter_count} rows to 0.")
+                    st.info("💡 **Tip:** Open the '📅 Date Filter' and either adjust the date range or uncheck 'Enable Date Filtering' to see all data.")
+                    st.stop()
+            
+            # Apply threshold filters only if not using full data
+            if not use_full_data and entity_threshold > 0:
+                original_len = len(campaign_df)
+                campaign_df = filter_by_threshold(campaign_df, 'keyword_term', entity_threshold)
+                campaign_df = filter_by_threshold(campaign_df, 'publisher_domain', entity_threshold)
+                
+                if len(campaign_df) == 0:
+                    st.warning(f"⚠️ Data is too granular - no entities meet the {entity_threshold}% threshold. Please enable 'Use Full Data' option above to see all flows.")
+                    st.stop()
+            
+            # Convert numeric columns to proper types FIRST
+            campaign_df['impressions'] = pd.to_numeric(campaign_df['impressions'], errors='coerce').fillna(0)
+            campaign_df['clicks'] = pd.to_numeric(campaign_df['clicks'], errors='coerce').fillna(0)
+            campaign_df['conversions'] = pd.to_numeric(campaign_df['conversions'], errors='coerce').fillna(0)
+            
+            # Calculate CTR and CVR per row
             campaign_df['ctr'] = campaign_df.apply(lambda x: (x['clicks'] / x['impressions'] * 100) if x['impressions'] > 0 else 0, axis=1)
             campaign_df['cvr'] = campaign_df.apply(lambda x: (x['conversions'] / x['clicks'] * 100) if x['clicks'] > 0 else 0, axis=1)
             
@@ -405,111 +1116,171 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             avg_ctr = (total_clicks / total_impressions * 100) if total_impressions > 0 else 0
             avg_cvr = (total_conversions / total_clicks * 100) if total_clicks > 0 else 0
             
-            # Reduce spacing - minimal margin
-            st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
+            # Find top flows if not set or if filters changed
+            # Use a key to track if filters changed
+            filter_key = f"{start_date}_{start_hour}_{end_date}_{end_hour}_{flow_type}_{entity_threshold}_{num_flows}_{use_full_data}_{include_serp_in_flow}"
+            if 'last_filter_key' not in st.session_state:
+                st.session_state.last_filter_key = None
             
-            # Show aggregated table with big title
-            st.markdown("""
-            <div style="margin-bottom: 15px;">
-                <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; text-align: left; line-height: 1;">
-                    📊 Flow Combinations Overview
-                </h2>
-            </div>
-            """, unsafe_allow_html=True)
+            if st.session_state.last_filter_key != filter_key:
+                # Filters changed, recalculate flows
+                st.session_state.last_filter_key = filter_key
+                st.session_state.all_flows = []
+                st.session_state.current_flow_index = 0
             
-            # Render table using module
-            render_flow_combinations_table(campaign_df)
-            
-            # NO spacing between table and What is Flow
-            st.markdown("<div style='margin-top: 0; margin-bottom: 0;'></div>", unsafe_allow_html=True)
-            
-            # Render "What is Flow" section using module
-            render_what_is_flow_section()
-            
-            # NO spacing before Flow Journey - completely remove gap
-            pass
-            
-            # Find default flow if not set
-            if st.session_state.default_flow is None:
-                with st.spinner("Finding best performing flow..."):
-                    st.session_state.default_flow = find_default_flow(campaign_df)
-                    st.session_state.current_flow = st.session_state.default_flow.copy() if st.session_state.default_flow else None
+            if len(st.session_state.get('all_flows', [])) == 0:
+                with st.spinner(f"Finding top {num_flows} {flow_type.lower()} flows..."):
+                    from src.flow_analysis import find_top_n_best_flows, find_top_n_worst_flows
+                    
+                    if flow_type == "Best":
+                        flows = find_top_n_best_flows(campaign_df, n=num_flows, include_serp_filter=include_serp_in_flow)
+                    else:  # Worst
+                        flows = find_top_n_worst_flows(campaign_df, n=num_flows, include_serp_filter=include_serp_in_flow)
+                    
+                    if flows:
+                        st.session_state.all_flows = flows
+                        st.session_state.current_flow_index = 0
+                        st.session_state.default_flow = flows[0]
+                        st.session_state.current_flow = flows[0].copy()
+                    else:
+                        st.error(f"❌ No {flow_type.lower()} flows found with current filters.")
+                        st.stop()
             
             if st.session_state.current_flow:
-                current_flow = st.session_state.current_flow
-                
-                # Advanced mode: Show keyword and domain filters
-                if st.session_state.view_mode == 'advanced':
-                    # Reduce spacing
-                    st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
+                current_flow = st.session_state.current_flow.copy()
                 
                 # Render filters and get filter state
                 filters_changed, selected_keyword_filter, selected_domain_filter = render_advanced_filters(campaign_df, current_flow)
                 
-                # Reduce spacing - minimal margin instead of divider
-                st.markdown("<div style='margin-top: 4px; margin-bottom: 4px;'></div>", unsafe_allow_html=True)
-                
-                # Apply filtering logic using module
-                current_flow, final_filtered = apply_flow_filtering(
+                # Apply filtering logic using module (but don't let it overwrite our selected flow!)
+                updated_flow, final_filtered = apply_flow_filtering(
                     campaign_df, current_flow, filters_changed, selected_keyword_filter, selected_domain_filter
                 )
                 
-                # Update session state
-                st.session_state.current_flow = current_flow
+                # CRITICAL: Only update if we're not in multi-flow mode
+                has_multiple_flows = len(st.session_state.get('all_flows', [])) > 0
+                if not has_multiple_flows:
+                    current_flow = updated_flow
+                    st.session_state.current_flow = current_flow
                 
-                # Show selected flow details using module
-                if len(final_filtered) > 0:
-                    # Select view_id with max timestamp
-                    if 'timestamp' in final_filtered.columns:
-                        single_view = final_filtered.loc[final_filtered['timestamp'].idxmax()]
-                    else:
-                        single_view = final_filtered.iloc[0]
-                    
-                    flow_imps = safe_int(single_view.get('impressions', 0))
-                    flow_clicks = safe_int(single_view.get('clicks', 0))
-                    flow_convs = safe_int(single_view.get('conversions', 0))
-                    flow_ctr = (flow_clicks / flow_imps * 100) if flow_imps > 0 else 0
-                    flow_cvr = (flow_convs / flow_clicks * 100) if flow_clicks > 0 else 0
-                else:
-                    single_view = None
+                # CRITICAL FIX: Use the selected flow's stats, NOT filtered data
+                # Each flow is ONE view_id with specific stats
+                flow_imps = safe_int(current_flow.get('impressions', 0))
+                flow_clicks = safe_int(current_flow.get('clicks', 0))
+                flow_convs = safe_int(current_flow.get('conversions', 0))
+                flow_ctr = (flow_clicks / flow_imps * 100) if flow_imps > 0 else 0
+                flow_cvr = (flow_convs / flow_clicks * 100) if flow_clicks > 0 else 0
                 
-                # No extra spacing needed
-                pass
+                # Use current_flow as single_view
+                single_view = current_flow
                 
-                # Add Flow Journey title with explanation - ZERO GAPS
+                # Add compact Flow Journey info
                 st.markdown("""
-                <h2 style="font-size: 48px; font-weight: 900; color: #0f172a; margin: 0; padding: 0; line-height: 1.2; letter-spacing: -1px; font-family: system-ui;">
-                    <strong>🔄 Flow Journey</strong>
-                </h2>
-                <p style="font-size: 15px; color: #64748b; font-weight: 400; margin: 0 0 2px 0; line-height: 1.6; font-family: system-ui;">
-                    A flow is the complete user journey: Publisher → Creative → SERP → Landing Page. 
-                    Each stage can be customized using the filters above. We automatically select the best-performing combination based on conversions, clicks, and impressions.
-                </p>
-                """, unsafe_allow_html=True)
+                <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding: 0.75rem 1rem; border-radius: 0.5rem; border-left: 4px solid #0ea5e9; margin-bottom: 0.75rem;">
+                    <p style="font-size: 0.8rem; color: #334155; font-weight: 400; margin: 0; line-height: 1.5; font-family: system-ui;">
+                        <span style="font-weight: 700; color: #0f172a;">🔄 What is a Flow?</span> A complete user journey: Keyword → Publisher → Creative → SERP → Landing Page.<br>
+                        <span style="font-weight: 700; color: #0f172a;">🎯 Why 5%+ Traffic Only?</span> Focuses on high-volume keywords/domains, filtering out long-tail traffic noise.<br>
+                        <span style="font-weight: 700; color: #0f172a;">📊 Best vs Worst:</span> <span style="font-weight: 600;">Best</span> = Top converting flows (most conversions). <span style="font-weight: 600;">Worst</span> = Zero conversion flows (spent money, got nothing).<br>
+                        <span style="font-weight: 700; color: #0f172a;">📂 Use Full Data:</span> Check this to include all traffic, even low-volume long-tail keywords/domains.<br>
+                        <span style="font-weight: 700; color: #0f172a;">📅 Current Data:</span> Sample data from January 5, 2026.
+                    </p>
+                </div>
+                    """, unsafe_allow_html=True)
+                
+                # Handle navigation via query params (navigation UI is now in flow_display.py)
+                query_params = st.query_params
+                if 'nav' in query_params:
+                    all_flows = st.session_state.get('all_flows', [])
+                    if len(all_flows) > 1:
+                        current_flow_index = st.session_state.get('current_flow_index', 0)
+                        if query_params['nav'] == 'prev' and current_flow_index > 0:
+                            st.session_state.current_flow_index = max(0, current_flow_index - 1)
+                            st.session_state.current_flow = all_flows[st.session_state.current_flow_index].copy()
+                            st.query_params.clear()
+                            st.rerun()
+                        elif query_params['nav'] == 'next' and current_flow_index < len(all_flows) - 1:
+                            st.session_state.current_flow_index = min(len(all_flows) - 1, current_flow_index + 1)
+                            st.session_state.current_flow = all_flows[st.session_state.current_flow_index].copy()
+                            st.query_params.clear()
+                            st.rerun()
                 
                 # Show flow stats directly (no success messages)
                 if len(final_filtered) > 0:
-                    # Show selected flow stats
-                    single_view = final_filtered.iloc[0]
-                    flow_imps = safe_int(single_view.get('impressions', 0))
-                    flow_clicks = safe_int(single_view.get('clicks', 0))
-                    flow_convs = safe_int(single_view.get('conversions', 0))
+                    # Get stats from the SPECIFIC flow record (not aggregated)
+                    # A flow is: Advertiser -> Campaign -> Publisher URL -> Keyword -> SERP URL -> Landing Page URL
+                    # Stats should be for THIS specific combination, not summed across multiple records
+                    
+                    flow_imps = safe_int(current_flow.get('impressions', 0))
+                    flow_clicks = safe_int(current_flow.get('clicks', 0))
+                    flow_convs = safe_int(current_flow.get('conversions', 0))
+                    
+                    # Calculate rates for this specific flow
                     flow_ctr = (flow_clicks / flow_imps * 100) if flow_imps > 0 else 0
                     flow_cvr = (flow_convs / flow_clicks * 100) if flow_clicks > 0 else 0
                     
-                    render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs, flow_ctr, flow_cvr)
+                    # Stats now displayed in flow_display.py below filters
+                    # render_selected_flow_display(single_view, flow_imps, flow_clicks, flow_convs, flow_ctr, flow_cvr)
+                    pass
                 
                 # Render Flow Journey using module (heading now shown above)
-                render_flow_journey(
-                    campaign_df=campaign_df,
-                    current_flow=current_flow,
-                    api_key=API_KEY,
-                    playwright_available=PLAYWRIGHT_AVAILABLE,
-                    thumio_configured=THUMIO_CONFIGURED,
-                    thumio_referer_domain=THUMIO_REFERER_DOMAIN
-                )
-            
+                # Individual spinners now shown on each card
+                try:
+                    render_flow_journey(
+                        campaign_df=campaign_df,
+                        current_flow=current_flow,
+                        api_key=API_KEY,
+                        playwright_available=PLAYWRIGHT_AVAILABLE,
+                        thumio_configured=THUMIO_CONFIGURED,
+                        thumio_referer_domain=THUMIO_REFERER_DOMAIN
+                    )
+                except Exception as e:
+                    st.error(f"❌ Error rendering flow: {str(e)}")
+                    import traceback
+                    with st.expander("🔍 Error Details"):
+                        st.code(traceback.format_exc())
+                
+                # ============================================================
+                # FILTERS, TABLE, AND OVERVIEW - MOVED BELOW FLOW JOURNEY
+                # ============================================================
+                
+                st.markdown("<br><br>", unsafe_allow_html=True)
+                
+                # Show aggregated table with big title - RESPONSIVE
+                st.markdown("""
+                <div style="margin-bottom: clamp(0.25rem, 0.2rem + 0.2vw, 0.25rem); margin-top: clamp(0.25rem, 0.2rem + 0.2vw, 0.25rem);">
+                    <h2 style="font-size: clamp(2.25rem, 1.9rem + 1.8vw, 3rem); font-weight: 900; color: #0f172a; margin: 0; padding: 0; text-align: left; line-height: 1;">
+                        📊 Flow Combinations Overview
+                    </h2>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Render table using module
+                render_flow_combinations_table(campaign_df)
+                
+                # Render "What is Flow" section using module
+                render_what_is_flow_section()
             else:
-                st.warning("No data available for this campaign")
+                if use_full_data:
+                    st.warning("⚠️ No matching flow found for the current selection.")
+                else:
+                    st.warning("⚠️ Data is too granular - no entities meet the 5% threshold. Please enable 'Use Full Data' option above to see all flows.")
 else:
-    st.error("❌ Could not load data - Check FILE_A_ID and file sharing settings")
+    st.error("❌ Could not load data")
+    with st.expander("🔍 Troubleshooting"):
+        st.markdown("""
+        **Possible causes:**
+        1. **Google Drive rate limit** (most common)
+           - Google temporarily blocks after too many downloads
+           - Wait 5-10 minutes and refresh the page
+           - This is temporary and will resolve itself
+        
+        2. **File sharing settings**
+           - Files must be set to "Anyone with link can view"
+           - Check FILE_X_ID in `src/config.py`
+        
+        3. **Network issues**
+           - Check your internet connection
+           - Try refreshing the page
+        
+        **Current FILE_X_ID:** `1v-lBcF-gdms4ZVtxAmkyZql0TPDyD27x`
+        """)
