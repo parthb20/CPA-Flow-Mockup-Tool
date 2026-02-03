@@ -783,9 +783,17 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             )
                             
                             if rendered_html:
-                                # Display creative FULL WIDTH like other cards
-                                # Use 800px height to match device preview cards
-                                st.components.v1.html(rendered_html, height=800, scrolling=True)
+                                # Wrap in device preview like other cards for consistent sizing
+                                orientation = 'horizontal' if device_all == 'laptop' else 'vertical'
+                                preview_html, height, _ = render_mini_device_preview(
+                                    rendered_html, 
+                                    is_url=False, 
+                                    device=device_all, 
+                                    use_srcdoc=True,
+                                    orientation=orientation
+                                )
+                                preview_html = inject_unique_id(preview_html, 'creative_adcode', '', device_all, current_flow)
+                                st.components.v1.html(preview_html, height=height, scrolling=True)
                                 creative_rendered = True
                             elif error_msg:
                                 st.error(f"❌ {error_msg}")
