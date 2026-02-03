@@ -749,10 +749,10 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
         if 'preserved_advertiser' in st.session_state and st.session_state.preserved_advertiser in advertisers:
             default_adv_idx = advertisers.index(st.session_state.preserved_advertiser)
         selected_advertiser = st.selectbox("Advertiser", advertisers, index=default_adv_idx, label_visibility="visible")
-        if selected_advertiser != '-- Select Advertiser --':
+        if selected_advertiser != '-- Select Advertiser 🔽':
             st.session_state.preserved_advertiser = selected_advertiser
     
-    if selected_advertiser and selected_advertiser != '-- Select Advertiser --':
+    if selected_advertiser and selected_advertiser != '-- Select Advertiser 🔽':
         # Extract advertiser name from "Name - [ID]" format (if ID column exists)
         if adv_id_col in df.columns and ' - [' in selected_advertiser:
             # Split to extract name from "Name - [ID]" format
@@ -777,7 +777,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             if 'preserved_campaign' in st.session_state and st.session_state.preserved_campaign in campaigns:
                 default_camp_idx = campaigns.index(st.session_state.preserved_campaign)
             selected_campaign = st.selectbox("Campaign", campaigns, key='campaign_selector', index=default_camp_idx, label_visibility="visible")
-            if selected_campaign != '-- Select Campaign --':
+            if selected_campaign != '-- Select Campaign 🔽':
                 st.session_state.preserved_campaign = selected_campaign
         
         # Use Full Data checkbox + Time Filter in same row
@@ -904,7 +904,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             st.empty()  # Clear any lingering containers
             st.rerun()
         
-        if selected_campaign and selected_campaign != '-- Select Campaign --':
+        if selected_campaign and selected_campaign != '-- Select Campaign 🔽':
             # Extract campaign name from "Name - [ID]" format (if ID column exists)
             if camp_id_col in df.columns and ' - [' in selected_campaign:
                 # Split to extract name from "Name - [ID]" format
