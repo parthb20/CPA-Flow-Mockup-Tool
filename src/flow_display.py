@@ -1324,7 +1324,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     """
                     preview_html, height, _ = render_mini_device_preview(error_html, is_url=False, device=device_all)
                     preview_html = inject_unique_id(preview_html, 'landing_error', adv_url, device_all, current_flow)
-                    st.components.v1.html(preview_html, height=height, scrolling=False)
+                    st.components.v1.html(preview_html, height=height, scrolling=True)
         else:
             with landing_preview_container:
                 st.warning("No landing page URL")
