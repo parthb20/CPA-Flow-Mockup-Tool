@@ -44,12 +44,21 @@ def process_file_content(content):
                 # Read CSV with maximum field size to prevent truncation
                 csv.field_size_limit(100000000)  # 100MB per field
                 
-                # Parse CSV (use default quoting, handles most cases)
+                # MEMORY OPTIMIZATION: Optimized dtypes + low_memory mode
                 df = pd.read_csv(
                     BytesIO(decompressed), 
-                    dtype=str, 
                     encoding='utf-8',
-                    engine='python',
+                    engine='c',  # C engine is faster
+                    low_memory=False,  # Read entire file to infer types
+                    dtype={
+                        'impressions': 'float32',  # Use float32 instead of str (saves memory)
+                        'clicks': 'float32',
+                        'conversions': 'float32',
+                        'ts': 'str',  # Keep ts as string for parsing
+                        'view_id': 'str',
+                        'advertiser_id': 'str',
+                        'campaign_id': 'str'
+                    },
                     on_bad_lines='warn'
                 )
                 
