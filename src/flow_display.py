@@ -741,7 +741,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         creative_id = current_flow.get('creative_id', 'N/A')
         creative_name = current_flow.get('creative_template_name', 'N/A')
-        creative_size = current_flow.get('Creative_Size_Final', 'N/A')  # From File A
+        # Try multiple column names for creative size
+        creative_size = current_flow.get('creative_size', current_flow.get('Creative_Size_Final', current_flow.get('size', 'N/A')))
         keyword = current_flow.get('keyword_term', 'N/A')
         
         # Keyword will be shown BELOW card preview
@@ -859,7 +860,8 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     """, unsafe_allow_html=True)
         
         # Show creative details - DIFFERENT LAYOUT for horizontal vs vertical
-        creative_size = current_flow.get('Creative_Size_Final', 'N/A')
+        # Try multiple column names for creative size
+        creative_size = current_flow.get('creative_size', current_flow.get('Creative_Size_Final', current_flow.get('size', 'N/A')))
         creative_name = current_flow.get('creative_template_name', 'N/A')
         keyword = current_flow.get('keyword_term', 'N/A')
         
