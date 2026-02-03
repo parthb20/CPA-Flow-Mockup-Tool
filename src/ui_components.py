@@ -141,8 +141,11 @@ def render_flow_combinations_table(campaign_df):
             ctr_bg = "#fee2e2"
             ctr_color = "#991b1b"
         
-        # Determine CVR color
-        if cvr_val >= weighted_avg_cvr:
+        # Determine CVR color - but don't color if CVR is 0
+        if cvr_val == 0:
+            cvr_bg = "white"
+            cvr_color = "#000000"
+        elif cvr_val >= weighted_avg_cvr:
             cvr_bg = "#dcfce7"
             cvr_color = "#166534"
         else:
