@@ -740,19 +740,19 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
         if adv_id_col in df.columns:
             df_adv = df[[adv_name_col, adv_id_col]].drop_duplicates().dropna()
             advertiser_display = df_adv.apply(lambda row: f"{row[adv_name_col]} - [{row[adv_id_col]}]", axis=1).tolist()
-            advertisers = ['-- Select Advertiser 🔽'] + sorted(advertiser_display)
+            advertisers = ['Select Advertiser 🔽'] + sorted(advertiser_display)
         else:
-            advertisers = ['-- Select Advertiser 🔽'] + sorted(df[adv_name_col].dropna().unique().tolist())
+            advertisers = ['Select Advertiser 🔽'] + sorted(df[adv_name_col].dropna().unique().tolist())
         
         # Preserve advertiser selection
         default_adv_idx = 0
         if 'preserved_advertiser' in st.session_state and st.session_state.preserved_advertiser in advertisers:
             default_adv_idx = advertisers.index(st.session_state.preserved_advertiser)
         selected_advertiser = st.selectbox("Advertiser", advertisers, index=default_adv_idx, label_visibility="visible")
-        if selected_advertiser != '-- Select Advertiser 🔽':
+        if selected_advertiser != 'Select Advertiser 🔽':
             st.session_state.preserved_advertiser = selected_advertiser
     
-    if selected_advertiser and selected_advertiser != '-- Select Advertiser 🔽':
+    if selected_advertiser and selected_advertiser != 'Select Advertiser 🔽':
         # Extract advertiser name from "Name - [ID]" format (if ID column exists)
         if adv_id_col in df.columns and ' - [' in selected_advertiser:
             # Split to extract name from "Name - [ID]" format
@@ -768,9 +768,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             if camp_id_col in df.columns:
                 df_camp = advertiser_df[[camp_name_col, camp_id_col]].drop_duplicates().dropna()
                 campaign_display = df_camp.apply(lambda row: f"{row[camp_name_col]} - [{row[camp_id_col]}]", axis=1).tolist()
-                campaigns = ['-- Select Campaign 🔽'] + sorted(campaign_display)
+                campaigns = ['Select Campaign 🔽'] + sorted(campaign_display)
             else:
-                campaigns = ['-- Select Campaign 🔽'] + sorted(advertiser_df[camp_name_col].dropna().unique().tolist())
+                campaigns = ['Select Campaign 🔽'] + sorted(advertiser_df[camp_name_col].dropna().unique().tolist())
             
             # Preserve campaign selection
             default_camp_idx = 0
@@ -780,105 +780,37 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             if selected_campaign != '-- Select Campaign 🔽':
                 st.session_state.preserved_campaign = selected_campaign
         
-        # Use Full Data checkbox + Time Filter in same row
+        # Use Full Data checkbox aligned with dropdowns  
         with col3:
-            sub_col1, sub_col2 = st.columns([1, 1])
-            
-            # Use Full Data checkbox - aligned with dropdowns
-            with sub_col1:
-                # No extra spacing - checkbox naturally aligns with selectbox labels
-                use_full_data = st.checkbox(
-                    "Use Full Data",
-                    value=False,  # Default value
-                    help="Bypass 5% threshold filter",
-                    key='use_full_data_checkbox'  # Unique key
-                )
-            
-            # Time Filter
-            with sub_col2:
-                from datetime import date, timedelta
-                today = date.today()
-                # Default to January 2026 (Jan 1 - Jan 31)
-                jan_start = date(2026, 1, 1)
-                jan_end = date(2026, 1, 31)
-                
-                # Initialize defaults to January
-                if 'start_date' not in st.session_state:
-                    st.session_state.start_date = jan_start
-                if 'end_date' not in st.session_state:
-                    st.session_state.end_date = jan_end
-                if 'start_hour' not in st.session_state:
-                    st.session_state.start_hour = 0
-                if 'end_hour' not in st.session_state:
-                    st.session_state.end_hour = 23
-                
-                # CSS for Time button and checkbox
-                st.markdown("""
-                    <style>
-                    /* Compact Time popover button */
-                    button[data-testid*="popover"] {
-                        background-color: white !important;
-                        color: #1f2937 !important;
-                        border: 2px solid #cbd5e1 !important;
-                        padding: 0.25rem 0.5rem !important;
-                        font-size: 0.8rem !important;
-                        min-height: 1.8rem !important;
-                        max-width: 100px !important;
-                    }
-                    
-                    /* Remove special checkbox background and align properly */
-                    [data-testid="stCheckbox"] {
-                        background: transparent !important;
-                    }
-                    
-                    /* Align checkbox label with Time button */
-                    [data-testid="stCheckbox"] label {
-                        display: flex;
-                        align-items: center;
-                        padding-top: 0.25rem;
-                    }
-                    
-                    /* Ensure checkbox itself is aligned */
-                    [data-testid="stCheckbox"] input[type="checkbox"] {
-                        margin-top: 0 !important;
-                    }
-                    </style>
-                """, unsafe_allow_html=True)
-                with st.popover("🕐 Time", use_container_width=False):
-                    # Hour selection first
-                    st.markdown("**Hour Range**")
-                    hour_row = st.columns(2)
-                    with hour_row[0]:
-                        start_hour = st.selectbox("Start", options=list(range(24)), index=st.session_state.get('start_hour', 0), format_func=lambda x: f"{x:02d}:00", key='start_hour_filter')
-                        st.session_state.start_hour = start_hour
-                    with hour_row[1]:
-                        end_hour = st.selectbox("End", options=list(range(24)), index=st.session_state.get('end_hour', 23), format_func=lambda x: f"{x:02d}:00", key='end_hour_filter')
-                        st.session_state.end_hour = end_hour
-                    
-                    # Date range selection - interactive drag calendar
-                    st.markdown("**Date Range**")
-                    date_range = st.date_input(
-                        "Select Range",
-                        value=(st.session_state.get('start_date', jan_start), st.session_state.get('end_date', jan_end)),
-                        min_value=date(2026, 1, 1),
-                        max_value=date(2026, 12, 31),
-                        key='date_range_filter',
-                        label_visibility="collapsed"
-                    )
-                    
-                    # Handle date range tuple
-                    if isinstance(date_range, tuple) and len(date_range) == 2:
-                        st.session_state.start_date = date_range[0]
-                        st.session_state.end_date = date_range[1]
-                    elif isinstance(date_range, date):
-                        st.session_state.start_date = date_range
-                        st.session_state.end_date = date_range
-                
-                # Use current values
-                start_date = st.session_state.get('start_date', jan_start)
-                end_date = st.session_state.get('end_date', jan_end)
-                start_hour = st.session_state.get('start_hour', 0)
-                end_hour = st.session_state.get('end_hour', 23)
+            use_full_data = st.checkbox(
+                "Use Full Data",
+                value=False,  # Default value
+                help="Bypass 5% threshold filter",
+                key='use_full_data_checkbox'  # Unique key
+            )
+        
+        # Time Filter section - moved outside to avoid layout issues
+        from datetime import date, timedelta
+        today = date.today()
+        # Default to January 2026 (Jan 1 - Jan 31)
+        jan_start = date(2026, 1, 1)
+        jan_end = date(2026, 1, 31)
+        
+        # Initialize defaults to January
+        if 'start_date' not in st.session_state:
+            st.session_state.start_date = jan_start
+        if 'end_date' not in st.session_state:
+            st.session_state.end_date = jan_end
+        if 'start_hour' not in st.session_state:
+            st.session_state.start_hour = 0
+        if 'end_hour' not in st.session_state:
+            st.session_state.end_hour = 23
+        
+        # Use default time values (hidden filters)
+        start_date = st.session_state.get('start_date', jan_start)
+        end_date = st.session_state.get('end_date', jan_end)
+        start_hour = st.session_state.get('start_hour', 0)
+        end_hour = st.session_state.get('end_hour', 23)
         
         # Hidden defaults
         entity_threshold = 0.0 if use_full_data else 5.0
@@ -904,7 +836,7 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             st.empty()  # Clear any lingering containers
             st.rerun()
         
-        if selected_campaign and selected_campaign != '-- Select Campaign 🔽':
+        if selected_campaign and selected_campaign != 'Select Campaign 🔽':
             # Extract campaign name from "Name - [ID]" format (if ID column exists)
             if camp_id_col in df.columns and ' - [' in selected_campaign:
                 # Split to extract name from "Name - [ID]" format
