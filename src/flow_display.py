@@ -809,7 +809,14 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             if rendered_html:
                                 st.success(f"✅ Got rendered HTML ({len(rendered_html)} chars), displaying...")
                                 # Display creative directly - NO device frame for creatives
-                                st.components.v1.html(rendered_html, height=400, scrolling=False)
+                                # Use height based on creative_size
+                                try:
+                                    _, height_str = creative_size.split('x')
+                                    display_height = int(height_str) + 50  # Add padding
+                                except:
+                                    display_height = 300
+                                
+                                st.components.v1.html(rendered_html, height=display_height, scrolling=True)
                                 creative_rendered = True
                             elif error_msg:
                                 st.error(f"❌ {error_msg}")
