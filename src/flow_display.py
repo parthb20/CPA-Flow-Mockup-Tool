@@ -760,29 +760,37 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 # Render creative from Response.adcode column in File X
                 creative_rendered = False
                 
+                # DEBUG: Check current_flow
+                st.write(f"🔍 DEBUG: current_flow type: {type(current_flow)}, is None: {current_flow is None}")
+                if current_flow is not None:
+                    st.write(f"🔍 DEBUG: current_flow length: {len(current_flow)}")
+                    st.write(f"🔍 DEBUG: creative_id in flow: {current_flow.get('creative_id', 'NOT FOUND')}")
+                
                 # Check if we have File X data
                 has_data = current_flow is not None and len(current_flow) > 0
                 
                 if has_data:
                     try:
-                        # Get cipher key from secrets or use default
-                        cipher_key = None
-                        try:
-                            cipher_key = st.secrets.get("WEAVER_CIPHER_KEY", None)
-                            if cipher_key:
-                                # Clean the key (remove quotes, whitespace)
-                                cipher_key = str(cipher_key).strip().strip("'").strip('"')
-                        except Exception:
-                            cipher_key = None
+                        # DEBUG: Show available columns
+                        debug_cols = [c for c in current_flow.keys() if 'response' in c.lower() or 'code' in c.lower() or 'script' in c.lower()]
+                        if debug_cols:
+                            st.info(f"🔍 Found columns: {', '.join(debug_cols[:5])}")
                         
                         # Get ad code from Response.adcode column (exact name from File X)
                         adcode_raw = current_flow.get('Response.adcode', None)
+                        
+                        # DEBUG: Show what we got
+                        if adcode_raw:
+                            st.success(f"✅ Found Response.adcode: {str(adcode_raw)[:100]}...")
+                        else:
+                            st.warning(f"⚠️ Response.adcode is empty. Trying fallback...")
                         
                         if not adcode_raw or pd.isna(adcode_raw):
                             # Fallback: search for <script tag in any column
                             for key, value in current_flow.items():
                                 if pd.notna(value) and isinstance(value, str) and '<script' in str(value).lower():
                                     adcode_raw = value
+                                    st.success(f"✅ Found ad code in column: '{key}'")
                                     break
                         
                         if adcode_raw and pd.notna(adcode_raw):
