@@ -816,16 +816,16 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                 except:
                                     display_height = 300
                                 
-                                # Use iframe with sandbox to allow scripts
+                                # Use data URL to bypass some iframe restrictions
                                 import base64
                                 html_b64 = base64.b64encode(rendered_html.encode('utf-8')).decode('utf-8')
                                 iframe_html = f"""
                                 <iframe 
-                                    srcdoc="{rendered_html.replace('"', '&quot;')}" 
+                                    src="data:text/html;base64,{html_b64}" 
                                     width="100%" 
                                     height="{display_height}px" 
                                     frameborder="0"
-                                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-top-navigation"
                                     style="border: 1px solid #e0e0e0; background: white;"
                                 ></iframe>
                                 """
