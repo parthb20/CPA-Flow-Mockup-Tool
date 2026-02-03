@@ -720,11 +720,23 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     )
                     
                     if rendered_html:
-                        # Display creative at same height as other cards for symmetry
-                        # No phone mockup - just the creative ad itself
-                        display_height = 914  # Match device preview card height
+                        # Wrap creative in consistent card styling with same dimensions as device previews
+                        # Use same wrapper as device preview to ensure consistent height
+                        creative_wrapper_html = f"""
+                        <div style="display: flex; justify-content: center; padding: clamp(0.5rem, 0.4rem + 0.5vw, 0.625rem); background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); border-radius: clamp(0.375rem, 0.3rem + 0.4vw, 0.5rem); min-height: 100%; overflow: hidden;">
+                            <div style="width: clamp(280px, 22vw, 380px); background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); overflow: auto; display: flex; align-items: center; justify-content: center;">
+                                <div style="width: 100%; height: 100%;">
+                                    {rendered_html}
+                                </div>
+                            </div>
+                        </div>
+                        """
                         
-                        st.components.v1.html(rendered_html, height=display_height, scrolling=True)
+                        # Use calculated height from device preview for consistency
+                        # Mobile device: 390x844 + chrome (68px) + bottom nav (70px) = ~982px total
+                        display_height = 982
+                        
+                        st.components.v1.html(creative_wrapper_html, height=display_height, scrolling=False)
                         creative_rendered = True
                     elif error_msg:
                         # Show detailed error message
