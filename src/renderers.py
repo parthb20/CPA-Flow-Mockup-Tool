@@ -221,32 +221,10 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                 word-break: break-word !important;
             }}
             
-            /* Hide common chat widgets, AI assistants, and overlays */
-            [class*="chat" i],
-            [class*="assistant" i],
-            [id*="chat" i],
-            [id*="assistant" i],
-            [class*="intercom" i],
-            [class*="drift" i],
-            [class*="helpscout" i],
-            [class*="zendesk" i],
-            [class*="livechat" i],
-            [class*="tawk" i],
-            [class*="tidio" i],
-            [class*="freshchat" i],
-            [class*="crisp" i],
-            [data-test*="chat" i],
-            iframe[src*="chat" i],
-            iframe[src*="assistant" i],
-            iframe[title*="chat" i],
-            iframe[title*="assistant" i] {{
-                display: none !important;
-                visibility: hidden !important;
-                opacity: 0 !important;
-                width: 0 !important;
-                height: 0 !important;
+            /* Ensure fixed elements stay within content area */
+            .content-area [style*="fixed"],
+            .content-area [style*="sticky"] {{
                 position: absolute !important;
-                left: -9999px !important;
             }}
         </style>
     </head>
