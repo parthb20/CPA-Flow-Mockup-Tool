@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Creative rendering functions using Weaver API
+Creative rendering functions - now using Response.adcode from File X
 """
 
 import json
@@ -20,6 +20,128 @@ except:
 
 
 DEFAULT_CIPHER_KEY = "dqkwfjkefq;"
+
+
+def unescape_adcode(adcode):
+    """
+    Unescape ad code from Response.adcode column
+    Similar to Ad_Code_Render.py logic
+    """
+    if not adcode or pd.isna(adcode):
+        return ""
+    
+    adcode = str(adcode)
+    
+    # Unescape unicode sequences (\u003c, etc.)
+    if '\\u' in adcode or '\\/' in adcode:
+        try:
+            # Use json.loads to unescape unicode sequences
+            adcode = json.loads('"' + adcode + '"')
+        except Exception:
+            # Fallback: manual replacement
+            adcode = adcode.replace('\\u003c', '<')
+            adcode = adcode.replace('\\u003e', '>')
+            adcode = adcode.replace('\\u003d', '=')
+            adcode = adcode.replace('\\/', '/')
+    
+    # Unescape HTML entities
+    if '&' in adcode:
+        adcode = html.unescape(adcode)
+    
+    return adcode
+
+
+def render_creative_from_adcode(adcode_raw, creative_size="300x250"):
+    """
+    Render creative directly from Response.adcode column
+    
+    Args:
+        adcode_raw: Raw ad code from Response.adcode column
+        creative_size: Creative size (e.g., "300x250")
+    
+    Returns:
+        (rendered_html, error_message) tuple
+    """
+    if not adcode_raw or pd.isna(adcode_raw):
+        return None, "No ad code available"
+    
+    try:
+        # Unescape the ad code
+        adcode = unescape_adcode(adcode_raw)
+        
+        if not adcode:
+            return None, "Ad code is empty after unescaping"
+        
+        # Parse creative size
+        try:
+            width, height = map(int, creative_size.split('x'))
+        except:
+            width, height = 300, 250
+        
+        # Wrap ad code in HTML container
+        # Add timestamp for cache-busting
+        import time
+        timestamp = int(time.time() * 1000)
+        
+        rendered_html = f'''
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        body {{
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            overflow: hidden;
+        }}
+        .ad-container {{
+            width: {width}px;
+            height: {height}px;
+            margin: 0 auto;
+            background: white;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #e0e0e0;
+        }}
+        .loading {{
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #666;
+            font-size: 14px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="ad-container" id="ad-container">
+        <div class="loading">Loading ad...</div>
+        {adcode}
+    </div>
+    <script>
+        // Remove loading message once scripts start executing
+        setTimeout(function() {{
+            var loading = document.querySelector('.loading');
+            if (loading) loading.remove();
+        }}, 500);
+        
+        // Cache-busting timestamp
+        var cacheBuster = {timestamp};
+    </script>
+</body>
+</html>
+'''
+        
+        return rendered_html, None
+        
+    except Exception as e:
+        return None, f"Error rendering creative: {str(e)}"
 
 
 def load_creative_requests(file_id):
