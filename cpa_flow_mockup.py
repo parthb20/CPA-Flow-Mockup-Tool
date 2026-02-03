@@ -740,15 +740,15 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
         if adv_id_col in df.columns:
             df_adv = df[[adv_name_col, adv_id_col]].drop_duplicates().dropna()
             advertiser_display = df_adv.apply(lambda row: f"{row[adv_name_col]} - [{row[adv_id_col]}]", axis=1).tolist()
-            advertisers = ['-- Select Advertiser --'] + sorted(advertiser_display)
+            advertisers = ['-- Select Advertiser 🔽'] + sorted(advertiser_display)
         else:
-            advertisers = ['-- Select Advertiser --'] + sorted(df[adv_name_col].dropna().unique().tolist())
+            advertisers = ['-- Select Advertiser 🔽'] + sorted(df[adv_name_col].dropna().unique().tolist())
         
         # Preserve advertiser selection
         default_adv_idx = 0
         if 'preserved_advertiser' in st.session_state and st.session_state.preserved_advertiser in advertisers:
             default_adv_idx = advertisers.index(st.session_state.preserved_advertiser)
-        selected_advertiser = st.selectbox("Advertiser", advertisers, index=default_adv_idx)
+        selected_advertiser = st.selectbox("Advertiser", advertisers, index=default_adv_idx, label_visibility="visible")
         if selected_advertiser != '-- Select Advertiser --':
             st.session_state.preserved_advertiser = selected_advertiser
     
@@ -768,15 +768,15 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
             if camp_id_col in df.columns:
                 df_camp = advertiser_df[[camp_name_col, camp_id_col]].drop_duplicates().dropna()
                 campaign_display = df_camp.apply(lambda row: f"{row[camp_name_col]} - [{row[camp_id_col]}]", axis=1).tolist()
-                campaigns = ['-- Select Campaign --'] + sorted(campaign_display)
+                campaigns = ['-- Select Campaign 🔽'] + sorted(campaign_display)
             else:
-                campaigns = ['-- Select Campaign --'] + sorted(advertiser_df[camp_name_col].dropna().unique().tolist())
+                campaigns = ['-- Select Campaign 🔽'] + sorted(advertiser_df[camp_name_col].dropna().unique().tolist())
             
             # Preserve campaign selection
             default_camp_idx = 0
             if 'preserved_campaign' in st.session_state and st.session_state.preserved_campaign in campaigns:
                 default_camp_idx = campaigns.index(st.session_state.preserved_campaign)
-            selected_campaign = st.selectbox("Campaign", campaigns, key='campaign_selector', index=default_camp_idx)
+            selected_campaign = st.selectbox("Campaign", campaigns, key='campaign_selector', index=default_camp_idx, label_visibility="visible")
             if selected_campaign != '-- Select Campaign --':
                 st.session_state.preserved_campaign = selected_campaign
         
@@ -784,10 +784,9 @@ if st.session_state.data_a is not None and len(st.session_state.data_a) > 0:
         with col3:
             sub_col1, sub_col2 = st.columns([1, 1])
             
-            # Use Full Data checkbox
+            # Use Full Data checkbox - aligned with dropdowns
             with sub_col1:
-                st.markdown('<div style="height: 1.65rem;"></div>', unsafe_allow_html=True)
-                # Let Streamlit manage the state automatically via key
+                # No extra spacing - checkbox naturally aligns with selectbox labels
                 use_full_data = st.checkbox(
                     "Use Full Data",
                     value=False,  # Default value
