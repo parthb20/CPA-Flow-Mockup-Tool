@@ -1,5 +1,3 @@
-# System packages for Playwright on Streamlit Cloud (Ubuntu)
-# These are needed for Chromium browser to run
 libnss3
 libnspr4
 libatk1.0-0
