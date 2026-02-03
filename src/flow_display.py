@@ -265,6 +265,27 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         with nav_col2:
             st.markdown(f'<div style="text-align: center; padding-top: 0.3rem;"><span style="font-size: 0.85rem; color: #0f172a; font-weight: 700;">Flow {current_flow_index + 1} of {len(all_flows)}</span></div>', unsafe_allow_html=True)
+    
+    # Display flow stats below navigation and above controls
+    current_flow = st.session_state.get('current_flow', {})
+    if current_flow:
+        impressions = current_flow.get('impressions', 0)
+        clicks = current_flow.get('clicks', 0)
+        ctr = (clicks / impressions * 100) if impressions > 0 else 0
+        
+        st.markdown(f"""
+        <div style="text-align: center; padding: 0.5rem 0; margin: 0.25rem 0;">
+            <span style="font-size: 0.75rem; color: #64748b; font-weight: 600; margin-right: 1rem;">
+                📊 Impressions: <strong style="color: #0f172a;">{impressions:,}</strong>
+            </span>
+            <span style="font-size: 0.75rem; color: #64748b; font-weight: 600; margin-right: 1rem;">
+                🖱️ Clicks: <strong style="color: #0f172a;">{clicks:,}</strong>
+            </span>
+            <span style="font-size: 0.75rem; color: #64748b; font-weight: 600;">
+                📈 CTR: <strong style="color: #0f172a;">{ctr:.2f}%</strong>
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
         
         with nav_col3:
             if not next_disabled:
@@ -619,7 +640,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         preview_html, display_height = render_html_with_proper_encoding(
                             page_html, device_all, 'pub_html', pub_url, current_flow, scrolling=False
                         )
-                        st.components.v1.html(preview_html, height=display_height, scrolling=False)
+                        st.components.v1.html(preview_html, height=display_height, scrolling=True)
                         st.caption("📄 HTML")
                         rendered = True
                 except:
@@ -635,12 +656,12 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                             if '<!-- SCREENSHOT_FALLBACK -->' in page_html:
                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all, orientation=orientation)
                                 preview_html = inject_unique_id(preview_html, 'pub_screenshot', pub_url, device_all, current_flow)
-                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                st.components.v1.html(preview_html, height=height, scrolling=True)
                                 st.caption("📸 Screenshot (API)")
                             else:
                                 preview_html, height, _ = render_mini_device_preview(page_html, is_url=False, device=device_all, orientation=orientation)
                                 preview_html = inject_unique_id(preview_html, 'pub_playwright', pub_url, device_all, current_flow)
-                                st.components.v1.html(preview_html, height=height, scrolling=False)
+                                st.components.v1.html(preview_html, height=height, scrolling=True)
                                 st.caption("🤖 Playwright")
                             rendered = True
                     except:
@@ -958,7 +979,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                 preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True, orientation=orientation)
                 preview_html = inject_unique_id(preview_html, 'serp_template', serp_url or '', device_all, current_flow)
                 display_height = height
-                st.components.v1.html(preview_html, height=display_height, scrolling=False)
+                st.components.v1.html(preview_html, height=display_height, scrolling=True)
                 if st.session_state.flow_layout != 'horizontal':
                     st.caption("📺 SERP (from template)")
         
@@ -1041,7 +1062,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True, orientation=orientation)
                         preview_html = inject_unique_id(preview_html, 'serp_injected', serp_url, device_all, current_flow)
                         display_height = height
-                        st.components.v1.html(preview_html, height=display_height, scrolling=False)
+                        st.components.v1.html(preview_html, height=display_height, scrolling=True)
                         if st.session_state.flow_layout != 'horizontal':
                             st.caption("📺 SERP with injected ad content")
                     
@@ -1119,7 +1140,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                                     preview_html, height, _ = render_mini_device_preview(serp_html, is_url=False, device=device_all, use_srcdoc=True, orientation=orientation)
                                     preview_html = inject_unique_id(preview_html, 'serp_playwright', serp_url, device_all, current_flow)
                                     display_height = height
-                                    st.components.v1.html(preview_html, height=display_height, scrolling=False)
+                                    st.components.v1.html(preview_html, height=display_height, scrolling=True)
                                     if st.session_state.flow_layout != 'horizontal':
                                         st.caption("📺 SERP (via Playwright)")
                                 else:
