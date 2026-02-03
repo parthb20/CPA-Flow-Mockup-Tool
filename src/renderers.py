@@ -198,7 +198,7 @@ def render_mini_device_preview(content, is_url=False, device='mobile', use_srcdo
                 flex: 1;
                 width: {base_width}px;
                 height: {content_area_height}px;
-                overflow-y: auto; 
+                overflow-y: hidden; 
                 overflow-x: hidden;
                 -webkit-overflow-scrolling: touch;
                 background: white;
