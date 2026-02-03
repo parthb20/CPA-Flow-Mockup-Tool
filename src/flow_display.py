@@ -720,14 +720,11 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     )
                     
                     if rendered_html:
-                        # Wrap creative in device preview for consistent sizing with other cards
-                        creative_preview, preview_height, _ = render_mini_device_preview(
-                            rendered_html, 
-                            is_url=False, 
-                            device='mobile',
-                            display_url=f"Creative {creative_id}"
-                        )
-                        st.components.v1.html(creative_preview, height=preview_height, scrolling=True)
+                        # Display creative at same height as other cards for symmetry
+                        # No phone mockup - just the creative ad itself
+                        display_height = 914  # Match device preview card height
+                        
+                        st.components.v1.html(rendered_html, height=display_height, scrolling=True)
                         creative_rendered = True
                     elif error_msg:
                         # Show detailed error message
