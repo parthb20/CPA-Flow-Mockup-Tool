@@ -720,25 +720,14 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     )
                     
                     if rendered_html:
-                        # Render the creative with responsive height
-                        # Calculate height based on creative aspect ratio and responsive width
-                        try:
-                            width_str, height_str = creative_size.split('x')
-                            creative_height = int(height_str)
-                            creative_width = int(width_str)
-                            # Calculate aspect ratio
-                            aspect_ratio = creative_height / creative_width
-                            # Use a responsive base width (22vw average ~300px on laptop, ~420px on big screen)
-                            # Calculate proportional height
-                            base_responsive_height = int(330 * aspect_ratio)  # 330px is avg of min/max
-                            # Cap at reasonable limits
-                            display_height = min(max(base_responsive_height, 400), 700)
-                            needs_scroll = creative_height > display_height or creative_width > 600
-                        except:
-                            display_height = 500
-                            needs_scroll = False
-                        
-                        st.components.v1.html(rendered_html, height=display_height, scrolling=needs_scroll)
+                        # Wrap creative in device preview for consistent sizing with other cards
+                        creative_preview, preview_height, _ = render_mini_device_preview(
+                            rendered_html, 
+                            is_url=False, 
+                            device='mobile',
+                            display_url=f"Creative {creative_id}"
+                        )
+                        st.components.v1.html(creative_preview, height=preview_height, scrolling=True)
                         creative_rendered = True
                     elif error_msg:
                         # Show detailed error message
