@@ -801,8 +801,6 @@ if st.session_state.data_x is not None and len(st.session_state.data_x) > 0:
                     st.session_state.start_hour = 0
                 if 'end_hour' not in st.session_state:
                     st.session_state.end_hour = 23
-                if 'enable_date_filter' not in st.session_state:
-                    st.session_state.enable_date_filter = False
                 
                 # Popover button styling
                 st.markdown("""
@@ -821,53 +819,43 @@ if st.session_state.data_x is not None and len(st.session_state.data_x) > 0:
                 """, unsafe_allow_html=True)
                 
                 with st.popover("📅 Date Filter", use_container_width=False):
-                    # Enable/disable toggle
-                    enable_date_filter = st.checkbox(
-                        "Enable Date Filtering",
-                        value=st.session_state.enable_date_filter,
-                        help="Turn off to show all data regardless of date",
-                        key='enable_date_filter_toggle'
-                    )
-                    st.session_state.enable_date_filter = enable_date_filter
+                    # Hour selection first
+                    st.markdown("**Hour Range**")
+                    hour_row = st.columns(2)
+                    with hour_row[0]:
+                        start_hour = st.selectbox("Start", options=list(range(24)), index=st.session_state.get('start_hour', 0), format_func=lambda x: f"{x:02d}:00", key='start_hour_filter')
+                        st.session_state.start_hour = start_hour
+                    with hour_row[1]:
+                        end_hour = st.selectbox("End", options=list(range(24)), index=st.session_state.get('end_hour', 23), format_func=lambda x: f"{x:02d}:00", key='end_hour_filter')
+                        st.session_state.end_hour = end_hour
                     
-                    if enable_date_filter:
-                        # Hour selection first
-                        st.markdown("**Hour Range**")
-                        hour_row = st.columns(2)
-                        with hour_row[0]:
-                            start_hour = st.selectbox("Start", options=list(range(24)), index=st.session_state.get('start_hour', 0), format_func=lambda x: f"{x:02d}:00", key='start_hour_filter')
-                            st.session_state.start_hour = start_hour
-                        with hour_row[1]:
-                            end_hour = st.selectbox("End", options=list(range(24)), index=st.session_state.get('end_hour', 23), format_func=lambda x: f"{x:02d}:00", key='end_hour_filter')
-                            st.session_state.end_hour = end_hour
-                        
-                        # Date range selection
-                        st.markdown("**Date Range**")
-                        date_range = st.date_input(
-                            "Select Range",
-                            value=(st.session_state.get('start_date', jan_start), st.session_state.get('end_date', jan_end)),
-                            min_value=date(2026, 1, 1),
-                            max_value=date(2026, 12, 31),
-                            key='date_range_filter',
-                            label_visibility="collapsed"
-                        )
-                        
-                        # Handle date range tuple
-                        if isinstance(date_range, tuple) and len(date_range) == 2:
-                            st.session_state.start_date = date_range[0]
-                            st.session_state.end_date = date_range[1]
-                        elif isinstance(date_range, date):
-                            st.session_state.start_date = date_range
-                            st.session_state.end_date = date_range
-                    else:
-                        st.info("📊 Showing all data (no date filtering)")
+                    # Date range selection
+                    st.markdown("**Date Range**")
+                    date_range = st.date_input(
+                        "Select Range",
+                        value=(st.session_state.get('start_date', jan_start), st.session_state.get('end_date', jan_end)),
+                        min_value=date(2026, 1, 1),
+                        max_value=date(2026, 12, 31),
+                        key='date_range_filter',
+                        label_visibility="collapsed"
+                    )
+                    
+                    # Handle date range tuple
+                    if isinstance(date_range, tuple) and len(date_range) == 2:
+                        st.session_state.start_date = date_range[0]
+                        st.session_state.end_date = date_range[1]
+                    elif isinstance(date_range, date):
+                        st.session_state.start_date = date_range
+                        st.session_state.end_date = date_range
                 
                 # Use current values
                 start_date = st.session_state.get('start_date', jan_start)
                 end_date = st.session_state.get('end_date', jan_end)
                 start_hour = st.session_state.get('start_hour', 0)
                 end_hour = st.session_state.get('end_hour', 23)
-                enable_date_filter = st.session_state.get('enable_date_filter', False)
+                
+                # Date filtering is always enabled (users control it via popover)
+                enable_date_filter = True
         
         # Hidden defaults
         entity_threshold = 0.0 if use_full_data else 5.0
