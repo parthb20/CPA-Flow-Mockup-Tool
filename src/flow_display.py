@@ -1309,17 +1309,10 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
             # Calculate cleaned URL for debug
             cleaned_url = clean_url_for_capture(adv_url) if adv_url and pd.notna(adv_url) else None
             
-            # Get debug attempts if available
-            debug_info = ""
-            if 'debug_attempts' in locals() and debug_attempts:
-                debug_list = "<br>".join([f"<span style='font-size: 11px;'>• {attempt}</span>" for attempt in debug_attempts])
-                debug_info = f'<div style="margin-top: 4px; padding: 6px 8px; background: #e0f2fe; border-left: 3px solid #0ea5e9; border-radius: 4px;"><strong style="color: #075985; font-size: 13px;">🔧 Rendering Attempts:</strong><br>{debug_list}</div>'
-            
+            # Show landing page URL only (clean display, no debug)
             st.markdown(f"""
             <div style='margin-top: 8px; font-size: 14px;'>
                 {f'<div><strong style="color: #0f172a; font-size: 16px;">Landing Page URL:</strong> <a href="{adv_url}" style="color: #3b82f6; text-decoration: none; font-size: 14px;">{html.escape(str(adv_url))}</a></div>' if adv_url and pd.notna(adv_url) else ''}
-                {f'<div style="margin-top: 4px; padding: 6px 8px; background: #fef3c7; border-left: 3px solid #f59e0b; border-radius: 4px;"><strong style="color: #92400e; font-size: 13px;">🔍 Cleaned URL (used on 403):</strong> <span style="color: #78350f; font-size: 12px; font-family: monospace;">{html.escape(str(cleaned_url))}</span></div>' if cleaned_url else ''}
-                {debug_info}
             </div>
             """, unsafe_allow_html=True)
     
