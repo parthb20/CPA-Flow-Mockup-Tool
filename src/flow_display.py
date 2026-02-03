@@ -741,8 +741,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
         
         creative_id = current_flow.get('creative_id', 'N/A')
         creative_name = current_flow.get('creative_template_name', 'N/A')
-        # Try multiple column names for creative size
-        creative_size = current_flow.get('creative_size', current_flow.get('Creative_Size_Final', current_flow.get('size', 'N/A')))
+        creative_size = current_flow.get('creative_size', 'N/A')  # Exact column name from File X
         keyword = current_flow.get('keyword_term', 'N/A')
         
         # Keyword will be shown BELOW card preview
@@ -777,22 +776,14 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                         except Exception:
                             cipher_key = None
                         
-                        # Get ad code - try ALLLL possible column names
-                        adcode_raw = None
+                        # Get ad code from Response.adcode column (exact name from File X)
+                        adcode_raw = current_flow.get('Response.adcode', None)
                         
-                        # First, try looking for any column that contains '<script'
-                        for key, value in current_flow.items():
-                            if pd.notna(value) and isinstance(value, str) and '<script' in str(value).lower():
-                                adcode_raw = value
-                                st.success(f"✅ Found ad code in column: '{key}'")
-                                break
-                        
-                        # If not found, try specific column names
-                        if not adcode_raw:
-                            possible_cols = ['Response.adcode', 'response.adcode', 'response_adcode', 'adcode', 'ad_code', 'creative_code', 'html', 'code', 'script', 'rendered_html']
-                            for col in possible_cols:
-                                if col in current_flow and current_flow.get(col) and pd.notna(current_flow.get(col)):
-                                    adcode_raw = current_flow.get(col)
+                        if not adcode_raw or pd.isna(adcode_raw):
+                            # Fallback: search for <script tag in any column
+                            for key, value in current_flow.items():
+                                if pd.notna(value) and isinstance(value, str) and '<script' in str(value).lower():
+                                    adcode_raw = value
                                     break
                         
                         if adcode_raw and pd.notna(adcode_raw):
@@ -872,8 +863,7 @@ def render_flow_journey(campaign_df, current_flow, api_key, playwright_available
                     """, unsafe_allow_html=True)
         
         # Show creative details - DIFFERENT LAYOUT for horizontal vs vertical
-        # Try multiple column names for creative size
-        creative_size = current_flow.get('creative_size', current_flow.get('Creative_Size_Final', current_flow.get('size', 'N/A')))
+        creative_size = current_flow.get('creative_size', 'N/A')  # Exact column name from File X
         creative_name = current_flow.get('creative_template_name', 'N/A')
         keyword = current_flow.get('keyword_term', 'N/A')
         
